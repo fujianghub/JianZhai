@@ -1,0 +1,170 @@
+/* Paper-style backgrounds for the blog post reader.
+   Each class lives on the article container. */
+
+.paper {
+  padding: 20px 44px 28px;
+  border-radius: 10px;
+  border: 1px solid var(--jz-border);
+  background: var(--jz-surface);
+  /* Warmer earthy drop-shadow — softer than the cold gray default. */
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--jz-gold) 35%, transparent),
+    0 8px 28px -8px rgba(120, 80, 35, 0.18);
+}
+[data-theme='dark'] .paper {
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--jz-gold) 25%, transparent),
+    0 10px 32px -8px rgba(0, 0, 0, 0.6);
+}
+/* Lets embeds (HTML iframes, PDF canvases) break out of .paper's horizontal
+   padding so the full reader width is available — important for HTML pages
+   whose own internal media queries assume >1150px viewports. */
+.paper .paper-breakout {
+  margin-left: -44px;
+  margin-right: -44px;
+}
+@media (max-width: 720px) {
+  .paper .paper-breakout {
+    margin-left: -18px;
+    margin-right: -18px;
+  }
+}
+[data-theme='dark'] .paper {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+}
+
+@media (max-width: 720px) {
+  .paper {
+    padding: 20px 18px;
+    border-radius: 10px;
+  }
+}
+
+/* Default — plain surface. */
+.paper-default { background: var(--jz-surface); }
+
+/* 宣纸: warm off-white with subtle paper grain via radial gradients. */
+.paper-rice {
+  background:
+    radial-gradient(circle at 25% 35%, rgba(170, 140, 110, 0.07) 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 60%, rgba(170, 140, 110, 0.08) 0 1px, transparent 2px),
+    linear-gradient(180deg, #faf4e8 0%, #f5ecd9 100%);
+  color: #3b2f22;
+}
+[data-theme='dark'] .paper-rice {
+  background: linear-gradient(180deg, #2a2418 0%, #221d12 100%);
+  color: #ddd0b0;
+}
+
+/* 信笺方格: light blue squares. */
+.paper-letter {
+  background-color: #fbfdff;
+  background-image:
+    linear-gradient(#cfe3ff 1px, transparent 1px),
+    linear-gradient(90deg, #cfe3ff 1px, transparent 1px);
+  background-size: 28px 28px;
+  color: #1f2a44;
+}
+[data-theme='dark'] .paper-letter {
+  background-color: #14202d;
+  background-image:
+    linear-gradient(#28394d 1px, transparent 1px),
+    linear-gradient(90deg, #28394d 1px, transparent 1px);
+  color: #d6e2f3;
+}
+
+/* 横线本. */
+.paper-lines {
+  background-color: #fffefb;
+  background-image: linear-gradient(#e8d6c2 1px, transparent 1px);
+  background-size: 100% 30px;
+  color: #2c2218;
+}
+[data-theme='dark'] .paper-lines {
+  background-color: #1b1814;
+  background-image: linear-gradient(#3a3128 1px, transparent 1px);
+  color: #e8dccb;
+}
+
+/* 点阵. */
+.paper-dots {
+  background-color: #fbfbf8;
+  background-image: radial-gradient(#cfcfca 1px, transparent 1.2px);
+  background-size: 20px 20px;
+  color: #2a2a2a;
+}
+[data-theme='dark'] .paper-dots {
+  background-color: #17181c;
+  background-image: radial-gradient(#3a3d44 1px, transparent 1.2px);
+  color: #e3e3e3;
+}
+
+/* 大理石: layered conic + radial gradients. */
+.paper-marble {
+  background:
+    radial-gradient(at 20% 30%, rgba(180, 190, 210, 0.18), transparent 60%),
+    radial-gradient(at 80% 80%, rgba(220, 200, 210, 0.18), transparent 60%),
+    radial-gradient(at 60% 20%, rgba(190, 200, 220, 0.14), transparent 60%),
+    linear-gradient(160deg, #f6f7fa 0%, #ecedf3 100%);
+  color: #25272d;
+}
+[data-theme='dark'] .paper-marble {
+  background:
+    radial-gradient(at 20% 30%, rgba(80, 90, 110, 0.45), transparent 60%),
+    radial-gradient(at 80% 80%, rgba(120, 90, 110, 0.38), transparent 60%),
+    linear-gradient(160deg, #1b1d24 0%, #14161b 100%);
+  color: #d8d8df;
+}
+
+/* 牛皮纸. */
+.paper-kraft {
+  background:
+    linear-gradient(135deg, rgba(120, 80, 40, 0.06) 0 8px, transparent 8px 16px),
+    linear-gradient(45deg, rgba(120, 80, 40, 0.05) 0 8px, transparent 8px 16px),
+    linear-gradient(180deg, #efd9b3 0%, #e6cb9d 100%);
+  color: #3b2a14;
+}
+[data-theme='dark'] .paper-kraft {
+  background:
+    linear-gradient(135deg, rgba(255, 220, 160, 0.04) 0 8px, transparent 8px 16px),
+    linear-gradient(180deg, #2a2014 0%, #221a0f 100%);
+  color: #e8d4ad;
+}
+
+/* 羊皮卷: textured cream. */
+.paper-parchment {
+  background:
+    radial-gradient(ellipse at top, rgba(160, 110, 60, 0.15), transparent 70%),
+    radial-gradient(ellipse at bottom, rgba(160, 110, 60, 0.18), transparent 70%),
+    linear-gradient(180deg, #f3e6c8 0%, #e7d4ab 100%);
+  color: #3b2c14;
+  border-color: rgba(180, 140, 80, 0.4);
+}
+[data-theme='dark'] .paper-parchment {
+  background:
+    radial-gradient(ellipse at top, rgba(140, 100, 60, 0.3), transparent 70%),
+    radial-gradient(ellipse at bottom, rgba(140, 100, 60, 0.3), transparent 70%),
+    linear-gradient(180deg, #2c2418 0%, #221b10 100%);
+  color: #e3cf9c;
+}
+
+/* Override markdown text colors so headings/quotes stay readable on tinted papers. */
+.paper-rice .markdown-preview h1,
+.paper-rice .markdown-preview h2,
+.paper-kraft .markdown-preview h1,
+.paper-kraft .markdown-preview h2,
+.paper-parchment .markdown-preview h1,
+.paper-parchment .markdown-preview h2 {
+  border-color: rgba(0, 0, 0, 0.12);
+}
+.paper-rice .markdown-preview blockquote,
+.paper-kraft .markdown-preview blockquote,
+.paper-parchment .markdown-preview blockquote {
+  background: rgba(0, 0, 0, 0.05);
+  border-left-color: rgba(0, 0, 0, 0.2);
+}
+.paper-rice .markdown-preview code,
+.paper-kraft .markdown-preview code,
+.paper-parchment .markdown-preview code {
+  background: rgba(0, 0, 0, 0.08);
+}

@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EAP-TLS 认证流程详解</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.6.1/mermaid.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=JetBrains+Mono:wght@400;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080c18;--s1:#0d1425;--s2:#111c35;--s3:#162040;
+  --bd:#1a2a48;--bd2:#223560;
+  --blue:#3b82f6;--cyan:#06b6d4;--green:#10b981;--amber:#f59e0b;
+  --purple:#8b5cf6;--rose:#f43f5e;--orange:#f97316;--teal:#14b8a6;--lime:#84cc16;
+  --t1:#e2e8f0;--t2:#94a3b8;--t3:#64748b;--t4:#334155;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--t1);font-family:'Noto Sans SC',sans-serif;font-weight:300;line-height:1.7}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(59,130,246,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,.025) 1px,transparent 1px);background-size:44px 44px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1600px;margin:0 auto;padding:0 2rem 6rem}
+
+/* ── HEADER ── */
+header{padding:3.5rem 0 2.5rem;border-bottom:1px solid var(--bd);margin-bottom:3rem}
+.htag{font-family:'JetBrains Mono',monospace;font-size:.67rem;letter-spacing:.22em;color:var(--cyan);text-transform:uppercase;margin-bottom:1rem;display:flex;align-items:center;gap:.6rem}
+.htag::before{content:'';width:28px;height:1px;background:var(--cyan);display:inline-block}
+h1{font-family:'Noto Serif SC',serif;font-size:clamp(1.9rem,4vw,3rem);font-weight:700;background:linear-gradient(135deg,#e2e8f0 15%,#3b82f6 55%,#06b6d4 85%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.2;margin-bottom:.9rem}
+.sub{color:var(--t2);font-size:.93rem;max-width:700px;line-height:1.75}
+.bdgs{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:1.4rem}
+.bdg{font-family:'JetBrains Mono',monospace;font-size:.62rem;padding:.2rem .55rem;border-radius:4px;border:1px solid;letter-spacing:.05em}
+.b-bl{border-color:var(--blue);color:var(--blue);background:rgba(59,130,246,.08)}
+.b-cy{border-color:var(--cyan);color:var(--cyan);background:rgba(6,182,212,.08)}
+.b-gr{border-color:var(--green);color:var(--green);background:rgba(16,185,129,.08)}
+.b-am{border-color:var(--amber);color:var(--amber);background:rgba(245,158,11,.08)}
+.b-pu{border-color:var(--purple);color:var(--purple);background:rgba(139,92,246,.08)}
+.b-ro{border-color:var(--rose);color:var(--rose);background:rgba(244,63,94,.08)}
+
+/* ── SECTION TITLE ── */
+.sec{display:flex;align-items:center;gap:.8rem;margin-bottom:1.3rem}
+.sec-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.sec-lbl{font-family:'JetBrains Mono',monospace;font-size:.63rem;letter-spacing:.17em;text-transform:uppercase;color:var(--t3)}
+.sec::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--bd),transparent)}
+
+/* ── ROLES ── */
+.roles{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:1rem;margin-bottom:3rem}
+.role{background:var(--s1);border:1px solid var(--bd);border-radius:11px;padding:1.1rem 1.3rem;border-top:2px solid}
+.role h4{font-family:'JetBrains Mono',monospace;font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;margin-bottom:.5rem}
+.role p{font-size:.76rem;color:var(--t2);line-height:1.68}
+.role code,.role-code{font-family:'JetBrains Mono',monospace;font-size:.67rem;color:var(--cyan);background:rgba(6,182,212,.09);padding:.06rem .3rem;border-radius:3px}
+
+/* ── MAIN LAYOUT ── */
+.layout{display:grid;grid-template-columns:minmax(420px,1fr) minmax(520px,1.3fr);gap:2rem;align-items:start}
+@media(max-width:1150px){.layout{grid-template-columns:1fr}}
+
+/* ── PANEL ── */
+.panel{background:var(--s1);border:1px solid var(--bd);border-radius:13px;overflow:hidden}
+.phdr{display:flex;align-items:center;gap:.75rem;padding:.95rem 1.4rem;border-bottom:1px solid var(--bd);background:var(--s2)}
+.pdot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ptitle{font-family:'JetBrains Mono',monospace;font-size:.72rem;letter-spacing:.1em;color:var(--t2);text-transform:uppercase}
+.sticky-panel{position:sticky;top:1.5rem}
+.mbd{padding:1.2rem;overflow-x:auto}
+.mbd svg{max-width:100%;height:auto}
+
+/* ── STEPS ── */
+.sbody{padding:1.3rem;display:flex;flex-direction:column}
+.ptl{font-family:'JetBrains Mono',monospace;font-size:.62rem;letter-spacing:.15em;text-transform:uppercase;padding:1.1rem 0 .55rem;display:flex;align-items:center;gap:.6rem}
+.ptl:first-child{padding-top:0}
+.ptl::after{content:'';flex:1;height:1px;background:linear-gradient(90deg,var(--bd),transparent)}
+.c-bl{color:var(--blue)}.c-cy{color:var(--cyan)}.c-gr{color:var(--green)}.c-am{color:var(--amber)}.c-pu{color:var(--purple)}.c-ro{color:var(--rose)}.c-or{color:var(--orange)}.c-te{color:var(--teal)}.c-sl{color:var(--t2)}.c-li{color:var(--lime)}
+
+.step{display:flex;gap:.9rem;padding:.85rem .5rem;border-bottom:1px solid rgba(26,42,72,.6);cursor:pointer;transition:background .18s;border-radius:8px;position:relative}
+.step:hover{background:rgba(59,130,246,.045)}
+.step.active{background:rgba(59,130,246,.08)}
+.step.active::before{content:'';position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:2px;background:var(--sc,var(--blue))}
+.snum{font-family:'JetBrains Mono',monospace;font-size:.68rem;font-weight:600;min-width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:3px;border:1px solid}
+.slbl{font-size:.81rem;font-weight:500;color:var(--t1);margin-bottom:.17rem;line-height:1.4}
+.sdsc{font-size:.76rem;color:var(--t2);line-height:1.58}
+.sdet{display:none;margin-top:.6rem;padding:.75rem .9rem;background:rgba(6,10,22,.7);border:1px solid var(--bd);border-radius:8px;font-size:.74rem;color:var(--t2);line-height:1.78}
+.sdet.open{display:block}
+.sdet code{font-family:'JetBrains Mono',monospace;font-size:.68rem;color:var(--cyan);background:rgba(6,182,212,.09);padding:.07rem .3rem;border-radius:3px}
+.sdet ul{padding-left:1.15rem}.sdet li{margin-bottom:.3rem}
+.sdet strong{color:#cbd5e1}
+.sdet h5{font-family:'JetBrains Mono',monospace;font-size:.59rem;letter-spacing:.12em;text-transform:uppercase;color:var(--t3);margin:.75rem 0 .35rem}
+.sdet h5:first-child{margin-top:0}
+.formula{padding:.65rem .85rem;background:rgba(4,8,20,.8);border:1px solid var(--bd2);border-radius:7px;font-family:'JetBrains Mono',monospace;font-size:.69rem;color:#a5f3fc;line-height:1.72;margin:.45rem 0;overflow-x:auto}
+.callout{padding:.6rem .85rem;border-radius:7px;font-size:.74rem;line-height:1.72;margin:.45rem 0;border-left:3px solid}
+.cbl{background:rgba(59,130,246,.06);border-color:var(--blue);color:#93c5fd}
+.cgr{background:rgba(16,185,129,.06);border-color:var(--green);color:#6ee7b7}
+.cam{background:rgba(245,158,11,.06);border-color:var(--amber);color:#fcd34d}
+.cro{background:rgba(244,63,94,.06);border-color:var(--rose);color:#fda4af}
+.ccy{background:rgba(6,182,212,.06);border-color:var(--cyan);color:#67e8f9}
+.sdet table{width:100%;border-collapse:collapse;font-size:.71rem;margin:.4rem 0}
+.sdet th{font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);text-align:left;padding:.3rem .5rem;border-bottom:1px solid var(--bd)}
+.sdet td{padding:.35rem .5rem;border-bottom:1px solid rgba(26,42,72,.4);color:var(--t2);vertical-align:top;line-height:1.58}
+.sdet tr:last-child td{border-bottom:none}
+.sdet td:first-child{font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--cyan);white-space:nowrap}
+
+/* phase colors */
+.ph1{--sc:#3b82f6}.ph1 .snum{color:#3b82f6;border-color:rgba(59,130,246,.4);background:rgba(59,130,246,.08)}
+.ph2{--sc:#8b5cf6}.ph2 .snum{color:#8b5cf6;border-color:rgba(139,92,246,.4);background:rgba(139,92,246,.08)}
+.ph3{--sc:#06b6d4}.ph3 .snum{color:#06b6d4;border-color:rgba(6,182,212,.4);background:rgba(6,182,212,.08)}
+.ph4{--sc:#10b981}.ph4 .snum{color:#10b981;border-color:rgba(16,185,129,.4);background:rgba(16,185,129,.08)}
+.ph5{--sc:#f97316}.ph5 .snum{color:#f97316;border-color:rgba(249,115,22,.4);background:rgba(249,115,22,.08)}
+.ph6{--sc:#f43f5e}.ph6 .snum{color:#f43f5e;border-color:rgba(244,63,94,.4);background:rgba(244,63,94,.08)}
+.ph7{--sc:#f59e0b}.ph7 .snum{color:#f59e0b;border-color:rgba(245,158,11,.4);background:rgba(245,158,11,.08)}
+.ph8{--sc:#14b8a6}.ph8 .snum{color:#14b8a6;border-color:rgba(20,184,166,.4);background:rgba(20,184,166,.08)}
+.ph9{--sc:#84cc16}.ph9 .snum{color:#84cc16;border-color:rgba(132,204,22,.4);background:rgba(132,204,22,.08)}
+.ph10{--sc:#94a3b8}.ph10 .snum{color:#94a3b8;border-color:rgba(148,163,184,.4);background:rgba(148,163,184,.08)}
+
+/* ── DEEP-DIVE CARDS ── */
+.deep{margin-top:3.5rem}
+.deep-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(370px,1fr));gap:1.4rem;margin-top:1rem}
+.dc{background:var(--s1);border:1px solid var(--bd);border-radius:13px;overflow:hidden}
+.dc-hdr{display:flex;align-items:center;gap:.85rem;padding:1.1rem 1.35rem;border-bottom:1px solid var(--bd);background:var(--s2);cursor:pointer;user-select:none;transition:background .18s}
+.dc-hdr:hover{background:rgba(255,255,255,.02)}
+.dc-hdr.open{border-bottom-color:var(--bd)}
+.dc-icon{width:36px;height:36px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0;border:1px solid}
+.dc-meta{flex:1}
+.dc-tag{font-family:'JetBrains Mono',monospace;font-size:.58rem;letter-spacing:.13em;text-transform:uppercase;margin-bottom:.18rem;opacity:.8}
+.dc-name{font-size:.88rem;font-weight:500;color:var(--t1);line-height:1.3}
+.dc-chev{font-size:.62rem;color:var(--t4);transition:transform .22s;flex-shrink:0}
+.dc-chev.open{transform:rotate(180deg)}
+.dc-body{display:none;padding:1.3rem 1.35rem}
+.dc-body.open{display:block}
+.dc-body p{font-size:.79rem;color:var(--t2);line-height:1.78;margin-bottom:.85rem}
+.dc-body p:last-child{margin-bottom:0}
+.dc-body strong{color:var(--t1)}
+.dc-body code{font-family:'JetBrains Mono',monospace;font-size:.69rem;color:var(--cyan);background:rgba(6,182,212,.09);padding:.07rem .3rem;border-radius:3px}
+.dc-body h5{font-family:'JetBrains Mono',monospace;font-size:.59rem;letter-spacing:.13em;text-transform:uppercase;color:var(--t3);margin:.9rem 0 .38rem}
+.dc-body h5:first-child{margin-top:0}
+.dc-body ul{padding-left:1.1rem;margin-bottom:.7rem}
+.dc-body li{font-size:.78rem;color:var(--t2);line-height:1.72;margin-bottom:.22rem}
+.dc-body .formula{font-size:.68rem}
+.dc-body .callout{font-size:.75rem}
+.dc-body table{width:100%;border-collapse:collapse;font-size:.73rem;margin:.5rem 0 .8rem}
+.dc-body th{font-family:'JetBrains Mono',monospace;font-size:.59rem;letter-spacing:.07em;text-transform:uppercase;color:var(--t3);text-align:left;padding:.32rem .55rem;border-bottom:1px solid var(--bd)}
+.dc-body td{padding:.38rem .55rem;border-bottom:1px solid rgba(26,42,72,.35);color:var(--t2);vertical-align:top;line-height:1.58}
+.dc-body tr:last-child td{border-bottom:none}
+.dc-body td:first-child{font-family:'JetBrains Mono',monospace;font-size:.67rem;color:var(--cyan);white-space:nowrap}
+
+/* ── PACKET FORMAT ── */
+.pkt{font-family:'JetBrains Mono',monospace;font-size:.68rem;border:1px solid var(--bd2);border-radius:8px;overflow:hidden;margin:.5rem 0}
+.pkt-row{display:flex;border-bottom:1px solid rgba(26,42,72,.5)}
+.pkt-row:last-child{border-bottom:none}
+.pkt-field{padding:.3rem .6rem;border-right:1px solid rgba(26,42,72,.5);color:var(--t3);font-size:.6rem;min-width:120px;flex-shrink:0;display:flex;align-items:center}
+.pkt-val{padding:.3rem .7rem;color:var(--t2);flex:1;display:flex;align-items:center}
+.pkt-val.hl{color:#a5f3fc}
+.pkt-hdr{background:var(--s3);color:var(--t3);font-size:.58rem;letter-spacing:.1em;text-transform:uppercase;padding:.28rem .7rem;display:flex;align-items:center;gap:.5rem}
+
+/* ── FOOTNOTES ── */
+.fnotes{margin-top:2.5rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:1rem}
+.fn{background:var(--s1);border:1px solid var(--bd);border-radius:10px;padding:1.2rem 1.4rem}
+.fn h4{font-family:'JetBrains Mono',monospace;font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;margin-bottom:.55rem}
+.fn p,.fn li{font-size:.77rem;color:var(--t2);line-height:1.72}
+.fn ul{padding-left:1.05rem;margin-top:.25rem}
+.fn li{margin-bottom:.2rem}
+.fn code{font-family:'JetBrains Mono',monospace;font-size:.67rem;color:var(--cyan);background:rgba(6,182,212,.09);padding:.06rem .28rem;border-radius:3px}
+
+/* ── SUMMARY BAR ── */
+.sumbar{margin-top:1.8rem;display:flex;flex-wrap:wrap;gap:1rem;padding:1.3rem 1.6rem;background:var(--s1);border:1px solid var(--bd);border-radius:12px;align-items:center}
+.sumitem{display:flex;align-items:center;gap:.6rem;flex:1;min-width:160px}
+.sumbadge{font-family:'JetBrains Mono',monospace;font-size:.6rem;padding:.22rem .55rem;border-radius:5px;border:1px solid;white-space:nowrap;flex-shrink:0}
+.sumtxt{font-size:.77rem;color:var(--t2);line-height:1.5}
+.sumdiv{width:1px;height:2.2rem;background:var(--bd);flex-shrink:0}
+@media(max-width:600px){.sumdiv{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="htag">IEEE 802.1X · RFC 5216 · RFC 3748 · RFC 2865 · RFC 8446 · RFC 6960</div>
+  <h1>EAP-TLS 完整认证流程详解</h1>
+  <p class="sub">基于 IETF RFC 5216 / 3748 标准，通过双向 X.509 证书认证实现最高安全级别的端口访问控制，涵盖从 EAPoL 初始化到 PTK/GTK 密钥派生的完整协议栈</p>
+  <div class="bdgs">
+    <span class="bdg b-bl">RFC 3748 · EAP</span>
+    <span class="bdg b-cy">RFC 5216 · EAP-TLS</span>
+    <span class="bdg b-gr">RFC 2865 · RADIUS</span>
+    <span class="bdg b-am">RFC 8446 · TLS 1.3</span>
+    <span class="bdg b-pu">RFC 5246 · TLS 1.2</span>
+    <span class="bdg b-bl">IEEE 802.1X-2020</span>
+    <span class="bdg b-cy">RFC 3579 · RADIUS/EAP</span>
+    <span class="bdg b-gr">RFC 6960 · OCSP</span>
+    <span class="bdg b-am">RFC 5280 · X.509</span>
+    <span class="bdg b-ro">RFC 2759 · MS-CHAPv2 对比</span>
+  </div>
+</header>
+
+<!-- ══ ROLES ══ -->
+<div class="sec"><div class="sec-dot" style="background:var(--cyan)"></div><span class="sec-lbl">参与组件与职责定义</span></div>
+<div class="roles">
+  <div class="role" style="border-top-color:var(--blue)">
+    <h4 style="color:var(--blue)">Client（Supplicant）</h4>
+    <p>运行 IEEE 802.1X Supplicant（Windows 内置 / wpa_supplicant / strongSwan）。持有<strong>客户端 X.509 证书 + 私钥</strong>（由企业 CA 签发），信任服务器 Root CA。负责发起 EAPoL、完成 TLS 握手双方证书交换、验证服务器证书、导出 MSK。</p>
+  </div>
+  <div class="role" style="border-top-color:var(--cyan)">
+    <h4 style="color:var(--cyan)">NAS（Network Access Server）</h4>
+    <p>交换机 / 无线 AP / VPN 网关，充当 IEEE 802.1X <strong>Authenticator</strong>。对 EAP 内容透明，在 EAPoL 与 RADIUS EAP-Message 属性之间做封装转换。执行端口授权/阻断，安装 VLAN、ACL、QoS 等下发策略，触发 WPA2 四次握手。</p>
+  </div>
+  <div class="role" style="border-top-color:var(--purple)">
+    <h4 style="color:var(--purple)">RADIUS Server（NPS）</h4>
+    <p>持有<strong>服务器 TLS 证书</strong>（EKU=<code>ServerAuth</code>，SAN=FQDN），作为 EAP Authentication Server。终结 TLS 握手，验证客户端证书链、EKU、SAN/UPN，对接 AD 完成账户映射和授权策略匹配，派生并下发 MSK。</p>
+  </div>
+  <div class="role" style="border-top-color:var(--green)">
+    <h4 style="color:var(--green)">AD（Active Directory）</h4>
+    <p>存储域账户、安全组、证书模板策略。RADIUS/NPS 通过 <code>LDAP</code> 查询 <code>userAccountControl</code>（账户状态）、证书 UPN 到账户的映射关系、安全组成员关系，用于 NPS 网络策略条件匹配及 VLAN/ACL 授权属性返回。</p>
+  </div>
+  <div class="role" style="border-top-color:var(--amber)">
+    <h4 style="color:var(--amber)">PKI / CA（AD CS）</h4>
+    <p>企业 CA（通常为 Windows AD CS）为 RADIUS 服务器和所有客户端签发证书。提供 <strong>OCSP Responder</strong> 和 <strong>CRL Distribution Point</strong> 服务，供双端实时验证证书吊销状态。Root CA 证书通过 GPO 推送到所有域设备。</p>
+  </div>
+</div>
+
+<!-- ══ MAIN LAYOUT ══ -->
+<div class="layout">
+
+<!-- LEFT: MERMAID -->
+<div class="panel sticky-panel">
+  <div class="phdr">
+    <div class="pdot" style="background:var(--blue)"></div>
+    <span class="ptitle">协议完整时序图 — EAP-TLS（RFC 5216）</span>
+  </div>
+  <div class="mbd">
+<div class="mermaid">
+%%{init:{
+  'theme':'base',
+  'themeVariables':{
+    'primaryColor':'#0d1425','primaryTextColor':'#e2e8f0','primaryBorderColor':'#1e3a6e',
+    'lineColor':'#3b82f6','secondaryColor':'#111c35','tertiaryColor':'#080c18',
+    'background':'#080c18','mainBkg':'#0d1425','nodeBorder':'#1e3a6e',
+    'actorBkg':'#0d1425','actorBorder':'#1a3a6e','actorTextColor':'#e2e8f0',
+    'actorLineColor':'#3b82f6','signalColor':'#94a3b8','signalTextColor':'#94a3b8',
+    'labelBoxBkgColor':'#111c35','labelBoxBorderColor':'#1e3a6e','labelTextColor':'#e2e8f0',
+    'noteBorderColor':'#1e3a6e','noteBkgColor':'#111c35','noteTextColor':'#94a3b8',
+    'activationBorderColor':'#3b82f6','activationBkgColor':'#1a2d50',
+    'sequenceNumberColor':'#06b6d4','fontFamily':'JetBrains Mono,monospace','fontSize':'11px'
+  }
+}}%%
+sequenceDiagram
+  autonumber
+  participant C  as 客户端
+  participant N  as NAS
+  participant R  as RADIUS
+  participant AD as AD
+  participant CA as PKI/CA
+
+  rect rgb(12,20,52)
+    Note over C,N: ① EAPoL 链路初始化
+    C->>N: EAPoL-Start
+    N->>C: EAP-Request / Identity
+    C->>N: EAP-Response / Identity (UPN)
+  end
+
+  rect rgb(20,12,52)
+    Note over N,R: ② RADIUS 接入 & EAP-TLS 协商
+    N->>R: Access-Request (EAP Identity)
+    R->>AD: LDAP 预查询账户
+    AD-->>R: 账户基本信息
+    R-->>N: Access-Challenge (EAP-TLS Start)
+    N->>C: EAP-Request / EAP-TLS Start
+  end
+
+  rect rgb(8,38,50)
+    Note over C,R: ③ TLS ClientHello
+    C->>N: EAP-Response (TLS ClientHello)
+    N->>R: Access-Request
+  end
+
+  rect rgb(8,38,50)
+    Note over C,CA: ④ 服务器证书下发 & 客户端验证
+    R-->>N: Access-Challenge (ServerHello+Cert+CertReq)
+    N->>C: EAP-Request (ServerHello...)
+    C->>CA: OCSP Request (服务器证书序列号)
+    CA-->>C: OCSP Response (good/revoked)
+  end
+
+  rect rgb(8,42,25)
+    Note over C,R: ⑤ 客户端证书 + 密钥交换
+    C->>N: EAP-Response (Cert+CKE+CertVerify+CCS+Finished)
+    N->>R: Access-Request
+  end
+
+  rect rgb(48,12,38)
+    Note over R,CA: ⑥ RADIUS 验证客户端证书
+    R->>CA: OCSP Request (客户端证书序列号)
+    CA-->>R: OCSP Response
+    R->>AD: LDAP 查询 UPN → 账户映射 & 授权
+    AD-->>R: 账户状态 + 组成员 + 授权属性
+  end
+
+  rect rgb(8,38,50)
+    Note over C,R: ⑦ 服务器 Finished & TLS 握手完成
+    R-->>N: Access-Challenge (CCS+ServerFinished)
+    N->>C: EAP-Request (CCS+Finished)
+    C->>N: EAP-Response (空 ACK)
+    N->>R: Access-Request
+  end
+
+  rect rgb(44,34,8)
+    Note over N,R: ⑧ MSK 导出 + Access-Accept
+    R-->>N: Access-Accept (EAP-Success + MSK)
+    N->>C: EAP-Success
+  end
+
+  rect rgb(8,38,50)
+    Note over C,N: ⑨ 四次握手（无线）
+    C->>N: WPA2 Four-Way Handshake
+    N-->>C: PTK / GTK 就绪
+  end
+
+  rect rgb(16,16,20)
+    Note over C,N: ⑩ 端口授权 + 正常通信
+    C->>N: 正常数据流量
+  end
+</div>
+  </div>
+</div>
+
+<!-- RIGHT: STEPS -->
+<div class="panel">
+  <div class="phdr">
+    <div class="pdot" style="background:var(--green)"></div>
+    <span class="ptitle">逐步详解（点击任意步骤展开）</span>
+  </div>
+  <div class="sbody">
+
+    <!-- 阶段一 -->
+    <div class="ptl c-bl">阶段一 &nbsp;·&nbsp; EAPoL 链路层初始化</div>
+
+    <div class="step ph1" onclick="tog(this)">
+      <div class="snum">01</div>
+      <div class="step-content">
+        <div class="slbl">EAPoL-Start — 客户端触发 802.1X 认证</div>
+        <div class="sdsc">Supplicant 向 PAE 组播地址发送 EAPoL-Start，NAS 进入认证流程</div>
+        <div class="sdet">
+          <h5>帧格式（IEEE 802.1X §7.5）</h5>
+          <div class="pkt">
+            <div class="pkt-hdr">EAPoL Frame · EtherType 0x888E</div>
+            <div class="pkt-row"><div class="pkt-field">Dst MAC</div><div class="pkt-val hl">01:80:C2:00:00:03</div></div>
+            <div class="pkt-row"><div class="pkt-field">Src MAC</div><div class="pkt-val">客户端 NIC MAC</div></div>
+            <div class="pkt-row"><div class="pkt-field">EtherType</div><div class="pkt-val hl">0x888E</div></div>
+            <div class="pkt-row"><div class="pkt-field">Protocol Version</div><div class="pkt-val">0x01 (802.1X-2001) 或 0x03</div></div>
+            <div class="pkt-row"><div class="pkt-field">Packet Type</div><div class="pkt-val hl">0x01 (EAPOL-Start)</div></div>
+            <div class="pkt-row"><div class="pkt-field">Packet Body Length</div><div class="pkt-val">0x0000 (无载荷)</div></div>
+          </div>
+          <h5>端口状态机</h5>
+          <ul>
+            <li>NAS 端口此时处于 <strong>Unauthorized</strong> 状态，受控端口（Controlled Port）仅允许 <code>EtherType=0x888E</code> 通过，其他所有流量被丢弃</li>
+            <li>非受控端口（Uncontrolled Port）始终允许 EAPoL 帧通过</li>
+            <li>若客户端在链路检测期间未主动发起，NAS 按 <code>txPeriod</code> 定时器周期性发送 EAP-Request/Identity（默认 30 秒）</li>
+            <li>NAS 收到 EAPoL-Start 后将 Identifier 计数器清零，进入 <strong>Connecting</strong> 状态</li>
+          </ul>
+          <div class="callout cam">⚠ 802.1X-2010 引入 MACsec（802.1AE）可选加密，此时 EAPoL 帧在 MACsec 保护下传输，进一步防止链路层嗅探。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph1" onclick="tog(this)">
+      <div class="snum">02</div>
+      <div class="step-content">
+        <div class="slbl">EAP-Request/Identity — NAS 请求客户端身份</div>
+        <div class="sdsc">NAS 向客户端发送 EAP Identity 请求，Identifier 字节用于防重放匹配</div>
+        <div class="sdet">
+          <h5>EAP 报文结构（RFC 3748 §4）</h5>
+          <div class="pkt">
+            <div class="pkt-hdr">EAP Packet</div>
+            <div class="pkt-row"><div class="pkt-field">Code</div><div class="pkt-val hl">0x01 (Request)</div></div>
+            <div class="pkt-row"><div class="pkt-field">Identifier</div><div class="pkt-val">随机1字节，如 0x7A</div></div>
+            <div class="pkt-row"><div class="pkt-field">Length</div><div class="pkt-val">0x0005（含 Type 字段）</div></div>
+            <div class="pkt-row"><div class="pkt-field">Type</div><div class="pkt-val hl">0x01 (Identity)</div></div>
+          </div>
+          <ul>
+            <li>NAS 不解析 EAP 内容，仅作透明中继（Passthrough Authenticator）</li>
+            <li>可携带可选的 <code>Type-Data</code> 字段作为提示字符串（如 "Enter username"）</li>
+            <li>Identifier 字段在整个 EAP 会话中单调递增，响应必须携带相同值</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph1" onclick="tog(this)">
+      <div class="snum">03</div>
+      <div class="step-content">
+        <div class="slbl">EAP-Response/Identity — 客户端发送 UPN 身份</div>
+        <div class="sdsc">Supplicant 回应 Identity，通常为 UPN 格式，NAS 将其封装入 RADIUS Access-Request</div>
+        <div class="sdet">
+          <h5>Identity 内容格式</h5>
+          <ul>
+            <li><strong>用户认证：</strong><code>zhangsan@corp.example.com</code>（UPN 格式，与证书 SAN 中 UPN 一致）</li>
+            <li><strong>机器认证：</strong><code>host/PC001.corp.example.com</code>（DNS 格式，与证书 SAN 中 dNSName 一致）</li>
+            <li><strong>匿名保护（可选）：</strong>EAP-TLS 本身无需隐藏 Identity（因为 TLS 握手立即跟随），但某些实现支持 <code>anonymous@domain</code> 做 Realm 路由</li>
+          </ul>
+          <h5>NAS 封装为 RADIUS</h5>
+          <ul>
+            <li>NAS 将 EAP PDU 填入 <code>EAP-Message</code> 属性（属性 79），超过 253 字节则拆分为多个属性</li>
+            <li>同时携带 <code>Message-Authenticator</code>（属性 80）= <code>HMAC-MD5(共享密钥, RADIUS报文)</code>，防止伪造和篡改</li>
+          </ul>
+          <div class="callout ccy">RFC 5216 §2.1.1：EAP-TLS Identity Response 中的身份仅用于 RADIUS 路由，实际身份验证由证书中的 CN / SAN 字段决定。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段二 -->
+    <div class="ptl c-pu">阶段二 &nbsp;·&nbsp; RADIUS 接入请求 & EAP-TLS 协商</div>
+
+    <div class="step ph2" onclick="tog(this)">
+      <div class="snum">04</div>
+      <div class="step-content">
+        <div class="slbl">RADIUS Access-Request — NAS 转发 Identity 至 RADIUS</div>
+        <div class="sdsc">NAS 将 EAP Identity 封装为 RADIUS Access-Request，发往 RADIUS Server（UDP/1812）</div>
+        <div class="sdet">
+          <h5>关键 RADIUS 属性（RFC 2865 / 3579）</h5>
+          <table>
+            <tr><th>属性编号</th><th>名称</th><th>值 / 说明</th></tr>
+            <tr><td>1</td><td>User-Name</td><td>客户端 Identity 字符串（UPN 或 host/FQDN）</td></tr>
+            <tr><td>4</td><td>NAS-IP-Address</td><td>NAS 的 IPv4 地址（或属性 95 NAS-IPv6-Address）</td></tr>
+            <tr><td>5</td><td>NAS-Port</td><td>客户端接入的物理/逻辑端口号</td></tr>
+            <tr><td>6</td><td>Service-Type</td><td>Framed (2) —— 表示 PPP / 802.1X 接入</td></tr>
+            <tr><td>26</td><td>Vendor-Specific</td><td>厂商扩展属性（如 Cisco AVPair）</td></tr>
+            <tr><td>61</td><td>NAS-Port-Type</td><td>Ethernet (15) / IEEE 802.11 (19)</td></tr>
+            <tr><td>79</td><td>EAP-Message</td><td>封装 EAP PDU，最大 253B/属性，可多个</td></tr>
+            <tr><td>80</td><td>Message-Authenticator</td><td>HMAC-MD5 签名，强制必须携带（RFC 3579 §3.2）</td></tr>
+          </table>
+          <div class="callout cbl">RFC 3579 §3.2 明确要求：凡携带 EAP-Message 属性的 RADIUS 报文，必须同时携带 Message-Authenticator，否则接收方应丢弃该报文。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph2" onclick="tog(this)">
+      <div class="snum">05</div>
+      <div class="step-content">
+        <div class="slbl">RADIUS → AD：LDAP 预查询账户存在性</div>
+        <div class="sdsc">RADIUS/NPS 在 TLS 握手前通过 LDAP 确认账户存在、未被禁用，并获取证书策略配置</div>
+        <div class="sdet">
+          <h5>LDAP 查询内容</h5>
+          <ul>
+            <li><strong>账户查找：</strong>以 User-Name 中的 UPN 在 AD 中查找对应 <code>userPrincipalName</code> 属性匹配的账户对象</li>
+            <li><strong>账户状态：</strong>读取 <code>userAccountControl</code> 位标志，确认账户未禁用（<code>ACCOUNTDISABLE=0</code>）、未锁定（<code>LOCKOUT=0</code>）、未过期</li>
+            <li><strong>安全组：</strong>获取 <code>memberOf</code> 属性，用于 NPS 网络策略的组条件匹配</li>
+            <li><strong>拨入权限：</strong>检查 <code>msNPAllowDialin</code> 属性（若使用账户级别控制）</li>
+          </ul>
+          <h5>Windows NPS 实现细节</h5>
+          <ul>
+            <li>NPS 以域计算机账户身份（机器账户 Kerberos 票据）认证到 AD，无需单独服务账户</li>
+            <li>预查询失败不直接拒绝，TLS 握手后基于证书 UPN 再次进行完整授权验证</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph2" onclick="tog(this)">
+      <div class="snum">06</div>
+      <div class="step-content">
+        <div class="slbl">Access-Challenge (EAP-TLS Start) — 启动 TLS 握手</div>
+        <div class="sdsc">RADIUS 返回 Access-Challenge，EAP-TLS Flags 的 S-bit=1，通知客户端开始 TLS 握手</div>
+        <div class="sdet">
+          <h5>EAP-TLS Start 报文结构（RFC 5216 §3.1）</h5>
+          <div class="pkt">
+            <div class="pkt-hdr">EAP-TLS Start Packet</div>
+            <div class="pkt-row"><div class="pkt-field">EAP Code</div><div class="pkt-val hl">0x01 (Request)</div></div>
+            <div class="pkt-row"><div class="pkt-field">EAP Identifier</div><div class="pkt-val">0x01（递增）</div></div>
+            <div class="pkt-row"><div class="pkt-field">EAP Type</div><div class="pkt-val hl">0x0D (EAP-TLS = 13)</div></div>
+            <div class="pkt-row"><div class="pkt-field">Flags</div><div class="pkt-val hl">0x20 — S=1, M=0, L=0</div></div>
+            <div class="pkt-row"><div class="pkt-field">TLS Data</div><div class="pkt-val">（空，Start 无 TLS 数据）</div></div>
+          </div>
+          <h5>Flags 字段位定义</h5>
+          <table>
+            <tr><th>Bit</th><th>名称</th><th>含义</th></tr>
+            <tr><td>7 (MSB)</td><td>L-bit</td><td>Length Included：TLS 消息总长度字段存在（分片时置1）</td></tr>
+            <tr><td>6</td><td>M-bit</td><td>More Fragments：后续还有分片（分片中间包置1）</td></tr>
+            <tr><td>5</td><td>S-bit</td><td>EAP-TLS Start：仅在第一个 Request 中置1，触发握手</td></tr>
+            <tr><td>4-3</td><td>Reserved</td><td>保留，须为0</td></tr>
+            <tr><td>2-0</td><td>Version</td><td>EAP-TLS 版本（通常为0）</td></tr>
+          </table>
+          <ul>
+            <li>RADIUS 同时返回 <code>State</code> 属性（属性 24），携带服务器端会话上下文令牌</li>
+            <li>NAS 必须在后续每一个 Access-Request 中原样附带此 State 值，RADIUS 用于关联同一认证会话</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段三 -->
+    <div class="ptl c-cy">阶段三 &nbsp;·&nbsp; TLS ClientHello</div>
+
+    <div class="step ph3" onclick="tog(this)">
+      <div class="snum">07</div>
+      <div class="step-content">
+        <div class="slbl">TLS ClientHello — 客户端发起 TLS 握手</div>
+        <div class="sdsc">客户端构造 TLS ClientHello，声明版本、随机数、密码套件、扩展，经 EAP-TLS 封装后传输</div>
+        <div class="sdet">
+          <h5>TLS 1.3 ClientHello 主要字段（RFC 8446 §4.1.2）</h5>
+          <table>
+            <tr><th>字段</th><th>内容</th><th>说明</th></tr>
+            <tr><td>legacy_version</td><td>0x0303 (TLS 1.2)</td><td>TLS 1.3 兼容性占位，实际版本在扩展中协商</td></tr>
+            <tr><td>random</td><td>32字节随机数</td><td>用于派生握手密钥，必须由 CSPRNG 生成</td></tr>
+            <tr><td>session_id</td><td>0-32字节</td><td>TLS 1.3 中为随机值（兼容中间件）</td></tr>
+            <tr><td>cipher_suites</td><td>列表</td><td>如 TLS_AES_256_GCM_SHA384, TLS_CHACHA20_POLY1305_SHA256</td></tr>
+            <tr><td>supported_versions</td><td>TLS 1.3, 1.2</td><td>扩展 0x002B，指定支持的 TLS 版本</td></tr>
+            <tr><td>supported_groups</td><td>x25519, secp256r1</td><td>扩展 0x000A，ECDHE 曲线列表</td></tr>
+            <tr><td>key_share</td><td>ECDHE 公钥</td><td>扩展 0x0033，TLS 1.3 中直接发送 DH 公钥</td></tr>
+            <tr><td>signature_algorithms</td><td>RSA-PSS, ECDSA</td><td>扩展 0x000D，证书签名算法偏好</td></tr>
+            <tr><td>server_name (SNI)</td><td>radius.corp.com</td><td>扩展 0x0000，可选，RADIUS FQDN</td></tr>
+          </table>
+          <h5>EAP-TLS 分片封装</h5>
+          <ul>
+            <li>TLS ClientHello 通常约 200-400 字节，超过 EAP MTU（默认 1400B）时需分片</li>
+            <li>分片时首包 L-bit=1（含总长度），中间包 M-bit=1，最后一包 M-bit=0</li>
+            <li>每收到 M=1 的分片，接收方回复一个空 EAP-Response ACK，发送方继续发送下一片</li>
+          </ul>
+          <div class="callout cbl">TLS 1.3 相比 TLS 1.2 的握手往返减少了 1-RTT，在 EAP-TLS 场景下可显著减少认证时延和 RADIUS 报文数量。RFC 9190 定义了 TLS 1.3 在 EAP-TLS 中的使用规范。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段四 -->
+    <div class="ptl c-gr">阶段四 &nbsp;·&nbsp; 服务器证书下发 & 客户端验证</div>
+
+    <div class="step ph4" onclick="tog(this)">
+      <div class="snum">08</div>
+      <div class="step-content">
+        <div class="slbl">ServerHello + Certificate + CertificateRequest + ServerHelloDone</div>
+        <div class="sdsc">RADIUS 回复服务器 TLS 握手消息：选定参数、发送证书链、请求客户端证书</div>
+        <div class="sdet">
+          <h5>ServerHello（RFC 8446 §4.1.3）</h5>
+          <ul>
+            <li><code>server_random</code>：32字节服务器随机数，与 client_random 一起用于密钥派生</li>
+            <li><code>cipher_suite</code>：从 ClientHello 列表中选定，如 <code>TLS_AES_256_GCM_SHA384</code></li>
+            <li><code>key_share</code>（TLS 1.3）：服务器 ECDHE 公钥，双端可计算共享密钥</li>
+          </ul>
+          <h5>Certificate（RFC 8446 §4.4.2）</h5>
+          <ul>
+            <li>发送 RADIUS 服务器证书 + 所有中间 CA 证书（按顺序，不含 Root CA）</li>
+            <li>RADIUS 服务器证书须满足：EKU=<code>Server Authentication (1.3.6.1.5.5.7.3.1)</code>，SAN 含 <code>dNSName=radius.corp.com</code>，由企业 Root CA 或受信任中间 CA 签发</li>
+          </ul>
+          <h5>CertificateRequest（RFC 8446 §4.3.2）</h5>
+          <div class="callout cgr">这是 EAP-TLS 与 PEAP 的核心区别：RADIUS 通过 CertificateRequest 要求客户端提供证书，实现真正的双向认证。PEAP 不发送此消息。</div>
+          <ul>
+            <li><code>certificate_types</code>：RSA (1)、ECDSA (64)——可接受的客户端证书类型</li>
+            <li><code>certificate_authorities</code>：企业 CA 的 Distinguished Name 列表，客户端据此选择匹配的证书</li>
+            <li><code>signature_algorithms</code>：可接受的签名算法列表</li>
+          </ul>
+          <h5>ServerHelloDone（TLS 1.2）/ 等效处理（TLS 1.3）</h5>
+          <ul>
+            <li>TLS 1.2：发送 ServerHelloDone 标志服务器握手消息完毕</li>
+            <li>TLS 1.3：ServerHello 之后即为 EncryptedExtensions，无 ServerHelloDone</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph4" onclick="tog(this)">
+      <div class="snum">09</div>
+      <div class="step-content">
+        <div class="slbl">客户端验证服务器证书 + OCSP 查询（RFC 6960）</div>
+        <div class="sdsc">客户端对服务器证书执行完整的五步验证，包括实时 OCSP 吊销状态查询</div>
+        <div class="sdet">
+          <h5>证书验证五步骤（RFC 5280 §6）</h5>
+          <ul>
+            <li><strong>① 信任链：</strong>从服务器证书递归验证到受信任的 Root CA（客户端本地信任库，由 GPO 推送）</li>
+            <li><strong>② 有效期：</strong><code>NotBefore ≤ CurrentTime ≤ NotAfter</code>，时间须与可信 NTP 同步</li>
+            <li><strong>③ EKU 检查：</strong>服务器证书必须含 <code>id-kp-serverAuth (1.3.6.1.5.5.7.3.1)</code></li>
+            <li><strong>④ SAN/名称匹配：</strong>证书 SAN 中的 <code>dNSName</code> 须与 Supplicant 配置的 RADIUS 服务器名称匹配（严格字符串匹配或通配符匹配）</li>
+            <li><strong>⑤ 吊销状态：</strong>通过 OCSP 或 CRL 验证（见下）</li>
+          </ul>
+          <h5>OCSP 请求/响应流程（RFC 6960）</h5>
+          <div class="formula">OCSP Request 构成:
+  HashAlgorithm    = SHA-1（推荐 SHA-256）
+  issuerNameHash   = Hash(证书颁发者 DN)
+  issuerKeyHash    = Hash(颁发者公钥)
+  serialNumber     = 目标证书序列号
+
+OCSP Response 状态:
+  good    → 证书有效，继续握手
+  revoked → 证书已吊销，终止握手，报告错误
+  unknown → 无法确定，按策略决定（软失败/硬失败）</div>
+          <h5>OCSP Stapling（RFC 6066 §8）</h5>
+          <ul>
+            <li>RADIUS 服务器可在 TLS 握手中附带预获取的 OCSP Response（已由 CA 签名），客户端无需自行发起 OCSP 请求</li>
+            <li>降低握手延迟（减少 1 RTT），保护用户隐私（CA 不知道谁在访问）</li>
+            <li>Windows Server NPS 支持 OCSP Stapling，建议在证书申请模板中启用</li>
+          </ul>
+          <div class="callout cam">⚠ 安全关键：若 Supplicant 未配置受信任的 CA 根证书或未启用服务器名称验证，攻击者可架设伪造 RADIUS 服务器，诱导客户端连接并发送证书，实施 MITM 攻击。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段五 -->
+    <div class="ptl c-or">阶段五 &nbsp;·&nbsp; 客户端证书 + 密钥交换</div>
+
+    <div class="step ph5" onclick="tog(this)">
+      <div class="snum">10</div>
+      <div class="step-content">
+        <div class="slbl">Certificate — 客户端发送证书链</div>
+        <div class="sdsc">客户端根据 CertificateRequest 中的 CA 列表，选择并发送自身证书及中间 CA 证书</div>
+        <div class="sdet">
+          <h5>客户端证书要求（RFC 5216 §5.2 + RFC 5280）</h5>
+          <ul>
+            <li><strong>EKU：</strong>必须含 <code>id-kp-clientAuth (1.3.6.1.5.5.7.3.2)</code></li>
+            <li><strong>用户证书 SAN：</strong><code>otherName</code> 类型，OID=<code>1.3.6.1.4.1.311.20.2.3</code>，值为 UPN，如 <code>zhangsan@corp.example.com</code></li>
+            <li><strong>机器证书 SAN：</strong><code>dNSName</code> 类型，值为计算机 FQDN，如 <code>PC001.corp.example.com</code></li>
+            <li><strong>签发者：</strong>必须由 RADIUS 侧信任的企业 Root CA / 中间 CA 签发</li>
+            <li><strong>Key Usage：</strong>Digital Signature（用于 CertificateVerify）</li>
+          </ul>
+          <h5>证书链发送顺序</h5>
+          <ul>
+            <li>顺序：客户端证书 → 中间 CA 证书（按颁发链从下到上）→ 不含 Root CA</li>
+            <li>Root CA 由 RADIUS 服务器本地信任库中独立持有，不通过网络传输</li>
+          </ul>
+          <div class="callout ccy">若客户端无法找到与 CertificateRequest 中 CA 列表匹配的证书，则发送空 Certificate 消息。RADIUS 须决定是否中止认证（通常配置为拒绝）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph5" onclick="tog(this)">
+      <div class="snum">11</div>
+      <div class="step-content">
+        <div class="slbl">ClientKeyExchange — 密钥协商（TLS 1.2）</div>
+        <div class="sdsc">TLS 1.2 中客户端发送 ClientKeyExchange，完成密钥协商；TLS 1.3 此步骤已在 ClientHello 中完成</div>
+        <div class="sdet">
+          <h5>TLS 1.2 — ECDHE 模式（RFC 4492）</h5>
+          <div class="formula">客户端生成 ECDHE 密钥对:
+  client_private = 随机标量
+  client_public  = client_private × G（椭圆曲线基点）
+
+ClientKeyExchange 内容:
+  ECPoint = 客户端 ECDHE 公钥（压缩或非压缩格式）
+
+双端共同计算:
+  共享密钥 Z = client_private × server_public
+             = server_private × client_public
+             （ECDH 交换结果）
+
+pre_master_secret = Z（椭圆曲线点的 x 坐标）</div>
+          <h5>TLS 1.3 — 已在 ClientHello 中完成</h5>
+          <ul>
+            <li>TLS 1.3 在 ClientHello 的 <code>key_share</code> 扩展中直接发送 ECDHE 公钥</li>
+            <li>服务器在 ServerHello 的 <code>key_share</code> 中回复服务器 ECDHE 公钥</li>
+            <li>双端随即计算 <code>(EC)DHE</code> 共享密钥，导出握手密钥，无需单独的 ClientKeyExchange 消息</li>
+          </ul>
+          <h5>密钥派生（TLS 1.2 PRF）</h5>
+          <div class="formula">master_secret = PRF(pre_master_secret,
+                   "master secret",
+                   ClientHello.random ∥ ServerHello.random)
+输出：48字节</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph5" onclick="tog(this)">
+      <div class="snum">12</div>
+      <div class="step-content">
+        <div class="slbl">CertificateVerify — 客户端证明私钥持有</div>
+        <div class="sdsc">客户端用证书私钥对所有握手消息的摘要进行签名，向服务器证明自己持有证书对应的私钥</div>
+        <div class="sdet">
+          <h5>签名构造（RFC 8446 §4.4.3）</h5>
+          <div class="formula">TLS 1.3:
+  content = 64个0x20字节 ∥
+            "TLS 1.3, client CertificateVerify" ∥
+            0x00 ∥
+            Transcript-Hash(所有握手消息)
+
+Signature = Sign(client_private_key, content)
+
+TLS 1.2:
+  md5_hash  = MD5(handshake_messages)
+  sha1_hash = SHA1(handshake_messages)
+  Signature = Sign(private_key, md5_hash ∥ sha1_hash)
+  （RSA-PKCS1v1.5 或 ECDSA）</div>
+          <ul>
+            <li>RADIUS 收到后用客户端证书中的公钥验证签名，确认：① 持有私钥 ② 握手消息未被篡改</li>
+            <li>RSA 证书使用 <code>RSA-PSS</code>（TLS 1.3 强制）或 <code>PKCS1v1.5</code>（TLS 1.2 兼容）</li>
+            <li>EC 证书使用 <code>ECDSA</code> 配合对应哈希算法（SHA-256/384/512）</li>
+          </ul>
+          <div class="callout cgr">CertificateVerify 是 EAP-TLS 实现<strong>客户端向服务器认证</strong>的核心消息——证明客户端不仅持有证书（任何人可以复制），还持有与之对应的私钥（无法复制）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph5" onclick="tog(this)">
+      <div class="snum">13</div>
+      <div class="step-content">
+        <div class="slbl">ChangeCipherSpec + Finished — 客户端切换加密并验证握手完整性</div>
+        <div class="sdsc">客户端发送 CCS 切换加密，然后发送 Finished 消息验证完整握手过程的一致性</div>
+        <div class="sdet">
+          <h5>ChangeCipherSpec（RFC 5246 §7.1）</h5>
+          <ul>
+            <li>单字节 <code>0x01</code>，通知对端：后续报文均使用协商的加密参数（密钥+算法）加密</li>
+            <li>TLS 1.3 中 CCS 仅作兼容性占位，实际加密在 ServerHello 后即开始</li>
+          </ul>
+          <h5>Finished 消息（RFC 8446 §4.4.4）</h5>
+          <div class="formula">TLS 1.3:
+  finished_key = HKDF-Expand-Label(client_handshake_traffic_secret,
+                   "finished", "", Hash.length)
+  verify_data  = HMAC(finished_key, Transcript-Hash(所有握手消息))
+
+TLS 1.2:
+  verify_data = PRF(master_secret, "client finished",
+                  MD5(handshake_msgs) ∥ SHA1(handshake_msgs))[0..11]
+  输出：12字节</div>
+          <ul>
+            <li>RADIUS 验证 verify_data 与本地计算值一致，确认握手过程完整且未被篡改</li>
+            <li>Finished 是 TLS 握手中<strong>第一条加密消息</strong>（ChangeCipherSpec 之后），验证其 MAC 即等价于验证整个握手历史</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段六 -->
+    <div class="ptl c-ro">阶段六 &nbsp;·&nbsp; RADIUS 验证客户端证书（对接 PKI + AD）</div>
+
+    <div class="step ph6" onclick="tog(this)">
+      <div class="snum">14</div>
+      <div class="step-content">
+        <div class="slbl">RADIUS → PKI：OCSP 验证客户端证书吊销状态</div>
+        <div class="sdsc">RADIUS 向内网 OCSP Responder 查询客户端证书是否已被吊销，这是授权的第一道门</div>
+        <div class="sdet">
+          <h5>OCSP 查询流程（RFC 6960）</h5>
+          <ul>
+            <li>OCSP Responder 地址从客户端证书的 <code>Authority Information Access</code> 扩展中读取（<code>id-ad-ocsp</code> OID）</li>
+            <li>RADIUS 构造 OCSP Request，包含：<code>issuerNameHash</code>、<code>issuerKeyHash</code>、<code>serialNumber</code></li>
+            <li>OCSP Responder 返回带 CA 私钥签名的响应：<code>good</code> / <code>revoked</code> / <code>unknown</code></li>
+          </ul>
+          <h5>吊销场景处理</h5>
+          <table>
+            <tr><th>响应</th><th>NPS 行为</th></tr>
+            <tr><td>good</td><td>继续验证流程</td></tr>
+            <tr><td>revoked</td><td>立即返回 Access-Reject，EAP-Failure</td></tr>
+            <tr><td>unknown</td><td>取决于 NPS 配置（硬失败：拒绝 / 软失败：继续）</td></tr>
+            <tr><td>超时/不可达</td><td>取决于 NPS 策略（生产环境建议硬失败）</td></tr>
+          </table>
+          <h5>备用：CRL 验证</h5>
+          <ul>
+            <li>若 OCSP 不可用，RADIUS 从 <code>CRL Distribution Points</code> 扩展下载 CRL 文件</li>
+            <li>CRL 是全量吊销列表，文件较大（MB 级），建议配合 Delta CRL 减少下载量</li>
+          </ul>
+          <div class="callout cam">⚠ 生产环境强烈建议在内网部署专用 OCSP Responder（Windows AD CS 自带），避免依赖外部 CA 服务，防止 OCSP 服务不可达导致认证失败（RADIUS 默认超时 30s）。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph6" onclick="tog(this)">
+      <div class="snum">15</div>
+      <div class="step-content">
+        <div class="slbl">完整证书链验证 + EKU + SAN/UPN 检查</div>
+        <div class="sdsc">RADIUS 执行与客户端验证服务器证书相同的五步验证，重点是 EKU 和 UPN 提取</div>
+        <div class="sdet">
+          <h5>RADIUS 侧证书验证详情</h5>
+          <ul>
+            <li><strong>信任链：</strong>从客户端证书到 RADIUS 信任的 Root CA，每一级签名均须验证</li>
+            <li><strong>有效期：</strong>同客户端验证逻辑</li>
+            <li><strong>EKU：</strong>必须含 <code>id-kp-clientAuth (1.3.6.1.5.5.7.3.2)</code>，否则 NPS 拒绝（Reason Code 22）</li>
+            <li><strong>SAN/UPN 提取：</strong>从 <code>SubjectAltName</code> 扩展的 <code>otherName</code> 字段提取 UPN（OID <code>1.3.6.1.4.1.311.20.2.3</code>）</li>
+            <li><strong>吊销状态：</strong>步骤14已完成</li>
+          </ul>
+          <h5>NPS 证书到账户映射方式（Windows）</h5>
+          <table>
+            <tr><th>映射方式</th><th>说明</th></tr>
+            <tr><td>UPN Mapping</td><td>证书 SAN 中的 UPN 直接映射到 AD userPrincipalName（最常用）</td></tr>
+            <tr><td>Subject Mapping</td><td>证书 Subject DN 映射到 AD 账户</td></tr>
+            <tr><td>Issuer + Subject</td><td>颁发者+主体的组合映射</td></tr>
+            <tr><td>AltSecurityIdentities</td><td>AD 账户属性中直接指定证书映射规则</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph6" onclick="tog(this)">
+      <div class="snum">16</div>
+      <div class="step-content">
+        <div class="slbl">RADIUS → AD：账户授权策略匹配</div>
+        <div class="sdsc">NPS 将提取的 UPN 映射到 AD 账户，匹配网络策略，获取 VLAN/ACL 等授权属性</div>
+        <div class="sdet">
+          <h5>NPS 网络策略匹配逻辑</h5>
+          <ul>
+            <li>NPS 按策略列表顺序（优先级）逐条检查 <strong>条件（Conditions）</strong>：用户组、机器组、NAS 类型、时间段、Called/Calling Station ID 等</li>
+            <li>所有条件满足 → 进入 <strong>约束（Constraints）</strong> 检查：身份验证方法（必须为 EAP-TLS）、会话超时等</li>
+            <li>约束满足 → 应用 <strong>设置（Settings）</strong>：RADIUS 属性（VLAN、Filter-Id 等）</li>
+            <li>任一策略拒绝 → Access-Reject</li>
+          </ul>
+          <h5>AD 返回的授权数据</h5>
+          <table>
+            <tr><th>查询内容</th><th>AD 属性</th><th>用途</th></tr>
+            <tr><td>账户状态</td><td>userAccountControl</td><td>确认未禁用/锁定/过期</td></tr>
+            <tr><td>安全组</td><td>memberOf（递归）</td><td>匹配 NPS 网络策略组条件</td></tr>
+            <tr><td>拨入权限</td><td>msNPAllowDialin</td><td>可选的账户级访问控制</td></tr>
+            <tr><td>密码过期</td><td>pwdLastSet</td><td>可触发过期告警（EAP-TLS 不依赖密码，可忽略）</td></tr>
+          </table>
+          <div class="callout cbl">EAP-TLS 的授权是基于证书身份（UPN）+ AD 账户状态 + NPS 策略组合决定的，密码无关。即使用户修改了密码，只要证书有效、账户正常，认证就能通过——这正是 EAP-TLS 相比 PEAP 的优势之一。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段七 -->
+    <div class="ptl c-am">阶段七 &nbsp;·&nbsp; 服务器 Finished & TLS 握手完成</div>
+
+    <div class="step ph7" onclick="tog(this)">
+      <div class="snum">17</div>
+      <div class="step-content">
+        <div class="slbl">Server ChangeCipherSpec + Finished — 握手双向完成</div>
+        <div class="sdsc">RADIUS 发送 CCS 和 Finished，客户端验证通过后 TLS 握手正式完成，双向认证成立</div>
+        <div class="sdet">
+          <h5>Server Finished 验证</h5>
+          <div class="formula">TLS 1.3 Server Finished:
+  server_finished_key = HKDF-Expand-Label(
+    server_handshake_traffic_secret, "finished", "", Hash.length)
+  verify_data = HMAC(server_finished_key,
+                  Transcript-Hash(所有握手消息))
+
+客户端验证: 本地重新计算 → 与收到值比较 → 必须完全一致</div>
+          <ul>
+            <li>客户端验证 Server Finished 成功 → 确认握手完整性，TLS 连接建立</li>
+            <li>此时双端均持有相同的 <code>master_secret</code>（TLS 1.2）或相同的对称密钥（TLS 1.3 AEAD）</li>
+            <li>EAP-TLS 独特要求：客户端发送一个<strong>空 EAP-Response</strong>（Code=2，Type=13，无 TLS 数据）作为最终 ACK，通知 RADIUS 握手已被客户端确认（RFC 5216 §3.3）</li>
+          </ul>
+          <div class="callout cgr">此步骤完成后，双向证书认证正式成立：客户端已验证服务器证书，服务器已验证客户端证书和私钥。整个过程无需用户名/密码参与。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段八 -->
+    <div class="ptl c-or">阶段八 &nbsp;·&nbsp; MSK 密钥导出 + RADIUS Access-Accept</div>
+
+    <div class="step ph8" onclick="tog(this)">
+      <div class="snum">18</div>
+      <div class="step-content">
+        <div class="slbl">MSK / EMSK 派生 — 从 TLS master_secret 导出会话密钥</div>
+        <div class="sdsc">RADIUS 从 TLS 握手材料中派生 64 字节 MSK 和 64 字节 EMSK，为后续无线加密提供密钥材料</div>
+        <div class="sdet">
+          <h5>密钥派生公式（RFC 5216 §2.3）</h5>
+          <div class="formula">TLS 1.2 PRF 派生:
+  Key_Material = TLS-PRF(master_secret,
+                   "client EAP encryption",
+                   client_random ∥ server_random)
+  输出：128字节
+
+  MSK  = Key_Material[0..63]    （64字节）
+  EMSK = Key_Material[64..127]  （64字节）
+
+TLS 1.3 HKDF 派生（RFC 9190）:
+  exporter_master_secret 由 TLS Exporter 机制导出
+  MSK  = TLS-Exporter("EXPORTER_EAP_TLS_Key_Material",
+                       "", 64字节)[0..63]
+  EMSK = TLS-Exporter("EXPORTER_EAP_TLS_Key_Material",
+                       "", 128字节)[64..127]</div>
+          <h5>密钥用途</h5>
+          <table>
+            <tr><th>密钥</th><th>长度</th><th>用途</th></tr>
+            <tr><td>MSK</td><td>64 字节</td><td>传递给 NAS，用于派生 WPA2/WPA3 PMK</td></tr>
+            <tr><td>EMSK</td><td>64 字节</td><td>扩展密钥，保留在 RADIUS 侧，用于高级场景（如 EAP Re-auth）</td></tr>
+            <tr><td>PMK</td><td>32 字节</td><td>= MSK[0..31]，802.11 四次握手输入</td></tr>
+          </table>
+          <div class="callout ccy">MSK 完全由 TLS 握手材料派生，与证书内容无关（证书仅用于认证，不直接参与密钥计算）。前向安全性（PFS）由 ECDHE 密钥交换保证——即使 RSA 私钥泄露，历史会话的 MSK 也无法被解密。</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="step ph8" onclick="tog(this)">
+      <div class="snum">19</div>
+      <div class="step-content">
+        <div class="slbl">RADIUS Access-Accept — 授权成功，下发策略和 MSK</div>
+        <div class="sdsc">RADIUS 向 NAS 发送 Access-Accept，携带 EAP-Success、MSK 密文和完整授权属性</div>
+        <div class="sdet">
+          <h5>Access-Accept 关键属性</h5>
+          <table>
+            <tr><th>属性</th><th>说明</th></tr>
+            <tr><td>EAP-Message (79)</td><td>EAP-Success (Code=3)，通知客户端认证成功</td></tr>
+            <tr><td>MS-MPPE-Recv-Key (26/17)</td><td>加密的 MSK 低32字节，用 RADIUS 共享密钥保护（RC4 + MD5）</td></tr>
+            <tr><td>MS-MPPE-Send-Key (26/16)</td><td>加密的 MSK 高32字节，同上保护方式</td></tr>
+            <tr><td>Tunnel-Type (64)</td><td>VLAN (13)——动态 VLAN 分配</td></tr>
+            <tr><td>Tunnel-Medium-Type (65)</td><td>IEEE-802 (6)</td></tr>
+            <tr><td>Tunnel-Private-Group-Id (81)</td><td>VLAN ID，如 "100"（员工 VLAN）</td></tr>
+            <tr><td>Session-Timeout (27)</td><td>最大会话时长（秒），到期触发重认证</td></tr>
+            <tr><td>Termination-Action (29)</td><td>0=Default（断开），1=RADIUS-Request（重认证）</td></tr>
+            <tr><td>Filter-Id (11)</td><td>引用 NAS 本地 ACL 策略名称（如 "EMPLOYEE_ACL"）</td></tr>
+            <tr><td>Class (25)</td><td>Accounting 会话关联令牌，NAS 在 Accounting 报文中原样回传</td></tr>
+          </table>
+          <div class="callout cam">⚠ MSK 通过 MS-MPPE-Recv/Send-Key 传输时使用旧版 RC4+MD5 加密（RFC 2548）。为提高安全性，建议将 RADIUS 通信升级为 RADIUS over TLS（RadSec，RFC 6614）或使用 IPsec 保护 NAS→RADIUS 链路。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段九 -->
+    <div class="ptl c-te">阶段九 &nbsp;·&nbsp; WPA2 四次握手（无线场景）</div>
+
+    <div class="step ph9" onclick="tog(this)">
+      <div class="snum">20</div>
+      <div class="step-content">
+        <div class="slbl">PMK 就位 → 802.11 四次握手 → PTK/GTK 派生</div>
+        <div class="sdsc">NAS（AP）和客户端均持有 PMK，通过四次握手派生 PTK（单播加密密钥）和 GTK（组播密钥）</div>
+        <div class="sdet">
+          <h5>PMK 来源</h5>
+          <ul>
+            <li><strong>NAS 侧：</strong>从 Access-Accept 中解密 MS-MPPE 属性，取 MSK[0..31] 作为 PMK</li>
+            <li><strong>客户端侧：</strong>本地从 TLS master_secret 派生 MSK，同样取 MSK[0..31] 作为 PMK</li>
+          </ul>
+          <h5>四次握手密钥派生（IEEE 802.11-2020 §12.7.2）</h5>
+          <div class="formula">输入: PMK(32B), ANonce(32B), SNonce(32B), BSSID, STA_MAC
+
+PTK = PRF-X(PMK, "Pairwise key expansion",
+            Min(BSSID,STA) ∥ Max(BSSID,STA) ∥
+            Min(ANonce,SNonce) ∥ Max(ANonce,SNonce))
+
+PTK 拆分（对于 AES-CCMP-128）：
+  KCK = PTK[0..15]    (Key Confirmation Key，16字节)
+  KEK = PTK[16..31]   (Key Encryption Key，16字节)
+  TK  = PTK[32..47]   (Temporal Key，16字节)
+
+GTK（由 AP 生成，用 KEK 加密后分发给客户端）
+  → 用于保护组播/广播帧</div>
+          <h5>四次握手消息</h5>
+          <table>
+            <tr><th>消息</th><th>发送方</th><th>内容</th></tr>
+            <tr><td>Message 1</td><td>AP → STA</td><td>ANonce（AP 随机数）</td></tr>
+            <tr><td>Message 2</td><td>STA → AP</td><td>SNonce + MIC（用 KCK 计算）</td></tr>
+            <tr><td>Message 3</td><td>AP → STA</td><td>GTK（KEK 加密）+ MIC</td></tr>
+            <tr><td>Message 4</td><td>STA → AP</td><td>ACK + MIC（确认安装密钥）</td></tr>
+          </table>
+          <div class="callout cgr">四次握手完成后，单播流量使用 TK（AES-CCMP/GCMP）加密，组播使用 GTK 加密。802.11 数据帧的机密性和完整性保护正式生效。</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 阶段十 -->
+    <div class="ptl c-sl">阶段十 &nbsp;·&nbsp; 端口授权 + 正常通信 + 重认证</div>
+
+    <div class="step ph10" onclick="tog(this)">
+      <div class="snum">21</div>
+      <div class="step-content">
+        <div class="slbl">端口切换 Authorized → 正常数据通信</div>
+        <div class="sdsc">NAS 端口从 Unauthorized 切换为 Authorized，安装 RADIUS 下发的 VLAN/ACL，客户端开始正常通信</div>
+        <div class="sdet">
+          <ul>
+            <li>NAS 受控端口切换为 <strong>Authorized</strong> 状态，数据帧按 VLAN ID 转发至对应网段</li>
+            <li>Filter-Id 对应的 ACL 规则生效，执行访问控制（如限制访问特定服务器）</li>
+            <li>NAS 发送 <code>RADIUS Accounting-Start</code> 至 RADIUS，记录会话开始时间和身份信息</li>
+          </ul>
+          <h5>Session-Timeout 重认证流程</h5>
+          <ul>
+            <li>Session-Timeout 到期：NAS 触发 EAP 重认证，重新执行完整 EAP-TLS 流程（或 TLS Session Resumption）</li>
+            <li>客户端漫游（802.11r/802.11k）：AP 间切换时通过 PMK-R1 缓存跳过完整 EAP，直接进行快速四次握手</li>
+            <li>客户端断线：NAS 收到 EAPoL-Logoff 或检测到链路中断，发送 <code>Accounting-Stop</code>，端口回到 Unauthorized</li>
+          </ul>
+          <h5>整体报文统计</h5>
+          <table>
+            <tr><th>协议层</th><th>往返次数</th><th>说明</th></tr>
+            <tr><td>EAPoL (L2)</td><td>3 次</td><td>Start / Identity Request / Identity Response</td></tr>
+            <tr><td>RADIUS Access-*</td><td>8~14 次</td><td>含 TLS 握手所有分片</td></tr>
+            <tr><td>TLS 握手（TLS 1.2）</td><td>4~6 RTT</td><td>含证书传输和分片</td></tr>
+            <tr><td>TLS 握手（TLS 1.3）</td><td>3~4 RTT</td><td>减少 1 RTT</td></tr>
+            <tr><td>OCSP（客户端）</td><td>1 RTT</td><td>可被 Stapling 消除</td></tr>
+            <tr><td>OCSP（RADIUS）</td><td>1 RTT</td><td>内网 Responder 延迟 &lt;5ms</td></tr>
+            <tr><td>802.11 四次握手</td><td>2 RTT</td><td>无线场景额外开销</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- sbody -->
+</div><!-- right panel -->
+</div><!-- layout -->
+
+<!-- ══ DEEP-DIVE ══ -->
+<div class="deep">
+  <div class="sec" style="margin-top:1rem"><div class="sec-dot" style="background:var(--blue)"></div><span class="sec-lbl">深度技术拆解（点击展开）</span></div>
+  <div class="deep-grid">
+
+    <!-- 1. X.509 证书结构 -->
+    <div class="dc">
+      <div class="dc-hdr" onclick="toggleDC(this)">
+        <div class="dc-icon" style="color:var(--blue);border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.08)">📜</div>
+        <div class="dc-meta">
+          <div class="dc-tag" style="color:var(--blue)">X.509 v3 · RFC 5280</div>
+          <div class="dc-name">EAP-TLS 证书字段完整解析</div>
+        </div>
+        <div class="dc-chev">▼</div>
+      </div>
+      <div class="dc-body">
+        <h5>服务器证书必要字段</h5>
+        <table>
+          <tr><th>字段</th><th>要求</th><th>示例值</th></tr>
+          <tr><td>Subject CN</td><td>RADIUS 服务器标识名</td><td>RADIUS01.corp.example.com</td></tr>
+          <tr><td>SAN dNSName</td><td>RADIUS FQDN（优先于 CN）</td><td>radius.corp.example.com</td></tr>
+          <tr><td>Key Usage</td><td>Digital Signature, Key Encipherment</td><td>Critical</td></tr>
+          <tr><td>EKU</td><td>id-kp-serverAuth 1.3.6.1.5.5.7.3.1</td><td>必须</td></tr>
+          <tr><td>AIA OCSP</td><td>内网 OCSP Responder URL</td><td>http://ocsp.corp.example.com</td></tr>
+          <tr><td>CDP CRL</td><td>CRL 下载 URL（备用吊销查询）</td><td>http://crl.corp.example.com/ca.crl</td></tr>
+          <tr><td>有效期</td><td>建议 1~2 年（服务器证书）</td><td>365 天</td></tr>
+        </table>
+        <h5>客户端用户证书必要字段</h5>
+        <table>
+          <tr><th>字段</th><th>要求</th><th>示例值</th></tr>
+          <tr><td>Subject CN</td><td>用户显示名（可选）</td><td>Zhang San</td></tr>
+          <tr><td>SAN otherName</td><td>UPN，OID 1.3.6.1.4.1.311.20.2.3</td><td>zhangsan@corp.example.com</td></tr>
+          <tr><td>Key Usage</td><td>Digital Signature（CertificateVerify 用）</td><td>Critical</td></tr>
+          <tr><td>EKU</td><td>id-kp-clientAuth 1.3.6.1.5.5.7.3.2</td><td>必须</td></tr>
+          <tr><td>EKU（可选）</td><td>Smart Card Logon 1.3.6.1.4.1.311.20.2.2</td><td>Windows 域登录用</td></tr>
+          <tr><td>有效期</td><td>建议 1 年（用户证书）</td><td>365 天</td></tr>
+        </table>
+        <h5>客户端机器证书必要字段</h5>
+        <table>
+          <tr><th>字段</th><th>要求</th><th>示例值</th></tr>
+          <tr><td>SAN dNSName</td><td>计算机 FQDN</td><td>PC001.corp.example.com</td></tr>
+          <tr><td>EKU</td><td>id-kp-clientAuth</td><td>必须</td></tr>
+          <tr><td>EKU</td><td>Smart Card Logon（机器登录）</td><td>推荐</td></tr>
+        </table>
+        <div class="callout cam">⚠ Windows AD CS 证书模板设置要点：Subject Name 选择"从 Active Directory 中生成"，SAN 勾选"用户主体名称 (UPN)"（用户模板）或"DNS 名称"（机器模板），EKU 必须勾选对应 Authentication 类型。</div>
+      </div>
+    </div>
+
+    <!-- 2. TLS 握手密钥派生 -->
+    <div class="dc">
+      <div class="dc-hdr" onclick="toggleDC(this)">
+        <div class="dc-icon" style="color:var(--purple);border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.08)">🔐</div>
+        <div class="dc-meta">
+          <div class="dc-tag" style="color:var(--purple)">TLS 1.3 密钥调度 · RFC 8446 §7</div>
+          <div class="dc-name">完整密钥派生链：从 ECDHE 到 PTK</div>
+        </div>
+        <div class="dc-chev">▼</div>
+      </div>
+      <div class="dc-body">
+        <h5>TLS 1.3 密钥调度（HKDF 体系）</h5>
+        <div class="formula">HKDF-Extract / HKDF-Expand-Label 基本操作:
+  HKDF-Extract(salt, IKM) → PRK
+  HKDF-Expand-Label(Secret, Label, Context, Length):
+    HkdfLabel = Length ∥ "tls13 " + Label ∥ Context
+    → HKDF-Expand(Secret, HkdfLabel, Length)
+
+密钥派生树:
+0 (early secret input)
+│
+├─→ Early Secret = HKDF-Extract(0, PSK or 0)
+│     └─→ client_early_traffic_secret
+│
+├─→ Handshake Secret = HKDF-Extract(DHE, Derive(Early))
+│     ├─→ client_handshake_traffic_secret → 客户端握手加密密钥
+│     └─→ server_handshake_traffic_secret → 服务器握手加密密钥
+│
+└─→ Master Secret = HKDF-Extract(0, Derive(Handshake))
+      ├─→ client_application_traffic_secret_0 → 应用数据密钥
+      ├─→ server_application_traffic_secret_0 → 应用数据密钥
+      └─→ exporter_master_secret → EAP MSK 派生来源</div>
+        <h5>从 exporter_master_secret 到 EAP MSK</h5>
+        <div class="formula">MSK = TLS-Exporter(
+  "EXPORTER_EAP_TLS_Key_Material",  // label
+  "",                                // context（空）
+  128                                // length（字节）
+)[0..63]
+
+EMSK = 同上 [64..127]
+PMK（802.11）= MSK[0..31]</div>
+        <h5>TLS 1.2 PRF 对比</h5>
+        <div class="formula">TLS 1.2 PRF（基于 HMAC-SHA256）:
+  PRF(secret, label, seed) =
+    P_SHA256(secret, label ∥ seed)
+
+  master_secret = PRF(pre_master_secret,
+    "master secret",
+    ClientRandom ∥ ServerRandom) [0..47]
+
+  MSK = PRF(master_secret,
+    "client EAP encryption",
+    ClientRandom ∥ ServerRandom) [0..63]</div>
+        <div class="callout cgr">前向安全性保证：每次 TLS 握手生成新的 ECDHE 密钥对（临时密钥），即使 RADIUS 服务器的 RSA/EC 长期私钥泄露，攻击者也无法解密历史会话记录的 MSK，也就无法解密历史无线流量。</div>
+      </div>
+    </div>
+
+    <!-- 3. RADIUS 协议细节 -->
+    <div class="dc">
+      <div class="dc-hdr" onclick="toggleDC(this)">
+        <div class="dc-icon" style="color:var(--green);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)">📡</div>
+        <div class="dc-meta">
+          <div class="dc-tag" style="color:var(--green)">RADIUS · RFC 2865 / 3579 / 6614</div>
+          <div class="dc-name">RADIUS 报文结构与 EAP 封装细节</div>
+        </div>
+        <div class="dc-chev">▼</div>
+      </div>
+      <div class="dc-body">
+        <h5>RADIUS 报文格式（RFC 2865 §3）</h5>
+        <div class="pkt">
+          <div class="pkt-hdr">RADIUS Packet（UDP）</div>
+          <div class="pkt-row"><div class="pkt-field">Code (1B)</div><div class="pkt-val hl">1=Access-Req, 2=Accept, 3=Reject, 11=Challenge</div></div>
+          <div class="pkt-row"><div class="pkt-field">Identifier (1B)</div><div class="pkt-val">请求/响应匹配字节，每次请求递增</div></div>
+          <div class="pkt-row"><div class="pkt-field">Length (2B)</div><div class="pkt-val">整个 RADIUS 报文长度（含 Header），20~4096 字节</div></div>
+          <div class="pkt-row"><div class="pkt-field">Authenticator (16B)</div><div class="pkt-val hl">请求中为随机16B；响应中为 MD5(Code∥ID∥Len∥ReqAuth∥Attrs∥Secret)</div></div>
+          <div class="pkt-row"><div class="pkt-field">Attributes</div><div class="pkt-val">TLV 格式属性列表（Type 1B + Length 1B + Value）</div></div>
+        </div>
+        <h5>EAP-Message 属性分片规则（RFC 3579 §3.1）</h5>
+        <ul>
+          <li>单个 EAP-Message 属性值最大 253 字节（属性总长 = 253 + 2 = 255 字节）</li>
+          <li>超过 253 字节的 EAP PDU 需跨多个 EAP-Message 属性顺序存放</li>
+          <li>RADIUS 报文最大 4096 字节，可承载约 16 个 EAP-Message 属性（约 4kB EAP 数据）</li>
+          <li>TLS 证书链传输时通常需要多个 RADIUS 报文往返（每次最多4kB）</li>
+        </ul>
+        <h5>Message-Authenticator 计算（RFC 3579 §3.2）</h5>
+        <div class="formula">Message-Authenticator = HMAC-MD5(
+  Key   = RADIUS 共享密钥,
+  Input = RADIUS 报文（Message-Authenticator 字段置全0）
+)
+
+验证规则:
+  - 含 EAP-Message 的报文必须含此属性
+  - Access-Request 的 Authenticator 为随机数
+  - 响应报文 Authenticator = MD5(响应报文含 MA ∥ 请求 Authenticator ∥ 共享密钥)</div>
+        <h5>RadSec（RADIUS over TLS，RFC 6614）</h5>
+        <ul>
+          <li>在 TLS 1.2/1.3 连接上传输 RADIUS 报文，替代 UDP/1812，解决 RADIUS 明文传输问题</li>
+          <li>默认端口 TCP/2083，支持双向证书认证（NAS 和 RADIUS 均需证书）</li>
+          <li>消除 MS-MPPE 属性的 RC4 加密弱点，MSK 在 TLS 保护下传输</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 4. EAP-TLS 分片机制 -->
+    <div class="dc">
+      <div class="dc-hdr" onclick="toggleDC(this)">
+        <div class="dc-icon" style="color:var(--cyan);border-color:rgba(6,182,212,.3);background:rgba(6,182,212,.08)">✂</div>
+        <div class="dc-meta">
+          <div class="dc-tag" style="color:var(--cyan)">EAP-TLS 分片 · RFC 5216 §4.2</div>
+          <div class="dc-name">分片传输机制与 MTU 协商</div>
+        </div>
+        <div class="dc-chev">▼</div>
+      </div>
+      <div class="dc-body">
+        <h5>为什么需要分片？</h5>
+        <p>TLS 握手消息（尤其是 Certificate 消息，含整个证书链，通常 2~8kB）远超单个 EAP 报文可承载的大小（默认约 1400 字节）。EAP-TLS 通过 L/M-bit 机制实现应用层分片。</p>
+        <h5>分片字段定义</h5>
+        <table>
+          <tr><th>Bit</th><th>名称</th><th>发送方行为</th><th>接收方行为</th></tr>
+          <tr><td>L</td><td>Length Included</td><td>首片置1，包含 TLS 消息总长度（4字节）</td><td>读取总长度，分配缓冲区</td></tr>
+          <tr><td>M</td><td>More Fragments</td><td>非末片置1</td><td>收到M=1时发空ACK，等待下一片</td></tr>
+          <tr><td>S</td><td>Start</td><td>EAP-TLS Start 时置1</td><td>触发 ClientHello</td></tr>
+        </table>
+        <h5>分片传输流程示例（Certificate，5kB）</h5>
+        <div class="formula">→ 片1: EAP-TLS, L=1,M=1, TotalLen=5120, Data[0..1399]
+← ACK:  EAP-TLS, L=0,M=0, Data=空
+
+→ 片2: EAP-TLS, L=0,M=1, Data[1400..2799]
+← ACK:  EAP-TLS, L=0,M=0, Data=空
+
+→ 片3: EAP-TLS, L=0,M=1, Data[2800..4199]
+← ACK:  EAP-TLS, L=0,M=0, Data=空
+
+→ 片4: EAP-TLS, L=0,M=0, Data[4200..5119]（最后一片，M=0）
+← 继续正常握手（不回 ACK，直接处理完整 TLS 消息）</div>
+        <h5>MTU 优化建议</h5>
+        <ul>
+          <li>Supplicant 可通过 <code>EAP-TLS Fragment Size</code> 配置最大分片大小（Windows 默认 1400 字节）</li>
+          <li>减小证书链大小可减少分片次数：避免在链中包含 Root CA 证书，使用 ECDSA 证书（比 RSA 小约 50%）</li>
+          <li>服务器端使用 OCSP Stapling，可将 OCSP Response 附加在 Certificate 消息中，减少总 RTT 数</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 5. 安全分析 -->
+    <div class="dc">
+      <div class="dc-hdr" onclick="toggleDC(this)">
+        <div class="dc-icon" style="color:var(--rose);border-color:rgba(244,63,94,.3);background:rgba(244,63,94,.08)">🛡</div>
+        <div class="dc-meta">
+          <div class="dc-tag" style="color:var(--rose)">安全分析 · 攻击面 · 加固建议</div>
+          <div class="dc-name">EAP-TLS 安全威胁模型与防护</div>
+        </div>
+        <div class="dc-chev">▼</div>
+      </div>
+      <div class="dc-body">
+        <h5>EAP-TLS 抵御的威胁</h5>
+        <table>
+          <tr><th>威胁</th><th>防护机制</th></tr>
+          <tr><td>密码暴力破解</td><td>无密码，基于证书私钥（RSA 2048+/ECDSA P-256+），计算上不可破解</td></tr>
+          <tr><td>重放攻击</td><td>TLS random + ECDHE 保证每次握手唯一，Finished MAC 覆盖整个握手历史</td></tr>
+          <tr><td>中间人攻击</td><td>双向证书认证，攻击者无法伪造任何一方的证书（私钥不可获取）</td></tr>
+          <tr><td>离线字典攻击</td><td>不存在密码，无可供攻击的 Challenge/Response</td></tr>
+          <tr><td>身份泄露</td><td>TLS 握手后 Identity 通过证书提供，外层 Identity 可设为匿名</td></tr>
+          <tr><td>流量解密</td><td>PFS（ECDHE）保证历史流量不可追溯解密</td></tr>
+        </table>
+        <h5>残余风险与缓解措施</h5>
+        <ul>
+          <li><strong>证书私钥泄露：</strong>攻击者可用泄露的私钥认证。缓解：将私钥存储于 TPM 或智能卡（私钥永不离开硬件），使用 ADCS 自动吊销机制</li>
+          <li><strong>证书未及时吊销：</strong>员工离职后证书仍可用。缓解：实时 OCSP（硬失败策略），AD 账户禁用+证书吊销双重保障</li>
+          <li><strong>RADIUS 共享密钥弱：</strong>暴力破解 RADIUS 通信。缓解：使用长随机共享密钥（32+ 字符）或迁移至 RadSec</li>
+          <li><strong>Supplicant 配置错误：</strong>未验证服务器证书（虽 EAP-TLS 不像 PEAP 那样危险，但仍可能接受伪造证书）。缓解：通过 GPO 强制配置</li>
+        </ul>
+        <h5>加固清单</h5>
+        <ul>
+          <li>✅ 使用 TLS 1.3（或最低 TLS 1.2 + 强密码套件，禁用 RC4/3DES/MD5）</li>
+          <li>✅ 证书密钥存储于 TPM 2.0（企业设备）或智能卡（高安全用户）</li>
+          <li>✅ OCSP 硬失败策略（吊销查询失败则拒绝访问）</li>
+          <li>✅ NAS → RADIUS 使用 RadSec（RFC 6614）或 IPsec 保护</li>
+          <li>✅ GPO 强制 Supplicant 配置（受信任 CA + 服务器名称验证）</li>
+          <li>✅ 证书有效期最长 1 年，自动续签（ADCS 自动注册）</li>
+          <li>✅ 启用 RADIUS Accounting，实时监控异常认证行为</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- 6. 故障排查 -->
+    <div class="dc">
+      <div class="dc-hdr" onclick="toggleDC(this)">
+        <div class="dc-icon" style="color:var(--amber);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.08)">🔧</div>
+        <div class="dc-meta">
+          <div class="dc-tag" style="color:var(--amber)">故障排查 · NPS 错误码 · 诊断工具</div>
+          <div class="dc-name">EAP-TLS 常见故障与排查指南</div>
+        </div>
+        <div class="dc-chev">▼</div>
+      </div>
+      <div class="dc-body">
+        <h5>NPS 常见 Reason Code（Windows 事件 ID 6273）</h5>
+        <table>
+          <tr><th>Reason Code</th><th>原因</th><th>排查步骤</th></tr>
+          <tr><td>16</td><td>认证失败</td><td>检查证书链完整性、CA 信任关系</td></tr>
+          <tr><td>22</td><td>客户端证书不可信</td><td>确认 Root CA 在 NPS 受信任 CA 列表，检查 EKU=ClientAuth</td></tr>
+          <tr><td>23</td><td>客户端证书已过期</td><td>更新客户端证书，检查 ADCS 自动注册</td></tr>
+          <tr><td>48</td><td>账户限制</td><td>检查 AD 账户状态、安全组、NPS 网络策略条件</td></tr>
+          <tr><td>49</td><td>账户被禁用</td><td>在 AD 中启用账户</td></tr>
+          <tr><td>65</td><td>EAP 类型不匹配</td><td>检查 NPS 策略中 EAP 配置，客户端 Supplicant EAP 设置</td></tr>
+          <tr><td>262</td><td>证书吊销检查失败</td><td>检查 OCSP/CRL URL 可达性，内网 Responder 部署</td></tr>
+        </table>
+        <h5>诊断工具与命令</h5>
+        <ul>
+          <li><strong>Windows NPS 日志：</strong><code>事件查看器 → Windows 日志 → 安全</code>，事件 ID 6272（成功）/ 6273（失败）</li>
+          <li><strong>证书验证：</strong><code>certutil -verify -urlfetch client.cer</code>（验证证书链+吊销状态）</li>
+          <li><strong>OCSP 测试：</strong><code>openssl ocsp -issuer ca.cer -cert client.cer -url http://ocsp.corp.com</code></li>
+          <li><strong>Wireshark 抓包：</strong>过滤 <code>eap || radius</code>，分析 TLS 握手消息和 RADIUS 往返</li>
+          <li><strong>wpa_supplicant 调试：</strong><code>wpa_supplicant -d -D nl80211 -c /etc/wpa.conf</code></li>
+          <li><strong>Windows Supplicant 日志：</strong><code>netsh ras set tracing * enabled</code>，日志位于 <code>%windir%\tracing\</code></li>
+        </ul>
+        <h5>证书链问题快速检查</h5>
+        <div class="formula">检查清单:
+  1. 客户端证书 EKU 含 clientAuth?
+     → certutil -dump cert.cer | findstr "Client Auth"
+
+  2. 服务器证书 EKU 含 serverAuth?
+     → openssl x509 -text -in server.cer | grep -A1 "Extended Key"
+
+  3. Root CA 在双端受信任存储中?
+     → Windows: certmgr.msc → 受信任的根证书颁发机构
+
+  4. OCSP Responder 可达?
+     → curl -v http://ocsp.corp.example.com
+
+  5. 证书 SAN 与配置名称匹配?
+     → openssl x509 -text -in server.cer | grep -A2 "Subject Alternative"</div>
+      </div>
+    </div>
+
+  </div><!-- deep-grid -->
+</div><!-- deep -->
+
+<!-- ══ FOOTNOTES ══ -->
+<div class="fnotes" style="margin-top:2.5rem">
+  <div class="fn">
+    <h4 style="color:var(--blue)">EAP-TLS 分片机制</h4>
+    <p>TLS 握手消息超过链路 MTU 时，EAP 层通过 <code>L-bit</code>（携带总长度）和 <code>M-bit</code>（More fragments）进行分片传输。接收端收到 <code>M=1</code> 时回复空 ACK，直至所有分片重组完毕后统一交付 TLS 层处理。</p>
+  </div>
+  <div class="fn">
+    <h4 style="color:var(--green)">密钥层次结构</h4>
+    <p><code>pre_master_secret</code> → <code>master_secret</code> → <code>MSK(64B)</code> → <code>PMK(32B)</code> → 四次握手 → <code>PTK/GTK</code>。每层均通过 PRF/HKDF 单向导出，ECDHE 保证前向安全性（PFS）。</p>
+  </div>
+  <div class="fn">
+    <h4 style="color:var(--amber)">证书要求摘要</h4>
+    <p>RADIUS 服务器证书须含 EKU=<code>ServerAuth</code> 及 SAN=FQDN。客户端证书须含 EKU=<code>ClientAuth</code> 及 SAN=UPN（用户）或 DNS（机器）。均需由企业 CA 签发，双端信任同一 Root CA。</p>
+  </div>
+  <div class="fn">
+    <h4 style="color:var(--rose)">OCSP 部署建议</h4>
+    <p>生产环境推荐内网部署 OCSP Responder（AD CS 自带），避免外网 CRL 下载超时（默认 RADIUS 超时 30s）。响应有效期建议 1 小时，刷新间隔 30 分钟，启用 OCSP Stapling 减少握手 RTT。</p>
+  </div>
+  <div class="fn">
+    <h4 style="color:var(--purple)">UPN · EKU · OCSP Stapling</h4>
+    <ul>
+      <li><strong>UPN</strong>（User Principal Name）：证书 SAN otherName 字段，OID <code>1.3.6.1.4.1.311.20.2.3</code>，RADIUS 用于 AD 账户映射</li>
+      <li><strong>EKU</strong>（Extended Key Usage）：X.509 扩展，OID <code>2.5.29.37</code>，限定证书合法用途，防止跨场景滥用</li>
+      <li><strong>OCSP Stapling</strong>：RADIUS 预取已签名 OCSP Response 附在握手中，消除客户端单独查询的延迟和隐私风险</li>
+    </ul>
+  </div>
+  <div class="fn">
+    <h4 style="color:var(--teal)">TLS 会话恢复</h4>
+    <p>Session-Timeout 到期重认证时，若双端缓存了 TLS Session Ticket（RFC 5077）或 PSK（TLS 1.3 0-RTT），可跳过完整 TLS 握手，直接恢复会话后导出新 MSK，将重认证 RTT 从 4~6 次降至 1~2 次。</p>
+  </div>
+</div>
+
+<!-- ══ SUMMARY BAR ══ -->
+<div class="sumbar">
+  <div class="sumitem">
+    <span class="sumbadge" style="color:var(--blue);border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.08)">UPN</span>
+    <span class="sumtxt">标识<strong style="color:var(--t1)">「是谁」</strong><br>证书 SAN → AD 账户映射</span>
+  </div>
+  <div class="sumdiv"></div>
+  <div class="sumitem">
+    <span class="sumbadge" style="color:var(--purple);border-color:rgba(139,92,246,.3);background:rgba(139,92,246,.08)">EKU</span>
+    <span class="sumtxt">限定<strong style="color:var(--t1)">「能做什么」</strong><br>ClientAuth / ServerAuth 场景约束</span>
+  </div>
+  <div class="sumdiv"></div>
+  <div class="sumitem">
+    <span class="sumbadge" style="color:var(--green);border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)">OCSP Stapling</span>
+    <span class="sumtxt">验证<strong style="color:var(--t1)">「还有没有效」</strong><br>实时吊销检查，减少 RTT</span>
+  </div>
+  <div class="sumdiv"></div>
+  <div class="sumitem">
+    <span class="sumbadge" style="color:var(--cyan);border-color:rgba(6,182,212,.3);background:rgba(6,182,212,.08)">MSK → PMK → PTK</span>
+    <span class="sumtxt">密钥派生链<strong style="color:var(--t1)">「加密通信」</strong><br>TLS PRF/HKDF → 802.11 AES-CCMP</span>
+  </div>
+  <div class="sumdiv"></div>
+  <div class="sumitem" style="flex:1.5;min-width:200px">
+    <span class="sumtxt" style="color:var(--t3)">EAP-TLS 三大优势：<strong style="color:var(--t2)">无密码（抗暴破）· 双向证书（抗MITM）· PFS（抗流量回溯）</strong>——是企业无线网络接入的最高安全标准</span>
+  </div>
+</div>
+
+</div><!-- wrap -->
+<script>
+mermaid.initialize({
+  startOnLoad:true,theme:'base',securityLevel:'loose',
+  sequence:{
+    diagramMarginX:12,diagramMarginY:8,actorMargin:22,width:105,height:44,
+    boxMargin:7,boxTextMargin:4,noteMargin:7,messageMargin:28,
+    mirrorActors:false,useMaxWidth:true,wrap:true,wrapPadding:10
+  }
+});
+function tog(el){
+  const d=el.querySelector('.sdet');
+  if(!d)return;
+  const open=d.classList.contains('open');
+  el.parentElement.querySelectorAll('.sdet.open').forEach(x=>{
+    x.classList.remove('open');
+    x.closest('.step').classList.remove('active');
+  });
+  if(!open){d.classList.add('open');el.classList.add('active');el.scrollIntoView({behavior:'smooth',block:'nearest'});}
+}
+function toggleDC(h){
+  const b=h.nextElementSibling,c=h.querySelector('.dc-chev'),open=b.classList.contains('open');
+  b.classList.toggle('open',!open);c.classList.toggle('open',!open);h.classList.toggle('open',!open);
+}
+</script>
+</body>
+</html>

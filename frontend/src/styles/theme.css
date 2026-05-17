@@ -1,0 +1,419 @@
+/* ── Palette: 简斋古风 ──
+   宣纸 (rice paper) ground + 墨 (ink) text + 朱砂 (cinnabar) accent.
+   Inspired by the muted warm tones of aged paper, sumi ink, and seal red. */
+:root {
+  --jz-accent: #b94a3b;        /* 朱砂 cinnabar */
+  --jz-accent-soft: #d77361;
+  --jz-bg-app: #f3ebd6;        /* 宣纸 rice paper */
+  --jz-text: #2c2218;          /* 墨 ink */
+  --jz-text-muted: #8a7a5e;    /* 淡墨 faded ink */
+  --jz-border: #d4c4a0;        /* 折痕 crease */
+  --jz-surface: #faf3e0;       /* 米白 cream */
+  --jz-surface-2: #ece1c3;     /* 旧纸 aged paper */
+  --jz-divider: #e2d4b3;
+  --jz-gold: #b8895f;          /* 暗金 antique gold */
+}
+[data-theme='dark'] {
+  --jz-accent: #d36052;        /* 朱砂亮 (灯下) */
+  --jz-accent-soft: #e0816e;
+  --jz-bg-app: #1a1612;        /* 浓墨 deep ink */
+  --jz-text: #ece1c3;          /* 米白 — 墨纸上的字 */
+  --jz-text-muted: #9b8b6c;
+  --jz-border: #3a312a;
+  --jz-surface: #261f1a;       /* 墨纸 inked paper */
+  --jz-surface-2: #1f1a16;
+  --jz-divider: #322a23;
+  --jz-gold: #c9a875;
+}
+
+html, body, #root { background: var(--jz-bg-app); color: var(--jz-text); }
+body {
+  transition: background-color 0.2s ease;
+  /* Faint speckled mottling — like fibre texture in rice paper. Layered
+     radial gradients fake the noise without bringing a raster asset. */
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(139, 109, 65, 0.05) 0, transparent 32%),
+    radial-gradient(circle at 88% 76%, rgba(139, 109, 65, 0.045) 0, transparent 36%),
+    radial-gradient(circle at 60% 22%, rgba(185, 74, 59, 0.025) 0, transparent 28%);
+  background-attachment: fixed;
+}
+[data-theme='dark'] body {
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(201, 168, 117, 0.04) 0, transparent 32%),
+    radial-gradient(circle at 88% 76%, rgba(201, 168, 117, 0.03) 0, transparent 36%),
+    radial-gradient(circle at 60% 22%, rgba(211, 96, 82, 0.025) 0, transparent 28%);
+}
+
+/* ── 星空 starry ── 夜空：靛紫深蓝底 + 金紫高光 */
+[data-theme='starry'] {
+  --jz-accent: #c084fc;            /* 紫罗兰 */
+  --jz-accent-soft: #a78bfa;
+  --jz-bg-app: #060914;            /* 深夜空 */
+  --jz-text: #e8e6f3;
+  --jz-text-muted: #8b8aa8;
+  --jz-border: #1a2042;
+  --jz-surface: #0e1530;           /* 墨蓝纸 */
+  --jz-surface-2: #0a1024;
+  --jz-divider: #1a2042;
+  --jz-gold: #fbbf24;              /* 金 — 给星点/月亮共用 */
+}
+[data-theme='starry'] body {
+  background-image:
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124, 96, 200, 0.18) 0, transparent 70%),
+    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(96, 130, 220, 0.12) 0, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(200, 96, 200, 0.08) 0, transparent 70%);
+}
+
+/* ── 深海 deepsea ── 海底：青绿底 + 浅蓝荧光 */
+[data-theme='deepsea'] {
+  --jz-accent: #5eead4;            /* 浅青 */
+  --jz-accent-soft: #2dd4bf;
+  --jz-bg-app: #02152a;            /* 深海蓝 */
+  --jz-text: #d8f3f8;
+  --jz-text-muted: #6abec8;
+  --jz-border: #0c3a55;
+  --jz-surface: #062a48;           /* 海纸 */
+  --jz-surface-2: #04223a;
+  --jz-divider: #0c3a55;
+  --jz-gold: #facc15;              /* 透过水的金光 */
+}
+[data-theme='deepsea'] body {
+  background-image:
+    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(94, 234, 212, 0.22) 0, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 30% 50%, rgba(56, 189, 248, 0.10) 0, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 80% 90%, rgba(20, 184, 166, 0.10) 0, transparent 65%);
+}
+
+/* ── Brand wordmark in the blog header ── */
+.jz-brand {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 12px;
+  color: inherit;
+  text-decoration: none;
+  line-height: 1;
+}
+.jz-brand-cn {
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-weight: 700;
+  font-size: 23px;
+  letter-spacing: 6px;
+  color: var(--jz-accent);          /* 朱砂题字 */
+  text-shadow: 0 1px 0 rgba(255, 240, 200, 0.4);
+}
+[data-theme='dark'] .jz-brand-cn { text-shadow: none; }
+.jz-brand-sep {
+  color: var(--jz-gold);
+  font-size: 18px;
+  opacity: 0.7;
+  margin: 0 -2px;
+  position: relative;
+  top: -1px;
+}
+.jz-brand-en {
+  font-family: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  font-style: italic;
+  font-weight: 500;
+  font-size: 22px;
+  letter-spacing: 1px;
+  color: var(--jz-text-muted);
+  position: relative;
+  top: 1px;
+}
+.jz-brand:hover .jz-brand-en {
+  color: var(--jz-text);
+  transition: color 160ms ease;
+}
+.jz-brand:hover .jz-brand-cn {
+  color: color-mix(in srgb, var(--jz-accent) 80%, var(--jz-text));
+  transition: color 160ms ease;
+}
+
+/* ── Nav links ── */
+.jz-nav-link {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  color: var(--jz-text-muted);
+  text-decoration: none;
+  padding: 4px 0;
+  border-bottom: 1.5px solid transparent;
+  transition: color 160ms ease, border-color 160ms ease;
+}
+.jz-nav-link:hover {
+  color: var(--jz-text);
+  opacity: 1;
+}
+.jz-nav-link.active {
+  color: var(--jz-text);
+  border-bottom-color: var(--jz-accent);
+}
+
+/* Monospace digits look cleaner for the live clock. */
+.jz-clock {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.5px;
+  color: var(--jz-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+a { color: var(--jz-accent); }
+a:hover { opacity: 0.85; }
+
+/* Subtle entrance animation for cards and panels.
+   Deliberately NO `animation-fill-mode: both` — leaving the final
+   `transform: translateY(0)` on the element creates a new containing block
+   that traps `position: fixed` descendants (our FABs, fullscreen overlays).
+   After the 220 ms animation, transform reverts to none and visuals are
+   unchanged since translateY(0) and none are visually identical. */
+.jz-fade-in { animation: jz-fade-in 220ms ease; }
+@keyframes jz-fade-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Card lift on hover */
+.ant-card.jz-card {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+  border: 1px solid var(--jz-border);
+}
+.ant-card.jz-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.ant-card.jz-card:hover {
+  box-shadow: 0 10px 28px -8px rgba(120, 80, 35, 0.22);
+  border-color: color-mix(in srgb, var(--jz-gold) 55%, var(--jz-border));
+}
+[data-theme='dark'] .ant-card.jz-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+/* Dark-mode adjustments for our hand-crafted surfaces (markdown, tiptap, diff) */
+[data-theme='dark'] .markdown-preview { color: #e6e6e6; }
+[data-theme='dark'] .markdown-preview h1 { border-color: #2a2a2a; }
+[data-theme='dark'] .markdown-preview h2 { border-color: #232323; }
+[data-theme='dark'] .markdown-preview blockquote {
+  background: #1c1c1c; border-left-color: #444; color: #b8b8b8;
+}
+[data-theme='dark'] .markdown-preview code { background: #2a2a2a; color: #e6e6e6; }
+[data-theme='dark'] .markdown-preview hr { border-top-color: #2a2a2a; }
+[data-theme='dark'] .markdown-preview th,
+[data-theme='dark'] .markdown-preview td { border-color: #303030; }
+
+[data-theme='dark'] .tiptap-shell {
+  background: #1f1f1f !important;
+  border-color: #2b2b2b !important;
+}
+[data-theme='dark'] .tiptap-shell .ProseMirror { color: #e6e6e6; }
+[data-theme='dark'] .tiptap-shell .ProseMirror blockquote {
+  background: #1c1c1c; border-left-color: #444; color: #b8b8b8;
+}
+[data-theme='dark'] .tiptap-shell .ProseMirror code { background: #2a2a2a; color: #e6e6e6; }
+[data-theme='dark'] .tiptap-shell .ProseMirror th { background: #232323; }
+[data-theme='dark'] .tiptap-shell .ProseMirror th,
+[data-theme='dark'] .tiptap-shell .ProseMirror td { border-color: #303030; }
+
+[data-theme='dark'] .diff-view {
+  background: #181818; border-color: #2a2a2a; color: #d4d4d4;
+}
+[data-theme='dark'] .diff-view ins { background: #15391e; color: #7fdb9b; }
+[data-theme='dark'] .diff-view del { background: #3b1a1f; color: #ff8c95; }
+[data-theme='dark'] .diff-view .diff-line-add { background: #15391e; color: #7fdb9b; }
+[data-theme='dark'] .diff-view .diff-line-del { background: #3b1a1f; color: #ff8c95; }
+[data-theme='dark'] .diff-view .diff-line-eq  { color: #c9c9c9; }
+
+[data-theme='dark'] .slash-menu { background: #232323; color: #e6e6e6; box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
+[data-theme='dark'] .slash-menu-item.is-active { background: #2c3e55; }
+[data-theme='dark'] .slash-menu-item-title { color: #f0f0f0; }
+[data-theme='dark'] .slash-menu-item-desc { color: #888; }
+
+[data-theme='dark'] .global-search-item { color: var(--jz-text); }
+
+/* Editor textarea looks better with theme tokens */
+[data-theme='dark'] textarea.ant-input { background: #1f1f1f; color: #e6e6e6; }
+
+/* KB card depth + lift */
+.ant-card.jz-kb-card .ant-card-head {
+  border-bottom: 1px dashed var(--jz-divider);
+}
+.ant-card.jz-kb-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
+}
+[data-theme='dark'] .ant-card.jz-kb-card:hover {
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
+.ant-card.jz-post-card {
+  border: 1px solid var(--jz-border);
+}
+.ant-card.jz-post-card:hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 60%, transparent);
+}
+
+/* Paper-style swatch buttons in PaperPicker */
+.paper-swatch {
+  position: relative;
+  width: 72px;
+  height: 52px;
+  border-radius: 8px;
+  border: 1px solid var(--jz-border);
+  cursor: pointer;
+  overflow: hidden;
+  padding: 0;
+}
+.paper-swatch.is-active {
+  outline: 2px solid var(--jz-accent);
+  outline-offset: 1px;
+}
+.paper-swatch-label {
+  position: absolute;
+  inset: auto 0 4px 0;
+  text-align: center;
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.7);
+  text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
+}
+[data-theme='dark'] .paper-swatch-label {
+  color: rgba(255, 255, 255, 0.85);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.paper-picker-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--jz-border);
+  background: var(--jz-surface);
+  color: var(--jz-accent);
+  cursor: pointer;
+  display: inline-grid;
+  place-items: center;
+  transition: transform 120ms ease;
+}
+.paper-picker-btn:hover { transform: scale(1.06); }
+
+/* Soft accent stripe along admin content frame */
+.ant-layout-content.jz-fade-in {
+  background:
+    radial-gradient(900px 280px at 0% -10%,
+                    color-mix(in srgb, var(--jz-accent) 10%, transparent),
+                    transparent 60%),
+    var(--jz-bg-app);
+}
+
+/* Header — paper background with a thin double-rule underneath (mimics
+   the head margin of woodblock-printed books). */
+.ant-layout-header.blog-header {
+  background:
+    linear-gradient(to bottom,
+      color-mix(in srgb, var(--jz-surface) 80%, transparent),
+      color-mix(in srgb, var(--jz-bg-app) 92%, transparent)) !important;
+  border-bottom: 1px solid var(--jz-border) !important;
+  box-shadow: 0 1px 0 var(--jz-bg-app), 0 2px 0 var(--jz-gold);
+  backdrop-filter: blur(8px);
+}
+[data-theme='dark'] .ant-layout-header.blog-header {
+  background:
+    linear-gradient(to bottom,
+      color-mix(in srgb, var(--jz-surface) 85%, transparent),
+      color-mix(in srgb, var(--jz-bg-app) 95%, transparent)) !important;
+}
+
+/* Tighter, more readable typography in blog body */
+.markdown-preview p { margin: 0.9em 0; }
+.markdown-preview { word-wrap: break-word; }
+
+/* ── Home page hero: classical Chinese epigraph ──
+   Big sumi-ink serif characters + a cinnabar seal at the end of the line,
+   followed by a faded-ink attribution on a thin gold rule. */
+.jz-hero {
+  text-align: center;
+  margin: 36px 0 48px;
+  padding: 8px 0;
+}
+.jz-hero-quote {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
+  font-weight: 700;
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+  letter-spacing: 6px;
+  color: var(--jz-text);
+  line-height: 1.6;
+}
+.jz-hero-quote-sep {
+  color: var(--jz-gold);
+  opacity: 0.55;
+  font-size: 0.7em;
+  font-weight: 400;
+  position: relative;
+  top: -2px;
+}
+.jz-hero-seal {
+  display: inline-grid;
+  place-items: center;
+  width: 1.55em;
+  height: 1.55em;
+  margin-left: 12px;
+  background:
+    /* Subtle vertical grain inside the seal — like ink density variance */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 2px,
+      rgba(255, 255, 255, 0.06) 2px 3px
+    ),
+    linear-gradient(135deg, #c0392b, #8b1a1a);
+  border: 1.5px solid #6b0f0f;
+  border-radius: 4px;
+  color: #fdf5e0;
+  /* Slight rotation so it feels hand-stamped, not stenciled */
+  transform: rotate(-2deg);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.25) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.25) inset,
+    0 2px 6px rgba(120, 30, 25, 0.35);
+}
+.jz-hero-seal-text {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 700;
+  font-size: 0.42em;
+  /* Stack the two characters vertically — traditional Chinese name chops
+     read top-to-bottom, right-to-left. */
+  writing-mode: vertical-rl;
+  letter-spacing: 1px;
+  line-height: 0.95;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
+}
+
+.jz-hero-attr {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 13px;
+  letter-spacing: 4px;
+  color: var(--jz-text-muted);
+  opacity: 0.85;
+}
+.jz-hero-attr-rule {
+  display: inline-block;
+  width: 48px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--jz-gold), transparent);
+}
+
+.jz-hero-sub {
+  margin-top: 36px;
+  padding-top: 20px;
+  border-top: 1px dashed var(--jz-divider);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}

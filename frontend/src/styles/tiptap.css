@@ -1,0 +1,131 @@
+/* Tiptap editor surface */
+.tiptap-shell .ProseMirror {
+  outline: none;
+  min-height: 280px;
+  line-height: 1.7;
+  font-size: 15px;
+}
+.tiptap-shell .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #bfbfbf;
+  pointer-events: none;
+  height: 0;
+}
+.tiptap-shell .ProseMirror h1 { font-size: 1.9em; margin: 1em 0 0.4em; font-weight: 600; }
+.tiptap-shell .ProseMirror h2 { font-size: 1.5em; margin: 1em 0 0.4em; font-weight: 600; }
+.tiptap-shell .ProseMirror h3 { font-size: 1.25em; margin: 1em 0 0.4em; font-weight: 600; }
+.tiptap-shell .ProseMirror blockquote {
+  border-left: 4px solid #d9d9d9;
+  padding: 0.4em 1em;
+  margin: 0.8em 0;
+  color: #555;
+  background: #f6f8fa;
+}
+.tiptap-shell .ProseMirror code {
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+.tiptap-shell .ProseMirror pre {
+  background: #282c34;
+  color: #eaeaea;
+  padding: 12px 16px;
+  border-radius: 6px;
+  overflow: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+.tiptap-shell .ProseMirror pre code { background: transparent; color: inherit; padding: 0; }
+.tiptap-shell .ProseMirror ul[data-type='taskList'] { list-style: none; padding-left: 0.5em; }
+.tiptap-shell .ProseMirror ul[data-type='taskList'] li { display: flex; gap: 8px; }
+.tiptap-shell .ProseMirror ul[data-type='taskList'] li > label { user-select: none; }
+.tiptap-shell .ProseMirror table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 1em 0;
+  overflow: hidden;
+}
+.tiptap-shell .ProseMirror th,
+.tiptap-shell .ProseMirror td {
+  border: 1px solid #e5e5e5;
+  padding: 6px 10px;
+  vertical-align: top;
+  position: relative;
+}
+.tiptap-shell .ProseMirror th { background: #fafafa; font-weight: 600; }
+.tiptap-shell .ProseMirror .selectedCell::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(22, 119, 255, 0.1);
+  pointer-events: none;
+}
+.tiptap-shell .ProseMirror hr {
+  border: none;
+  border-top: 1px solid #eee;
+  margin: 1.5em 0;
+}
+.tiptap-shell .ProseMirror a {
+  color: #1677ff;
+  text-decoration: none;
+}
+.tiptap-shell .ProseMirror a:hover { text-decoration: underline; }
+.tiptap-shell .ProseMirror img { max-width: 100%; height: auto; }
+
+/* Slash menu (rendered into document.body via tippy) */
+.slash-menu {
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  padding: 4px;
+  min-width: 200px;
+  max-height: 320px;
+  overflow: auto;
+  font-size: 13px;
+}
+.slash-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.slash-menu-item.is-active { background: #e6f4ff; }
+.slash-menu-item-title { font-weight: 500; color: #1f1f1f; }
+.slash-menu-item-desc { color: #999; font-size: 12px; margin-top: 2px; }
+.slash-menu-empty { padding: 12px; text-align: center; color: #999; }
+
+/* Global drag handle (left-side handle dot rendered next to hovered block) */
+.drag-handle {
+  position: fixed;
+  opacity: 0;
+  transition: opacity 0.15s;
+  width: 14px;
+  height: 18px;
+  border-radius: 3px;
+  cursor: grab;
+  background-image: linear-gradient(
+    45deg,
+    transparent 0,
+    transparent 4px,
+    #bfbfbf 4px,
+    #bfbfbf 6px,
+    transparent 6px,
+    transparent 8px,
+    #bfbfbf 8px,
+    #bfbfbf 10px,
+    transparent 10px
+  );
+  z-index: 10;
+}
+.drag-handle:hover { background-color: #f0f0f0; }
+.tiptap-shell:hover .drag-handle,
+.drag-handle.show { opacity: 0.6; }
+.drag-handle.hide { opacity: 0; pointer-events: none; }

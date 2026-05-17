@@ -1,0 +1,301 @@
+/* ── 星空·繁星 ──
+   A fixed-position decorative layer that lives behind everything and
+   activates only in the [data-theme='starry'] mode. Pure CSS — no JS tick. */
+
+.jz-starry-night {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.jz-starry-night > * {
+  /* Hidden by default — only the dark theme reveals them. */
+  display: none;
+}
+
+/* ─── Milky Way ───
+   A wide diagonal band of glowing dust/stars across the sky. Conic mix of
+   purple/pink/white gives the famous "Milky Way" hue without an image. */
+[data-theme='starry'] .jz-milky-way {
+  display: block;
+  position: absolute;
+  top: -20%;
+  left: -30%;
+  width: 160%;
+  height: 200px;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(196, 181, 253, 0.04) 20%,
+    rgba(244, 182, 222, 0.10) 45%,
+    rgba(196, 181, 253, 0.08) 55%,
+    rgba(180, 200, 255, 0.04) 80%,
+    transparent 100%
+  );
+  filter: blur(22px);
+  transform: rotate(-22deg);
+  animation: jz-milky-pulse 12s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes jz-milky-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+
+/* ─── Nebula wisps ───
+   Soft, slow-drifting coloured clouds. Three of them at different positions
+   and tints. Heavy blur gives the gaseous-cloud feel without any image. */
+[data-theme='starry'] .jz-nebula {
+  display: block;
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(50px);
+  opacity: 0.55;
+  pointer-events: none;
+}
+[data-theme='starry'] .jz-nebula-1 {
+  top: 10%;
+  left: 15%;
+  width: 380px;
+  height: 260px;
+  background: radial-gradient(circle, rgba(192, 132, 252, 0.45), transparent 70%);
+  animation: jz-nebula-drift-a 30s ease-in-out infinite;
+}
+[data-theme='starry'] .jz-nebula-2 {
+  bottom: 18%;
+  right: 12%;
+  width: 320px;
+  height: 220px;
+  background: radial-gradient(circle, rgba(244, 114, 182, 0.35), transparent 70%);
+  animation: jz-nebula-drift-b 36s ease-in-out infinite;
+}
+[data-theme='starry'] .jz-nebula-3 {
+  top: 55%;
+  left: 45%;
+  width: 280px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(96, 165, 250, 0.30), transparent 70%);
+  animation: jz-nebula-drift-c 42s ease-in-out infinite;
+}
+@keyframes jz-nebula-drift-a {
+  0%, 100% { transform: translate(0, 0)        scale(1); }
+  50%      { transform: translate(40px, 25px)  scale(1.1); }
+}
+@keyframes jz-nebula-drift-b {
+  0%, 100% { transform: translate(0, 0)        scale(1); }
+  50%      { transform: translate(-30px, 20px) scale(0.95); }
+}
+@keyframes jz-nebula-drift-c {
+  0%, 100% { transform: translate(0, 0)         scale(1); }
+  50%      { transform: translate(25px, -25px)  scale(1.08); }
+}
+
+/* ─── Crescent moon ─── */
+[data-theme='starry'] .jz-moon {
+  display: block;
+  position: absolute;
+  top: 8%;
+  right: 9%;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 38%, #fbeec3 0%, #e6d4a0 55%, transparent 78%);
+  box-shadow:
+    0 0 32px 4px rgba(252, 211, 121, 0.18),
+    0 0 80px 12px rgba(252, 211, 121, 0.08);
+  filter: blur(0.4px);
+  animation: jz-moon-pulse 9s ease-in-out infinite;
+}
+@keyframes jz-moon-pulse {
+  0%, 100% { opacity: 0.9; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.03); }
+}
+
+/* ─── Star layers ───
+   Each layer is a tile of radial-gradients repeated across the viewport.
+   Three sizes + three speeds give a parallax-ish depth feel when you read. */
+[data-theme='starry'] .jz-stars {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background-repeat: repeat;
+}
+
+[data-theme='starry'] .jz-stars-small {
+  background-image:
+    radial-gradient(1px 1px at  17px  23px, rgba(255,255,255,0.85), transparent 60%),
+    radial-gradient(1px 1px at  53px  68px, rgba(255,255,255,0.70), transparent 60%),
+    radial-gradient(1px 1px at  97px  12px, rgba(255,255,255,0.55), transparent 60%),
+    radial-gradient(1px 1px at 124px  45px, rgba(255,255,255,0.80), transparent 60%),
+    radial-gradient(1px 1px at  78px 105px, rgba(255,255,255,0.65), transparent 60%),
+    radial-gradient(1px 1px at 168px  88px, rgba(255,255,255,0.75), transparent 60%),
+    radial-gradient(1px 1px at 211px  31px, rgba(255,255,255,0.60), transparent 60%),
+    radial-gradient(1px 1px at 244px 120px, rgba(255,255,255,0.85), transparent 60%),
+    radial-gradient(1px 1px at  36px 140px, rgba(255,255,255,0.50), transparent 60%),
+    radial-gradient(1px 1px at 142px 175px, rgba(255,255,255,0.70), transparent 60%),
+    radial-gradient(1px 1px at 199px 162px, rgba(255,255,255,0.55), transparent 60%),
+    radial-gradient(1px 1px at 273px  78px, rgba(255,255,255,0.80), transparent 60%);
+  background-size: 300px 220px;
+  animation: jz-twinkle 4.5s ease-in-out infinite;
+}
+[data-theme='starry'] .jz-stars-medium {
+  background-image:
+    radial-gradient(1.5px 1.5px at  42px  56px, rgba(220,235,255,0.95), transparent 65%),
+    radial-gradient(1.5px 1.5px at 130px  98px, rgba(220,235,255,0.85), transparent 65%),
+    radial-gradient(1.5px 1.5px at 215px  34px, rgba(255,245,225,0.90), transparent 65%),
+    radial-gradient(1.5px 1.5px at  88px 188px, rgba(220,235,255,0.80), transparent 65%),
+    radial-gradient(1.5px 1.5px at 260px 145px, rgba(255,245,225,0.85), transparent 65%),
+    radial-gradient(1.5px 1.5px at 335px  72px, rgba(220,235,255,0.95), transparent 65%);
+  background-size: 420px 280px;
+  animation: jz-twinkle 7s ease-in-out infinite;
+  animation-delay: -2s;
+}
+[data-theme='starry'] .jz-stars-large {
+  background-image:
+    radial-gradient(2.2px 2.2px at  76px  88px, rgba(255,255,255,1) 30%, rgba(255,255,255,0.4) 60%, transparent 80%),
+    radial-gradient(2.2px 2.2px at 285px 215px, rgba(255,245,225,1) 30%, rgba(255,245,225,0.4) 60%, transparent 80%),
+    radial-gradient(2px   2px   at 520px 110px, rgba(220,235,255,1) 30%, rgba(220,235,255,0.4) 60%, transparent 80%);
+  background-size: 640px 360px;
+  animation: jz-twinkle-strong 3.2s ease-in-out infinite;
+  animation-delay: -1s;
+}
+/* Coloured "giants" — a sparse handful of red, blue, and gold stars among
+   the white-ish field, like real night-sky variety. Slower twinkle. */
+[data-theme='starry'] .jz-stars-colored {
+  background-image:
+    radial-gradient(2.5px 2.5px at 120px  60px, rgba(252, 165, 165, 1) 35%, rgba(252, 165, 165, 0.4) 60%, transparent 80%),
+    radial-gradient(2.5px 2.5px at 410px 280px, rgba(147, 197, 253, 1) 35%, rgba(147, 197, 253, 0.4) 60%, transparent 80%),
+    radial-gradient(2.2px 2.2px at 680px 130px, rgba(253, 224, 71,  1) 35%, rgba(253, 224, 71, 0.4)  60%, transparent 80%),
+    radial-gradient(2px   2px   at 850px 380px, rgba(254, 202, 202, 1) 35%, rgba(254, 202, 202, 0.4) 60%, transparent 80%);
+  background-size: 960px 480px;
+  animation: jz-twinkle-strong 5.6s ease-in-out infinite;
+  animation-delay: -2.3s;
+  /* Boost the glow a touch so colour reads even through nebula clouds */
+  filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.5));
+}
+
+@keyframes jz-twinkle {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+@keyframes jz-twinkle-strong {
+  0%, 100% { opacity: 0.55; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+/* ─── Shooting stars ───
+   Two streaks at different angles & long delays so the sky feels alive
+   without becoming a fireworks show. */
+[data-theme='starry'] .jz-shooting-star {
+  display: block;
+  position: absolute;
+  width: 180px;
+  height: 1.2px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    rgba(255, 255, 255, 0.9) 50%,
+    transparent 100%
+  );
+  filter: drop-shadow(0 0 3px rgba(255, 255, 255, 0.7));
+  opacity: 0;
+}
+[data-theme='starry'] .jz-shooting-star-1 { top: 12%; left: -200px; transform: rotate(-18deg); animation: jz-shoot-a 10s ease-out infinite; animation-delay:  1s; }
+[data-theme='starry'] .jz-shooting-star-2 { top: 30%; left: -200px; transform: rotate(-22deg); animation: jz-shoot-a 13s ease-out infinite; animation-delay:  4s; }
+[data-theme='starry'] .jz-shooting-star-3 { top: 48%; left: -200px; transform: rotate(-16deg); animation: jz-shoot-b 11s ease-out infinite; animation-delay:  7s; }
+[data-theme='starry'] .jz-shooting-star-4 { top: 22%; left: -200px; transform: rotate(-28deg); animation: jz-shoot-b 15s ease-out infinite; animation-delay:  2s; }
+[data-theme='starry'] .jz-shooting-star-5 { top: 65%; left: -200px; transform: rotate(-20deg); animation: jz-shoot-a 12s ease-out infinite; animation-delay:  9s; }
+[data-theme='starry'] .jz-shooting-star-6 { top: 40%; left: -200px; transform: rotate(-24deg); animation: jz-shoot-b 14s ease-out infinite; animation-delay: 12s; }
+
+@keyframes jz-shoot-a {
+  0%   { transform: translate(0, 0) rotate(-20deg);            opacity: 0; }
+  3%   { opacity: 1; }
+  20%  { opacity: 1; }
+  35%  { opacity: 0; }
+  100% { transform: translate(140vw, 38vh) rotate(-20deg);     opacity: 0; }
+}
+@keyframes jz-shoot-b {
+  0%   { transform: translate(0, 0) rotate(-24deg);            opacity: 0; }
+  4%   { opacity: 1; }
+  22%  { opacity: 1; }
+  40%  { opacity: 0; }
+  100% { transform: translate(140vw, 55vh) rotate(-24deg);     opacity: 0; }
+}
+
+/* ─── Fireflies ───
+   Slow drifting warm-yellow glow points; the flicker animation pulses
+   the brightness so they feel alive. Each has its own translate path. */
+[data-theme='starry'] .jz-firefly {
+  display: block;
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(252, 211, 100, 1) 0%, rgba(252, 211, 100, 0.35) 45%, transparent 75%);
+  box-shadow: 0 0 8px 2px rgba(252, 211, 100, 0.4);
+}
+[data-theme='starry'] .jz-firefly-1 {
+  top: 40%;
+  left: 8%;
+  animation: jz-firefly-drift-a 18s ease-in-out infinite, jz-firefly-flicker 1.8s ease-in-out infinite;
+}
+[data-theme='starry'] .jz-firefly-2 {
+  top: 70%;
+  left: 25%;
+  animation: jz-firefly-drift-b 24s ease-in-out infinite, jz-firefly-flicker 2.3s ease-in-out infinite;
+  animation-delay: -3s, -0.4s;
+}
+[data-theme='starry'] .jz-firefly-3 {
+  top: 25%;
+  left: 65%;
+  animation: jz-firefly-drift-c 20s ease-in-out infinite, jz-firefly-flicker 2s ease-in-out infinite;
+  animation-delay: -8s, -1.1s;
+}
+[data-theme='starry'] .jz-firefly-4 {
+  top: 80%;
+  left: 78%;
+  animation: jz-firefly-drift-d 26s ease-in-out infinite, jz-firefly-flicker 2.6s ease-in-out infinite;
+  animation-delay: -14s, -0.7s;
+}
+@keyframes jz-firefly-flicker {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50%      { opacity: 1;   transform: scale(1.1); }
+}
+@keyframes jz-firefly-drift-a {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(60px, -40px); }
+  50%      { transform: translate(120px, 20px); }
+  75%      { transform: translate(40px, 60px); }
+}
+@keyframes jz-firefly-drift-b {
+  0%, 100% { transform: translate(0, 0); }
+  33%      { transform: translate(-50px, -60px); }
+  66%      { transform: translate(80px, -30px); }
+}
+@keyframes jz-firefly-drift-c {
+  0%, 100% { transform: translate(0, 0); }
+  25%      { transform: translate(-70px, 40px); }
+  50%      { transform: translate(-20px, 100px); }
+  75%      { transform: translate(50px, 50px); }
+}
+@keyframes jz-firefly-drift-d {
+  0%, 100% { transform: translate(0, 0); }
+  40%      { transform: translate(-100px, -50px); }
+  80%      { transform: translate(-40px, -120px); }
+}
+
+/* Make sure actual page content sits above the starry layer — and that the
+   Layout itself is transparent so the stars are visible through it.
+   AntD's Layout defaults paint an opaque bg-container color that would
+   otherwise completely hide the starry/deepsea overlay. */
+.ant-layout {
+  position: relative;
+  z-index: 1;
+}
+[data-theme='starry'] .ant-layout,
+[data-theme='starry'] .ant-layout-content,
+[data-theme='deepsea'] .ant-layout,
+[data-theme='deepsea'] .ant-layout-content {
+  background: transparent !important;
+}

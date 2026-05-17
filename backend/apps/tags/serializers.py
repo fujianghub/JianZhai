@@ -1,0 +1,49 @@
+from __future__ import annotations
+
+from django.utils.text import slugify
+from rest_framework import serializers
+
+from apps.knowledge.models import Document, KnowledgeBase
+
+from .models import Tag
+
+
+class TagSerializer(serializers.ModelSerializer):
+    document_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Tag
+        fields = ["id", "name", "slug", "color", "document_count", "created_at"]
+        read_only_fields = ["id", "slug", "document_count", "created_at"]
+
+    def get_document_count(self, obj: Tag) -> int:
+        return obj.documents(manager="objects").count()
+
+    def create(self, validated_data):
+        name = validated_data["name"].strip()
+        owner = self.context["request"].user
+        slug = slugify(name, allow_unicode=True) or "tag"
+        base = slug[:55]
+        i = 0
+        while Tag.objects.filter(owner=owner, slug=slug).exists():
+            i += 1
+            slug = f"{base}-{i}"
+        return Tag.objects.create(
+            owner=owner, name=name, slug=slug, color=validated_data.get("color", "")
+        )
+
+
+class TargetTagsSerializer(serializers.Serializer):
+    """PATCH body for re-setting the tag list on a Document or KnowledgeBase."""
+
+    tag_ids = serializers.ListField(child=serializers.IntegerField(), allow_empty=True)
+
+    def set_on(self, target, user) -> list[Tag]:
+        ids = self.validated_data["tag_ids"]
+        tags = list(Tag.objects.filter(owner=user, id__in=ids))
+        target.tags.set(tags)
+        return tags
+
+
+# Backwards-compat alias for callers that still import the old name.
+DocumentTagsSerializer = TargetTagsSerializer

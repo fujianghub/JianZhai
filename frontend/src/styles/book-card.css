@@ -1,0 +1,184 @@
+/* ── 古书装帧 KB 卡 ──
+   Visually treats each knowledge base as a thread-bound Chinese book:
+   - paper-coloured cover with subtle warp/grain
+   - dark spine on the left with four stitch holes
+   - cinnabar (朱砂) title label rotated ~−1.5°
+   - faint inner frame mimicking 包角 corner protectors
+   - lifts and tilts very slightly on hover, like picking up a volume */
+
+.jz-book {
+  position: relative;
+  display: block;
+  padding: 24px 26px 22px 50px;            /* leave room for the spine */
+  border: 1px solid var(--jz-border);
+  border-radius: 4px 8px 8px 4px;          /* tighter on the spine side */
+  background:
+    /* faint vertical fibre — handmade paper grain (帘纹) */
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 2px,
+      rgba(120, 80, 35, 0.02) 2px 3px
+    ),
+    /* warm paper hue with light corner shading */
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--jz-surface) 92%, #f7e7c4),
+      var(--jz-surface) 60%,
+      color-mix(in srgb, var(--jz-surface) 88%, #c9b787));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--jz-gold) 18%, transparent),
+    inset 0 0 12px rgba(120, 80, 35, 0.05),
+    0 1px 0 color-mix(in srgb, var(--jz-gold) 35%, transparent),
+    0 10px 28px -10px rgba(120, 80, 35, 0.30);
+  overflow: hidden;
+  min-height: 200px;
+  color: var(--jz-text);
+  text-decoration: none;
+  transform: rotate(0deg);
+  transition: transform 220ms ease, box-shadow 220ms ease;
+}
+
+/* 书脊: dark vertical strip with four stitch holes ─ */
+.jz-book::before {
+  content: '';
+  position: absolute;
+  top: 0; bottom: 0; left: 0;
+  width: 26px;
+  background:
+    /* four stitch holes evenly spaced */
+    radial-gradient(circle at 50% 14%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
+    radial-gradient(circle at 50% 38%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
+    radial-gradient(circle at 50% 62%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
+    radial-gradient(circle at 50% 86%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
+    /* spine body — darker brown, with a thin gold rule at its inner edge */
+    linear-gradient(to right,
+      #5a3a1c 0%,
+      #6b4a25 35%,
+      #7a5630 75%,
+      color-mix(in srgb, var(--jz-gold) 60%, #5a3a1c) 95%,
+      var(--jz-border) 100%);
+}
+
+/* 右边一束「书页边」灰白细线，暗示厚度 */
+.jz-book::after {
+  content: '';
+  position: absolute;
+  top: 6px; bottom: 6px; right: 0;
+  width: 4px;
+  background: repeating-linear-gradient(
+    to right,
+    color-mix(in srgb, var(--jz-text) 10%, transparent) 0 0.6px,
+    transparent 0.6px 1.4px
+  );
+  opacity: 0.55;
+  border-radius: 0 4px 4px 0;
+}
+
+/* 题签: cinnabar rectangle anchored top-left with slight rotation */
+.jz-book-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 14px;
+  margin-bottom: 16px;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 2px, rgba(255,255,255,0.05) 2px 3px),
+    linear-gradient(180deg, #c0392b, #8b1a1a);
+  border: 1px solid #6b0f0f;
+  color: #fdf5e0;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 3px;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 3px 6px -2px rgba(120, 30, 25, 0.45);
+  transform: rotate(-1.4deg);
+  border-radius: 2px;
+  max-width: 100%;
+  word-break: break-all;
+}
+
+/* The 题签 above is small for short names; this larger variant for KB names
+   uses the same look but stretches horizontally. */
+.jz-book-label .jz-book-label-text {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 220px;
+}
+
+.jz-book-desc {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--jz-text-muted);
+  min-height: 44px;
+  margin-bottom: 12px;
+  /* clamp to 2 lines */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.jz-book-tags {
+  margin-bottom: 12px;
+  min-height: 24px;
+}
+
+.jz-book-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 12px;
+  border-top: 1px dashed color-mix(in srgb, var(--jz-gold) 35%, transparent);
+  color: var(--jz-text-muted);
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 12.5px;
+  letter-spacing: 0.5px;
+}
+.jz-book-meta-action {
+  color: var(--jz-accent);
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: gap 180ms ease;
+}
+
+/* Hover: lift, micro-tilt, and let the "进入 →" arrow drift forward */
+.jz-book:hover {
+  transform: translateY(-3px) rotate(-0.4deg);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--jz-gold) 35%, transparent),
+    inset 0 0 12px rgba(120, 80, 35, 0.08),
+    0 2px 0 color-mix(in srgb, var(--jz-gold) 50%, transparent),
+    0 16px 40px -10px rgba(120, 80, 35, 0.40);
+}
+.jz-book:hover .jz-book-meta-action {
+  gap: 8px;
+}
+
+/* Dark / starry / deepsea: ink-paper covers with brighter gold accents */
+[data-theme='dark'] .jz-book,
+[data-theme='starry'] .jz-book,
+[data-theme='deepsea'] .jz-book {
+  background:
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 2px,
+      rgba(201, 168, 117, 0.03) 2px 3px
+    ),
+    linear-gradient(135deg,
+      color-mix(in srgb, var(--jz-surface) 85%, #2a1f15),
+      var(--jz-surface) 60%,
+      color-mix(in srgb, var(--jz-surface) 80%, #1a1208));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--jz-gold) 25%, transparent),
+    inset 0 0 12px rgba(0, 0, 0, 0.3),
+    0 1px 0 color-mix(in srgb, var(--jz-gold) 30%, transparent),
+    0 10px 32px -8px rgba(0, 0, 0, 0.6);
+}

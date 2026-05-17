@@ -1,0 +1,34 @@
+/* Mobile-friendly tweaks for the blog frontend. */
+@media (max-width: 720px) {
+  .blog-header {
+    padding: 0 12px !important;
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    height: auto !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    gap: 4px;
+  }
+  .jz-brand-cn,
+  .jz-brand-en {
+    font-size: 18px !important;
+  }
+  .blog-content {
+    padding: 16px !important;
+  }
+  .markdown-preview h1 { font-size: 1.6em !important; }
+  .markdown-preview h2 { font-size: 1.35em !important; }
+  .markdown-preview pre {
+    font-size: 0.85em !important;
+    padding: 10px 12px !important;
+  }
+  /* Make tables horizontally scrollable instead of overflowing the viewport */
+  .markdown-preview {
+    overflow-x: auto;
+  }
+  .markdown-preview table {
+    display: block;
+    overflow-x: auto;
+    max-width: 100%;
+  }
+}

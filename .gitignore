@@ -1,0 +1,55 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Django
+*.sqlite3
+db.sqlite3-journal
+local_settings.py
+backend/staticfiles/
+
+# Node
+node_modules/
+.pnpm-store/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Frontend build
+frontend/dist/
+frontend/.vite/
+.next/
+
+# Media / exports (project-specific)
+backend/media/
+backend/exports/
+
+# Env files (keep .env.example tracked)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Coverage
+.coverage
+htmlcov/
+coverage.xml
+
+# Celery
+celerybeat-schedule
+celerybeat.pid

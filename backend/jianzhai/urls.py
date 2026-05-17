@@ -1,0 +1,30 @@
+from django.conf import settings
+from django.conf.urls.static import static
+from django.contrib import admin
+from django.urls import include, path
+
+from apps.blog.views import rss_feed
+from apps.tags.views import public_tag_cloud
+
+api_v1_patterns = [
+    path("auth/", include("apps.accounts.urls")),
+    path("", include("apps.knowledge.urls")),
+    path("", include("apps.editor.urls")),
+    path("", include("apps.linking.urls")),
+    path("", include("apps.versioning.urls")),
+    path("", include("apps.search.urls")),
+    path("", include("apps.exporter.urls")),
+    path("", include("apps.tags.urls")),
+    path("", include("apps.comments.urls")),
+    path("public/tags/", public_tag_cloud, name="public-tag-cloud"),
+    path("public/", include("apps.blog.urls")),
+]
+
+urlpatterns = [
+    path("admin/", admin.site.urls),
+    path("api/v1/", include((api_v1_patterns, "api_v1"))),
+    path("feed.xml", rss_feed, name="feed"),
+]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

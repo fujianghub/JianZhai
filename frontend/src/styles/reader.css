@@ -1,0 +1,117 @@
+/* Three-column blog post reader: KB nav | article | TOC.
+   Defaults to the full 3 columns on wide screens. Below 1280px the right TOC
+   folds away, below 960px the left KB nav folds too — at that point you get
+   the classic single-column reader. */
+
+.jz-post-layout {
+  display: grid;
+  gap: 24px;
+  align-items: start;
+  /* Default: both sidebars on. Specific combos below override. */
+  grid-template-columns: 220px minmax(0, 1fr) 220px;
+}
+.jz-post-layout[data-show-kb='true'][data-show-toc='false'] {
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+.jz-post-layout[data-show-kb='false'][data-show-toc='true'] {
+  grid-template-columns: minmax(0, 1fr) 220px;
+}
+.jz-post-layout[data-show-kb='false'][data-show-toc='false'] {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.jz-post-aside {
+  position: sticky;
+  top: 80px; /* clear the fixed blog header */
+  align-self: start;
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+  padding: 16px 12px;
+  font-size: 13px;
+  scrollbar-width: thin;
+}
+.jz-post-aside-left {
+  border-right: 1px solid var(--jz-divider);
+}
+.jz-post-aside-right {
+  border-left: 1px solid var(--jz-divider);
+}
+.jz-post-aside::-webkit-scrollbar {
+  width: 6px;
+}
+.jz-post-aside::-webkit-scrollbar-thumb {
+  background: var(--jz-divider);
+  border-radius: 3px;
+}
+
+.jz-post-main {
+  min-width: 0; /* let the article column shrink inside the grid */
+}
+
+/* Hover/focus polish on the TOC and KB-nav links. */
+.jz-toc-link:hover {
+  color: var(--jz-accent) !important;
+  border-left-color: color-mix(in srgb, var(--jz-accent) 50%, transparent) !important;
+}
+.jz-kb-nav-link:hover {
+  background: color-mix(in srgb, var(--jz-accent) 6%, transparent) !important;
+  color: var(--jz-accent) !important;
+}
+
+/* Floating "show TOC / show KB list" buttons — visible when the matching
+   sidebar is collapsed. Vertically centered to the viewport so they never
+   collide with the article's bottom edge, no matter how long the doc is. */
+.jz-toc-fab,
+.jz-kbnav-fab {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 50;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  background: var(--jz-surface) !important;
+}
+.jz-toc-fab {
+  right: 16px;
+}
+.jz-kbnav-fab {
+  left: 16px;
+}
+.jz-toc-fab:hover,
+.jz-kbnav-fab:hover {
+  background: var(--jz-surface-2) !important;
+}
+
+/* Responsive: collapse the right TOC below 1280, then the left KB below 960.
+   These rules override the toggle-driven grid above so narrow viewports stay
+   readable even if the user opened both sidebars on a wide monitor first. */
+@media (max-width: 1280px) {
+  .jz-post-layout,
+  .jz-post-layout[data-show-kb='true'][data-show-toc='true'],
+  .jz-post-layout[data-show-kb='true'][data-show-toc='false'] {
+    grid-template-columns: 220px minmax(0, 1fr);
+  }
+  .jz-post-layout[data-show-kb='false'] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .jz-post-aside-right {
+    display: none;
+  }
+}
+
+@media (max-width: 960px) {
+  .jz-post-layout,
+  .jz-post-layout[data-show-kb='true'][data-show-toc='true'],
+  .jz-post-layout[data-show-kb='true'][data-show-toc='false'],
+  .jz-post-layout[data-show-kb='false'][data-show-toc='true'],
+  .jz-post-layout[data-show-kb='false'][data-show-toc='false'] {
+    grid-template-columns: 1fr;
+  }
+  .jz-post-aside-left,
+  .jz-post-aside-right {
+    display: none;
+  }
+  .jz-toc-fab,
+  .jz-kbnav-fab {
+    display: none;
+  }
+}

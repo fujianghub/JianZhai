@@ -1,0 +1,306 @@
+/* ── 深海·气泡 ──
+   Fixed-position ambient layer; only activates in [data-theme='deepsea'].
+   Pure CSS — bubbles rise, fish drift, caustic light shimmers. */
+
+.jz-deep-sea {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.jz-deep-sea > *,
+.jz-deep-sea .jz-bubble {
+  display: none;
+}
+
+[data-theme='deepsea'] .jz-deep-sea > * { display: block; }
+[data-theme='deepsea'] .jz-deep-sea .jz-bubble,
+[data-theme='deepsea'] .jz-deep-sea .jz-godray { display: block; }
+
+/* ─── Caustic light: sunlight refracting through water surface ───
+   Two overlaid wavy gradients animated horizontally for shimmer. */
+[data-theme='deepsea'] .jz-caustics {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 35% at 20% -10%, rgba(94, 234, 212, 0.18), transparent 70%),
+    radial-gradient(ellipse 60% 35% at 70% -10%, rgba(56, 189, 248, 0.15), transparent 70%),
+    radial-gradient(ellipse 40% 25% at 50% -5%,  rgba(255, 255, 255, 0.08), transparent 70%);
+  filter: blur(8px);
+  animation: jz-caustic-shimmer 8s ease-in-out infinite alternate;
+}
+@keyframes jz-caustic-shimmer {
+  0%   { transform: translateX(-3%) scale(1.02); opacity: 0.85; }
+  100% { transform: translateX(3%)  scale(1.05); opacity: 1; }
+}
+
+/* ─── Bubbles rising ─── */
+[data-theme='deepsea'] .jz-bubble {
+  position: absolute;
+  bottom: -40px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 32% 32%,
+      rgba(255, 255, 255, 0.55) 0%,
+      rgba(255, 255, 255, 0.18) 40%,
+      transparent 60%),
+    radial-gradient(circle,
+      rgba(125, 211, 252, 0.25),
+      rgba(125, 211, 252, 0.08));
+  box-shadow:
+    inset 0 0 4px rgba(255, 255, 255, 0.3),
+    0 0 6px rgba(125, 211, 252, 0.2);
+  opacity: 0;
+}
+[data-theme='deepsea'] .jz-bubble-1 { left:  6%; width: 14px; height: 14px; animation: jz-bubble-rise 12s linear infinite;          animation-delay:  0s; }
+[data-theme='deepsea'] .jz-bubble-2 { left: 18%; width:  8px; height:  8px; animation: jz-bubble-rise 16s linear infinite;          animation-delay: -3s; }
+[data-theme='deepsea'] .jz-bubble-3 { left: 32%; width: 22px; height: 22px; animation: jz-bubble-rise-wide 14s linear infinite;     animation-delay: -8s; }
+[data-theme='deepsea'] .jz-bubble-4 { left: 45%; width: 10px; height: 10px; animation: jz-bubble-rise 18s linear infinite;          animation-delay: -2s; }
+[data-theme='deepsea'] .jz-bubble-5 { left: 58%; width: 16px; height: 16px; animation: jz-bubble-rise-wide 20s linear infinite;     animation-delay: -11s; }
+[data-theme='deepsea'] .jz-bubble-6 { left: 72%; width:  6px; height:  6px; animation: jz-bubble-rise 11s linear infinite;          animation-delay: -5s; }
+[data-theme='deepsea'] .jz-bubble-7 { left: 84%; width: 12px; height: 12px; animation: jz-bubble-rise 15s linear infinite;          animation-delay: -1s; }
+[data-theme='deepsea'] .jz-bubble-8 { left: 93%; width: 18px; height: 18px; animation: jz-bubble-rise-wide 17s linear infinite;     animation-delay: -9s; }
+
+@keyframes jz-bubble-rise {
+  0%   { transform: translate(0, 0)     scale(0.6); opacity: 0; }
+  10%  { opacity: 0.7; }
+  50%  { transform: translate(15px, -50vh) scale(1); }
+  90%  { opacity: 0.5; }
+  100% { transform: translate(-10px, -110vh) scale(0.8); opacity: 0; }
+}
+@keyframes jz-bubble-rise-wide {
+  0%   { transform: translate(0, 0)     scale(0.7); opacity: 0; }
+  10%  { opacity: 0.6; }
+  50%  { transform: translate(-25px, -50vh) scale(1.1); }
+  90%  { opacity: 0.4; }
+  100% { transform: translate(20px, -110vh) scale(0.9); opacity: 0; }
+}
+
+/* ─── Sea life — emoji silhouettes that actually swim ───
+   Three independent animations compose to give a real "swimming" feel:
+   - horizontal travel (animates `left` / `right`)        — slow, linear
+   - vertical undulation (animates `translate`)           — medium sine bob
+   - tail flick (animates `rotate`)                       — fast wag
+   Using the standalone `translate` / `rotate` / `scale` properties keeps
+   them from clobbering each other the way a single `transform` would. */
+[data-theme='deepsea'] .jz-fish {
+  position: absolute;
+  font-size: 22px;
+  filter: drop-shadow(0 0 4px rgba(94, 234, 212, 0.4)) saturate(0.55) brightness(0.95);
+  opacity: 0.6;
+  transform-origin: 70% 50%;  /* pivot near the tail so the wag flicks the tail */
+}
+
+/* Direction: even-numbered fish face left (they enter from the right) */
+[data-theme='deepsea'] .jz-fish-1,
+[data-theme='deepsea'] .jz-fish-3,
+[data-theme='deepsea'] .jz-fish-5 { scale: 1 1; }
+[data-theme='deepsea'] .jz-fish-2,
+[data-theme='deepsea'] .jz-fish-4,
+[data-theme='deepsea'] .jz-fish-6 { scale: -1 1; transform-origin: 30% 50%; }
+
+[data-theme='deepsea'] .jz-fish-1 {
+  top: 20%; font-size: 24px;
+  animation: jz-swim-r 42s linear infinite,
+             jz-fish-undulate 2.4s ease-in-out infinite,
+             jz-fish-flick 0.42s linear infinite;
+}
+[data-theme='deepsea'] .jz-fish-2 {
+  top: 40%; font-size: 18px;
+  animation: jz-swim-l 36s linear infinite,
+             jz-fish-undulate 2s ease-in-out infinite,
+             jz-fish-flick 0.36s linear infinite;
+  animation-delay: -14s, -0.6s, -0.1s;
+}
+[data-theme='deepsea'] .jz-fish-3 {
+  top: 55%; font-size: 26px;
+  animation: jz-swim-r 50s linear infinite,
+             jz-fish-undulate 2.8s ease-in-out infinite,
+             jz-fish-flick 0.55s linear infinite;
+  animation-delay: -22s, -1.2s, -0.2s;
+}
+[data-theme='deepsea'] .jz-fish-4 {
+  top: 72%; font-size: 16px; opacity: 0.5;
+  animation: jz-swim-l 28s linear infinite,
+             jz-fish-undulate 1.6s ease-in-out infinite,
+             jz-fish-flick 0.3s linear infinite;
+  animation-delay: -6s, -0.3s, -0.05s;
+}
+[data-theme='deepsea'] .jz-fish-5 {
+  top: 86%; font-size: 18px; opacity: 0.45;
+  animation: jz-swim-r 55s linear infinite,
+             jz-fish-undulate 2.2s ease-in-out infinite,
+             jz-fish-flick 0.5s linear infinite;
+  animation-delay: -38s, -1s, -0.15s;
+}
+[data-theme='deepsea'] .jz-fish-6 {
+  top: 30%; font-size: 14px; opacity: 0.45;
+  animation: jz-swim-l 24s linear infinite,
+             jz-fish-undulate 1.5s ease-in-out infinite,
+             jz-fish-flick 0.28s linear infinite;
+  animation-delay: -10s, -0.7s, -0.08s;
+}
+
+/* Horizontal travel only — no transform — so it composes cleanly */
+@keyframes jz-swim-r {
+  0%   { left: -10%; }
+  100% { left: 110%; }
+}
+@keyframes jz-swim-l {
+  0%   { right: -10%; }
+  100% { right: 110%; }
+}
+/* Vertical sine bob — uses the standalone `translate` property */
+@keyframes jz-fish-undulate {
+  0%, 100% { translate: 0 -8px; }
+  50%      { translate: 0  8px; }
+}
+/* Tail-flick wag — uses the standalone `rotate` property; fast and snappy
+   so the eye reads it as the tail propelling the body forward */
+@keyframes jz-fish-flick {
+  0%, 100% { rotate: -12deg; }
+  50%      { rotate:  12deg; }
+}
+
+/* Bubble trail — a tiny rising bubble emitted from behind each fish, with
+   only some fish doing it (kept sparse so the screen isn't busy) */
+[data-theme='deepsea'] .jz-fish-1::after,
+[data-theme='deepsea'] .jz-fish-3::after,
+[data-theme='deepsea'] .jz-fish-5::after {
+  content: '';
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  right: 100%;
+  top: 40%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%,
+    rgba(255, 255, 255, 0.55),
+    rgba(125, 211, 252, 0.2) 60%,
+    transparent 75%);
+  box-shadow: 0 0 4px rgba(125, 211, 252, 0.3);
+  animation: jz-fish-trail 1.4s ease-out infinite;
+}
+[data-theme='deepsea'] .jz-fish-3::after { animation-duration: 1.8s; width: 5px; height: 5px; }
+[data-theme='deepsea'] .jz-fish-5::after { animation-duration: 1.1s; width: 3px; height: 3px; }
+@keyframes jz-fish-trail {
+  0%   { opacity: 0.7; transform: translate(0, 0)         scale(0.4); }
+  100% { opacity: 0;   transform: translate(-32px, -18px) scale(1); }
+}
+
+/* ─── Octopus (hidden in bottom-left, wriggling, mostly stays put) ─── */
+[data-theme='deepsea'] .jz-octopus {
+  position: absolute;
+  font-size: 44px;
+  bottom: 6%;
+  left: 4%;
+  opacity: 0.42;
+  filter: drop-shadow(0 0 8px rgba(192, 132, 252, 0.4)) saturate(0.5) brightness(0.95);
+  transform-origin: center 70%;
+  animation: jz-octopus-wriggle 7s ease-in-out infinite,
+             jz-octopus-crawl 60s ease-in-out infinite;
+}
+@keyframes jz-octopus-wriggle {
+  0%, 100% { transform: rotate(-4deg) scale(1); }
+  25%      { transform: rotate( 3deg) scale(1.04); }
+  50%      { transform: rotate(-2deg) scale(0.97); }
+  75%      { transform: rotate( 5deg) scale(1.02); }
+}
+@keyframes jz-octopus-crawl {
+  0%, 100% { left:  4%; bottom: 6%; }
+  35%      { left:  7%; bottom: 9%; }
+  60%      { left:  3%; bottom: 5%; }
+  85%      { left:  6%; bottom: 8%; }
+}
+
+/* ─── God rays / sunlight beams ───
+   Slim angled gradient stripes coming down from above the water surface.
+   Each pulses opacity at a different rate so they shimmer asynchronously. */
+[data-theme='deepsea'] .jz-godrays {
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70vh;
+  overflow: hidden;
+  pointer-events: none;
+}
+[data-theme='deepsea'] .jz-godray {
+  position: absolute;
+  top: -10%;
+  width: 120px;
+  height: 130%;
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(178, 224, 247, 0.10) 40%,
+    transparent 100%
+  );
+  filter: blur(14px);
+  transform-origin: top center;
+}
+[data-theme='deepsea'] .jz-godray-1 { left: 12%; transform: rotate(-8deg);  animation: jz-godray-pulse 6s ease-in-out infinite; }
+[data-theme='deepsea'] .jz-godray-2 { left: 32%; transform: rotate(-4deg);  animation: jz-godray-pulse 9s ease-in-out infinite; animation-delay: -2s; }
+[data-theme='deepsea'] .jz-godray-3 { left: 58%; transform: rotate(2deg);   animation: jz-godray-pulse 7s ease-in-out infinite; animation-delay: -4s; }
+[data-theme='deepsea'] .jz-godray-4 { left: 78%; transform: rotate(7deg);   animation: jz-godray-pulse 8s ease-in-out infinite; animation-delay: -1s; }
+@keyframes jz-godray-pulse {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 0.7; }
+}
+
+/* ─── Deep-water bioluminescence ───
+   Faint pulsing specks in the lower half of the viewport, like deep-sea
+   plankton lit by their own chemistry. Smaller and sparser than stars. */
+[data-theme='deepsea'] .jz-biolume {
+  display: block;
+  position: absolute;
+  inset: 50% 0 0 0;
+  background-image:
+    radial-gradient(1px 1px at  40px  30px, rgba(94, 234, 212, 0.75), transparent 60%),
+    radial-gradient(1.4px 1.4px at 110px  80px, rgba(125, 211, 252, 0.6), transparent 60%),
+    radial-gradient(1px 1px at 180px  40px, rgba(94, 234, 212, 0.65), transparent 60%),
+    radial-gradient(1.4px 1.4px at 250px 130px, rgba(167, 243, 208, 0.55), transparent 60%),
+    radial-gradient(1px 1px at  60px 160px, rgba(125, 211, 252, 0.65), transparent 60%),
+    radial-gradient(1.3px 1.3px at 320px  70px, rgba(94, 234, 212, 0.7),  transparent 60%);
+  background-size: 380px 220px;
+  background-repeat: repeat;
+  animation: jz-biolume-pulse 3.8s ease-in-out infinite;
+}
+@keyframes jz-biolume-pulse {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.9; }
+}
+
+/* ─── Jellyfish (水母) ───
+   SVG bell + tentacles. The bell pulses (squash-stretch) and the whole
+   creature drifts up the right side, very slowly, so it feels alive. */
+[data-theme='deepsea'] .jz-jellyfish {
+  display: block;
+  position: absolute;
+  width: 64px;
+  height: 88px;
+  right: 18%;
+  bottom: -120px;
+  filter: drop-shadow(0 0 12px rgba(192, 132, 252, 0.55));
+  animation: jz-jelly-rise 32s ease-in-out infinite;
+}
+[data-theme='deepsea'] .jz-jellyfish path:first-of-type {
+  transform-box: fill-box;
+  transform-origin: center 35%;
+  animation: jz-jelly-pulse 3.4s ease-in-out infinite;
+}
+@keyframes jz-jelly-pulse {
+  0%, 100% { transform: scaleY(1)   scaleX(1); }
+  40%      { transform: scaleY(0.85) scaleX(1.1); }
+  60%      { transform: scaleY(0.92) scaleX(1.05); }
+}
+@keyframes jz-jelly-rise {
+  0%   { bottom: -140px; right: 18%; opacity: 0; }
+  8%   { opacity: 0.95; }
+  50%  { bottom: 50vh;   right: 22%; opacity: 0.95; }
+  92%  { opacity: 0.8; }
+  100% { bottom: 120vh;  right: 16%; opacity: 0; }
+}
+

@@ -1,0 +1,223 @@
+/* ── 编年纪事（归档页）──
+   Pages styled like a chronicle with a cinnabar timeline running down the
+   left of each year. Months get a 印章-like dot marker, posts hang off a
+   thin vertical thread anchored at that dot. */
+
+.jz-archive {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.jz-archive-scroll {
+  margin-top: 28px;
+}
+
+/* ── Year header ── */
+.jz-archive-year {
+  margin-bottom: 36px;
+}
+.jz-archive-year-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 8px;
+}
+.jz-archive-year-text {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 700;
+  font-size: clamp(1.3rem, 2.4vw, 1.8rem);
+  letter-spacing: 4px;
+  color: var(--jz-accent);
+}
+.jz-archive-year-rule {
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right,
+    color-mix(in srgb, var(--jz-gold) 70%, transparent),
+    transparent);
+}
+
+/* ── Month list (left timeline) ── */
+.jz-archive-months {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  padding-left: 28px;
+}
+.jz-archive-months::before {
+  /* vertical timeline thread */
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  bottom: 6px;
+  width: 1px;
+  background:
+    repeating-linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--jz-gold) 50%, transparent) 0 6px,
+      transparent 6px 10px
+    );
+}
+
+.jz-archive-month {
+  margin-bottom: 24px;
+}
+.jz-archive-month-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  position: relative;
+}
+.jz-archive-month-dot {
+  position: absolute;
+  left: -28px;
+  top: 6px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #d36a5b, var(--jz-accent) 65%, #6b0f0f 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.3),
+    0 0 0 3px var(--jz-bg-app),
+    0 2px 6px rgba(120, 30, 25, 0.35);
+}
+.jz-archive-month-name {
+  font-weight: 700;
+  font-size: 17px;
+  letter-spacing: 2px;
+  color: var(--jz-text);
+}
+.jz-archive-month-alias {
+  font-size: 13px;
+  color: var(--jz-text-muted);
+  font-style: italic;
+  letter-spacing: 1px;
+}
+.jz-archive-month-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--jz-text-muted);
+  letter-spacing: 1px;
+}
+
+/* ── Post list ── */
+.jz-archive-posts {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 0 8px;
+}
+.jz-archive-post {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--jz-divider);
+  transition: background 160ms ease, padding-left 160ms ease;
+}
+.jz-archive-post:last-child {
+  border-bottom: none;
+}
+.jz-archive-post:hover {
+  background: color-mix(in srgb, var(--jz-accent) 5%, transparent);
+  padding-left: 8px;
+  border-radius: 4px;
+}
+.jz-archive-date {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 13px;
+  letter-spacing: 1px;
+  color: var(--jz-gold);
+  min-width: 64px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.jz-archive-title {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 15.5px;
+  line-height: 1.6;
+  color: var(--jz-text);
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+.jz-archive-title:hover {
+  color: var(--jz-accent);
+}
+
+/* ── 印谱（标签云页）──
+   Each tag becomes a small cinnabar seal stamp — slight rotation, depth via
+   inset highlights, hover lifts and brightens. Size scales with use count. */
+.jz-tagcloud {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.jz-tagcloud-wall {
+  margin-top: 28px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  justify-content: center;
+  padding: 24px 0;
+}
+.jz-seal-link {
+  text-decoration: none;
+  display: inline-block;
+}
+.jz-seal-stamp {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-weight: 700;
+  color: #fdf5e0;
+  background:
+    repeating-linear-gradient(90deg,
+      transparent 0 2px,
+      rgba(255, 255, 255, 0.05) 2px 3px),
+    linear-gradient(180deg, #c0392b, #8b1a1a);
+  border: 1.5px solid #6b0f0f;
+  border-radius: 4px;
+  letter-spacing: 3px;
+  line-height: 1;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 3px 8px -2px rgba(120, 30, 25, 0.4);
+  transition: transform 180ms ease, box-shadow 180ms ease;
+  cursor: pointer;
+  user-select: none;
+}
+.jz-seal-link:hover .jz-seal-stamp {
+  transform: scale(1.08);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+    0 6px 14px -2px rgba(120, 30, 25, 0.55);
+}
+.jz-seal-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.55em;
+  font-weight: 500;
+  letter-spacing: 0;
+  background: rgba(0, 0, 0, 0.25);
+  color: #fbeec3;
+  padding: 1px 5px;
+  border-radius: 6px;
+  margin-left: 2px;
+  text-shadow: none;
+}
+
+/* Dark / starry / deepsea: seals stay red on dark — they're naturally
+   high-contrast — but bump the outer glow so they pop against deep bg. */
+[data-theme='dark'] .jz-seal-stamp,
+[data-theme='starry'] .jz-seal-stamp,
+[data-theme='deepsea'] .jz-seal-stamp {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
+    0 4px 14px -2px rgba(180, 60, 50, 0.55);
+}
