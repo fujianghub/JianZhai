@@ -5,8 +5,17 @@
  * ways; pdfjs always works).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Space, Spin, Typography } from 'antd';
-import { DownloadOutlined, LeftOutlined, RightOutlined } from '@ant-design/icons';
+import { createPortal } from 'react-dom';
+import { Alert, Button, Space, Spin, Tooltip, Typography } from 'antd';
+import {
+  DownloadOutlined,
+  FullscreenExitOutlined,
+  FullscreenOutlined,
+  LeftOutlined,
+  RightOutlined,
+  ZoomInOutlined,
+  ZoomOutOutlined,
+} from '@ant-design/icons';
 import * as pdfjs from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
@@ -40,13 +49,32 @@ interface Props {
   height?: number | string;
 }
 
-export default function PdfCanvas({ url, height = '72vh' }: Props) {
+export default function PdfCanvas({ url, height = 'min(calc(100vh - 200px), 1100px)' }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const [doc, setDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
   const [page, setPage] = useState(1);
   const [pageCount, setPageCount] = useState(0);
   const [err, setErr] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [fullscreen, setFullscreen] = useState(false);
+  /** Manual zoom multiplier applied on top of fit-to-width.
+   * 1 = fit the visible width; bumped via the +/- buttons. */
+  const [zoom, setZoom] = useState(1);
+
+  // Lock body scroll while the fullscreen overlay is up, and exit on ESC.
+  useEffect(() => {
+    if (!fullscreen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFullscreen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [fullscreen]);
 
   // Resolve to backend-direct URL in dev (see DEV_BACKEND_ORIGIN above) and
   // append a per-mount nonce to defeat any stale `(204)` entry the browser
@@ -110,7 +138,10 @@ export default function PdfCanvas({ url, height = '72vh' }: Props) {
       try {
         const p = await doc.getPage(page);
         if (cancelled || !containerRef.current) return;
-        const cssWidth = Math.min(containerRef.current.clientWidth, 1000);
+        // In fullscreen the visible width is the viewport; otherwise cap to a
+        // comfortable reading width (1000px in inline, 1400px in fullscreen).
+        const maxWidth = fullscreen ? 1400 : 1000;
+        const cssWidth = Math.min(containerRef.current.clientWidth, maxWidth) * zoom;
         const baseVp = p.getViewport({ scale: 1 });
         const scale = (cssWidth / baseVp.width) * (window.devicePixelRatio || 1);
         const viewport = p.getViewport({ scale });
@@ -140,38 +171,68 @@ export default function PdfCanvas({ url, height = '72vh' }: Props) {
       cancelled = true;
       cleanup();
     };
-  }, [doc, page]);
+  }, [doc, page, zoom, fullscreen]);
 
-  return (
-    <div>
-      <Space
-        style={{
-          marginBottom: 8,
-          padding: '4px 12px',
-          background: 'var(--jz-surface-2)',
-          borderRadius: 6,
-          width: '100%',
-          justifyContent: 'space-between',
-          display: 'flex',
-        }}
-      >
-        <Space>
+  const toolbar = (
+    <Space
+      style={{
+        marginBottom: 8,
+        padding: '4px 12px',
+        background: 'var(--jz-surface-2)',
+        borderRadius: 6,
+        width: '100%',
+        justifyContent: 'space-between',
+        display: 'flex',
+        flexWrap: 'wrap',
+        gap: 8,
+      }}
+    >
+      <Space>
+        <Button
+          size="small"
+          icon={<LeftOutlined />}
+          disabled={page <= 1}
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+        />
+        <Typography.Text style={{ minWidth: 60, textAlign: 'center', display: 'inline-block' }}>
+          {page} / {pageCount || '?'}
+        </Typography.Text>
+        <Button
+          size="small"
+          icon={<RightOutlined />}
+          disabled={page >= pageCount}
+          onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+        />
+      </Space>
+      <Space>
+        <Tooltip title="缩小">
           <Button
             size="small"
-            icon={<LeftOutlined />}
-            disabled={page <= 1}
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
+            icon={<ZoomOutOutlined />}
+            disabled={zoom <= 0.5}
+            onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))}
           />
-          <Typography.Text style={{ minWidth: 60, textAlign: 'center', display: 'inline-block' }}>
-            {page} / {pageCount || '?'}
-          </Typography.Text>
+        </Tooltip>
+        <Typography.Text style={{ minWidth: 48, textAlign: 'center', display: 'inline-block' }}>
+          {Math.round(zoom * 100)}%
+        </Typography.Text>
+        <Tooltip title="放大">
           <Button
             size="small"
-            icon={<RightOutlined />}
-            disabled={page >= pageCount}
-            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+            icon={<ZoomInOutlined />}
+            disabled={zoom >= 3}
+            onClick={() => setZoom((z) => Math.min(3, +(z + 0.1).toFixed(2)))}
           />
-        </Space>
+        </Tooltip>
+        <Tooltip title={fullscreen ? '退出全屏 (Esc)' : '全屏阅读'}>
+          <Button
+            size="small"
+            icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
+            onClick={() => setFullscreen((v) => !v)}
+          >
+            {fullscreen ? '退出全屏' : '全屏'}
+          </Button>
+        </Tooltip>
         <Button
           size="small"
           icon={<DownloadOutlined />}
@@ -182,6 +243,52 @@ export default function PdfCanvas({ url, height = '72vh' }: Props) {
           下载原文件
         </Button>
       </Space>
+    </Space>
+  );
+
+  const body = (
+    <div
+      ref={containerRef}
+      style={{
+        width: '100%',
+        height: fullscreen ? 'calc(100vh - 64px)' : height,
+        overflow: 'auto',
+        padding: 16,
+        background: 'var(--jz-surface-2)',
+        borderRadius: 8,
+      }}
+    />
+  );
+
+  if (fullscreen) {
+    return createPortal(
+      <div
+        style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 2000,
+          background: 'var(--jz-bg-app, #0b0d11)',
+          padding: 12,
+          display: 'flex',
+          flexDirection: 'column',
+        }}
+      >
+        {toolbar}
+        {err && <Alert type="error" message={`PDF 加载失败：${err}`} showIcon />}
+        {loading && !err && (
+          <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}>
+            <Spin />
+          </div>
+        )}
+        <div style={{ flex: 1, minHeight: 0 }}>{body}</div>
+      </div>,
+      document.body,
+    );
+  }
+
+  return (
+    <div>
+      {toolbar}
       {err && <Alert type="error" message={`PDF 加载失败：${err}`} showIcon />}
       {loading && !err && (
         <div style={{ display: 'grid', placeItems: 'center', padding: 48 }}>
@@ -190,17 +297,7 @@ export default function PdfCanvas({ url, height = '72vh' }: Props) {
           </Spin>
         </div>
       )}
-      <div
-        ref={containerRef}
-        style={{
-          width: '100%',
-          height,
-          overflow: 'auto',
-          padding: 16,
-          background: 'var(--jz-surface-2)',
-          borderRadius: 8,
-        }}
-      />
+      {body}
     </div>
   );
 }

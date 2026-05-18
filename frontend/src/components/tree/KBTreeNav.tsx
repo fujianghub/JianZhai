@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
-import { Tree } from 'antd';
-import { FileTextOutlined, FolderOutlined } from '@ant-design/icons';
+import { Button, Tag, Tooltip, Tree } from 'antd';
+import { FileTextOutlined, FolderOutlined, TagsOutlined } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 import type { KBTree, TreeDocument, TreeFolder } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
@@ -18,16 +18,47 @@ interface Props {
   checkable?: boolean;
   checked?: CheckedSelection;
   onCheckedChange?: (next: CheckedSelection) => void;
+  /** Triggered when the user clicks a folder's "标签" button. Optional —
+   * if omitted, the button is hidden. */
+  onEditFolderTags?: (folder: TreeFolder) => void;
 }
 
-function folderNode(f: TreeFolder): DataNode {
+function folderNode(f: TreeFolder, onEditFolderTags?: (folder: TreeFolder) => void): DataNode {
   return {
     key: `folder-${f.id}`,
-    title: f.name,
+    title: (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <span style={{ fontWeight: 500 }}>{f.name}</span>
+        {(f.tags ?? []).map((t) => (
+          <Tag
+            key={t.id}
+            color={t.color || undefined}
+            style={{ marginInlineEnd: 0, fontSize: 11, lineHeight: '16px', padding: '0 6px' }}
+          >
+            {t.name}
+          </Tag>
+        ))}
+        {onEditFolderTags && (
+          <Tooltip title="编辑文件夹标签">
+            <Button
+              size="small"
+              type="text"
+              icon={<TagsOutlined />}
+              aria-label="编辑文件夹标签"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditFolderTags(f);
+              }}
+              style={{ fontSize: 11, padding: '0 4px', height: 18, lineHeight: '18px' }}
+            />
+          </Tooltip>
+        )}
+      </span>
+    ),
     icon: <FolderOutlined />,
     selectable: false,
     children: [
-      ...f.children.map(folderNode),
+      ...f.children.map((c) => folderNode(c, onEditFolderTags)),
       ...f.documents.map(docNode),
     ],
   };
@@ -75,10 +106,14 @@ export default function KBTreeNav({
   checkable = false,
   checked,
   onCheckedChange,
+  onEditFolderTags,
 }: Props) {
   const data = useMemo<DataNode[]>(
-    () => [...tree.folders.map(folderNode), ...tree.documents.map(docNode)],
-    [tree]
+    () => [
+      ...tree.folders.map((f) => folderNode(f, onEditFolderTags)),
+      ...tree.documents.map(docNode),
+    ],
+    [tree, onEditFolderTags]
   );
 
   return (

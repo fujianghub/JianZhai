@@ -410,9 +410,14 @@ function EditorSurface({
         src={primaryUrl}
         inlineStyle={{
           width: '100%',
-          height: 'min(78vh, 760px)',
+          height: 'min(calc(100vh - 240px), 1080px)',
+          minHeight: 600,
           border: '1px solid var(--jz-border)',
           borderRadius: 8,
+          /* Keep a neutral white fallback — the iframe contents are usually
+             HTML pages authored against a light background. The container
+             border + radius come from the theme, so this still feels native
+             on dark palettes. */
           background: '#fff',
         }}
       />

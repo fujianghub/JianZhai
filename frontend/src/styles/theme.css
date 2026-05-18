@@ -29,6 +29,13 @@
 html, body, #root { background: var(--jz-bg-app); color: var(--jz-text); }
 body {
   transition: background-color 0.2s ease;
+  /* Body font stack — antd's ConfigProvider also sets one, but pinning it
+     here keeps non-antd surfaces (raw <div>, markdown body, etc.) on the
+     same Chinese-aware fallback chain. */
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI',
+    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
   /* Faint speckled mottling — like fibre texture in rice paper. Layered
      radial gradients fake the noise without bringing a raster asset. */
   background-image:
@@ -101,7 +108,9 @@ body {
   color: var(--jz-accent);          /* 朱砂题字 */
   text-shadow: 0 1px 0 rgba(255, 240, 200, 0.4);
 }
-[data-theme='dark'] .jz-brand-cn { text-shadow: none; }
+[data-theme='dark'] .jz-brand-cn,
+[data-theme='starry'] .jz-brand-cn,
+[data-theme='deepsea'] .jz-brand-cn { text-shadow: none; }
 .jz-brand-sep {
   color: var(--jz-gold);
   font-size: 18px;
@@ -186,53 +195,41 @@ a:hover { opacity: 0.85; }
   box-shadow: 0 10px 28px -8px rgba(120, 80, 35, 0.22);
   border-color: color-mix(in srgb, var(--jz-gold) 55%, var(--jz-border));
 }
-[data-theme='dark'] .ant-card.jz-card:hover {
+[data-theme='dark'] .ant-card.jz-card:hover,
+[data-theme='starry'] .ant-card.jz-card:hover,
+[data-theme='deepsea'] .ant-card.jz-card:hover {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
 }
 
-/* Dark-mode adjustments for our hand-crafted surfaces (markdown, tiptap, diff) */
-[data-theme='dark'] .markdown-preview { color: #e6e6e6; }
-[data-theme='dark'] .markdown-preview h1 { border-color: #2a2a2a; }
-[data-theme='dark'] .markdown-preview h2 { border-color: #232323; }
-[data-theme='dark'] .markdown-preview blockquote {
-  background: #1c1c1c; border-left-color: #444; color: #b8b8b8;
+/* Dark-mode adjustments for our hand-crafted surfaces (tiptap, diff).
+   The .markdown-preview rules now use CSS variables in markdown.css so they
+   adapt cleanly to every theme (light/dark/starry/deepsea) without explicit
+   overrides here. */
+
+/* Editor shell — dark/starry/deepsea share the same surface treatment so the
+   chrome sits flush with the body background. */
+[data-theme='dark'] .tiptap-shell,
+[data-theme='starry'] .tiptap-shell,
+[data-theme='deepsea'] .tiptap-shell {
+  background: var(--jz-surface) !important;
+  border-color: var(--jz-border) !important;
 }
-[data-theme='dark'] .markdown-preview code { background: #2a2a2a; color: #e6e6e6; }
-[data-theme='dark'] .markdown-preview hr { border-top-color: #2a2a2a; }
-[data-theme='dark'] .markdown-preview th,
-[data-theme='dark'] .markdown-preview td { border-color: #303030; }
 
-[data-theme='dark'] .tiptap-shell {
-  background: #1f1f1f !important;
-  border-color: #2b2b2b !important;
+/* Diff view colors are now driven by CSS variables in diff.css itself, with
+   green/red ins/del bumped for dark themes via the data-theme selector — no
+   inline overrides needed here. */
+
+.global-search-item { color: var(--jz-text); }
+
+/* Plain textareas (DocEditorPage, raw-content drawer) — make sure the Ant
+   default light surface doesn't bleed onto dark palettes. */
+[data-theme='dark'] textarea.ant-input,
+[data-theme='starry'] textarea.ant-input,
+[data-theme='deepsea'] textarea.ant-input {
+  background: var(--jz-surface) !important;
+  color: var(--jz-text) !important;
+  border-color: var(--jz-border) !important;
 }
-[data-theme='dark'] .tiptap-shell .ProseMirror { color: #e6e6e6; }
-[data-theme='dark'] .tiptap-shell .ProseMirror blockquote {
-  background: #1c1c1c; border-left-color: #444; color: #b8b8b8;
-}
-[data-theme='dark'] .tiptap-shell .ProseMirror code { background: #2a2a2a; color: #e6e6e6; }
-[data-theme='dark'] .tiptap-shell .ProseMirror th { background: #232323; }
-[data-theme='dark'] .tiptap-shell .ProseMirror th,
-[data-theme='dark'] .tiptap-shell .ProseMirror td { border-color: #303030; }
-
-[data-theme='dark'] .diff-view {
-  background: #181818; border-color: #2a2a2a; color: #d4d4d4;
-}
-[data-theme='dark'] .diff-view ins { background: #15391e; color: #7fdb9b; }
-[data-theme='dark'] .diff-view del { background: #3b1a1f; color: #ff8c95; }
-[data-theme='dark'] .diff-view .diff-line-add { background: #15391e; color: #7fdb9b; }
-[data-theme='dark'] .diff-view .diff-line-del { background: #3b1a1f; color: #ff8c95; }
-[data-theme='dark'] .diff-view .diff-line-eq  { color: #c9c9c9; }
-
-[data-theme='dark'] .slash-menu { background: #232323; color: #e6e6e6; box-shadow: 0 8px 24px rgba(0,0,0,0.6); }
-[data-theme='dark'] .slash-menu-item.is-active { background: #2c3e55; }
-[data-theme='dark'] .slash-menu-item-title { color: #f0f0f0; }
-[data-theme='dark'] .slash-menu-item-desc { color: #888; }
-
-[data-theme='dark'] .global-search-item { color: var(--jz-text); }
-
-/* Editor textarea looks better with theme tokens */
-[data-theme='dark'] textarea.ant-input { background: #1f1f1f; color: #e6e6e6; }
 
 /* KB card depth + lift */
 .ant-card.jz-kb-card .ant-card-head {
@@ -242,7 +239,9 @@ a:hover { opacity: 0.85; }
   transform: translateY(-3px);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
 }
-[data-theme='dark'] .ant-card.jz-kb-card:hover {
+[data-theme='dark'] .ant-card.jz-kb-card:hover,
+[data-theme='starry'] .ant-card.jz-kb-card:hover,
+[data-theme='deepsea'] .ant-card.jz-kb-card:hover {
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
 }
 .ant-card.jz-post-card {
@@ -275,7 +274,9 @@ a:hover { opacity: 0.85; }
   color: rgba(0, 0, 0, 0.7);
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
 }
-[data-theme='dark'] .paper-swatch-label {
+[data-theme='dark'] .paper-swatch-label,
+[data-theme='starry'] .paper-swatch-label,
+[data-theme='deepsea'] .paper-swatch-label {
   color: rgba(255, 255, 255, 0.85);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
@@ -314,7 +315,9 @@ a:hover { opacity: 0.85; }
   box-shadow: 0 1px 0 var(--jz-bg-app), 0 2px 0 var(--jz-gold);
   backdrop-filter: blur(8px);
 }
-[data-theme='dark'] .ant-layout-header.blog-header {
+[data-theme='dark'] .ant-layout-header.blog-header,
+[data-theme='starry'] .ant-layout-header.blog-header,
+[data-theme='deepsea'] .ant-layout-header.blog-header {
   background:
     linear-gradient(to bottom,
       color-mix(in srgb, var(--jz-surface) 85%, transparent),
@@ -324,6 +327,352 @@ a:hover { opacity: 0.85; }
 /* Tighter, more readable typography in blog body */
 .markdown-preview p { margin: 0.9em 0; }
 .markdown-preview { word-wrap: break-word; }
+/* Article body — defaults to a clean Verdana stack (easier to read on screen
+   for long-form CJK + ASCII mixed content). The reader can switch fonts via
+   the ``ReaderFontPicker`` which writes ``--jz-article-font`` on the article
+   element. Available presets and their stacks live in utils/articleFont.ts. */
+.paper .markdown-preview {
+  font-family: var(--jz-article-font,
+    Verdana, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+    'Noto Sans CJK SC', sans-serif);
+  font-size: 16.5px;
+}
+.paper .markdown-preview p,
+.paper .markdown-preview li {
+  font-feature-settings: 'kern' 1, 'liga' 1;
+}
+
+/* ── KB landing page: folder-grouped list ── */
+.jz-kb-folder-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  padding-bottom: 6px;
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--jz-text);
+  border-bottom: 1px solid var(--jz-divider);
+}
+.jz-kb-folder-heading-mark {
+  display: inline-block;
+  width: 4px;
+  height: 18px;
+  background: linear-gradient(180deg, var(--jz-accent), color-mix(in srgb, var(--jz-accent) 60%, var(--jz-gold)));
+  border-radius: 2px;
+}
+.jz-kb-folder-count {
+  margin-left: auto;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--jz-text-muted);
+  padding: 1px 8px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
+  letter-spacing: 0;
+}
+
+/* KB tree (left sidebar / page sidebar) — folder toggle hover */
+.jz-kb-folder-toggle:hover {
+  background: color-mix(in srgb, var(--jz-surface-2) 60%, transparent);
+}
+
+/* ── KB sidebar drag-resize handle ──
+   Thin column between the sidebar and the article area. On hover the centre
+   line lights up so the affordance is obvious; while dragging we widen it
+   slightly and pin it sticky alongside the sidebar so the bar travels with
+   the user's mouse. */
+.jz-kb-resizer {
+  position: sticky;
+  top: 80px;
+  height: calc(100vh - 120px);
+  cursor: col-resize;
+  background: transparent;
+  position: relative;
+  outline: none;
+  z-index: 1;
+}
+.jz-kb-resizer::before {
+  content: '';
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: 50%;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--jz-divider);
+  border-radius: 1px;
+  transition: background-color 120ms ease, width 120ms ease, margin-left 120ms ease;
+}
+.jz-kb-resizer:hover::before,
+.jz-kb-resizer:focus::before,
+.jz-kb-resizer.is-dragging::before {
+  background: var(--jz-accent);
+  width: 3px;
+  margin-left: -1.5px;
+}
+/* A grippy mid-handle so the user knows the bar is interactive. */
+.jz-kb-resizer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 36px;
+  margin: -18px 0 0 -2px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--jz-gold) 60%, var(--jz-divider));
+  opacity: 0.65;
+  pointer-events: none;
+  transition: opacity 160ms ease;
+}
+.jz-kb-resizer:hover::after,
+.jz-kb-resizer.is-dragging::after {
+  opacity: 1;
+}
+
+/* ── KB content toolbar (view-density toggle) ── */
+.jz-kb-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 6px 12px;
+  border: 1px solid var(--jz-border);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--jz-surface) 88%, transparent);
+}
+
+/* ── Compact list view: title + tags + date in one row ── */
+.jz-post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--jz-border);
+  border-radius: 12px;
+  background: var(--jz-surface);
+  overflow: hidden;
+}
+.jz-post-row + .jz-post-row {
+  border-top: 1px solid var(--jz-divider);
+}
+.jz-post-row-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  color: var(--jz-text);
+  text-decoration: none;
+  transition: background-color 120ms ease;
+}
+.jz-post-row-link:hover {
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+}
+.jz-post-row-title {
+  flex: 1;
+  min-width: 0;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jz-post-row-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: nowrap;
+  overflow: hidden;
+  max-width: 40%;
+}
+.jz-post-row-date {
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  color: var(--jz-text-muted);
+  flex-shrink: 0;
+}
+
+@media (max-width: 720px) {
+  .jz-kb-body { grid-template-columns: 1fr !important; }
+  .jz-kb-side { position: static !important; max-height: none !important; }
+  .jz-kb-resizer { display: none; }
+  .jz-post-row-title { white-space: normal; }
+}
+
+/* ── Theme-aware overrides for post header / cards ──
+   The PostDetail and KBPostsPage header chrome (title / tag / time / paper picker
+   / edit button) needs to read cleanly on every palette, including the dark
+   ambient backgrounds (starry, deepsea) where antd's default body color is
+   already light. Most of the heavy lifting comes from the antd theme algorithm
+   (driven by main.tsx), but a few elements need explicit token-driven CSS so
+   they don't fall back to baked-in defaults. */
+.jz-post-title.ant-typography,
+h1.jz-post-title,
+h4.jz-post-card-title.ant-typography {
+  color: var(--jz-text) !important;
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Post-header meta bar — KB · format · date · tags · controls.
+   All pills share the same 24px-tall pill shape and pull their colour from
+   two CSS variables: ``--jz-post-accent`` (KB colour) and ``--jz-tag-c`` /
+   ``--jz-fmt-c`` (per-pill overrides). They render identically on all four
+   themes because the tints are composed with ``color-mix`` against the
+   live ``--jz-surface``.
+   ─────────────────────────────────────────────────────────────────────── */
+.jz-post-meta {
+  --jz-post-accent: var(--jz-accent);
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 6px 0 14px;
+  font-size: 13px;
+  color: var(--jz-text-muted);
+}
+.jz-post-meta .jz-meta-icon {
+  font-size: 12px;
+  opacity: 0.7;
+}
+.jz-post-meta .jz-meta-sep {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--jz-gold) 60%, var(--jz-divider));
+  align-self: center;
+  margin: 0 2px;
+}
+.jz-post-meta .jz-meta-spacer { flex: 1; }
+.jz-post-meta .jz-meta-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Shared pill scaffold. */
+.jz-meta-pill,
+.jz-format-pill,
+.jz-meta-tag,
+.jz-post-meta .jz-meta-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1;
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+  font-weight: 500;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
+}
+
+/* KB pill — uses the KB's accent colour. Clickable link to the KB landing. */
+.jz-meta-pill-kb {
+  text-decoration: none;
+  color: var(--jz-post-accent);
+  background: color-mix(in srgb, var(--jz-post-accent) 12%, var(--jz-surface));
+  border: 1px solid color-mix(in srgb, var(--jz-post-accent) 35%, transparent);
+  font-weight: 600;
+}
+.jz-meta-pill-kb:hover {
+  background: color-mix(in srgb, var(--jz-post-accent) 22%, var(--jz-surface));
+  color: var(--jz-post-accent);
+}
+[data-theme='dark'] .jz-meta-pill-kb,
+[data-theme='starry'] .jz-meta-pill-kb,
+[data-theme='deepsea'] .jz-meta-pill-kb {
+  background: color-mix(in srgb, var(--jz-post-accent) 22%, var(--jz-surface-2));
+  border-color: color-mix(in srgb, var(--jz-post-accent) 45%, transparent);
+  color: color-mix(in srgb, var(--jz-post-accent) 75%, #fff);
+}
+
+/* Document-format pill (MD / HTML / PDF / DOCX / 图片) — accent comes from
+   ``--jz-fmt-c`` set inline by DocFormatTag. */
+.jz-format-pill {
+  background: color-mix(in srgb, var(--jz-fmt-c, var(--jz-accent)) 12%, var(--jz-surface));
+  border: 1px solid color-mix(in srgb, var(--jz-fmt-c, var(--jz-accent)) 30%, transparent);
+  color: var(--jz-fmt-c, var(--jz-accent));
+  font-weight: 600;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 0.5px;
+  font-size: 11px;
+  padding: 0 8px;
+  height: 22px;
+}
+.jz-format-pill-sm { font-size: 10px; padding: 0 6px; height: 18px; }
+[data-theme='dark'] .jz-format-pill,
+[data-theme='starry'] .jz-format-pill,
+[data-theme='deepsea'] .jz-format-pill {
+  background: color-mix(in srgb, var(--jz-fmt-c) 22%, var(--jz-surface-2));
+  color: color-mix(in srgb, var(--jz-fmt-c) 75%, #fff);
+  border-color: color-mix(in srgb, var(--jz-fmt-c) 45%, transparent);
+}
+
+/* Date pill — ghost style, no fill, monospace date text. */
+.jz-post-meta .jz-meta-date {
+  background: transparent;
+  border: none;
+  color: var(--jz-text-muted);
+  padding: 0;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-size: 12px;
+  letter-spacing: 0;
+}
+
+/* User-tag chip — accent from --jz-tag-c set inline, or the page accent. */
+.jz-post-meta .jz-meta-tags {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.jz-meta-tag {
+  background: color-mix(in srgb, var(--jz-tag-c, var(--jz-accent)) 10%, var(--jz-surface));
+  border: 1px solid color-mix(in srgb, var(--jz-tag-c, var(--jz-accent)) 28%, transparent);
+  color: color-mix(in srgb, var(--jz-tag-c, var(--jz-text)) 80%, var(--jz-text));
+  font-size: 11px;
+  padding: 0 8px;
+  height: 22px;
+}
+[data-theme='dark'] .jz-meta-tag,
+[data-theme='starry'] .jz-meta-tag,
+[data-theme='deepsea'] .jz-meta-tag {
+  background: color-mix(in srgb, var(--jz-tag-c, var(--jz-accent)) 22%, var(--jz-surface-2));
+  border-color: color-mix(in srgb, var(--jz-tag-c, var(--jz-accent)) 45%, transparent);
+  color: color-mix(in srgb, var(--jz-tag-c, var(--jz-text)) 75%, #fff);
+}
+
+/* "编辑" button — keep the cinnabar accent fill consistent across themes. */
+.ant-btn.jz-edit-btn.ant-btn-background-ghost {
+  color: var(--jz-accent);
+  border-color: color-mix(in srgb, var(--jz-accent) 60%, var(--jz-divider));
+  height: 24px;
+  font-size: 12px;
+  border-radius: 12px;
+  padding: 0 10px;
+}
+.ant-btn.jz-edit-btn.ant-btn-background-ghost:hover {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent) !important;
+}
+
+/* Card list still uses the legacy ``.jz-post-tag`` class on antd Tag.
+   Keep a compatibility rule so KBPostsPage's flat list inherits the same
+   look as the meta-bar chips. */
+.ant-tag.jz-post-tag {
+  border-color: color-mix(in srgb, currentColor 25%, var(--jz-border));
+  background: color-mix(in srgb, currentColor 8%, var(--jz-surface)) !important;
+}
+[data-theme='dark'] .ant-tag.jz-post-tag,
+[data-theme='starry'] .ant-tag.jz-post-tag,
+[data-theme='deepsea'] .ant-tag.jz-post-tag {
+  background: color-mix(in srgb, currentColor 22%, var(--jz-surface-2)) !important;
+  border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
 
 /* ── Home page hero: classical Chinese epigraph ──
    Big sumi-ink serif characters + a cinnabar seal at the end of the line,
@@ -415,5 +764,92 @@ a:hover { opacity: 0.85; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 14px;
+}
+
+/* ── "藏经阁" sub-title ──
+   Three large 行楷-feel characters spaced wide, with a subtle
+   gold-leaf gradient stroke and a faint cinnabar drop-shadow so they read
+   like a hand-carved plaque (匾额). */
+.jz-hero-cangjingge {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: clamp(14px, 3vw, 32px);
+  font-family: 'Ma Shan Zheng', 'Noto Serif SC', 'Songti SC', 'KaiTi', 'STKaiti', serif;
+  font-weight: 400;
+  font-size: clamp(2rem, 5vw, 3rem);
+  letter-spacing: 0;
+  line-height: 1;
+  color: var(--jz-text);
+}
+.jz-hero-cangjingge-char {
+  position: relative;
+  display: inline-block;
+  padding: 2px 4px;
+  /* Gold-leaf clipped gradient on top of the ink color: bright in light themes
+     so it glints like raised gilding; richer in dark themes so it reads like
+     real gold against deep ink. */
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--jz-gold) 80%, #fff8d4) 10%,
+      color-mix(in srgb, var(--jz-gold) 70%, var(--jz-accent)) 55%,
+      color-mix(in srgb, var(--jz-gold) 60%, #5a3a1c) 90%);
+  -webkit-background-clip: text;
+          background-clip: text;
+  color: transparent;
+  -webkit-text-stroke: 0.6px color-mix(in srgb, var(--jz-gold) 55%, var(--jz-text));
+  text-shadow:
+    0 1px 0 color-mix(in srgb, var(--jz-accent) 18%, transparent),
+    0 6px 18px color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  transition: transform 280ms ease;
+}
+.jz-hero-cangjingge-char:hover { transform: translateY(-2px) rotate(-1deg); }
+/* On dark backgrounds, drop the white highlight and lean on warm gold. */
+[data-theme='dark'] .jz-hero-cangjingge-char,
+[data-theme='starry'] .jz-hero-cangjingge-char,
+[data-theme='deepsea'] .jz-hero-cangjingge-char {
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.4),
+    0 8px 22px color-mix(in srgb, var(--jz-gold) 35%, transparent);
+}
+
+/* ── 楹联 couplet: 藏书千卷 · 请君启一函 ──
+   Two short lines flanking a tiny cinnabar dot, set in a faded serif so the
+   eye treats it like calligraphic 落款 rather than a tagline. */
+.jz-hero-couplet {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 14px;
+  font-family: 'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
+  font-weight: 500;
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+  letter-spacing: 10px;
+  color: var(--jz-text-muted);
+  padding: 0 6px;
+  /* A pair of paper-thin gold rules on either side, drawn with subtle
+     gradient pseudo-elements below. */
+  position: relative;
+}
+.jz-hero-couplet::before,
+.jz-hero-couplet::after {
+  content: '';
+  display: inline-block;
+  width: 36px;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--jz-gold), transparent);
+  opacity: 0.7;
+}
+.jz-hero-couplet-line {
+  text-shadow: 0 1px 0 color-mix(in srgb, var(--jz-bg-app) 70%, transparent);
+}
+.jz-hero-couplet-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jz-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--jz-accent) 18%, transparent);
+  transform: translateY(-2px);
+  letter-spacing: 0;
 }

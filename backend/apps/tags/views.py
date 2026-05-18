@@ -7,7 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
-from apps.knowledge.models import Document, KnowledgeBase
+from apps.knowledge.models import Document, Folder, KnowledgeBase
 
 from .models import Tag
 from .serializers import TagSerializer, TargetTagsSerializer
@@ -49,6 +49,20 @@ def kb_tags(request, kb_id: int):
     return Response(TagSerializer(tags, many=True).data)
 
 
+@api_view(["GET", "PATCH"])
+@permission_classes([IsAuthenticated])
+def folder_tags(request, folder_id: int):
+    folder = get_object_or_404(
+        Folder.objects.filter(knowledge_base__owner=request.user), pk=folder_id
+    )
+    if request.method == "GET":
+        return Response(TagSerializer(folder.tags.all(), many=True).data)
+    serializer = TargetTagsSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    tags = serializer.set_on(folder, request.user)
+    return Response(TagSerializer(tags, many=True).data)
+
+
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_tag_cloud(request):
@@ -65,13 +79,18 @@ def public_tag_cloud(request):
                 knowledge_bases__visibility="public",
                 knowledge_bases__is_deleted=False,
             )
+            | Q(
+                folders__knowledge_base__visibility="public",
+                folders__is_deleted=False,
+            )
         )
         .annotate(
             doc_count=Count("documents", distinct=True),
             kb_count=Count("knowledge_bases", distinct=True),
+            folder_count=Count("folders", distinct=True),
         )
         .distinct()
-        .order_by("-doc_count", "-kb_count", "name")
+        .order_by("-doc_count", "-kb_count", "-folder_count", "name")
     )
     return Response(
         [
@@ -80,9 +99,10 @@ def public_tag_cloud(request):
                 "name": t.name,
                 "slug": t.slug,
                 "color": t.color,
-                "count": t.doc_count + t.kb_count,
+                "count": t.doc_count + t.kb_count + t.folder_count,
                 "doc_count": t.doc_count,
                 "kb_count": t.kb_count,
+                "folder_count": t.folder_count,
             }
             for t in qs
         ]

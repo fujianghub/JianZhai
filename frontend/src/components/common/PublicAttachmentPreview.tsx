@@ -13,6 +13,7 @@ import { attachmentAbsoluteUrl, previewKind } from '@/api/attachments';
 import type { PublicAttachment } from '@/types';
 import PdfCanvas from './PdfCanvas';
 import FullscreenableIframe from './FullscreenableIframe';
+import CodeBlockEnhancer from './CodeBlockEnhancer';
 
 export default function PublicAttachmentPreview({ att }: { att: PublicAttachment }) {
   const url = attachmentAbsoluteUrl(att.url);
@@ -32,9 +33,13 @@ export default function PublicAttachmentPreview({ att }: { att: PublicAttachment
     </div>
   );
 
+  // Earlier we capped the preview height at 720px which left a lot of empty
+  // page below on tall monitors. We now scale with the viewport so the file
+  // gets the same vertical footprint the Markdown reader enjoys.
   const frameStyle: React.CSSProperties = {
     width: '100%',
-    height: 'min(78vh, 720px)',
+    height: 'min(calc(100vh - 200px), 1200px)',
+    minHeight: 640,
     border: '1px solid var(--jz-border)',
     borderRadius: 8,
   };
@@ -109,7 +114,7 @@ function DocxInline({ url, dl }: { url: string; dl: React.ReactNode }) {
       <div
         className="markdown-preview"
         style={{
-          maxHeight: '78vh',
+          maxHeight: 'calc(100vh - 200px)',
           overflow: 'auto',
           padding: 20,
           border: '1px solid var(--jz-border)',
@@ -139,10 +144,11 @@ function MarkdownInline({ url, dl }: { url: string; dl: React.ReactNode }) {
     <>
       {dl}
       <div
-        className="markdown-preview"
+        className="markdown-preview jz-att-md"
         dangerouslySetInnerHTML={{ __html: html }}
         style={{ lineHeight: 1.8, fontSize: 16 }}
       />
+      <CodeBlockEnhancer selector=".jz-att-md" bindKey={html} />
     </>
   );
 }
@@ -164,7 +170,7 @@ function TextInline({ url, dl }: { url: string; dl: React.ReactNode }) {
       {dl}
       <pre
         style={{
-          maxHeight: '78vh',
+          maxHeight: 'calc(100vh - 200px)',
           overflow: 'auto',
           padding: 16,
           border: '1px solid var(--jz-border)',

@@ -1,19 +1,42 @@
 import { useEffect, useState } from 'react';
-import { Empty, Space, Spin, Tag, Typography } from 'antd';
+import { Button, Empty, Space, Spin, Tag, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
-import { ArrowRightOutlined } from '@ant-design/icons';
+import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import * as kbsApi from '@/api/kbs';
+import { useAuthStore } from '@/stores/auth';
 import type { PublicKB } from '@/types';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function BlogHome() {
   const [kbs, setKbs] = useState<PublicKB[] | null>(null);
 
+  /** Surface a "新建知识库 / 进入后台" affordance when a super-admin session is
+   * already active. Anonymous readers see nothing extra. */
+  const authUser = useAuthStore((s) => s.user);
+  const authLoaded = useAuthStore((s) => s.loaded);
+  const loadSession = useAuthStore((s) => s.loadSession);
+  useEffect(() => {
+    if (!authLoaded) void loadSession();
+  }, [authLoaded, loadSession]);
+  const canManage = !!authUser?.is_superuser;
+
   useEffect(() => {
     void kbsApi.listPublicKBs().then(setKbs);
   }, []);
+
+  const adminBar = canManage ? (
+    <div style={{ textAlign: 'right', marginBottom: 16 }}>
+      <Space>
+        <Link to="/admin/kbs">
+          <Button icon={<PlusOutlined />} type="primary">
+            新建 / 管理知识库
+          </Button>
+        </Link>
+      </Space>
+    </div>
+  ) : null;
 
   if (kbs === null) {
     return (
@@ -24,11 +47,17 @@ export default function BlogHome() {
   }
 
   if (kbs.length === 0) {
-    return <Empty description="还没有公开的知识库" />;
+    return (
+      <div>
+        {adminBar}
+        <Empty description="还没有公开的知识库" />
+      </div>
+    );
   }
 
   return (
     <div>
+      {adminBar}
       <section className="jz-hero" aria-label="题记">
         <div className="jz-hero-quote">
           <span>年与时驰</span>
@@ -46,8 +75,16 @@ export default function BlogHome() {
           <span className="jz-hero-attr-rule" aria-hidden />
         </div>
         <div className="jz-hero-sub">
-          <Title level={4} style={{ margin: 0, fontWeight: 500, letterSpacing: 4 }}>藏经阁</Title>
-          <Text type="secondary">藏书千卷 · 请君启一函</Text>
+          <h2 className="jz-hero-cangjingge" aria-label="藏经阁">
+            <span className="jz-hero-cangjingge-char">藏</span>
+            <span className="jz-hero-cangjingge-char">经</span>
+            <span className="jz-hero-cangjingge-char">阁</span>
+          </h2>
+          <div className="jz-hero-couplet" aria-label="藏书千卷 · 请君启一函">
+            <span className="jz-hero-couplet-line">藏书千卷</span>
+            <span className="jz-hero-couplet-dot" aria-hidden>·</span>
+            <span className="jz-hero-couplet-line">请君启一函</span>
+          </div>
         </div>
       </section>
 

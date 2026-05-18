@@ -166,7 +166,7 @@ export default function VersionsDrawer({ open, onClose, documentId, onRestored }
                   <Tag>v#{v.id}</Tag>
                   <Text strong>{v.message || '(无说明)'}</Text>
                 </Space>
-                <div style={{ color: '#999', fontSize: 12, marginTop: 4 }}>
+                <div style={{ color: 'var(--jz-text-muted)', fontSize: 12, marginTop: 4 }}>
                   {dayjs(v.created_at).format('YYYY-MM-DD HH:mm')} · {v.word_count} 字
                 </div>
               </List.Item>

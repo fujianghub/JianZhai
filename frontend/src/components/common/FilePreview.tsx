@@ -21,8 +21,10 @@ export default function FilePreview({ open, attachment, onClose }: Props) {
       open={open}
       onCancel={onClose}
       footer={null}
-      width="min(96vw, 1280px)"
+      width="min(98vw, 1600px)"
       destroyOnHidden
+      style={{ top: 16 }}
+      styles={{ body: { padding: 16 } }}
       title={
         attachment ? (
           <span>
@@ -58,7 +60,10 @@ export default function FilePreview({ open, attachment, onClose }: Props) {
 function PreviewBody({ attachment }: { attachment: Attachment }) {
   const kind = previewKind(attachment);
   const url = attachmentAbsoluteUrl(attachment.url);
-  const frameHeight = 'min(72vh, 640px)';
+  // PDF / HTML previews now claim the full modal height (modal is sized at
+  // top: 16 + ~chrome) so they no longer feel cramped next to the markdown
+  // preview.
+  const frameHeight = 'min(88vh, 1100px)';
 
   if (kind === 'pdf') {
     return <PdfCanvas url={url} height={frameHeight} />;
@@ -70,7 +75,7 @@ function PreviewBody({ attachment }: { attachment: Attachment }) {
         <img
           src={url}
           alt={attachment.original_filename}
-          style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 6 }}
+          style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 6 }}
         />
       </div>
     );
@@ -122,7 +127,7 @@ function DocxPreview({ url }: { url: string }) {
     <div
       className="markdown-preview"
       style={{
-        maxHeight: '70vh',
+        maxHeight: '85vh',
         overflow: 'auto',
         padding: 16,
         border: '1px solid var(--jz-border)',
@@ -157,7 +162,7 @@ function MarkdownTextPreview({ url }: { url: string }) {
     <div
       className="markdown-preview"
       style={{
-        maxHeight: '70vh',
+        maxHeight: '85vh',
         overflow: 'auto',
         padding: 16,
         border: '1px solid var(--jz-border)',
@@ -193,7 +198,7 @@ function PlainTextPreview({ url }: { url: string }) {
   return (
     <pre
       style={{
-        maxHeight: '70vh',
+        maxHeight: '85vh',
         overflow: 'auto',
         padding: 16,
         border: '1px solid var(--jz-border)',

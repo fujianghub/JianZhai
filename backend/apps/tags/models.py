@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.db import models
 
-from apps.knowledge.models import Document, KnowledgeBase
+from apps.knowledge.models import Document, Folder, KnowledgeBase
 
 
 class Tag(models.Model):
@@ -20,6 +20,9 @@ class Tag(models.Model):
     )
     knowledge_bases = models.ManyToManyField(
         KnowledgeBase, through="KnowledgeBaseTag", related_name="tags"
+    )
+    folders = models.ManyToManyField(
+        Folder, through="FolderTag", related_name="tags"
     )
 
     class Meta:
@@ -52,4 +55,15 @@ class KnowledgeBaseTag(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(fields=["knowledge_base", "tag"], name="unique_kb_tag"),
+        ]
+
+
+class FolderTag(models.Model):
+    folder = models.ForeignKey(Folder, on_delete=models.CASCADE)
+    tag = models.ForeignKey(Tag, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["folder", "tag"], name="unique_folder_tag"),
         ]

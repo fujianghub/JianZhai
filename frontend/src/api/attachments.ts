@@ -45,6 +45,45 @@ export async function importFileAsDoc(
   return data;
 }
 
+export interface BatchImportItem {
+  file: File;
+  /** Relative path inside the dropped folder. Empty string = at the root. */
+  relativePath?: string;
+}
+
+export interface BatchImportResult {
+  created: Array<{ id: number; title: string; folder: number | null; knowledge_base: number }>;
+  errors: Array<{ name: string; detail: string }>;
+  folders_created: number;
+}
+
+/**
+ * Batch / folder-aware import. Sends every file in a single multipart request
+ * along with its relative path so the server can recreate the directory tree.
+ */
+export async function importBatch(
+  items: BatchImportItem[],
+  kbId: number,
+  folderId: number | null = null,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<BatchImportResult> {
+  await ensureCsrf();
+  const fd = new FormData();
+  fd.append('knowledge_base', String(kbId));
+  if (folderId != null) fd.append('folder', String(folderId));
+  for (const it of items) {
+    fd.append('files', it.file, it.file.name);
+    fd.append('paths', it.relativePath ?? '');
+  }
+  const { data } = await apiClient.post<BatchImportResult>('/imports/batch/', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(e.loaded, e.total);
+    },
+  });
+  return data;
+}
+
 export async function listDocumentAttachments(docId: number): Promise<Attachment[]> {
   const { data } = await apiClient.get<Attachment[]>(`/documents/${docId}/attachments/`);
   return data;

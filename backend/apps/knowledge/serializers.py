@@ -66,6 +66,8 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
 
 
 class FolderSerializer(serializers.ModelSerializer):
+    tags = serializers.SerializerMethodField()
+
     class Meta:
         model = Folder
         fields = [
@@ -74,10 +76,17 @@ class FolderSerializer(serializers.ModelSerializer):
             "parent",
             "name",
             "order",
+            "tags",
             "created_at",
             "updated_at",
         ]
-        read_only_fields = ["id", "created_at", "updated_at"]
+        read_only_fields = ["id", "tags", "created_at", "updated_at"]
+
+    def get_tags(self, obj: Folder) -> list[dict]:
+        return [
+            {"id": t.id, "name": t.name, "slug": t.slug, "color": t.color}
+            for t in obj.tags.all()
+        ]
 
 
 class DocumentListSerializer(serializers.ModelSerializer):
@@ -145,6 +154,25 @@ class DocumentSerializer(serializers.ModelSerializer):
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
 
+    def update(self, instance: Document, validated_data: dict) -> Document:
+        """When auto-saving a doc that's already published, propagate the new
+        ``raw_content`` to ``published_content`` so readers see the change
+        immediately.
+
+        Prior behaviour was Git-like: changes always staged in raw, user had
+        to click ``发布`` again to ship them. That's confusing for a personal
+        blog where readers expect saves to land live. The dual-content model
+        is preserved for explicit drafts (``status='draft'``) — in that case
+        published_content stays untouched.
+        """
+        new_raw = validated_data.get("raw_content")
+        was_published = instance.status == "published"
+        result = super().update(instance, validated_data)
+        if was_published and new_raw is not None and new_raw != result.published_content:
+            result.published_content = new_raw
+            result.save(update_fields=["published_content"])
+        return result
+
     def get_primary_attachment(self, obj: Document) -> dict | None:
         att = obj.attachments.order_by("created_at").first() if obj.pk else None
         if not att:
@@ -202,6 +230,7 @@ class _TreeFolderSerializer(serializers.Serializer):
     order = serializers.IntegerField()
     children = serializers.SerializerMethodField()
     documents = serializers.SerializerMethodField()
+    tags = serializers.SerializerMethodField()
 
     def get_type(self, _obj) -> str:
         return "folder"
@@ -212,10 +241,17 @@ class _TreeFolderSerializer(serializers.Serializer):
     def get_documents(self, obj):
         return _TreeDocumentSerializer(obj["documents"], many=True).data
 
+    def get_tags(self, obj):
+        return obj.get("tags", [])
+
 
 def build_tree(kb: KnowledgeBase) -> dict:
     """Return a nested tree of folders + documents for one knowledge base."""
-    folders = list(Folder.objects.filter(knowledge_base=kb).order_by("order", "id"))
+    folders = list(
+        Folder.objects.filter(knowledge_base=kb)
+        .prefetch_related("tags")
+        .order_by("order", "id")
+    )
     documents = list(
         Document.objects.filter(knowledge_base=kb)
         .prefetch_related("attachments")
@@ -230,6 +266,10 @@ def build_tree(kb: KnowledgeBase) -> dict:
             "order": f.order,
             "children": [],
             "documents": [],
+            "tags": [
+                {"id": t.id, "name": t.name, "slug": t.slug, "color": t.color}
+                for t in f.tags.all()
+            ],
         }
         for f in folders
     }

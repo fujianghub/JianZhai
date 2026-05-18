@@ -36,6 +36,16 @@ export interface PublicKB {
   updated_at: string;
 }
 
+export interface PublicFolder {
+  id: number;
+  name: string;
+  parent: number | null;
+  order: number;
+  children: PublicFolder[];
+  documents: PublicPost[];
+  tags: PublicTagSummary[];
+}
+
 export interface PublicKBTree {
   id: number;
   name: string;
@@ -43,7 +53,12 @@ export interface PublicKBTree {
   accent_color: string;
   description: string;
   tags: PublicTagSummary[];
+  /** Flat list of all published+public docs (kept for legacy callers). */
   documents: PublicPost[];
+  /** Nested folder hierarchy — folders without published docs are pruned. */
+  folders: PublicFolder[];
+  /** Documents that live at the KB root (no folder). */
+  root_documents: PublicPost[];
 }
 
 export interface Folder {
@@ -98,6 +113,7 @@ export interface TreeFolder {
   order: number;
   children: TreeFolder[];
   documents: TreeDocument[];
+  tags: PublicTagSummary[];
 }
 
 export interface KBTree {

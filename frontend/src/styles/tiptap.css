@@ -1,36 +1,49 @@
-/* Tiptap editor surface */
+/* Tiptap editor surface — all colors keyed off the theme tokens so the
+   editor blends cleanly into 亮色 / 暗色 / 星空 / 深海 palettes. */
 .tiptap-shell .ProseMirror {
   outline: none;
   min-height: 280px;
   line-height: 1.7;
   font-size: 15px;
+  color: var(--jz-text);
 }
 .tiptap-shell .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   float: left;
-  color: #bfbfbf;
+  color: var(--jz-text-muted);
+  opacity: 0.7;
   pointer-events: none;
   height: 0;
 }
-.tiptap-shell .ProseMirror h1 { font-size: 1.9em; margin: 1em 0 0.4em; font-weight: 600; }
-.tiptap-shell .ProseMirror h2 { font-size: 1.5em; margin: 1em 0 0.4em; font-weight: 600; }
-.tiptap-shell .ProseMirror h3 { font-size: 1.25em; margin: 1em 0 0.4em; font-weight: 600; }
+.tiptap-shell .ProseMirror h1,
+.tiptap-shell .ProseMirror h2,
+.tiptap-shell .ProseMirror h3 {
+  margin: 1em 0 0.4em;
+  font-weight: 600;
+  color: var(--jz-text);
+}
+.tiptap-shell .ProseMirror h1 { font-size: 1.9em; }
+.tiptap-shell .ProseMirror h2 { font-size: 1.5em; }
+.tiptap-shell .ProseMirror h3 { font-size: 1.25em; }
 .tiptap-shell .ProseMirror blockquote {
-  border-left: 4px solid #d9d9d9;
+  border-left: 4px solid color-mix(in srgb, var(--jz-accent) 65%, var(--jz-divider));
   padding: 0.4em 1em;
   margin: 0.8em 0;
-  color: #555;
-  background: #f6f8fa;
+  color: var(--jz-text-muted);
+  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
 }
 .tiptap-shell .ProseMirror code {
-  background: #f0f0f0;
+  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
+  color: var(--jz-accent);
   padding: 1px 6px;
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
 }
+/* Code blocks intentionally keep a darker neutral background — code is
+   easiest to read on a single uniform ground regardless of page theme. */
 .tiptap-shell .ProseMirror pre {
-  background: #282c34;
+  background: #1f2329;
   color: #eaeaea;
   padding: 12px 16px;
   border-radius: 6px;
@@ -51,26 +64,29 @@
 }
 .tiptap-shell .ProseMirror th,
 .tiptap-shell .ProseMirror td {
-  border: 1px solid #e5e5e5;
+  border: 1px solid var(--jz-border);
   padding: 6px 10px;
   vertical-align: top;
   position: relative;
 }
-.tiptap-shell .ProseMirror th { background: #fafafa; font-weight: 600; }
+.tiptap-shell .ProseMirror th {
+  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
+  font-weight: 600;
+}
 .tiptap-shell .ProseMirror .selectedCell::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: rgba(22, 119, 255, 0.1);
+  background: color-mix(in srgb, var(--jz-accent) 15%, transparent);
   pointer-events: none;
 }
 .tiptap-shell .ProseMirror hr {
   border: none;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--jz-divider);
   margin: 1.5em 0;
 }
 .tiptap-shell .ProseMirror a {
-  color: #1677ff;
+  color: var(--jz-accent);
   text-decoration: none;
 }
 .tiptap-shell .ProseMirror a:hover { text-decoration: underline; }
@@ -78,14 +94,21 @@
 
 /* Slash menu (rendered into document.body via tippy) */
 .slash-menu {
-  background: #fff;
+  background: var(--jz-surface);
+  color: var(--jz-text);
+  border: 1px solid var(--jz-border);
   border-radius: 6px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18), 0 2px 6px rgba(0, 0, 0, 0.12);
   padding: 4px;
   min-width: 200px;
   max-height: 320px;
   overflow: auto;
   font-size: 13px;
+}
+[data-theme='dark'] .slash-menu,
+[data-theme='starry'] .slash-menu,
+[data-theme='deepsea'] .slash-menu {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
 }
 .slash-menu-item {
   display: block;
@@ -96,11 +119,14 @@
   text-align: left;
   cursor: pointer;
   border-radius: 4px;
+  color: var(--jz-text);
 }
-.slash-menu-item.is-active { background: #e6f4ff; }
-.slash-menu-item-title { font-weight: 500; color: #1f1f1f; }
-.slash-menu-item-desc { color: #999; font-size: 12px; margin-top: 2px; }
-.slash-menu-empty { padding: 12px; text-align: center; color: #999; }
+.slash-menu-item.is-active {
+  background: color-mix(in srgb, var(--jz-accent) 18%, transparent);
+}
+.slash-menu-item-title { font-weight: 500; color: var(--jz-text); }
+.slash-menu-item-desc { color: var(--jz-text-muted); font-size: 12px; margin-top: 2px; }
+.slash-menu-empty { padding: 12px; text-align: center; color: var(--jz-text-muted); }
 
 /* Global drag handle (left-side handle dot rendered next to hovered block) */
 .drag-handle {
@@ -115,17 +141,19 @@
     45deg,
     transparent 0,
     transparent 4px,
-    #bfbfbf 4px,
-    #bfbfbf 6px,
+    var(--jz-text-muted) 4px,
+    var(--jz-text-muted) 6px,
     transparent 6px,
     transparent 8px,
-    #bfbfbf 8px,
-    #bfbfbf 10px,
+    var(--jz-text-muted) 8px,
+    var(--jz-text-muted) 10px,
     transparent 10px
   );
   z-index: 10;
 }
-.drag-handle:hover { background-color: #f0f0f0; }
+.drag-handle:hover {
+  background-color: color-mix(in srgb, var(--jz-surface-2) 80%, transparent);
+}
 .tiptap-shell:hover .drag-handle,
 .drag-handle.show { opacity: 0.6; }
 .drag-handle.hide { opacity: 0; pointer-events: none; }

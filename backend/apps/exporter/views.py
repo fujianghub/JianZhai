@@ -18,6 +18,7 @@ class ExportTaskViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
     mixins.RetrieveModelMixin,
+    mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
     permission_classes = [IsAuthenticated]
@@ -27,6 +28,16 @@ class ExportTaskViewSet(
         if not self.request.user.is_authenticated:
             return ExportTask.objects.none()
         return ExportTask.objects.filter(owner=self.request.user)
+
+    def perform_destroy(self, instance):
+        # Remove the artifact too so deleting a row also frees disk space.
+        path = instance.absolute_file_path
+        if path and path.exists():
+            try:
+                path.unlink()
+            except OSError:
+                pass
+        instance.delete()
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

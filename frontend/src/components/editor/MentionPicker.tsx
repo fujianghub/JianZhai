@@ -80,12 +80,15 @@ export default function MentionPicker({ open, onCancel, onSelect }: Props) {
                 onClick={() => onSelect(item)}
                 style={{
                   cursor: 'pointer',
-                  background: idx === active ? '#e6f4ff' : undefined,
+                  background:
+                    idx === active
+                      ? 'color-mix(in srgb, var(--jz-accent) 14%, transparent)'
+                      : undefined,
                   padding: '8px 12px',
                 }}
               >
                 <div style={{ width: '100%' }}>
-                  <div style={{ fontWeight: 500 }}>{item.title}</div>
+                  <div style={{ fontWeight: 500, color: 'var(--jz-text)' }}>{item.title}</div>
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     <Tag color="blue">{item.knowledge_base.name}</Tag>
                   </Text>

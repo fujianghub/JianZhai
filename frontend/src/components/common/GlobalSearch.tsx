@@ -98,7 +98,9 @@ export default function GlobalSearch({ open, onClose }: Props) {
           </div>
         )}
         {!loading && q.trim() && results.length === 0 && (
-          <div style={{ color: '#999', padding: 16, textAlign: 'center' }}>无结果</div>
+          <div style={{ color: 'var(--jz-text-muted)', padding: 16, textAlign: 'center' }}>
+            无结果
+          </div>
         )}
         {results.map((r, idx) => (
           <button
@@ -108,11 +110,18 @@ export default function GlobalSearch({ open, onClose }: Props) {
             onMouseEnter={() => setActive(idx)}
             className="global-search-item"
             style={{
-              background: idx === active ? '#e6f4ff' : 'transparent',
+              background:
+                idx === active
+                  ? 'color-mix(in srgb, var(--jz-accent) 14%, transparent)'
+                  : 'transparent',
             }}
           >
-            <div style={{ fontWeight: 500, marginBottom: 4 }}>{r.title}</div>
-            <div style={{ color: '#666', fontSize: 13, lineHeight: 1.5 }}>{r.snippet}</div>
+            <div style={{ fontWeight: 500, marginBottom: 4, color: 'var(--jz-text)' }}>
+              {r.title}
+            </div>
+            <div style={{ color: 'var(--jz-text-muted)', fontSize: 13, lineHeight: 1.5 }}>
+              {r.snippet}
+            </div>
             <div style={{ marginTop: 4 }}>
               <Tag color="blue">{r.knowledge_base.name}</Tag>
               <Tag color={r.status === 'published' ? 'green' : 'default'}>

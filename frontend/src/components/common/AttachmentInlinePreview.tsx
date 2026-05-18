@@ -51,9 +51,14 @@ export default function AttachmentInlinePreview({ documentId, reloadKey }: Props
 function Body({ att }: { att: Attachment }) {
   const url = attachmentAbsoluteUrl(att.url);
   const kind = previewKind(att);
+  // Match the Markdown editor's vertical footprint — PDF/HTML previews used
+  // to bottom out around 640px regardless of viewport size and felt cramped
+  // next to the Markdown reader. ``calc(100vh - 240px)`` leaves space for the
+  // admin header, breadcrumbs and the toolbar above the preview.
   const baseStyle: React.CSSProperties = {
     width: '100%',
-    height: 'min(70vh, 640px)',
+    height: 'min(calc(100vh - 240px), 1080px)',
+    minHeight: 600,
     border: '1px solid var(--jz-border)',
     borderRadius: 8,
     background: 'var(--jz-surface)',
@@ -73,7 +78,7 @@ function Body({ att }: { att: Attachment }) {
   );
 
   if (kind === 'pdf') {
-    return <PdfCanvas url={url} height="min(70vh, 640px)" />;
+    return <PdfCanvas url={url} height="min(calc(100vh - 240px), 1080px)" />;
   }
   if (kind === 'image') {
     return (
@@ -82,7 +87,7 @@ function Body({ att }: { att: Attachment }) {
         <img
           src={url}
           alt={att.original_filename}
-          style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 8 }}
+          style={{ maxWidth: '100%', maxHeight: 'calc(100vh - 240px)', borderRadius: 8 }}
         />
       </div>
     );
@@ -156,7 +161,7 @@ function DocxInline({ url }: { url: string }) {
     <div
       className="markdown-preview"
       style={{
-        maxHeight: '70vh',
+        maxHeight: 'calc(100vh - 240px)',
         overflow: 'auto',
         padding: 20,
         border: '1px solid var(--jz-border)',
@@ -185,7 +190,7 @@ function MarkdownInline({ url }: { url: string }) {
     <div
       className="markdown-preview"
       style={{
-        maxHeight: '70vh',
+        maxHeight: 'calc(100vh - 240px)',
         overflow: 'auto',
         padding: 20,
         border: '1px solid var(--jz-border)',
@@ -213,7 +218,7 @@ function PlainInline({ url }: { url: string }) {
   return (
     <pre
       style={{
-        maxHeight: '70vh',
+        maxHeight: 'calc(100vh - 240px)',
         overflow: 'auto',
         padding: 16,
         border: '1px solid var(--jz-border)',

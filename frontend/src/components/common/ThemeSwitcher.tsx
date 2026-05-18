@@ -47,7 +47,7 @@ export default function ThemeSwitcher() {
 
   const palette = (
     <div style={{ width: 220 }}>
-      <div style={{ marginBottom: 8, color: '#888', fontSize: 12 }}>主题色</div>
+      <div style={{ marginBottom: 8, color: 'var(--jz-text-muted)', fontSize: 12 }}>主题色</div>
       <Space wrap>
         {ACCENT_PRESETS.map((p) => (
           <Tooltip key={p.key} title={p.label}>

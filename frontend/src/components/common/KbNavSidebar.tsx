@@ -4,7 +4,7 @@ import { Button, Empty, Spin, Tooltip, Typography } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import * as kbsApi from '@/api/kbs';
 import type { PublicKBTree } from '@/types';
-import DocFormatTag from './DocFormatTag';
+import PublicKbFolderTree from './PublicKbFolderTree';
 
 const { Text } = Typography;
 
@@ -80,46 +80,12 @@ export default function KbNavSidebar({ kbSlug, currentSlug, onClose }: Props) {
       {tree.documents.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无文档" style={{ margin: '12px 0' }} />
       ) : (
-        <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-          {tree.documents.map((d) => {
-            const active = d.slug === currentSlug;
-            return (
-              <li key={d.id} style={{ marginBottom: 2 }}>
-                <Link
-                  to={`/posts/${encodeURIComponent(d.slug)}`}
-                  className={'jz-kb-nav-link' + (active ? ' is-active' : '')}
-                  style={{
-                    display: 'block',
-                    padding: '6px 10px',
-                    fontSize: 13,
-                    lineHeight: 1.4,
-                    borderRadius: 6,
-                    color: active ? 'var(--jz-accent)' : 'var(--jz-text)',
-                    background: active ? 'color-mix(in srgb, var(--jz-accent) 10%, transparent)' : 'transparent',
-                    fontWeight: active ? 600 : 400,
-                    textDecoration: 'none',
-                    borderLeft: `2px solid ${active ? 'var(--jz-accent)' : 'transparent'}`,
-                    transition: 'background-color 120ms ease, color 120ms ease',
-                  }}
-                  title={d.title}
-                >
-                  <span
-                    style={{
-                      display: '-webkit-box',
-                      WebkitLineClamp: 2,
-                      WebkitBoxOrient: 'vertical',
-                      overflow: 'hidden',
-                      wordBreak: 'break-all',
-                    }}
-                  >
-                    {d.title}
-                  </span>
-                  <DocFormatTag format={d.doc_format} size="default" />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <PublicKbFolderTree
+          folders={tree.folders ?? []}
+          rootDocuments={tree.root_documents ?? tree.documents}
+          currentSlug={currentSlug}
+          density="sidebar"
+        />
       )}
     </nav>
   );

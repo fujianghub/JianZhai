@@ -69,6 +69,56 @@ const COMMANDS: SlashCommandItem[] = [
     command: ({ editor, range }) =>
       editor.chain().focus().deleteRange(range).insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run(),
   },
+  // ── Callouts (色块) ────────────────────────────────────────────────────
+  {
+    title: '💡 提示色块',
+    description: ':::tips',
+    keywords: ['callout', 'tip', 'tips', '提示', '色块'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).setCallout({ kind: 'tips' }).run(),
+  },
+  {
+    title: 'ⓘ 说明色块',
+    description: ':::info',
+    keywords: ['callout', 'info', '说明', '色块'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).setCallout({ kind: 'info' }).run(),
+  },
+  {
+    title: '⚠ 警告色块',
+    description: ':::warning',
+    keywords: ['callout', 'warning', 'warn', '警告', '色块'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).setCallout({ kind: 'warning' }).run(),
+  },
+  {
+    title: '✕ 危险色块',
+    description: ':::danger',
+    keywords: ['callout', 'danger', 'error', '危险', '色块'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).setCallout({ kind: 'danger' }).run(),
+  },
+  {
+    title: '✓ 成功色块',
+    description: ':::success',
+    keywords: ['callout', 'success', 'ok', '成功', '色块'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).setCallout({ kind: 'success' }).run(),
+  },
+  {
+    title: '🟪 类比讲解 (紫)',
+    description: ':::color2',
+    keywords: ['callout', '类比', '紫色', 'color2', '色块'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).setCallout({ kind: 'color2' }).run(),
+  },
+  {
+    title: '🟦 专业术语 (蓝)',
+    description: ':::color1',
+    keywords: ['callout', '术语', '蓝色', 'color1', '色块'],
+    command: ({ editor, range }) =>
+      editor.chain().focus().deleteRange(range).setCallout({ kind: 'color1' }).run(),
+  },
 ];
 
 export const SlashCommand = Extension.create({

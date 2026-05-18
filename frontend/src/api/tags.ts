@@ -15,6 +15,9 @@ export interface PublicTag {
   slug: string;
   color: string;
   count: number;
+  doc_count?: number;
+  kb_count?: number;
+  folder_count?: number;
 }
 
 export async function listTags(): Promise<Tag[]> {
@@ -47,6 +50,17 @@ export async function getDocumentTags(docId: number): Promise<Tag[]> {
 export async function setDocumentTags(docId: number, tagIds: number[]): Promise<Tag[]> {
   await ensureCsrf();
   const { data } = await apiClient.patch<Tag[]>(`/documents/${docId}/tags/`, { tag_ids: tagIds });
+  return data;
+}
+
+export async function getFolderTags(folderId: number): Promise<Tag[]> {
+  const { data } = await apiClient.get<Tag[]>(`/folders/${folderId}/tags/`);
+  return data;
+}
+
+export async function setFolderTags(folderId: number, tagIds: number[]): Promise<Tag[]> {
+  await ensureCsrf();
+  const { data } = await apiClient.patch<Tag[]>(`/folders/${folderId}/tags/`, { tag_ids: tagIds });
   return data;
 }
 

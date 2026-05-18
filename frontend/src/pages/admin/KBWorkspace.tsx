@@ -35,7 +35,7 @@ import * as tagsApi from '@/api/tags';
 import { formatApiError } from '@/api/client';
 import KBTreeNav, { type CheckedSelection } from '@/components/tree/KBTreeNav';
 import ExportDialog from '@/components/common/ExportDialog';
-import type { KBTree, KnowledgeBase } from '@/types';
+import type { KBTree, KnowledgeBase, TreeFolder } from '@/types';
 import type { Tag as ApiTag } from '@/api/tags';
 
 const { Title, Text } = Typography;
@@ -50,7 +50,10 @@ export default function KBWorkspace() {
   const [newDocModal, setNewDocModal] = useState(false);
   const [newFolderModal, setNewFolderModal] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [batchProgress, setBatchProgress] = useState<{ loaded: number; total: number } | null>(null);
   const importInputRef = useRef<HTMLInputElement | null>(null);
+  const batchInputRef = useRef<HTMLInputElement | null>(null);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [docForm] = Form.useForm<{ title: string; folder?: number | null }>();
   const [folderForm] = Form.useForm<{ name: string; parent?: number | null }>();
   const [exportOpen, setExportOpen] = useState(false);
@@ -63,6 +66,12 @@ export default function KBWorkspace() {
   const [tagModal, setTagModal] = useState(false);
   const [allTags, setAllTags] = useState<ApiTag[]>([]);
   const [batchTagIds, setBatchTagIds] = useState<number[]>([]);
+
+  // -------- folder tag editor --------
+  const [folderTagsModal, setFolderTagsModal] = useState<{
+    folder: TreeFolder;
+    tagIds: number[];
+  } | null>(null);
 
   const refreshTree = useCallback(async () => {
     const t = await kbsApi.getKBTree(kbId);
@@ -113,6 +122,46 @@ export default function KBWorkspace() {
       message.error(formatApiError(err, '导入失败'));
     } finally {
       setImporting(false);
+    }
+  }
+
+  /**
+   * Upload many files (and optionally a whole directory tree) into the KB.
+   * When ``preserveTree`` is true we send each file's ``webkitRelativePath``
+   * so the backend can recreate the directory structure with auto-created
+   * folders. Otherwise the files land directly under the KB root.
+   */
+  async function handleBatchImport(files: FileList | File[], preserveTree: boolean) {
+    const arr = Array.from(files);
+    if (arr.length === 0) return;
+    setImporting(true);
+    setBatchProgress({ loaded: 0, total: 1 });
+    try {
+      const items: attApi.BatchImportItem[] = arr.map((f) => ({
+        file: f,
+        relativePath: preserveTree
+          ? (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name
+          : '',
+      }));
+      const result = await attApi.importBatch(items, kbId, null, (loaded, total) =>
+        setBatchProgress({ loaded, total })
+      );
+      await refreshTree();
+      const msg = `已导入 ${result.created.length} 个文件` +
+        (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
+        (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
+      if (result.errors.length) {
+        message.warning(msg);
+        // Surface the first few errors so the user knows what to retry.
+        console.warn('batch import errors:', result.errors);
+      } else {
+        message.success(msg);
+      }
+    } catch (err) {
+      message.error(formatApiError(err, '批量上传失败'));
+    } finally {
+      setImporting(false);
+      setBatchProgress(null);
     }
   }
 
@@ -189,6 +238,29 @@ export default function KBWorkspace() {
       setAllTags(await tagsApi.listTags());
     } catch (err) {
       message.error(formatApiError(err, '加载标签失败'));
+    }
+  }
+
+  async function openFolderTagsModal(folder: TreeFolder) {
+    setFolderTagsModal({ folder, tagIds: (folder.tags ?? []).map((t) => t.id) });
+    try {
+      // Always re-fetch the full tag catalogue so new tags created elsewhere
+      // are pickable without a full page refresh.
+      setAllTags(await tagsApi.listTags());
+    } catch (err) {
+      message.error(formatApiError(err, '加载标签失败'));
+    }
+  }
+
+  async function saveFolderTags() {
+    if (!folderTagsModal) return;
+    try {
+      await tagsApi.setFolderTags(folderTagsModal.folder.id, folderTagsModal.tagIds);
+      message.success('文件夹标签已保存');
+      setFolderTagsModal(null);
+      await refreshTree();
+    } catch (err) {
+      message.error(formatApiError(err, '保存文件夹标签失败'));
     }
   }
 
@@ -274,14 +346,28 @@ export default function KBWorkspace() {
                 {
                   key: 'import',
                   icon: <CloudUploadOutlined />,
-                  label: '上传文件 (md/pdf/docx/html…)',
+                  label: '上传单个文件 (md/pdf/docx/html…)',
                   onClick: () => importInputRef.current?.click(),
+                },
+                {
+                  key: 'import-batch',
+                  icon: <CloudUploadOutlined />,
+                  label: '批量上传文件',
+                  onClick: () => batchInputRef.current?.click(),
+                },
+                {
+                  key: 'import-folder',
+                  icon: <FolderAddOutlined />,
+                  label: '上传整个文件夹（保留目录结构）',
+                  onClick: () => folderInputRef.current?.click(),
                 },
               ],
             }}
           >
             <Button type="primary" loading={importing}>
-              新建 ▾
+              {batchProgress
+                ? `上传中 ${Math.round((batchProgress.loaded / batchProgress.total) * 100)}%`
+                : '新建 ▾'}
             </Button>
           </Dropdown>
           <input
@@ -292,6 +378,34 @@ export default function KBWorkspace() {
             onChange={(e) => {
               const f = e.target.files?.[0];
               if (f) void handleImportFile(f);
+              e.target.value = '';
+            }}
+          />
+          <input
+            ref={batchInputRef}
+            type="file"
+            multiple
+            accept=".pdf,.doc,.docx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length) {
+                void handleBatchImport(e.target.files, false);
+              }
+              e.target.value = '';
+            }}
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            // @ts-expect-error — webkitdirectory is a non-standard but widely supported attribute.
+            webkitdirectory="true"
+            directory="true"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length) {
+                void handleBatchImport(e.target.files, true);
+              }
               e.target.value = '';
             }}
           />
@@ -408,6 +522,7 @@ export default function KBWorkspace() {
             checkable={batchMode}
             checked={checked}
             onCheckedChange={setChecked}
+            onEditFolderTags={openFolderTagsModal}
           />
         )}
       </div>
@@ -510,6 +625,34 @@ export default function KBWorkspace() {
           </Form.Item>
           <Text type="secondary" style={{ fontSize: 12 }}>
             标签会追加到每篇文档已有的标签上，不会覆盖原有标签。
+          </Text>
+        </Form>
+      </Modal>
+
+      <Modal
+        open={folderTagsModal !== null}
+        title={`文件夹标签：${folderTagsModal?.folder.name ?? ''}`}
+        onCancel={() => setFolderTagsModal(null)}
+        onOk={saveFolderTags}
+        okText="保存"
+        cancelText="取消"
+        destroyOnHidden
+      >
+        <Form layout="vertical">
+          <Form.Item label="选择标签">
+            <Select
+              mode="multiple"
+              placeholder="选择已有标签…"
+              options={allTags.map((t) => ({ value: t.id, label: t.name }))}
+              value={folderTagsModal?.tagIds ?? []}
+              onChange={(v) =>
+                setFolderTagsModal((cur) => (cur ? { ...cur, tagIds: v as number[] } : cur))
+              }
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            文件夹标签会展示在博客前台的目录里，方便读者快速识别文件夹主题。
           </Text>
         </Form>
       </Modal>

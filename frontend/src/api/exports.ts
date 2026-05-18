@@ -51,3 +51,8 @@ export function downloadUrl(id: number): string {
   const base = apiClient.defaults.baseURL ?? '/api/v1';
   return `${base}/exports/${id}/download/`;
 }
+
+export async function deleteExport(id: number): Promise<void> {
+  await ensureCsrf();
+  await apiClient.delete(`/exports/${id}/`);
+}

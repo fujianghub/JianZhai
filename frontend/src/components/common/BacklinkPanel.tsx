@@ -63,7 +63,7 @@ export default function BacklinkPanel({ documentId, variant = 'admin' }: Props) 
                       {b.source.status === 'published' ? '已发布' : '草稿'}
                     </Tag>
                   )}
-                  <div style={{ color: '#666', fontSize: 12, marginTop: 4 }}>{b.context}</div>
+                  <div style={{ color: 'var(--jz-text-muted)', fontSize: 12, marginTop: 4 }}>{b.context}</div>
                 </div>
               </List.Item>
             );
