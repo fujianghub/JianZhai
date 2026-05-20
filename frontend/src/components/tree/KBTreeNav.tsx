@@ -21,14 +21,75 @@ interface Props {
   /** Triggered when the user clicks a folder's "标签" button. Optional —
    * if omitted, the button is hidden. */
   onEditFolderTags?: (folder: TreeFolder) => void;
+  /** Filter documents whose titles match this substring (case-insensitive). */
+  filterQuery?: string;
+  /** Filter documents by status. */
+  filterStatus?: 'all' | 'published' | 'draft';
 }
 
-function folderNode(f: TreeFolder, onEditFolderTags?: (folder: TreeFolder) => void): DataNode {
+function docMatches(d: TreeDocument, q: string, status: 'all' | 'published' | 'draft'): boolean {
+  if (status !== 'all' && d.status !== status) return false;
+  if (!q) return true;
+  return d.title.toLowerCase().includes(q.toLowerCase());
+}
+
+function filterFolder(
+  f: TreeFolder,
+  q: string,
+  status: 'all' | 'published' | 'draft'
+): TreeFolder | null {
+  const docs = f.documents.filter((d) => docMatches(d, q, status));
+  const subs = f.children
+    .map((c) => filterFolder(c, q, status))
+    .filter((x): x is TreeFolder => x !== null);
+  if (docs.length === 0 && subs.length === 0) return null;
+  return { ...f, documents: docs, children: subs };
+}
+
+function collectFolderKeys(folders: TreeFolder[]): React.Key[] {
+  const keys: React.Key[] = [];
+  function walk(list: TreeFolder[]) {
+    for (const f of list) {
+      keys.push(`folder-${f.id}`);
+      walk(f.children);
+    }
+  }
+  walk(folders);
+  return keys;
+}
+
+function renderHighlight(text: string, q: string): React.ReactNode {
+  if (!q) return text;
+  const lower = text.toLowerCase();
+  const idx = lower.indexOf(q.toLowerCase());
+  if (idx < 0) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark
+        style={{
+          background: 'color-mix(in srgb, var(--jz-accent) 30%, transparent)',
+          borderRadius: 2,
+          padding: '0 2px',
+        }}
+      >
+        {text.slice(idx, idx + q.length)}
+      </mark>
+      {text.slice(idx + q.length)}
+    </>
+  );
+}
+
+function folderNode(
+  f: TreeFolder,
+  q: string,
+  onEditFolderTags?: (folder: TreeFolder) => void
+): DataNode {
   return {
     key: `folder-${f.id}`,
     title: (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 500 }}>{f.name}</span>
+        <span style={{ fontWeight: 500 }}>{renderHighlight(f.name, q)}</span>
         {(f.tags ?? []).map((t) => (
           <Tag
             key={t.id}
@@ -58,19 +119,19 @@ function folderNode(f: TreeFolder, onEditFolderTags?: (folder: TreeFolder) => vo
     icon: <FolderOutlined />,
     selectable: false,
     children: [
-      ...f.children.map((c) => folderNode(c, onEditFolderTags)),
-      ...f.documents.map(docNode),
+      ...f.children.map((c) => folderNode(c, q, onEditFolderTags)),
+      ...f.documents.map((d) => docNode(d, q)),
     ],
   };
 }
 
-function docNode(d: TreeDocument): DataNode {
+function docNode(d: TreeDocument, q: string): DataNode {
   return {
     key: `doc-${d.id}`,
     title: (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {d.title}
+          {renderHighlight(d.title, q)}
           {d.status === 'published' ? ' ✓' : ''}
         </span>
         <DocFormatTag format={d.doc_format} />
@@ -107,21 +168,42 @@ export default function KBTreeNav({
   checked,
   onCheckedChange,
   onEditFolderTags,
+  filterQuery,
+  filterStatus,
 }: Props) {
-  const data = useMemo<DataNode[]>(
-    () => [
-      ...tree.folders.map((f) => folderNode(f, onEditFolderTags)),
-      ...tree.documents.map(docNode),
-    ],
-    [tree, onEditFolderTags]
+  const filteredTree = useMemo(() => {
+    if (!filterQuery && (filterStatus === 'all' || filterStatus === undefined)) return tree;
+    const q = filterQuery ?? '';
+    const status = filterStatus ?? 'all';
+    const folders = tree.folders
+      .map((f) => filterFolder(f, q, status))
+      .filter((x): x is TreeFolder => x !== null);
+    const documents = tree.documents.filter((d) => docMatches(d, q, status));
+    return { ...tree, folders, documents };
+  }, [tree, filterQuery, filterStatus]);
+
+  const filteringActive = !!filterQuery || (filterStatus !== undefined && filterStatus !== 'all');
+
+  const autoExpanded = useMemo(
+    () => collectFolderKeys(filteredTree.folders),
+    [filteredTree]
   );
+
+  const data = useMemo<DataNode[]>(() => {
+    const q = filterQuery ?? '';
+    return [
+      ...filteredTree.folders.map((f) => folderNode(f, q, onEditFolderTags)),
+      ...filteredTree.documents.map((d) => docNode(d, q)),
+    ];
+  }, [filteredTree, filterQuery, onEditFolderTags]);
 
   return (
     <Tree
       showIcon
       blockNode
       treeData={data}
-      defaultExpandAll
+      defaultExpandAll={!filteringActive}
+      {...(filteringActive ? { expandedKeys: autoExpanded } : {})}
       checkable={checkable}
       checkedKeys={checked ? toCheckedKeys(checked) : undefined}
       onCheck={(keys) => {

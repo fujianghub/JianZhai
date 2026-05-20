@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 from django.db import transaction
+from django.db.models import Prefetch, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from django.db.models import Q
+from apps.accounts.scoping import scope_queryset
+from apps.editor.models import Attachment
 
 from .models import Document, Folder, KnowledgeBase
 from .serializers import (
@@ -21,17 +23,26 @@ from .serializers import (
 )
 
 
+# Pre-ordered prefetch so DocumentSerializer's primary-attachment lookup
+# (oldest attachment first) can read from the prefetched cache instead of
+# issuing a per-doc ORDER BY query.
+_PRIMARY_ATTACHMENT_PREFETCH = Prefetch(
+    "attachments",
+    queryset=Attachment.objects.order_by("created_at"),
+    to_attr="ordered_attachments",
+)
+
+
 class OwnerScopedMixin:
-    """Restrict queryset to objects owned by the current user (via KB ownership)."""
+    """Restrict queryset to objects owned by the current user (via KB ownership).
+
+    Superusers bypass the filter — see ``apps.accounts.scoping.scope_queryset``.
+    """
 
     owner_lookup = "owner"
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        user = self.request.user
-        if not user.is_authenticated:
-            return qs.none()
-        return qs.filter(**{self.owner_lookup: user})
+        return scope_queryset(super().get_queryset(), self.request.user, field=self.owner_lookup)
 
 
 class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
@@ -58,10 +69,7 @@ class FolderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return self.queryset.none()
-        return self.queryset.filter(knowledge_base__owner=user)
+        return scope_queryset(self.queryset, self.request.user)
 
     def perform_destroy(self, instance: Folder):
         instance.soft_delete()
@@ -72,10 +80,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        user = self.request.user
-        if not user.is_authenticated:
-            return self.queryset.none()
-        qs = self.queryset.filter(knowledge_base__owner=user)
+        qs = (
+            scope_queryset(self.queryset, self.request.user)
+            .select_related("knowledge_base", "folder")
+            .prefetch_related(_PRIMARY_ATTACHMENT_PREFETCH)
+        )
         kb = self.request.query_params.get("knowledge_base")
         folder = self.request.query_params.get("folder")
         if kb:
@@ -96,6 +105,39 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance: Document):
         instance.soft_delete()
 
+    def update(self, request, *args, **kwargs):
+        """Optimistic-concurrency check on PATCH/PUT.
+
+        The client may include ``expected_version`` in the payload — when
+        present and not matching the current row, we return 409 with the live
+        document so the client can show a diff / merge UI instead of clobbering.
+        """
+        expected = request.data.get("expected_version") if isinstance(request.data, dict) else None
+        if expected is not None:
+            instance = self.get_object()
+            try:
+                expected_int = int(expected)
+            except (TypeError, ValueError):
+                return Response(
+                    {"detail": "expected_version 必须是整数"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if expected_int != instance.version:
+                return Response(
+                    {
+                        "detail": "文档已被其他端修改",
+                        "code": "version_conflict",
+                        "current_version": instance.version,
+                        "document": DocumentSerializer(instance).data,
+                    },
+                    status=status.HTTP_409_CONFLICT,
+                )
+            # Strip the field so it doesn't end up in validated_data
+            mutable = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+            mutable.pop("expected_version", None)
+            request._full_data = mutable
+        return super().update(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"], url_path="publish")
     def publish(self, request, pk=None):
         doc = self.get_object()
@@ -115,6 +157,40 @@ class DocumentViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(DocumentSerializer(doc).data)
+
+    @action(detail=True, methods=["get"], url_path="preview")
+    def preview(self, request, pk=None):
+        """Lightweight document preview used by hover cards and doc-card embeds.
+
+        Returns only the fields needed to render a small card so the editor
+        doesn't have to fetch the full raw_content for every hover.
+        """
+        doc = self.get_object()
+        body = doc.published_content or doc.raw_content or ""
+        # Strip markdown syntax for a clean snippet — naive but cheap.
+        import re as _re
+        snippet = _re.sub(r"^#+\s+", "", body, flags=_re.M)
+        snippet = _re.sub(r"[*_`>\[\]()!]", "", snippet)
+        snippet = _re.sub(r"\s+", " ", snippet).strip()
+        excerpt = snippet[:160] + ("…" if len(snippet) > 160 else "")
+        return Response(
+            {
+                "id": doc.id,
+                "title": doc.title,
+                "slug": doc.slug,
+                "excerpt": excerpt,
+                "status": doc.status,
+                "visibility": doc.visibility,
+                "knowledge_base": {
+                    "id": doc.knowledge_base_id,
+                    "name": doc.knowledge_base.name,
+                    "slug": doc.knowledge_base.slug,
+                    "accent_color": doc.knowledge_base.accent_color,
+                },
+                "updated_at": doc.updated_at.isoformat(),
+                "published_at": doc.published_at.isoformat() if doc.published_at else None,
+            }
+        )
 
     @action(detail=False, methods=["get"], url_path="mentions")
     def mentions(self, request):
@@ -145,7 +221,10 @@ def reorder_tree(request):
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
 
-    kb = get_object_or_404(KnowledgeBase.objects, pk=data["knowledge_base"], owner=request.user)
+    kb = get_object_or_404(
+        scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner"),
+        pk=data["knowledge_base"],
+    )
 
     with transaction.atomic():
         for item in data["items"]:

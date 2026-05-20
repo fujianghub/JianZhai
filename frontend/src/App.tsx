@@ -13,6 +13,9 @@ import KBWorkspace from '@/pages/admin/KBWorkspace';
 import DocEditorPage from '@/pages/admin/DocEditorPage';
 import ExportsPage from '@/pages/admin/ExportsPage';
 import UsersPage from '@/pages/admin/UsersPage';
+import SystemOverviewPage from '@/pages/admin/SystemOverviewPage';
+import AIManagementPage from '@/pages/admin/AIManagementPage';
+import KnowledgeGraphPage from '@/pages/admin/KnowledgeGraphPage';
 import DocLinkResolver from '@/pages/DocLinkResolver';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
@@ -60,6 +63,9 @@ export default function App() {
         <Route path="kbs/:id/docs/:docId" element={<DocEditorPage />} />
         <Route path="exports" element={<ExportsPage />} />
         <Route path="users" element={<UsersPage />} />
+        <Route path="overview" element={<SystemOverviewPage />} />
+        <Route path="ai" element={<AIManagementPage />} />
+        <Route path="graph" element={<KnowledgeGraphPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

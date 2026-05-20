@@ -179,8 +179,29 @@ export default function VersionsDrawer({ open, onClose, documentId, onRestored }
         open={diffOpen}
         onCancel={() => setDiffOpen(false)}
         footer={null}
-        width={900}
-        title={diffPair ? `v#${diffPair.a.id} → v#${diffPair.b.id}` : '版本对比'}
+        width={1000}
+        title={
+          diffPair ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <span>版本对比</span>
+              <span
+                style={{
+                  fontSize: 12,
+                  color: 'var(--jz-text-muted)',
+                  fontWeight: 400,
+                }}
+              >
+                v#{diffPair.a.id} ({dayjs(diffPair.a.created_at).format('YYYY-MM-DD HH:mm')})
+                {diffPair.a.message && ` · ${diffPair.a.message}`}
+                {' → '}
+                v#{diffPair.b.id} ({dayjs(diffPair.b.created_at).format('YYYY-MM-DD HH:mm')})
+                {diffPair.b.message && ` · ${diffPair.b.message}`}
+              </span>
+            </div>
+          ) : (
+            '版本对比'
+          )
+        }
       >
         {diffPair && (
           <DiffView

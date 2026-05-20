@@ -853,3 +853,528 @@ h4.jz-post-card-title.ant-typography {
   transform: translateY(-2px);
   letter-spacing: 0;
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   后台 UI：玄黑·玻璃拟态 · 翡翠重音 · 宽松留白
+   作用域：.jz-admin-glass （在 AdminLayout 的 Layout 根上）
+
+   设计目标：
+     1. 不影响博客阅读端（朱砂古风保留）
+     2. 玄黑底 + 三色光晕渐变（翡翠/紫/蓝），层次感强
+     3. Sider / Header / Card 全部 backdrop-filter blur 形成毛玻璃
+     4. 大圆角 (14px / 18px) + 颜色偏移的柔阴影
+     5. 翡翠重音 #10b981 替换朱砂；状态色保持 antd 默认
+     6. 内容区充足留白 (32px) + 卡片间距 (20px)
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-admin-glass {
+  /* 在 admin 范围内覆盖朱砂为翡翠，不影响 root --jz-accent */
+  --jz-accent: #10b981;
+  --jz-accent-soft: #34d399;
+  --jz-accent-glow: rgba(16, 185, 129, 0.35);
+  --jz-gold: #fbbf24;
+
+  --glass-bg-deep: #07090f;
+  --glass-bg-mid:  #0e1320;
+  --glass-surface: rgba(255, 255, 255, 0.045);
+  --glass-surface-strong: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-divider: rgba(255, 255, 255, 0.04);
+  --glass-text: #e6ebf2;
+  --glass-text-muted: #8c96a8;
+
+  --glass-radius: 14px;
+  --glass-radius-lg: 18px;
+  --glass-radius-pill: 999px;
+
+  --glass-shadow-card: 0 8px 28px rgba(0, 0, 0, 0.45),
+                       0 2px 6px rgba(0, 0, 0, 0.35),
+                       0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+  --glass-shadow-hero: 0 20px 60px rgba(0, 0, 0, 0.55),
+                       0 2px 6px rgba(0, 0, 0, 0.4);
+  --glass-shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+/* 整个 admin layout 接管 body 背景 ── 玄黑渐变 + 三色光晕 */
+.jz-admin-glass.ant-layout {
+  background: var(--glass-bg-deep) !important;
+  color: var(--glass-text);
+  /* 多层渐变模拟 macOS Big Sur dock 后景 + Vision Pro 氛围 */
+  background-image:
+    radial-gradient(ellipse 70% 50% at  0%  0%, rgba(16, 185, 129, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100%  0%, rgba(96, 165, 250, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at  20% 90%, rgba(251, 191, 36, 0.10) 0%, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* 浮点星尘 — 极淡的网点，给玻璃下添纹理而不抢眼 */
+.jz-admin-glass.ant-layout::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle 1px at 25% 30%, rgba(255, 255, 255, 0.06) 100%, transparent),
+    radial-gradient(circle 1px at 70% 60%, rgba(255, 255, 255, 0.05) 100%, transparent),
+    radial-gradient(circle 1px at 45% 80%, rgba(255, 255, 255, 0.04) 100%, transparent),
+    radial-gradient(circle 1px at 85% 20%, rgba(255, 255, 255, 0.05) 100%, transparent);
+  background-size: 300px 300px;
+  opacity: 0.6;
+}
+
+/* 标题文字 / 段落文字 */
+.jz-admin-glass .ant-typography,
+.jz-admin-glass h1, .jz-admin-glass h2, .jz-admin-glass h3,
+.jz-admin-glass h4, .jz-admin-glass h5 {
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .ant-typography.ant-typography-secondary,
+.jz-admin-glass .ant-typography-caption,
+.jz-admin-glass .ant-typography[type='secondary'] {
+  color: var(--glass-text-muted) !important;
+}
+
+/* ── 侧栏 ────────────────────────────────────────────────────────────── */
+.jz-admin-glass .jz-admin-sider.ant-layout-sider {
+  background: var(--glass-surface) !important;
+  backdrop-filter: blur(24px) saturate(150%);
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  border-right: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-soft);
+  position: relative;
+  z-index: 5;
+}
+
+.jz-admin-glass .jz-admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 24px 22px 22px;
+  border-bottom: 1px solid var(--glass-divider);
+  margin-bottom: 10px;
+}
+.jz-admin-glass .jz-admin-brand-seal {
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  color: #0a1f1a;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  font-weight: 800;
+  font-family: 'PingFang SC', 'Songti SC', serif;
+  box-shadow:
+    0 6px 18px var(--jz-accent-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+.jz-admin-glass .jz-admin-brand:hover .jz-admin-brand-seal {
+  transform: rotate(-6deg) scale(1.05);
+}
+.jz-admin-glass .jz-admin-brand-name {
+  font-size: 22px;
+  font-weight: 600;
+  font-family: 'PingFang SC', 'Songti SC', 'SimSun', serif;
+  color: var(--glass-text);
+  letter-spacing: 3px;
+}
+.jz-admin-glass .jz-admin-brand-sub {
+  font-size: 11px;
+  color: var(--glass-text-muted);
+  letter-spacing: 5px;
+  margin-top: 4px;
+}
+
+/* 菜单 ── 宽松、active 态翡翠胶囊 */
+.jz-admin-glass .jz-admin-menu.ant-menu {
+  background: transparent !important;
+  padding: 8px 12px;
+  border-inline-end: none !important;
+  font-size: 14px;
+}
+.jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item {
+  margin-block: 4px !important;
+  border-radius: 10px !important;
+  height: 44px;
+  line-height: 44px;
+  padding-inline: 14px !important;
+  color: var(--glass-text-muted) !important;
+  transition: all 0.22s ease;
+  position: relative;
+  overflow: hidden;
+}
+.jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item:hover {
+  background: var(--glass-surface-strong) !important;
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item-selected {
+  background: linear-gradient(135deg,
+              rgba(16, 185, 129, 0.18) 0%,
+              rgba(16, 185, 129, 0.06) 100%) !important;
+  color: var(--jz-accent) !important;
+  font-weight: 600;
+  box-shadow:
+    0 4px 14px rgba(16, 185, 129, 0.15),
+    0 0 0 1px rgba(16, 185, 129, 0.25) inset;
+}
+.jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item-selected::after {
+  border-right-color: transparent !important;
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item .anticon {
+  font-size: 16px;
+  margin-right: 12px;
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item a {
+  color: inherit !important;
+}
+
+/* ── 顶栏 ────────────────────────────────────────────────────────────── */
+.jz-admin-glass .jz-admin-header.ant-layout-header {
+  background: var(--glass-surface) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: 1px solid var(--glass-border);
+  height: 64px;
+  line-height: 64px;
+  padding: 0 32px !important;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.jz-admin-glass .jz-admin-search {
+  background: var(--glass-surface) !important;
+  border: 1px solid var(--glass-border) !important;
+  color: var(--glass-text-muted) !important;
+  height: 38px;
+  padding: 0 14px !important;
+  min-width: 320px;
+  text-align: left;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  transition: all 0.2s ease !important;
+}
+.jz-admin-glass .jz-admin-search:hover {
+  background: var(--glass-surface-strong) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .jz-admin-search-kbd {
+  padding: 2px 7px;
+  border: 1px solid var(--glass-border);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: var(--glass-text-muted);
+}
+
+/* ── 主内容区：宽松 ─────────────────────────────────────────────────── */
+.jz-admin-glass .jz-admin-content {
+  position: relative;
+  z-index: 1;
+  padding: 32px 36px !important;
+  background: transparent !important;
+}
+@media (max-width: 768px) {
+  .jz-admin-glass .jz-admin-content { padding: 20px 16px !important; }
+}
+
+/* ── Card：玻璃面 ───────────────────────────────────────────────────── */
+.jz-admin-glass .ant-card {
+  background: var(--glass-surface) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--glass-radius-lg) !important;
+  box-shadow: var(--glass-shadow-card) !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+  color: var(--glass-text);
+}
+.jz-admin-glass .ant-card.ant-card-hoverable:hover {
+  transform: translateY(-2px);
+  border-color: rgba(16, 185, 129, 0.3) !important;
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.55),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(16, 185, 129, 0.25) inset !important;
+}
+.jz-admin-glass .ant-card-head {
+  background: transparent !important;
+  border-bottom: 1px solid var(--glass-divider) !important;
+  min-height: 52px !important;
+  padding: 0 24px !important;
+}
+.jz-admin-glass .ant-card-head-title {
+  font-weight: 600 !important;
+  font-size: 15px !important;
+  color: var(--glass-text) !important;
+  letter-spacing: 0.3px;
+}
+.jz-admin-glass .ant-card-body {
+  padding: 24px !important;
+  color: var(--glass-text);
+}
+.jz-admin-glass .ant-card-small > .ant-card-body { padding: 20px !important; }
+
+/* ── AI 管理页 Hero：更强渐变 ───────────────────────────────────────── */
+.jz-admin-glass .jz-ai-hero {
+  background:
+    radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(167, 139, 250, 0.12) 0%, transparent 55%),
+    var(--glass-surface) !important;
+  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  box-shadow: var(--glass-shadow-hero) !important;
+  position: relative;
+  overflow: hidden;
+}
+.jz-admin-glass .jz-ai-hero::before {
+  content: '';
+  position: absolute;
+  top: -60%;
+  right: -10%;
+  width: 320px;
+  height: 320px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(20px);
+}
+
+/* ── 模型卡片 ────────────────────────────────────────────────────────── */
+.jz-admin-glass .jz-model-card {
+  transition: all 0.25s ease !important;
+}
+.jz-admin-glass .jz-model-card.is-active {
+  background: linear-gradient(
+    135deg,
+    rgba(16, 185, 129, 0.14) 0%,
+    rgba(16, 185, 129, 0.04) 100%
+  ) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow:
+    0 0 0 2px rgba(16, 185, 129, 0.45),
+    0 8px 22px rgba(16, 185, 129, 0.2) !important;
+}
+
+/* ── 用量柱状图：翡翠光晕 ───────────────────────────────────────────── */
+.jz-admin-glass .jz-spark-bar {
+  background: linear-gradient(
+    180deg,
+    var(--jz-accent) 0%,
+    rgba(16, 185, 129, 0.4) 100%
+  );
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+}
+
+/* ── Statistic 数字 ──────────────────────────────────────────────────── */
+.jz-admin-glass .ant-statistic-title {
+  color: var(--glass-text-muted) !important;
+  font-size: 12px !important;
+  font-weight: 500;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  margin-bottom: 8px !important;
+}
+.jz-admin-glass .ant-statistic-content {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont,
+               'Inter', ui-sans-serif, system-ui, sans-serif !important;
+  font-weight: 600 !important;
+  font-size: 28px !important;
+  color: var(--glass-text);
+  letter-spacing: -0.5px;
+}
+
+/* ── 按钮 ────────────────────────────────────────────────────────────── */
+.jz-admin-glass .ant-btn {
+  border-radius: 10px !important;
+  height: 36px !important;
+  padding-inline: 16px !important;
+  border: 1px solid var(--glass-border) !important;
+  background: var(--glass-surface) !important;
+  color: var(--glass-text) !important;
+  font-weight: 500;
+  transition: all 0.2s ease !important;
+}
+.jz-admin-glass .ant-btn:hover {
+  background: var(--glass-surface-strong) !important;
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  color: var(--jz-accent) !important;
+}
+.jz-admin-glass .ant-btn-sm { height: 28px !important; padding-inline: 10px !important; }
+.jz-admin-glass .ant-btn-primary {
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  border-color: transparent !important;
+  color: #062c20 !important;
+  box-shadow:
+    0 4px 14px rgba(16, 185, 129, 0.4),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
+}
+.jz-admin-glass .ant-btn-primary:hover {
+  background: linear-gradient(135deg, #06d6a0 0%, var(--jz-accent) 100%) !important;
+  color: #042820 !important;
+  box-shadow:
+    0 6px 20px rgba(16, 185, 129, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.15) inset !important;
+}
+.jz-admin-glass .ant-btn-round { border-radius: var(--glass-radius-pill) !important; }
+.jz-admin-glass .ant-btn-dangerous {
+  border-color: rgba(220, 38, 38, 0.4) !important;
+  color: #f87171 !important;
+}
+
+/* ── 表格 ────────────────────────────────────────────────────────────── */
+.jz-admin-glass .ant-table {
+  background: transparent !important;
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.025) !important;
+  color: var(--glass-text-muted) !important;
+  font-weight: 600 !important;
+  font-size: 11px !important;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--glass-border) !important;
+}
+.jz-admin-glass .ant-table-tbody > tr > td {
+  border-bottom: 1px solid var(--glass-divider) !important;
+  background: transparent !important;
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .ant-table-tbody > tr:hover > td {
+  background: rgba(16, 185, 129, 0.06) !important;
+}
+.jz-admin-glass .ant-table-row-expand-icon {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+}
+
+/* ── Tag ─────────────────────────────────────────────────────────────── */
+.jz-admin-glass .ant-tag {
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  padding: 2px 10px !important;
+  line-height: 18px !important;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface) !important;
+  color: var(--glass-text-muted);
+  backdrop-filter: blur(8px);
+}
+.jz-admin-glass .ant-tag-success {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: var(--jz-accent) !important;
+}
+.jz-admin-glass .ant-tag-warning {
+  background: rgba(251, 191, 36, 0.15) !important;
+  border-color: rgba(251, 191, 36, 0.35) !important;
+  color: var(--jz-gold) !important;
+}
+.jz-admin-glass .ant-tag-error {
+  background: rgba(248, 113, 113, 0.15) !important;
+  border-color: rgba(248, 113, 113, 0.35) !important;
+  color: #fca5a5 !important;
+}
+.jz-admin-glass .ant-tag-blue {
+  background: rgba(96, 165, 250, 0.15) !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+  color: #93c5fd !important;
+}
+
+/* ── Segmented (AI 页 Tab) ──────────────────────────────────────────── */
+.jz-admin-glass .ant-segmented {
+  background: var(--glass-surface) !important;
+  padding: 4px !important;
+  border-radius: var(--glass-radius-pill) !important;
+  border: 1px solid var(--glass-border);
+}
+.jz-admin-glass .ant-segmented-item {
+  color: var(--glass-text-muted) !important;
+  transition: all 0.25s ease !important;
+}
+.jz-admin-glass .ant-segmented-item:hover { color: var(--glass-text) !important; }
+.jz-admin-glass .ant-segmented-item-selected {
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  color: #042820 !important;
+  box-shadow: 0 4px 14px var(--jz-accent-glow) !important;
+  font-weight: 600;
+}
+.jz-admin-glass .ant-segmented-item-selected .ant-segmented-item-label { color: inherit !important; }
+
+/* ── Switch / InputNumber / Select 等表单元素 ──────────────────────── */
+.jz-admin-glass .ant-switch {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+.jz-admin-glass .ant-switch-checked {
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  box-shadow: 0 0 12px var(--jz-accent-glow) !important;
+}
+.jz-admin-glass .ant-input,
+.jz-admin-glass .ant-input-number-input,
+.jz-admin-glass .ant-input-number {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .ant-input:focus,
+.jz-admin-glass .ant-input-number-focused,
+.jz-admin-glass .ant-input-number:hover {
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+}
+.jz-admin-glass .ant-select-selector {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
+  border-color: rgba(16, 185, 129, 0.5) !important;
+}
+.jz-admin-glass .ant-radio-button-wrapper {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--glass-text-muted) !important;
+}
+.jz-admin-glass .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.5) !important;
+  color: var(--jz-accent) !important;
+}
+
+/* ── Dropdown / Popover 弹层也要玻璃 ───────────────────────────────── */
+.jz-admin-glass .ant-dropdown-menu,
+.jz-admin-glass .ant-popover-inner,
+.jz-admin-glass .ant-select-dropdown {
+  background: rgba(14, 19, 32, 0.92) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--glass-shadow-card) !important;
+}
+.jz-admin-glass .ant-dropdown-menu-item,
+.jz-admin-glass .ant-select-item {
+  color: var(--glass-text) !important;
+}
+.jz-admin-glass .ant-dropdown-menu-item:hover,
+.jz-admin-glass .ant-select-item-option-active {
+  background: rgba(16, 185, 129, 0.12) !important;
+}
+.jz-admin-glass .ant-select-item-option-selected {
+  background: rgba(16, 185, 129, 0.18) !important;
+  color: var(--jz-accent) !important;
+}
+
+/* ── Progress ────────────────────────────────────────────────────────── */
+.jz-admin-glass .ant-progress-bg {
+  background: linear-gradient(90deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+}
+
+/* ── Spin ────────────────────────────────────────────────────────────── */
+.jz-admin-glass .ant-spin-dot-item { background-color: var(--jz-accent) !important; }

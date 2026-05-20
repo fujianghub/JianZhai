@@ -12,9 +12,11 @@ const { TextArea } = Input;
 
 interface Props {
   documentId: number;
+  /** When true, hides the section header and removes the top border / margin (used inside the tabbed sidebar). */
+  compact?: boolean;
 }
 
-export default function CommentsPanel({ documentId }: Props) {
+export default function CommentsPanel({ documentId, compact = false }: Props) {
   const [comments, setComments] = useState<Comment[] | null>(null);
   const [draft, setDraft] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -46,11 +48,13 @@ export default function CommentsPanel({ documentId }: Props) {
   }
 
   return (
-    <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16, marginTop: 24 }}>
-      <Title level={5} style={{ marginBottom: 8 }}>
-        <MessageOutlined /> 笔记批注{' '}
-        <Text type="secondary">({comments?.length ?? 0})</Text>
-      </Title>
+    <div style={compact ? { padding: '8px 0' } : { borderTop: '1px solid #f0f0f0', paddingTop: 16, marginTop: 24 }}>
+      {!compact && (
+        <Title level={5} style={{ marginBottom: 8 }}>
+          <MessageOutlined /> 笔记批注{' '}
+          <Text type="secondary">({comments?.length ?? 0})</Text>
+        </Title>
+      )}
       <Space.Compact style={{ width: '100%', marginBottom: 12 }}>
         <TextArea
           value={draft}

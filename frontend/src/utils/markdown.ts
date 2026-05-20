@@ -202,6 +202,26 @@ function renderCodeBlock(code: string, lang: string): string {
     );
   }
 
+  // PlantUML 走和 mermaid 类似的"分图渲染"路径，但渲染目标是远端 svg URL，
+  // 所以同样把源码 base64 出来留给运行时增强器处理。
+  if (canon === 'plantuml') {
+    const b64 = base64UTF8(code.replace(/\n+$/, ''));
+    return (
+      `<div class="jz-code-block jz-code-plantuml" data-lang="plantuml" data-source="${b64}">` +
+      `<div class="jz-code-toolbar" contenteditable="false">` +
+      `<span class="jz-code-lang">${escape(label)}</span>` +
+      `<span class="jz-code-toolbar-spacer"></span>` +
+      `<button type="button" class="jz-code-btn" data-action="plantuml-source" title="查看源代码" aria-label="查看源代码">源码</button>` +
+      `<button type="button" class="jz-code-btn" data-action="copy" title="复制" aria-label="复制">⧉</button>` +
+      `</div>` +
+      `<div class="jz-mermaid-canvas" aria-live="polite">` +
+      `<div class="jz-mermaid-loading">正在向 PlantUML 服务请求…</div>` +
+      `</div>` +
+      `<pre class="jz-code-pre hljs jz-mermaid-source" hidden><code class="hljs language-plantuml">${escape(code)}</code></pre>` +
+      `</div>`
+    );
+  }
+
   const body = highlightCode(code, canon);
   // Split into lines so we can render a line-number gutter purely with CSS
   // counters — keeps the code copy-able without numbers.
@@ -538,4 +558,16 @@ export function wordCount(source: string): number {
   const cjk = source.match(/[一-鿿㐀-䶿]/g)?.length ?? 0;
   const words = source.match(/[A-Za-z0-9_]+/g)?.length ?? 0;
   return cjk + words;
+}
+
+/**
+ * 阅读时长估算（分钟，向上取整，最小 1 分钟）。
+ * 标准：中文 ~300 字/分钟，英文单词 ~200 字/分钟。把两类字数按各自权重折合。
+ */
+export function readingMinutes(source: string): number {
+  if (!source) return 0;
+  const cjk = source.match(/[一-鿿㐀-䶿]/g)?.length ?? 0;
+  const words = source.match(/[A-Za-z0-9_]+/g)?.length ?? 0;
+  const minutes = cjk / 300 + words / 200;
+  return Math.max(1, Math.ceil(minutes));
 }

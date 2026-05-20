@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document
 
 from .models import Comment
@@ -16,7 +17,7 @@ from .serializers import CommentSerializer, CreateCommentSerializer
 @permission_classes([IsAuthenticated])
 def document_comments(request, doc_id: int):
     doc = get_object_or_404(
-        Document.objects.filter(knowledge_base__owner=request.user), pk=doc_id
+        scope_queryset(Document.objects.all(), request.user), pk=doc_id
     )
     if request.method == "GET":
         block_id = request.query_params.get("block_id")
@@ -40,7 +41,12 @@ def document_comments(request, doc_id: int):
 @permission_classes([IsAuthenticated])
 def delete_comment(request, pk: int):
     comment = get_object_or_404(
-        Comment.objects.filter(document__knowledge_base__owner=request.user), pk=pk
+        scope_queryset(
+            Comment.objects.all(),
+            request.user,
+            field="document__knowledge_base__owner",
+        ),
+        pk=pk,
     )
     comment.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)

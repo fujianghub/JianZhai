@@ -7,34 +7,16 @@ from django.dispatch import receiver
 from apps.knowledge.models import Document
 
 from .models import DocumentLink
-from .parser import parse_mentions
+from .tasks import sync_document_links
 
 
 @receiver(post_save, sender=Document)
-def sync_document_links(sender, instance: Document, created: bool, **kwargs) -> None:
-    """Re-derive DocumentLink rows for `instance` from its raw_content."""
+def queue_document_link_sync(sender, instance: Document, created: bool, **kwargs) -> None:
+    """Queue link re-derivation; keeps the request/response path off the parser+DB churn."""
     if instance.is_deleted:
+        # Cheap single DELETE — safe to run inline so a freshly soft-deleted
+        # doc never lingers as a link source if the worker is down.
         DocumentLink.objects.filter(source=instance).delete()
         return
-
-    parsed = parse_mentions(instance.raw_content or "")
-    valid_target_ids = set(
-        Document.objects.filter(id__in={p.target_id for p in parsed}).values_list(
-            "id", flat=True
-        )
-    )
-
-    with transaction.atomic():
-        DocumentLink.objects.filter(source=instance).delete()
-        DocumentLink.objects.bulk_create(
-            [
-                DocumentLink(
-                    source=instance,
-                    target_id=p.target_id,
-                    position=p.position,
-                    context=p.context,
-                )
-                for p in parsed
-                if p.target_id in valid_target_ids and p.target_id != instance.id
-            ]
-        )
+    document_id = instance.pk
+    transaction.on_commit(lambda: sync_document_links.delay(document_id))

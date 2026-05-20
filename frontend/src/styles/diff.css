@@ -44,6 +44,12 @@
   display: inline-block;
   width: 100%;
 }
+.diff-view .diff-line-pad {
+  background: color-mix(in srgb, var(--jz-surface-2) 50%, transparent);
+  color: transparent;
+  display: inline-block;
+  width: 100%;
+}
 
 /* On dark / starry / deepsea palettes, brighten the ins/del colours so they
    still read against the deeper ground. */

@@ -8,6 +8,8 @@ from rest_framework import mixins, viewsets
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.scoping import scope_queryset
+
 from .models import ExportTask
 from .scope import collect_for_scope
 from .serializers import ExportTaskSerializer
@@ -25,9 +27,7 @@ class ExportTaskViewSet(
     serializer_class = ExportTaskSerializer
 
     def get_queryset(self):
-        if not self.request.user.is_authenticated:
-            return ExportTask.objects.none()
-        return ExportTask.objects.filter(owner=self.request.user)
+        return scope_queryset(ExportTask.objects.all(), self.request.user, field="owner")
 
     def perform_destroy(self, instance):
         # Remove the artifact too so deleting a row also frees disk space.
@@ -71,7 +71,10 @@ class ExportTaskViewSet(
 
 def download(request, pk: int):
     task = get_object_or_404(ExportTask, pk=pk)
-    if not request.user.is_authenticated or task.owner_id != request.user.id:
+    if not request.user.is_authenticated:
+        raise Http404
+    # Superusers can download any export; owners can download their own.
+    if not request.user.is_superuser and task.owner_id != request.user.id:
         raise Http404
     if task.status != ExportTask.STATUS_DONE or not task.file_path:
         raise Http404

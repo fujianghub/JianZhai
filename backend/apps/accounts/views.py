@@ -1,7 +1,15 @@
 from __future__ import annotations
 
+import platform
+import sys
+from datetime import timedelta
+
+import django
+from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.db.models import Sum
 from django.middleware.csrf import get_token
+from django.utils import timezone
 from rest_framework import serializers, status, viewsets
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
@@ -69,6 +77,59 @@ class IsStaffUser(BasePermission):
 
     def has_permission(self, request, view):
         return bool(request.user and request.user.is_authenticated and request.user.is_staff)
+
+
+class IsSuperUser(BasePermission):
+    """Only superusers — used for the architecture-overview endpoint."""
+
+    def has_permission(self, request, view):
+        return bool(
+            request.user and request.user.is_authenticated and request.user.is_superuser
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsSuperUser])
+def system_info(request):
+    """Live counts + runtime info for the superuser-only 架构总览 page.
+
+    Aggregates a handful of cheap COUNT/SUM queries so the page can render a
+    stats grid that refreshes on a 30s interval without paginating heavy data.
+    """
+    from apps.editor.models import Attachment
+    from apps.knowledge.models import Document, Folder, KnowledgeBase
+
+    now = timezone.now()
+    one_day_ago = now - timedelta(days=1)
+
+    doc_qs = Document.objects.all()
+    attachment_agg = Attachment.objects.aggregate(total=Sum("size"))
+
+    return Response(
+        {
+            "server_time": now.isoformat(),
+            "runtime": {
+                "python": sys.version.split()[0],
+                "django": django.get_version(),
+                "platform": platform.platform(),
+                "debug": settings.DEBUG,
+            },
+            "counts": {
+                "knowledge_bases": KnowledgeBase.objects.count(),
+                "folders": Folder.objects.count(),
+                "documents_total": doc_qs.count(),
+                "documents_published": doc_qs.filter(status="published").count(),
+                "documents_draft": doc_qs.filter(status="draft").count(),
+                "documents_public": doc_qs.filter(visibility="public").count(),
+                "documents_updated_24h": doc_qs.filter(updated_at__gte=one_day_ago).count(),
+                "users_total": User.objects.count(),
+                "users_active": User.objects.filter(is_active=True).count(),
+                "users_staff": User.objects.filter(is_staff=True).count(),
+                "attachments_total": Attachment.objects.count(),
+                "attachments_bytes": attachment_agg["total"] or 0,
+            },
+        }
+    )
 
 
 class UserSerializer(serializers.ModelSerializer):

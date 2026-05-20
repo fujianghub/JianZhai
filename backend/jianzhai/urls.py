@@ -16,6 +16,7 @@ api_v1_patterns = [
     path("", include("apps.exporter.urls")),
     path("", include("apps.tags.urls")),
     path("", include("apps.comments.urls")),
+    path("", include("apps.ai.urls")),
     path("public/tags/", public_tag_cloud, name="public-tag-cloud"),
     path("public/", include("apps.blog.urls")),
 ]

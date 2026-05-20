@@ -13,6 +13,9 @@ import MentionPicker from './MentionPicker';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { CALLOUT_TEMPLATES, TEXT_COLOR_PRESETS } from './callouts';
 import type { MentionSuggestion } from '@/api/linking';
+import { uploadFile } from '@/api/attachments';
+import { message } from '@/utils/notify';
+import { paperClassName } from '@/utils/paper';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -24,6 +27,12 @@ interface Props {
   onAutoSave?: (next: string) => Promise<void> | void;
   autosaveMs?: number;
   readOnly?: boolean;
+  /** Document this editor is editing — used to attach pasted images. */
+  documentId?: number;
+  /** Lift the textarea element up so the outline panel can scroll/seek it. */
+  onTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  /** Paper-style preset key applied to the preview pane. */
+  paperStyle?: string;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
@@ -34,12 +43,17 @@ export default function MarkdownEditor({
   onAutoSave,
   autosaveMs = 5000,
   readOnly = false,
+  documentId,
+  onTextareaReady,
+  paperStyle,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [mentionOpen, setMentionOpen] = useState(false);
   /** Cursor offset captured when @ trigger or button fired; insertion replaces text from here. */
   const triggerRangeRef = useRef<{ from: number; to: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const syncScrollLockRef = useRef(false);
   const lastSavedRef = useRef(value);
   const timerRef = useRef<number | null>(null);
 
@@ -124,6 +138,61 @@ export default function MarkdownEditor({
     }
   }
 
+  /** Insert an `![alt](url)` Markdown image at the current cursor. */
+  function insertImageAtCursor(url: string, alt: string) {
+    const ta = textareaRef.current;
+    const start = ta?.selectionStart ?? value.length;
+    const end = ta?.selectionEnd ?? value.length;
+    const prevCharNeedsNl = start > 0 && value[start - 1] !== '\n';
+    const insertion = (prevCharNeedsNl ? '\n' : '') + `![${alt}](${url})\n`;
+    onChange(value.slice(0, start) + insertion + value.slice(end));
+    const caret = start + insertion.length;
+    queueMicrotask(() => {
+      if (ta) {
+        ta.focus();
+        ta.setSelectionRange(caret, caret);
+      }
+    });
+  }
+
+  /** Clipboard paste handler — intercept image-bearing paste and upload. */
+  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
+    if (readOnly) return;
+    const items = Array.from(e.clipboardData?.items ?? []);
+    const images = items
+      .filter((i) => i.kind === 'file' && i.type.startsWith('image/'))
+      .map((i) => i.getAsFile())
+      .filter((f): f is File => !!f);
+    if (images.length === 0) return;
+    e.preventDefault();
+    for (const file of images) {
+      try {
+        const att = await uploadFile(file, documentId);
+        insertImageAtCursor(att.url, att.original_filename || file.name);
+      } catch (err) {
+        message.error(err instanceof Error ? err.message : '图片上传失败');
+      }
+    }
+  }
+
+  /** Drop handler — same as paste but for dragged files. */
+  async function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
+    if (readOnly) return;
+    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
+      f.type.startsWith('image/'),
+    );
+    if (files.length === 0) return;
+    e.preventDefault();
+    for (const file of files) {
+      try {
+        const att = await uploadFile(file, documentId);
+        insertImageAtCursor(att.url, att.original_filename || file.name);
+      } catch (err) {
+        message.error(err instanceof Error ? err.message : '图片上传失败');
+      }
+    }
+  }
+
   function handleMentionSelect(s: MentionSuggestion) {
     const range = triggerRangeRef.current ?? { from: value.length, to: value.length };
     const insertion = `@[${s.title}](doc:${s.id})`;
@@ -186,6 +255,28 @@ export default function MarkdownEditor({
       ta.focus();
       ta.setSelectionRange(start + head.length, cursorAt);
     });
+  }
+
+  function onTextareaScroll(e: React.UIEvent<HTMLTextAreaElement>) {
+    if (syncScrollLockRef.current) return;
+    const ta = e.currentTarget;
+    const preview = previewRef.current;
+    if (!preview) return;
+    const ratio = ta.scrollTop / Math.max(1, ta.scrollHeight - ta.clientHeight);
+    syncScrollLockRef.current = true;
+    preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight);
+    requestAnimationFrame(() => { syncScrollLockRef.current = false; });
+  }
+
+  function onPreviewScroll(e: React.UIEvent<HTMLDivElement>) {
+    if (syncScrollLockRef.current) return;
+    const preview = e.currentTarget;
+    const ta = textareaRef.current;
+    if (!ta) return;
+    const ratio = preview.scrollTop / Math.max(1, preview.scrollHeight - preview.clientHeight);
+    syncScrollLockRef.current = true;
+    ta.scrollTop = ratio * (ta.scrollHeight - ta.clientHeight);
+    requestAnimationFrame(() => { syncScrollLockRef.current = false; });
   }
 
   const statusLabel: Record<SaveStatus, { text: string; color?: string }> = {
@@ -294,11 +385,16 @@ export default function MarkdownEditor({
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, flex: 1, minHeight: 0 }}>
         <TextArea
           ref={(el) => {
-            textareaRef.current = el?.resizableTextArea?.textArea ?? null;
+            const ta = el?.resizableTextArea?.textArea ?? null;
+            textareaRef.current = ta;
+            onTextareaReady?.(ta);
           }}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          onScroll={onTextareaScroll}
           readOnly={readOnly}
           autoSize={false}
           style={{
@@ -310,14 +406,15 @@ export default function MarkdownEditor({
           placeholder="使用 Markdown 书写；键入 @ 引用其他文档"
         />
         <div
-          className="markdown-preview jz-md-editor-preview"
+          ref={previewRef}
+          className={`markdown-preview jz-md-editor-preview paper ${paperClassName(paperStyle)}`}
           style={{
             overflow: 'auto',
             padding: '12px 16px',
             border: '1px solid var(--jz-border)',
             borderRadius: 6,
-            background: 'var(--jz-surface-2)',
           }}
+          onScroll={onPreviewScroll}
           dangerouslySetInnerHTML={{ __html: html }}
         />
         <CodeBlockEnhancer selector=".jz-md-editor-preview" bindKey={html} />

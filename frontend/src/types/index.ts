@@ -90,6 +90,7 @@ export interface DocumentDetail extends DocumentListItem {
   raw_content: string;
   published_content: string;
   paper_style: string;
+  version: number;
   primary_attachment: PublicAttachment | null;
 }
 

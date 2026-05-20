@@ -39,6 +39,7 @@ export const CODE_LANGUAGES: CodeLanguage[] = [
   { slug: 'makefile', label: 'Makefile', aliases: ['make'] },
   { slug: 'markdown', label: 'Markdown', aliases: ['md'] },
   { slug: 'mermaid', label: 'Mermaid (图表)' },
+  { slug: 'plantuml', label: 'PlantUML (图表)', aliases: ['puml', 'uml'] },
   { slug: 'nginx', label: 'Nginx' },
   { slug: 'objectivec', label: 'Objective-C', aliases: ['objc', 'objective-c'] },
   { slug: 'perl', label: 'Perl', aliases: ['pl'] },
@@ -93,6 +94,7 @@ export function hljsLanguageFor(slug: string): string | null {
     case 'xml':
       return 'xml';
     case 'mermaid':
+    case 'plantuml':
     case 'plaintext':
       return null;
     default:

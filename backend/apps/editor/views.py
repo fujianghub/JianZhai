@@ -11,6 +11,7 @@ from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document, Folder, KnowledgeBase
 from apps.knowledge.serializers import DocumentSerializer
 
@@ -24,10 +25,12 @@ ALLOWED_DOC_EXT = {".pdf", ".doc", ".docx", ".html", ".htm", ".md", ".markdown",
 ALLOWED_OTHER_EXT = {".zip", ".csv", ".json", ".xml"}
 ALLOWED_EXT = ALLOWED_IMAGE_EXT | ALLOWED_DOC_EXT | ALLOWED_OTHER_EXT
 
-# File types whose contents we inline directly into Document.raw_content on import.
-# HTML stays as a binary attachment so the blog reader renders the original file
-# (via iframe) instead of dumping the raw HTML source into the Markdown body.
-TEXT_IMPORT_EXT = {".md", ".markdown", ".txt"}
+# File types whose contents we inline directly into Document.raw_content on
+# import. HTML is included so the in-editor HTML mode can round-trip edits
+# back into raw_content; the blog reader detects doc_format='html' and renders
+# the body via <iframe srcdoc> so DOMPurify-style markdown rendering doesn't
+# butcher real HTML.
+TEXT_IMPORT_EXT = {".md", ".markdown", ".txt", ".html", ".htm"}
 
 
 def _classify(ext: str) -> str:
@@ -71,7 +74,7 @@ def upload(request):
     doc_id = request.data.get("document")
     if doc_id:
         doc = get_object_or_404(
-            Document.objects.filter(knowledge_base__owner=request.user), pk=doc_id
+            scope_queryset(Document.objects.all(), request.user), pk=doc_id
         )
 
     mime = f.content_type or mimetypes.guess_type(f.name)[0] or ""
@@ -91,7 +94,7 @@ def upload(request):
 @permission_classes([IsAuthenticated])
 def document_attachments(request, doc_id: int):
     doc = get_object_or_404(
-        Document.objects.filter(knowledge_base__owner=request.user), pk=doc_id
+        scope_queryset(Document.objects.all(), request.user), pk=doc_id
     )
     qs = doc.attachments.all()
     return Response(AttachmentSerializer(qs, many=True).data)
@@ -214,7 +217,9 @@ def import_file(request):
         return Response(
             {"detail": "knowledge_base is required"}, status=status.HTTP_400_BAD_REQUEST
         )
-    kb = get_object_or_404(KnowledgeBase.objects.filter(owner=request.user), pk=kb_id)
+    kb = get_object_or_404(
+        scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner"), pk=kb_id
+    )
 
     folder = None
     folder_id = request.data.get("folder")
@@ -259,7 +264,9 @@ def import_batch(request):
         return Response(
             {"detail": "knowledge_base is required"}, status=status.HTTP_400_BAD_REQUEST
         )
-    kb = get_object_or_404(KnowledgeBase.objects.filter(owner=request.user), pk=kb_id)
+    kb = get_object_or_404(
+        scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner"), pk=kb_id
+    )
 
     root_folder = None
     folder_id = request.data.get("folder")

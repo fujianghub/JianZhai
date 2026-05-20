@@ -1,11 +1,27 @@
-import { Layout, Space } from 'antd';
+import { useEffect, useState } from 'react';
+import { Button, Layout, Space } from 'antd';
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { SearchOutlined } from '@ant-design/icons';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
+import GlobalSearch from '@/components/common/GlobalSearch';
 
 const { Header, Content, Footer } = Layout;
 
 export default function BlogLayout() {
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Header
@@ -28,6 +44,13 @@ export default function BlogLayout() {
           <NavLink to="/tags" className="jz-nav-link">标签</NavLink>
           <a href="/feed.xml" target="_blank" rel="noreferrer" className="jz-nav-link">RSS</a>
           <NavLink to="/admin" className="jz-nav-link">后台</NavLink>
+          <Button
+            type="text"
+            icon={<SearchOutlined />}
+            onClick={() => setSearchOpen(true)}
+            aria-label="搜索 (Ctrl+K)"
+            style={{ color: 'var(--jz-text-muted)' }}
+          />
           <LiveClock compact />
           <ThemeSwitcher />
         </Space>
@@ -38,6 +61,14 @@ export default function BlogLayout() {
       >
         <Outlet />
       </Content>
+      <GlobalSearch
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        resultUrl={(r) => r.visibility === 'public' && r.status === 'published'
+          ? `/posts/${encodeURIComponent(r.slug)}`
+          : `/admin/kbs/${r.knowledge_base.id}?doc=${r.id}`
+        }
+      />
       <Footer
         style={{
           textAlign: 'center',

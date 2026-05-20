@@ -8,6 +8,7 @@ import {
   Input,
   Modal,
   Popconfirm,
+  Segmented,
   Select,
   Space,
   Spin,
@@ -72,6 +73,38 @@ export default function KBWorkspace() {
     folder: TreeFolder;
     tagIds: number[];
   } | null>(null);
+
+  // -------- tree filter (persisted per-KB) --------
+  const [filterQuery, setFilterQuery] = useState<string>(() => {
+    try {
+      return localStorage.getItem(`jz-kb-${kbId}-filter-q`) ?? '';
+    } catch {
+      return '';
+    }
+  });
+  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>(() => {
+    try {
+      const v = localStorage.getItem(`jz-kb-${kbId}-filter-status`);
+      return v === 'published' || v === 'draft' ? v : 'all';
+    } catch {
+      return 'all';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(`jz-kb-${kbId}-filter-q`, filterQuery);
+    } catch {
+      /* noop */
+    }
+  }, [kbId, filterQuery]);
+  useEffect(() => {
+    try {
+      localStorage.setItem(`jz-kb-${kbId}-filter-status`, filterStatus);
+    } catch {
+      /* noop */
+    }
+  }, [kbId, filterStatus]);
 
   const refreshTree = useCallback(async () => {
     const t = await kbsApi.getKBTree(kbId);
@@ -493,6 +526,33 @@ export default function KBWorkspace() {
 
       <div
         style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 12,
+          flexWrap: 'wrap',
+          alignItems: 'center',
+        }}
+      >
+        <Input.Search
+          allowClear
+          placeholder="按标题筛选文档…"
+          value={filterQuery}
+          onChange={(e) => setFilterQuery(e.target.value)}
+          style={{ maxWidth: 320, flex: 1 }}
+        />
+        <Segmented
+          value={filterStatus}
+          onChange={(v) => setFilterStatus(v as 'all' | 'published' | 'draft')}
+          options={[
+            { label: '全部', value: 'all' },
+            { label: '已发布', value: 'published' },
+            { label: '草稿', value: 'draft' },
+          ]}
+        />
+      </div>
+
+      <div
+        style={{
           border: '1px solid var(--jz-border)',
           borderRadius: 8,
           padding: 12,
@@ -523,6 +583,8 @@ export default function KBWorkspace() {
             checked={checked}
             onCheckedChange={setChecked}
             onEditFolderTags={openFolderTagsModal}
+            filterQuery={filterQuery}
+            filterStatus={filterStatus}
           />
         )}
       </div>

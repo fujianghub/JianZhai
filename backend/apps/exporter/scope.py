@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document, Folder, KnowledgeBase
 
 
@@ -17,15 +18,15 @@ def collect_for_scope(
     *, owner, scope: str, target_id: int, only_published: bool = False
 ) -> ExportScope:
     if scope == "doc":
-        doc = Document.objects.select_related("knowledge_base").get(
-            pk=target_id, knowledge_base__owner=owner
-        )
+        doc = scope_queryset(
+            Document.objects.select_related("knowledge_base"), owner
+        ).get(pk=target_id)
         return ExportScope(kb=doc.knowledge_base, documents=[doc], label=doc.title)
 
     if scope == "folder":
-        folder = Folder.objects.select_related("knowledge_base").get(
-            pk=target_id, knowledge_base__owner=owner
-        )
+        folder = scope_queryset(
+            Folder.objects.select_related("knowledge_base"), owner
+        ).get(pk=target_id)
         descendant_ids = _descendant_folder_ids(folder)
         qs = Document.objects.filter(
             knowledge_base=folder.knowledge_base, folder_id__in=descendant_ids
@@ -36,7 +37,9 @@ def collect_for_scope(
         return ExportScope(kb=folder.knowledge_base, documents=docs, label=folder.name)
 
     if scope == "kb":
-        kb = KnowledgeBase.objects.get(pk=target_id, owner=owner)
+        kb = scope_queryset(KnowledgeBase.objects.all(), owner, field="owner").get(
+            pk=target_id
+        )
         qs = Document.objects.filter(knowledge_base=kb)
         if only_published:
             qs = qs.filter(status="published")

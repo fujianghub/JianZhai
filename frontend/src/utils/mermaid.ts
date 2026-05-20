@@ -10,6 +10,7 @@
 
 type MermaidApi = {
   initialize: (opts: object) => void;
+  parse?: (source: string) => Promise<unknown> | unknown;
   render: (id: string, source: string) => Promise<{ svg: string }>;
 };
 
@@ -115,7 +116,23 @@ async function loadMermaid(): Promise<MermaidApi> {
 
 export async function renderMermaid(source: string): Promise<string> {
   const api = await loadMermaid();
+  // Probe-parse first so syntax errors throw cleanly without mermaid injecting
+  // its "bomb" error SVG into the DOM as a side effect — we'd rather surface
+  // the message in our own UI than leave orphan error nodes hanging in body.
+  if (typeof api.parse === 'function') {
+    await api.parse(source);
+  }
   const id = 'jz-mermaid-' + ++counter + '-' + Math.random().toString(36).slice(2, 8);
-  const { svg } = await api.render(id, source);
-  return svg;
+  try {
+    const { svg } = await api.render(id, source);
+    return svg;
+  } finally {
+    // Mermaid v11 leaves the temporary measurement container in body; sweep
+    // any nodes whose id starts with our prefix or mermaid's internal "dmm-".
+    if (typeof document !== 'undefined') {
+      document
+        .querySelectorAll(`#${CSS.escape(id)}, [id^="dmm-"][id$="${id}"]`)
+        .forEach((n) => n.remove());
+    }
+  }
 }

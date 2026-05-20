@@ -12,9 +12,11 @@ const { Title, Text } = Typography;
 
 interface Props {
   documentId: number;
+  /** When true, hides the section header title and removes the top border / margin (used inside the tabbed sidebar). */
+  compact?: boolean;
 }
 
-export default function AttachmentPanel({ documentId }: Props) {
+export default function AttachmentPanel({ documentId, compact = false }: Props) {
   const [items, setItems] = useState<Attachment[] | null>(null);
   const [previewing, setPreviewing] = useState<Attachment | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -51,11 +53,13 @@ export default function AttachmentPanel({ documentId }: Props) {
   }
 
   return (
-    <div style={{ borderTop: '1px solid var(--jz-divider)', paddingTop: 16, marginTop: 24 }}>
+    <div style={compact ? { padding: '8px 0' } : { borderTop: '1px solid var(--jz-divider)', paddingTop: 16, marginTop: 24 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-        <Title level={5} style={{ margin: 0 }}>
-          <PaperClipOutlined /> 附件 <Text type="secondary">({items?.length ?? 0})</Text>
-        </Title>
+        {!compact && (
+          <Title level={5} style={{ margin: 0 }}>
+            <PaperClipOutlined /> 附件 <Text type="secondary">({items?.length ?? 0})</Text>
+          </Title>
+        )}
         <Upload
           beforeUpload={(file) => handleUpload(file as File)}
           showUploadList={false}

@@ -7,6 +7,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document, Folder, KnowledgeBase
 
 from .models import Tag
@@ -18,16 +19,14 @@ class TagViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        if not self.request.user.is_authenticated:
-            return Tag.objects.none()
-        return Tag.objects.filter(owner=self.request.user)
+        return scope_queryset(Tag.objects.all(), self.request.user, field="owner")
 
 
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def document_tags(request, doc_id: int):
     doc = get_object_or_404(
-        Document.objects.filter(knowledge_base__owner=request.user), pk=doc_id
+        scope_queryset(Document.objects.all(), request.user), pk=doc_id
     )
     if request.method == "GET":
         return Response(TagSerializer(doc.tags.all(), many=True).data)
@@ -40,7 +39,9 @@ def document_tags(request, doc_id: int):
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
 def kb_tags(request, kb_id: int):
-    kb = get_object_or_404(KnowledgeBase.objects.filter(owner=request.user), pk=kb_id)
+    kb = get_object_or_404(
+        scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner"), pk=kb_id
+    )
     if request.method == "GET":
         return Response(TagSerializer(kb.tags.all(), many=True).data)
     serializer = TargetTagsSerializer(data=request.data)
@@ -53,7 +54,7 @@ def kb_tags(request, kb_id: int):
 @permission_classes([IsAuthenticated])
 def folder_tags(request, folder_id: int):
     folder = get_object_or_404(
-        Folder.objects.filter(knowledge_base__owner=request.user), pk=folder_id
+        scope_queryset(Folder.objects.all(), request.user), pk=folder_id
     )
     if request.method == "GET":
         return Response(TagSerializer(folder.tags.all(), many=True).data)

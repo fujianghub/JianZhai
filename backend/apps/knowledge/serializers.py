@@ -7,6 +7,20 @@ from rest_framework import serializers
 from .models import Document, Folder, KnowledgeBase
 
 
+def _primary_attachment(doc: Document):
+    """Return the oldest attachment, reading from a Prefetch cache if present.
+
+    `DocumentViewSet` populates ``ordered_attachments`` via a Prefetch so this
+    function avoids issuing a fresh ORDER BY query per document.
+    """
+    if not doc.pk:
+        return None
+    cached = getattr(doc, "ordered_attachments", None)
+    if cached is not None:
+        return cached[0] if cached else None
+    return doc.attachments.order_by("created_at").first()
+
+
 def detect_doc_format(doc: Document) -> str:
     """Classify a document by its primary (first-uploaded) attachment.
 
@@ -14,7 +28,7 @@ def detect_doc_format(doc: Document) -> str:
     Falls back to ``markdown`` (the default body editor) when the document has
     no attachment or only inline-imported text.
     """
-    att = doc.attachments.order_by("created_at").first() if doc.pk else None
+    att = _primary_attachment(doc)
     if att is None:
         return "markdown"
     name = (att.original_filename or "").lower()
@@ -134,6 +148,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "visibility",
             "paper_style",
             "order",
+            "version",
             "doc_format",
             "primary_attachment",
             "created_at",
@@ -167,6 +182,16 @@ class DocumentSerializer(serializers.ModelSerializer):
         """
         new_raw = validated_data.get("raw_content")
         was_published = instance.status == "published"
+        # Bump the optimistic-concurrency version whenever content changed.
+        content_changed = (
+            (new_raw is not None and new_raw != instance.raw_content)
+            or (
+                "published_content" in validated_data
+                and validated_data["published_content"] != instance.published_content
+            )
+        )
+        if content_changed:
+            validated_data["version"] = instance.version + 1
         result = super().update(instance, validated_data)
         if was_published and new_raw is not None and new_raw != result.published_content:
             result.published_content = new_raw
@@ -174,7 +199,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         return result
 
     def get_primary_attachment(self, obj: Document) -> dict | None:
-        att = obj.attachments.order_by("created_at").first() if obj.pk else None
+        att = _primary_attachment(obj)
         if not att:
             return None
         return {
@@ -247,6 +272,10 @@ class _TreeFolderSerializer(serializers.Serializer):
 
 def build_tree(kb: KnowledgeBase) -> dict:
     """Return a nested tree of folders + documents for one knowledge base."""
+    from django.db.models import Prefetch
+
+    from apps.editor.models import Attachment
+
     folders = list(
         Folder.objects.filter(knowledge_base=kb)
         .prefetch_related("tags")
@@ -254,7 +283,13 @@ def build_tree(kb: KnowledgeBase) -> dict:
     )
     documents = list(
         Document.objects.filter(knowledge_base=kb)
-        .prefetch_related("attachments")
+        .prefetch_related(
+            Prefetch(
+                "attachments",
+                queryset=Attachment.objects.order_by("created_at"),
+                to_attr="ordered_attachments",
+            )
+        )
         .order_by("order", "id")
     )
 

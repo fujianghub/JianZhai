@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import type { AdjacentPosts } from '@/api/blog';
 import { Breadcrumb, Button, Result, Spin, Tooltip, Typography } from 'antd';
 import { Link, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -13,7 +14,7 @@ import {
 } from '@ant-design/icons';
 import * as blogApi from '@/api/blog';
 import type { PublicPostDetail } from '@/types';
-import { renderMarkdownWithToc } from '@/utils/markdown';
+import { readingMinutes, renderMarkdownWithToc, wordCount } from '@/utils/markdown';
 import { previewKind } from '@/api/attachments';
 import { useAuthStore } from '@/stores/auth';
 import PaperPicker from '@/components/common/PaperPicker';
@@ -25,6 +26,8 @@ import TocPanel from '@/components/common/TocPanel';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { paperClassName, getReaderOverride, setReaderOverride } from '@/utils/paper';
 import { loadArticleFont, saveArticleFont, stackFor } from '@/utils/articleFont';
+import { SelectionAI } from '@/components/common/SelectionAI';
+import { DocAIPanel } from '@/components/common/DocAIPanel';
 
 const { Title, Text } = Typography;
 
@@ -32,6 +35,7 @@ export default function PostDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<PublicPostDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [adjacent, setAdjacent] = useState<AdjacentPosts | null>(null);
   /** Reader-side override; falls back to the doc's authored paper_style. */
   const [readerPaper, setReaderPaperState] = useState<string | null>(getReaderOverride());
   /** Reader-controlled article body font (default: Verdana). Persisted via
@@ -42,6 +46,7 @@ export default function PostDetail() {
   const authUser = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
   const loadSession = useAuthStore((s) => s.loadSession);
+  const articleRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
@@ -81,11 +86,13 @@ export default function PostDetail() {
   useEffect(() => {
     setPost(null);
     setNotFound(false);
+    setAdjacent(null);
     if (!slug) return;
     blogApi
       .getPublicPost(slug)
       .then(setPost)
       .catch(() => setNotFound(true));
+    blogApi.getAdjacentPosts(slug).then(setAdjacent).catch(() => {/* ignore */});
   }, [slug]);
 
   const rendered = useMemo(
@@ -138,6 +145,7 @@ export default function PostDetail() {
       data-show-toc={showToc ? 'true' : 'false'}
       style={{ ['--jz-post-accent' as string]: accent } as React.CSSProperties}
     >
+      <ReadingProgressBar />
       {kbNavOpen && (
         <aside className="jz-post-aside jz-post-aside-left">
           <KbNavSidebar
@@ -165,6 +173,7 @@ export default function PostDetail() {
         />
 
         <article
+          ref={articleRef}
           className={`paper ${paperClassName(effectivePaper)} jz-fade-in`}
           style={{ ['--jz-article-font' as string]: stackFor(readerFont) } as React.CSSProperties}
         >
@@ -208,6 +217,19 @@ export default function PostDetail() {
                   {dayjs(post.published_at).format('YYYY-MM-DD HH:mm')}
                 </time>
               </span>
+
+              {/* 字数 + 阅读时长 —— 仅对文字类内容显示（二进制 PDF/HTML/DOCX 走自己的预览） */}
+              {!hasInlineFile && post.published_content && (
+                <>
+                  <span className="jz-meta-sep" aria-hidden />
+                  <Tooltip title="按中文 300 字/分钟、英文 200 词/分钟估算">
+                    <span className="jz-meta-date" aria-label="字数与阅读时长">
+                      {wordCount(post.published_content).toLocaleString()} 字 · 约{' '}
+                      {readingMinutes(post.published_content)} 分钟
+                    </span>
+                  </Tooltip>
+                </>
+              )}
 
               {/* User tags — fall back to muted neutral if no per-tag colour set. */}
               {post.tags.length > 0 && (
@@ -269,7 +291,25 @@ export default function PostDetail() {
             </div>
           </header>
 
-          {hasInlineFile && post.primary_attachment ? (
+          {post.doc_format === 'html' && post.published_content?.trim() ? (
+            // HTML 文档已经把正文存进 published_content：直接 srcdoc 渲染，避免
+            // 走附件 iframe（绕过 Django 的编码 / X-Frame-Options 兼容问题）。
+            <div className="paper-breakout">
+              <iframe
+                title={post.title}
+                srcDoc={post.published_content}
+                sandbox="allow-scripts allow-popups allow-forms"
+                style={{
+                  width: '100%',
+                  height: 'min(calc(100vh - 240px), 1080px)',
+                  minHeight: 600,
+                  border: '1px solid var(--jz-border)',
+                  borderRadius: 8,
+                  background: '#fff',
+                }}
+              />
+            </div>
+          ) : hasInlineFile && post.primary_attachment ? (
             <div className="paper-breakout">
               <PublicAttachmentPreview att={post.primary_attachment} />
             </div>
@@ -291,6 +331,62 @@ export default function PostDetail() {
                 <PublicAttachmentPreview att={post.primary_attachment} />
               </div>
             </div>
+          )}
+
+          {adjacent && (adjacent.prev || adjacent.next) && (
+            <nav className="jz-post-nav" aria-label="前后文章导航" style={{ marginTop: 48 }}>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: adjacent.prev && adjacent.next ? '1fr 1fr' : '1fr',
+                  gap: 16,
+                  borderTop: '1px solid var(--jz-border)',
+                  paddingTop: 24,
+                }}
+              >
+                {adjacent.prev && (
+                  <Link
+                    to={`/posts/${encodeURIComponent(adjacent.prev.slug)}`}
+                    style={{ textDecoration: 'none' }}
+                  >
+                    <div
+                      style={{
+                        padding: '12px 16px',
+                        border: '1px solid var(--jz-border)',
+                        borderRadius: 8,
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--jz-accent)')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--jz-border)')}
+                    >
+                      <div style={{ fontSize: 11, color: 'var(--jz-text-muted)', marginBottom: 4 }}>← 上一篇</div>
+                      <div style={{ fontWeight: 500, color: 'var(--jz-text)', lineHeight: 1.4 }}>{adjacent.prev.title}</div>
+                    </div>
+                  </Link>
+                )}
+                {adjacent.next && (
+                  <Link
+                    to={`/posts/${encodeURIComponent(adjacent.next.slug)}`}
+                    style={{ textDecoration: 'none', gridColumn: adjacent.prev ? 'auto' : '1 / -1' }}
+                  >
+                    <div
+                      style={{
+                        padding: '12px 16px',
+                        border: '1px solid var(--jz-border)',
+                        borderRadius: 8,
+                        textAlign: 'right',
+                        transition: 'border-color 0.15s, background 0.15s',
+                      }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--jz-accent)')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--jz-border)')}
+                    >
+                      <div style={{ fontSize: 11, color: 'var(--jz-text-muted)', marginBottom: 4 }}>下一篇 →</div>
+                      <div style={{ fontWeight: 500, color: 'var(--jz-text)', lineHeight: 1.4 }}>{adjacent.next.title}</div>
+                    </div>
+                  </Link>
+                )}
+              </div>
+            </nav>
           )}
         </article>
       </div>
@@ -328,6 +424,60 @@ export default function PostDetail() {
           />
         </Tooltip>
       )}
+      {/* Selection-driven AI helper — only for authenticated readers so we
+          don't burn API tokens on anonymous traffic. */}
+      {authUser && (
+        <>
+          <SelectionAI
+            scopeRef={articleRef}
+            contextProvider={() => post?.published_content || ''}
+          />
+          <DocAIPanel content={post?.published_content || ''} title={post?.title} />
+        </>
+      )}
     </div>
+  );
+}
+
+/**
+ * 顶部细条阅读进度指示：监听窗口滚动，进度 = scrollTop / (scrollHeight - viewportHeight)。
+ * 固定贴在视口顶部 2px 高，accent 色，不抢视线。Reading 状态时（仍在顶部）宽度为 0。
+ */
+function ReadingProgressBar() {
+  const [pct, setPct] = useState(0);
+  useEffect(() => {
+    function update() {
+      const doc = document.documentElement;
+      const scrollable = doc.scrollHeight - doc.clientHeight;
+      if (scrollable <= 0) {
+        setPct(0);
+        return;
+      }
+      const p = Math.max(0, Math.min(1, doc.scrollTop / scrollable));
+      setPct(p);
+    }
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    return () => {
+      window.removeEventListener('scroll', update);
+      window.removeEventListener('resize', update);
+    };
+  }, []);
+  return (
+    <div
+      aria-hidden
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        height: 3,
+        width: `${pct * 100}%`,
+        background: 'var(--jz-accent)',
+        transition: 'width 100ms linear',
+        zIndex: 100,
+        pointerEvents: 'none',
+      }}
+    />
   );
 }

@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert,
   Button,
+  Dropdown,
   Empty,
-  Popconfirm,
+  Modal,
   Segmented,
   Select,
   Space,
@@ -18,9 +19,16 @@ import {
 import {
   ArrowLeftOutlined,
   CloudUploadOutlined,
+  CompressOutlined,
   DeleteOutlined,
+  EllipsisOutlined,
   ExportOutlined,
+  FullscreenOutlined,
   HistoryOutlined,
+  LinkOutlined,
+  MessageOutlined,
+  PaperClipOutlined,
+  UnorderedListOutlined,
   RocketOutlined,
   StopOutlined,
 } from '@ant-design/icons';
@@ -32,8 +40,11 @@ import * as attApi from '@/api/attachments';
 import { attachmentAbsoluteUrl } from '@/api/attachments';
 import MarkdownEditor from '@/components/editor/MarkdownEditor';
 import RichTextEditor from '@/components/editor/RichTextEditor';
+import HtmlEditor from '@/components/editor/HtmlEditor';
+import DocumentOutline from '@/components/editor/DocumentOutline';
+import FindReplacePanel from '@/components/editor/FindReplacePanel';
+import type { Editor as TiptapEditor } from '@tiptap/core';
 import PdfCanvas from '@/components/common/PdfCanvas';
-import FullscreenableIframe from '@/components/common/FullscreenableIframe';
 import BacklinkPanel from '@/components/common/BacklinkPanel';
 import TagPicker from '@/components/common/TagPicker';
 import CommentsPanel from '@/components/common/CommentsPanel';
@@ -84,6 +95,65 @@ export default function DocEditorPage() {
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [uploadingPrimary, setUploadingPrimary] = useState(false);
+  // 大纲面板（右侧）。editor / textarea 由编辑器组件通过 onReady 回调上抬。
+  const [outlineOpen, setOutlineOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('jz-outline-open') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('jz-outline-open', String(outlineOpen));
+    } catch {
+      /* localStorage unavailable */
+    }
+  }, [outlineOpen]);
+
+  type SidebarTab = 'outline' | 'backlinks' | 'comments' | 'attachments';
+  const [sidebarTab, setSidebarTab] = useState<SidebarTab>(() => {
+    const saved = localStorage.getItem('jz-sidebar-tab');
+    return (saved === 'outline' || saved === 'backlinks' || saved === 'comments' || saved === 'attachments') ? saved : 'outline';
+  });
+  useEffect(() => {
+    try { localStorage.setItem('jz-sidebar-tab', sidebarTab); } catch { /* noop */ }
+  }, [sidebarTab]);
+
+  const hasPendingChangesRef = useRef(false);
+
+  const [richEditor, setRichEditor] = useState<TiptapEditor | null>(null);
+  const [mdTextarea, setMdTextarea] = useState<HTMLTextAreaElement | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
+
+  // Ctrl/⌘+F → 唤起查找面板；F9 → 切换专注写作模式
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
+        if (mode === 'rich' || mode === 'markdown') {
+          e.preventDefault();
+          setFindOpen(true);
+        }
+      }
+      if (e.key === 'F9') {
+        e.preventDefault();
+        setFocusMode((v) => !v);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [mode]);
+
+  // Escape 退出专注模式（避免干扰编辑器内的 Escape 处理，只在 focusMode 时挂载）
+  useEffect(() => {
+    if (!focusMode) return;
+    function onEsc(e: KeyboardEvent) {
+      if (e.key === 'Escape') setFocusMode(false);
+    }
+    window.addEventListener('keydown', onEsc, true);
+    return () => window.removeEventListener('keydown', onEsc, true);
+  }, [focusMode]);
 
   useEffect(() => {
     void kbsApi.getKB(kbId).then(setKb);
@@ -114,11 +184,36 @@ export default function DocEditorPage() {
     }
   }, [mode]);
 
+  // Warn before navigating away if there are unsaved changes.
+  useEffect(() => {
+    function onBeforeUnload(e: BeforeUnloadEvent) {
+      if (hasPendingChangesRef.current) {
+        e.preventDefault();
+      }
+    }
+    window.addEventListener('beforeunload', onBeforeUnload);
+    return () => window.removeEventListener('beforeunload', onBeforeUnload);
+  }, []); // empty deps — the ref always has the latest value
+
   const handleAutoSave = useCallback(
     async (content: string) => {
       if (!doc) return;
-      const updated = await docsApi.updateDocument(doc.id, { raw_content: content });
-      setDoc((prev) => (prev ? { ...prev, ...updated } : updated));
+      try {
+        const updated = await docsApi.updateDocument(doc.id, {
+          raw_content: content,
+          expected_version: doc.version,
+        });
+        setDoc((prev) => (prev ? { ...prev, ...updated } : updated));
+      } catch (err: unknown) {
+        const e = err as { response?: { status?: number; data?: { code?: string; document?: DocumentDetail; current_version?: number } } };
+        if (e?.response?.status === 409 && e.response.data?.code === 'version_conflict') {
+          const live = e.response.data.document;
+          message.warning('文档已被其他端修改，已加载最新版本');
+          if (live) setDoc(live);
+          throw new Error('version_conflict');
+        }
+        throw err;
+      }
     },
     [doc]
   );
@@ -205,11 +300,52 @@ export default function DocEditorPage() {
   const primaryUrl = primary ? attachmentAbsoluteUrl(primary.url) : null;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 120px)' }}>
+    <div
+      style={focusMode ? {
+        position: 'fixed',
+        inset: 0,
+        zIndex: 999,
+        background: 'var(--jz-bg)',
+        overflowY: 'auto',
+        display: 'flex',
+        flexDirection: 'column',
+      } : {
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: 'calc(100vh - 120px)',
+      }}
+    >
+      {/* 专注模式顶栏 */}
+      {focusMode && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '10px 24px',
+            borderBottom: '1px solid var(--jz-border)',
+            background: 'var(--jz-surface)',
+            gap: 12,
+            flexShrink: 0,
+          }}
+        >
+          <Typography.Title level={4} style={{ margin: 0, flex: 1, fontSize: 16 }}>
+            {doc.title}
+          </Typography.Title>
+          <Tag color={doc.status === 'published' ? 'green' : 'default'}>
+            {doc.status === 'published' ? '已发布' : '草稿'}
+          </Tag>
+          <Tooltip title="退出专注写作模式 (Esc / F9)">
+            <Button icon={<CompressOutlined />} onClick={() => setFocusMode(false)}>
+              退出专注
+            </Button>
+          </Tooltip>
+        </div>
+      )}
+
       {/* HEADER ROW — runs full width, single line, title left-aligned with controls flowing to the right */}
       <div
         style={{
-          display: 'flex',
+          display: focusMode ? 'none' : 'flex',
           alignItems: 'center',
           gap: 12,
           paddingBottom: 12,
@@ -280,12 +416,17 @@ export default function DocEditorPage() {
               onChange={(checked) => handleVisibilityChange(checked ? 'public' : 'private')}
             />
           </Space>
-          <Button icon={<HistoryOutlined />} onClick={() => setVersionsOpen(true)}>
-            历史
-          </Button>
-          <Button icon={<ExportOutlined />} onClick={() => setExportOpen(true)}>
-            导出
-          </Button>
+          <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
+            <Button
+              icon={<UnorderedListOutlined />}
+              type={outlineOpen ? 'primary' : 'default'}
+              onClick={() => setOutlineOpen((v) => !v)}
+              aria-pressed={outlineOpen}
+            />
+          </Tooltip>
+          <Tooltip title="专注写作模式 (F9)">
+            <Button icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
+          </Tooltip>
           <Button
             type={doc.status === 'published' ? 'default' : 'primary'}
             icon={doc.status === 'published' ? <StopOutlined /> : <RocketOutlined />}
@@ -293,37 +434,144 @@ export default function DocEditorPage() {
           >
             {doc.status === 'published' ? '撤回发布' : '发布'}
           </Button>
-          <Popconfirm title="删除该文档？" onConfirm={handleDelete}>
-            <Button danger icon={<DeleteOutlined />} />
-          </Popconfirm>
+          <Dropdown
+            placement="bottomRight"
+            menu={{
+              items: [
+                {
+                  key: 'history',
+                  icon: <HistoryOutlined />,
+                  label: '版本历史',
+                  onClick: () => setVersionsOpen(true),
+                },
+                {
+                  key: 'export',
+                  icon: <ExportOutlined />,
+                  label: '导出文档',
+                  onClick: () => setExportOpen(true),
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'delete',
+                  icon: <DeleteOutlined />,
+                  label: '删除文档',
+                  danger: true,
+                  onClick: () => {
+                    Modal.confirm({
+                      title: '确认删除该文档？',
+                      content: '文档将进入回收站，暂时无法恢复。',
+                      okType: 'danger',
+                      okText: '删除',
+                      cancelText: '取消',
+                      onOk: handleDelete,
+                    });
+                  },
+                },
+              ],
+            }}
+          >
+            <Button icon={<EllipsisOutlined />} />
+          </Dropdown>
         </Space>
       </div>
 
-      <div style={{ marginBottom: 12 }}>
-        <TagPicker key={doc.id} target={{ kind: 'document', id: doc.id }} />
+      {!focusMode && (
+        <div style={{ marginBottom: 12 }}>
+          <TagPicker key={doc.id} target={{ kind: 'document', id: doc.id }} />
+        </div>
+      )}
+
+      <div
+        style={focusMode ? {
+          flex: 1,
+          display: 'flex',
+          flexDirection: 'column',
+          maxWidth: 800,
+          width: '100%',
+          margin: '0 auto',
+          padding: '16px 24px 40px',
+          minWidth: 0,
+        } : {
+          flex: 1,
+          minHeight: 480,
+          display: 'grid',
+          gridTemplateColumns: outlineOpen && mode !== 'pdf' ? '1fr 240px' : '1fr',
+          gap: 12,
+          minWidth: 0,
+        }}
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+          <EditorSurface
+            mode={mode}
+            doc={doc}
+            primaryUrl={primaryUrl}
+            onChange={(next) => {
+              hasPendingChangesRef.current = true;
+              setDoc((prev) => (prev ? { ...prev, raw_content: next } : prev));
+            }}
+            onAutoSave={async (content) => {
+              await handleAutoSave(content);
+              hasPendingChangesRef.current = false;
+            }}
+            onSwitchToMarkdown={() => {
+              setMode('markdown');
+              setModeTouched(true);
+            }}
+            onUploadPrimary={handlePrimaryUpload}
+            uploadingPrimary={uploadingPrimary}
+            onRichEditorReady={setRichEditor}
+            onMarkdownTextareaReady={setMdTextarea}
+          />
+        </div>
+        {outlineOpen && mode !== 'pdf' && !focusMode && (
+          <aside className="jz-editor-sidebar">
+            <div className="jz-editor-sidebar-tabs">
+              {([
+                { key: 'outline' as const, icon: <UnorderedListOutlined />, label: '大纲' },
+                { key: 'backlinks' as const, icon: <LinkOutlined />, label: '反链' },
+                { key: 'comments' as const, icon: <MessageOutlined />, label: '评论' },
+                { key: 'attachments' as const, icon: <PaperClipOutlined />, label: '附件' },
+              ]).map(t => (
+                <button
+                  key={t.key}
+                  type="button"
+                  className={`jz-sidebar-tab${sidebarTab === t.key ? ' is-active' : ''}`}
+                  onClick={() => setSidebarTab(t.key)}
+                >
+                  {t.icon}
+                  <span className="jz-sidebar-tab-label">{t.label}</span>
+                </button>
+              ))}
+              <button type="button" className="jz-sidebar-close" onClick={() => setOutlineOpen(false)} aria-label="关闭面板">✕</button>
+            </div>
+            <div className="jz-editor-sidebar-body">
+              {sidebarTab === 'outline' && (
+                <DocumentOutline
+                  editor={mode === 'rich' ? richEditor : null}
+                  source={mode === 'markdown' || mode === 'html' ? doc.raw_content : undefined}
+                  onSeek={(pos) => { if (mdTextarea) seekTextarea(mdTextarea, pos, doc.raw_content); }}
+                />
+              )}
+              {sidebarTab === 'backlinks' && <BacklinkPanel documentId={doc.id} variant="admin" compact />}
+              {sidebarTab === 'comments' && <CommentsPanel key={doc.id} documentId={doc.id} compact />}
+              {sidebarTab === 'attachments' && <AttachmentPanel key={`att-${doc.id}`} documentId={doc.id} compact />}
+            </div>
+          </aside>
+        )}
       </div>
 
-      <div style={{ flex: 1, minHeight: 480, display: 'flex', flexDirection: 'column' }}>
-        <EditorSurface
-          mode={mode}
-          doc={doc}
-          primaryUrl={primaryUrl}
-          onChange={(next) =>
-            setDoc((prev) => (prev ? { ...prev, raw_content: next } : prev))
-          }
-          onAutoSave={handleAutoSave}
-          onSwitchToMarkdown={() => {
-            setMode('markdown');
-            setModeTouched(true);
-          }}
-          onUploadPrimary={handlePrimaryUpload}
-          uploadingPrimary={uploadingPrimary}
-        />
-      </div>
-
-      <BacklinkPanel documentId={doc.id} variant="admin" />
-      <AttachmentPanel key={`att-${doc.id}`} documentId={doc.id} />
-      <CommentsPanel key={doc.id} documentId={doc.id} />
+      <FindReplacePanel
+        open={findOpen}
+        onClose={() => setFindOpen(false)}
+        editor={mode === 'rich' ? richEditor : null}
+        textarea={mode === 'markdown' ? mdTextarea : null}
+        source={mode === 'markdown' ? doc.raw_content : undefined}
+        onSourceChange={
+          mode === 'markdown'
+            ? (next) => setDoc((prev) => (prev ? { ...prev, raw_content: next } : prev))
+            : undefined
+        }
+      />
 
       <VersionsDrawer
         open={versionsOpen}
@@ -355,6 +603,9 @@ interface SurfaceProps {
   onSwitchToMarkdown: () => void;
   onUploadPrimary: (file: File) => Promise<void> | void;
   uploadingPrimary: boolean;
+  /** Outline / find-replace want the live editor instance — lift it. */
+  onRichEditorReady?: (editor: TiptapEditor | null) => void;
+  onMarkdownTextareaReady?: (el: HTMLTextAreaElement | null) => void;
 }
 
 function EditorSurface({
@@ -366,6 +617,8 @@ function EditorSurface({
   onSwitchToMarkdown,
   onUploadPrimary,
   uploadingPrimary,
+  onRichEditorReady,
+  onMarkdownTextareaReady,
 }: SurfaceProps) {
   if (mode === 'pdf') {
     if (!primaryUrl) {
@@ -393,33 +646,19 @@ function EditorSurface({
     return <PdfCanvas url={primaryUrl} height="min(78vh, 760px)" />;
   }
   if (mode === 'html') {
-    if (!primaryUrl) {
-      return (
-        <MissingAttachment
-          format="HTML"
-          accept=".html,.htm,text/html"
-          uploading={uploadingPrimary}
-          onUpload={onUploadPrimary}
-          onSwitchToMarkdown={onSwitchToMarkdown}
-        />
-      );
-    }
+    // 新文档：允许直接进入空编辑器（用户从 0 写 HTML）；老文档：若 raw_content
+    // 为空但有 .html 附件，把附件 URL 传给 HtmlEditor，由它自动 fetch + 解码
+    // 后写回 raw_content。
+    const legacyUrl =
+      !doc.raw_content && primaryUrl && doc.doc_format === 'html' ? primaryUrl : null;
     return (
-      <FullscreenableIframe
-        title={doc.primary_attachment?.original_filename ?? doc.title}
-        src={primaryUrl}
-        inlineStyle={{
-          width: '100%',
-          height: 'min(calc(100vh - 240px), 1080px)',
-          minHeight: 600,
-          border: '1px solid var(--jz-border)',
-          borderRadius: 8,
-          /* Keep a neutral white fallback — the iframe contents are usually
-             HTML pages authored against a light background. The container
-             border + radius come from the theme, so this still feels native
-             on dark palettes. */
-          background: '#fff',
-        }}
+      <HtmlEditor
+        key={`html-${doc.id}`}
+        value={doc.raw_content}
+        onChange={onChange}
+        onAutoSave={onAutoSave}
+        documentId={doc.id}
+        legacyAttachmentUrl={legacyUrl}
       />
     );
   }
@@ -430,6 +669,9 @@ function EditorSurface({
         value={doc.raw_content}
         onChange={onChange}
         onAutoSave={onAutoSave}
+        documentId={doc.id}
+        onEditorReady={onRichEditorReady}
+        paperStyle={doc.paper_style}
       />
     );
   }
@@ -439,8 +681,23 @@ function EditorSurface({
       value={doc.raw_content}
       onChange={onChange}
       onAutoSave={onAutoSave}
+      documentId={doc.id}
+      onTextareaReady={onMarkdownTextareaReady}
+      paperStyle={doc.paper_style}
     />
   );
+}
+
+/** Move the textarea selection to ``pos`` and scroll the line into view. */
+function seekTextarea(ta: HTMLTextAreaElement, pos: number, source: string) {
+  ta.focus();
+  ta.setSelectionRange(pos, pos);
+  const before = source.slice(0, pos);
+  const lineIndex = before.split('\n').length - 1;
+  const style = getComputedStyle(ta);
+  const lh = parseFloat(style.lineHeight || '20') || 20;
+  // 让目标行大约停在视口的 1/4 处，比贴顶更舒服
+  ta.scrollTop = Math.max(0, lineIndex * lh - ta.clientHeight / 4);
 }
 
 interface MissingProps {

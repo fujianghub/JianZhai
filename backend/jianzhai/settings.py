@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "apps.comments",
     "apps.tags",
     "apps.blog",
+    "apps.ai",
 ]
 
 MIDDLEWARE = [
@@ -132,6 +133,7 @@ REST_FRAMEWORK = {
     ],
     "DEFAULT_THROTTLE_RATES": {
         "anon": "120/min",
+        "ai_write": "30/min",
     },
 }
 

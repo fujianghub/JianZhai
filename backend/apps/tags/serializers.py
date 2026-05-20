@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.utils.text import slugify
 from rest_framework import serializers
 
+from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document, KnowledgeBase
 
 from .models import Tag
@@ -40,7 +41,11 @@ class TargetTagsSerializer(serializers.Serializer):
 
     def set_on(self, target, user) -> list[Tag]:
         ids = self.validated_data["tag_ids"]
-        tags = list(Tag.objects.filter(owner=user, id__in=ids))
+        # Superusers can attach any tag in the system; everyone else is scoped
+        # to tags they personally own.
+        tags = list(
+            scope_queryset(Tag.objects.all(), user, field="owner").filter(id__in=ids)
+        )
         target.tags.set(tags)
         return tags
 

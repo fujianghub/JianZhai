@@ -2,9 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
 import {
   BookOutlined,
+  DeploymentUnitOutlined,
   DownloadOutlined,
   GlobalOutlined,
   LogoutOutlined,
+  PartitionOutlined,
+  RobotOutlined,
   SearchOutlined,
   TeamOutlined,
 } from '@ant-design/icons';
@@ -13,6 +16,7 @@ import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
+import { AIModelBadge } from '@/components/common/AIModelBadge';
 
 const { Header, Sider, Content } = Layout;
 
@@ -42,60 +46,71 @@ export default function AdminLayout() {
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith('/admin/exports')) return 'exports';
     if (location.pathname.startsWith('/admin/users')) return 'users';
+    if (location.pathname.startsWith('/admin/overview')) return 'overview';
+    if (location.pathname.startsWith('/admin/graph')) return 'graph';
     if (location.pathname.startsWith('/admin/kbs')) return 'kbs';
     return 'kbs';
   }, [location.pathname]);
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="jz-admin-glass" style={{ minHeight: '100vh' }}>
       <Sider
-        width={220}
+        width={232}
         breakpoint="lg"
         collapsedWidth={0}
-        style={{ borderRight: '1px solid var(--jz-border)' }}
+        className="jz-admin-sider"
       >
-        <div
-          style={{
-            padding: '16px 20px',
-            fontWeight: 700,
-            fontSize: 18,
-            letterSpacing: 1,
-            borderBottom: '1px solid var(--jz-border)',
-            color: 'var(--jz-text)',
-          }}
-        >
-          简斋 · 后台
+        <div className="jz-admin-brand">
+          <div className="jz-admin-brand-seal" aria-hidden>簡</div>
+          <div className="jz-admin-brand-text">
+            <div className="jz-admin-brand-name">简斋</div>
+            <div className="jz-admin-brand-sub">后台</div>
+          </div>
         </div>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
-          style={{ borderInlineEnd: 'none' }}
+          className="jz-admin-menu"
           items={[
             { key: 'kbs', icon: <BookOutlined />, label: <Link to="/admin/kbs">知识库</Link> },
+            {
+              key: 'graph',
+              icon: <PartitionOutlined />,
+              label: <Link to="/admin/graph">知识图谱</Link>,
+            },
             { key: 'exports', icon: <DownloadOutlined />, label: <Link to="/admin/exports">导出</Link> },
+            { key: 'ai', icon: <RobotOutlined />, label: <Link to="/admin/ai">AI 助手</Link> },
             ...(user?.is_staff
               ? [{ key: 'users', icon: <TeamOutlined />, label: <Link to="/admin/users">用户</Link> }]
+              : []),
+            ...(user?.is_superuser
+              ? [
+                  {
+                    key: 'overview',
+                    icon: <DeploymentUnitOutlined />,
+                    label: <Link to="/admin/overview">架构总览</Link>,
+                  },
+                ]
               : []),
             { key: 'blog', icon: <GlobalOutlined />, label: <Link to="/">查看博客</Link> },
           ]}
         />
       </Sider>
       <Layout>
-        <Header
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '0 24px',
-            borderBottom: '1px solid var(--jz-border)',
-          }}
-        >
+        <Header className="jz-admin-header">
           <Tooltip title="搜索 (⌘/Ctrl + K)">
-            <Button shape="round" icon={<SearchOutlined />} onClick={() => setSearchOpen(true)}>
+            <Button
+              shape="round"
+              icon={<SearchOutlined />}
+              onClick={() => setSearchOpen(true)}
+              className="jz-admin-search"
+            >
               搜索文档…
+              <kbd className="jz-admin-search-kbd">⌘K</kbd>
             </Button>
           </Tooltip>
           <Space size={12}>
+            <AIModelBadge />
             <LiveClock />
             <ThemeSwitcher />
             <span style={{ color: 'var(--jz-text-muted)' }}>{user?.username}</span>
@@ -104,7 +119,7 @@ export default function AdminLayout() {
             </Button>
           </Space>
         </Header>
-        <Content className="jz-fade-in" style={{ padding: 24 }}>
+        <Content className="jz-fade-in jz-admin-content">
           <Outlet />
         </Content>
       </Layout>

@@ -9,9 +9,11 @@ interface Props {
   documentId: number;
   /** Where to link the source document. 'admin' (default) deep-links to the KB workspace; 'public' goes to /posts/<slug>. */
   variant?: 'admin' | 'public';
+  /** When true, hides the section header and removes the top border / margin (used inside the tabbed sidebar). */
+  compact?: boolean;
 }
 
-export default function BacklinkPanel({ documentId, variant = 'admin' }: Props) {
+export default function BacklinkPanel({ documentId, variant = 'admin', compact = false }: Props) {
   const [items, setItems] = useState<Backlink[] | null>(null);
 
   useEffect(() => {
@@ -37,10 +39,12 @@ export default function BacklinkPanel({ documentId, variant = 'admin' }: Props) 
       : items;
 
   return (
-    <div style={{ borderTop: '1px solid #f0f0f0', paddingTop: 16, marginTop: 24 }}>
-      <Title level={5} style={{ marginBottom: 8 }}>
-        ← 反向链接 <Text type="secondary">({visible.length})</Text>
-      </Title>
+    <div style={compact ? { padding: '8px 0' } : { borderTop: '1px solid #f0f0f0', paddingTop: 16, marginTop: 24 }}>
+      {!compact && (
+        <Title level={5} style={{ marginBottom: 8 }}>
+          ← 反向链接 <Text type="secondary">({visible.length})</Text>
+        </Title>
+      )}
       {visible.length === 0 ? (
         <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有其他文档引用本文" />
       ) : (

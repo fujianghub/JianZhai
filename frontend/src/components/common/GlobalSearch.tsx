@@ -8,9 +8,11 @@ const { Text } = Typography;
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** If provided, clicking a result navigates here instead of the admin KB URL. */
+  resultUrl?: (r: SearchResult) => string;
 }
 
-export default function GlobalSearch({ open, onClose }: Props) {
+export default function GlobalSearch({ open, onClose, resultUrl }: Props) {
   const navigate = useNavigate();
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -53,9 +55,9 @@ export default function GlobalSearch({ open, onClose }: Props) {
   const goTo = useCallback(
     (r: SearchResult) => {
       onClose();
-      navigate(`/admin/kbs/${r.knowledge_base.id}?doc=${r.id}`);
+      navigate(resultUrl ? resultUrl(r) : `/admin/kbs/${r.knowledge_base.id}?doc=${r.id}`);
     },
-    [navigate, onClose]
+    [navigate, onClose, resultUrl]
   );
 
   function handleKey(e: React.KeyboardEvent<HTMLInputElement>) {

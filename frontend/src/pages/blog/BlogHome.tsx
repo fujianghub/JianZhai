@@ -4,13 +4,15 @@ import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import * as kbsApi from '@/api/kbs';
+import * as blogApi from '@/api/blog';
 import { useAuthStore } from '@/stores/auth';
-import type { PublicKB } from '@/types';
+import type { PublicKB, PublicPost } from '@/types';
 
 const { Text } = Typography;
 
 export default function BlogHome() {
   const [kbs, setKbs] = useState<PublicKB[] | null>(null);
+  const [recentPosts, setRecentPosts] = useState<PublicPost[] | null>(null);
 
   /** Surface a "新建知识库 / 进入后台" affordance when a super-admin session is
    * already active. Anonymous readers see nothing extra. */
@@ -24,6 +26,10 @@ export default function BlogHome() {
 
   useEffect(() => {
     void kbsApi.listPublicKBs().then(setKbs);
+  }, []);
+
+  useEffect(() => {
+    void blogApi.listPublicPosts({ limit: 5 }).then(setRecentPosts);
   }, []);
 
   const adminBar = canManage ? (
@@ -131,6 +137,88 @@ export default function BlogHome() {
           );
         })}
       </div>
+
+      {recentPosts && recentPosts.length > 0 && (
+        <section style={{ marginTop: 56 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 12,
+              marginBottom: 20,
+            }}
+          >
+            <h2
+              style={{
+                margin: 0,
+                fontSize: 'clamp(1.1rem, 2vw, 1.4rem)',
+                fontWeight: 700,
+                letterSpacing: 2,
+                color: 'var(--jz-text)',
+                fontFamily: "'Noto Serif SC', 'Songti SC', serif",
+              }}
+            >
+              最新文章
+            </h2>
+            <span
+              style={{
+                flex: 1,
+                height: 1,
+                background: 'linear-gradient(to right, var(--jz-divider), transparent)',
+                alignSelf: 'center',
+              }}
+              aria-hidden
+            />
+            <Link to="/archive" style={{ fontSize: 13, color: 'var(--jz-text-muted)', textDecoration: 'none' }}>
+              查看全部 →
+            </Link>
+          </div>
+          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+            {recentPosts.map((p) => (
+              <li
+                key={p.id}
+                style={{
+                  display: 'flex',
+                  alignItems: 'baseline',
+                  gap: 12,
+                  padding: '10px 0',
+                  borderBottom: '1px solid var(--jz-border)',
+                }}
+              >
+                <time
+                  dateTime={p.published_at}
+                  style={{
+                    flexShrink: 0,
+                    fontSize: 12,
+                    color: 'var(--jz-text-muted)',
+                    fontVariantNumeric: 'tabular-nums',
+                    width: 80,
+                  }}
+                >
+                  {dayjs(p.published_at).format('YYYY-MM-DD')}
+                </time>
+                <Link
+                  to={`/posts/${encodeURIComponent(p.slug)}`}
+                  style={{
+                    flex: 1,
+                    fontWeight: 500,
+                    color: 'var(--jz-text)',
+                    textDecoration: 'none',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {p.title}
+                </Link>
+                <span style={{ flexShrink: 0, fontSize: 12, color: 'var(--jz-text-muted)' }}>
+                  {p.knowledge_base?.name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

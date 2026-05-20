@@ -6,6 +6,7 @@ from .views import (
     PublicBacklinksView,
     PublicKBTreeView,
     PublicKBViewSet,
+    PublicPostAdjacentView,
     PublicPostByIdView,
     PublicPostViewSet,
 )
@@ -17,6 +18,7 @@ router.register(r"kbs", PublicKBViewSet, basename="public-kb")
 urlpatterns = [
     path("posts/by-id/<int:doc_id>/", PublicPostByIdView.as_view(), name="public-post-by-id"),
     path("posts/by-id/<int:doc_id>/backlinks/", PublicBacklinksView.as_view(), name="public-post-backlinks"),
+    path("posts/<str:slug>/adjacent/", PublicPostAdjacentView.as_view(), name="public-post-adjacent"),
     path("archive/", PublicArchiveView.as_view(), name="public-archive"),
     path("", include(router.urls)),
     path("kbs/<str:slug>/tree/", PublicKBTreeView.as_view(), name="public-kb-tree"),

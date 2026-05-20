@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { renderMermaid } from '@/utils/mermaid';
+import { fetchPlantumlSvg } from '@/utils/plantuml';
 
 const FONT_STEP = 1;
 const FONT_MIN = 11;
@@ -90,10 +91,11 @@ export function useCodeBlockEnhancer(
       const code = block.querySelector<HTMLElement>('code');
       if (!pre || !code) continue;
 
-      // Mermaid blocks render asynchronously; kick off the SVG render in the
-      // background and let the toolbar fall through to the wiring below.
+      // Mermaid / PlantUML 都走异步渲染：mermaid 本地，plantuml 走远端服务。
       if (block.classList.contains('jz-code-mermaid')) {
         void hydrateMermaid(block);
+      } else if (block.classList.contains('jz-code-plantuml')) {
+        void hydratePlantuml(block);
       }
 
       const handlers: Array<[HTMLButtonElement, () => void]> = [];
@@ -112,7 +114,7 @@ export function useCodeBlockEnhancer(
           handlers.push([btn, () => bumpLineHeight(+LINE_STEP, containerSelector)]);
         } else if (action === 'line-tight') {
           handlers.push([btn, () => bumpLineHeight(-LINE_STEP, containerSelector)]);
-        } else if (action === 'mermaid-source') {
+        } else if (action === 'mermaid-source' || action === 'plantuml-source') {
           handlers.push([btn, () => toggleMermaidSource(block, btn)]);
         }
       }
@@ -150,6 +152,31 @@ async function hydrateMermaid(block: HTMLElement) {
     canvas.innerHTML =
       '<div class="jz-mermaid-error">' +
       'Mermaid 渲染失败：<br/><code>' +
+      escapeHtml(msg) +
+      '</code>' +
+      '</div>';
+  }
+}
+
+async function hydratePlantuml(block: HTMLElement) {
+  const canvas = block.querySelector<HTMLElement>('.jz-mermaid-canvas');
+  if (!canvas) return;
+  const b64 = block.dataset.source ?? '';
+  let source = '';
+  try {
+    source = decodeBase64UTF8(b64);
+  } catch {
+    canvas.innerHTML = '<div class="jz-mermaid-error">无法解析 PlantUML 源码</div>';
+    return;
+  }
+  try {
+    const svg = await fetchPlantumlSvg(source);
+    canvas.innerHTML = svg;
+  } catch (err) {
+    const msg = (err as Error)?.message ?? '渲染失败';
+    canvas.innerHTML =
+      '<div class="jz-mermaid-error">' +
+      'PlantUML 渲染失败：<br/><code>' +
       escapeHtml(msg) +
       '</code>' +
       '</div>';

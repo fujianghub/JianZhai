@@ -14,8 +14,16 @@ def _tags_summary(obj) -> list[dict]:
 
 
 def _primary_attachment(doc: Document) -> dict | None:
-    """Return the first attachment of a doc (typically the imported source file)."""
-    att = doc.attachments.order_by("created_at").first()
+    """Return the first attachment of a doc (typically the imported source file).
+
+    Uses the ``ordered_attachments`` Prefetch populated by blog views when
+    present, so list endpoints don't issue a per-doc query.
+    """
+    cached = getattr(doc, "ordered_attachments", None)
+    if cached is not None:
+        att = cached[0] if cached else None
+    else:
+        att = doc.attachments.order_by("created_at").first()
     if not att:
         return None
     return {

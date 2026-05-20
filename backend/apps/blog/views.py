@@ -19,6 +19,10 @@ from .serializers import PublicKBSerializer, PublicPostDetailSerializer, PublicP
 
 
 def _published_qs():
+    from django.db.models import Prefetch
+
+    from apps.editor.models import Attachment
+
     return (
         Document.objects.filter(
             status="published",
@@ -26,6 +30,14 @@ def _published_qs():
             knowledge_base__visibility="public",
         )
         .select_related("knowledge_base")
+        .prefetch_related(
+            "tags",
+            Prefetch(
+                "attachments",
+                queryset=Attachment.objects.order_by("created_at"),
+                to_attr="ordered_attachments",
+            ),
+        )
         .order_by("-published_at")
     )
 
@@ -41,6 +53,9 @@ class PublicPostViewSet(
         kb_slug = self.request.query_params.get("kb")
         if kb_slug:
             qs = qs.filter(knowledge_base__slug=kb_slug)
+        tag_slug = self.request.query_params.get("tag")
+        if tag_slug:
+            qs = qs.filter(tags__slug=tag_slug)
         return qs
 
     def get_serializer_class(self):
@@ -213,6 +228,26 @@ def rss_feed(request):
             unique_id=str(d.id),
         )
     return HttpResponse(feed.writeString("utf-8"), content_type="application/rss+xml; charset=utf-8")
+
+
+class PublicPostAdjacentView(APIView):
+    """Return the immediately older and newer published posts relative to `slug`."""
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug: str):
+        post = get_object_or_404(_published_qs(), slug=slug)
+        qs = _published_qs()
+        # "上一篇" = older (published before this one); qs ordered by -published_at so .first() = most recent older
+        older = qs.filter(published_at__lt=post.published_at).first()
+        # "下一篇" = newer (published after); need ascending order to get the immediately-next one
+        newer = qs.filter(published_at__gt=post.published_at).order_by('published_at').first()
+
+        def brief(p):
+            if p is None:
+                return None
+            return {'id': p.id, 'slug': p.slug, 'title': p.title}
+
+        return Response({'prev': brief(older), 'next': brief(newer)})
 
 
 class PublicBacklinksView(APIView):

@@ -1,7 +1,7 @@
 # 简斋 / JianZhai - 开发指导文档
 
 > 个人知识库 + 个人博客一体化系统
-> 本文档作为 AI 编程助手（Cursor / Claude Code）的开发指南，包含功能需求与技术栈说明。
+> 本文档作为 AI 编程助手（Cursor / Claude Code）的开发指南，反映当前实现的真实状态，并保留原始设计意图与风险说明。
 
 ---
 
@@ -10,489 +10,456 @@
 | 项 | 内容 |
 |---|---|
 | 项目名 | 简斋 / JianZhai |
-| 定位 | 单用户个人知识库 + 公开博客（双形态合一） |
+| 定位 | 个人知识库 + 公开博客（双形态合一） |
 | 部署 | 本地单机，`localhost` 访问 |
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
+| 实现阶段 | v0.1 – v0.5 主要功能均已落地，进入打磨期 |
+| 多用户 | 支持。普通账号按 `owner` 隔离数据；`is_superuser` 跨租户可见 |
 
 ---
 
 ## 技术栈
 
-### 后端
+### 后端（实际依赖见 `backend/pyproject.toml`）
 
 | 类别 | 选型 | 版本 / 说明 |
 |---|---|---|
 | 语言 | Python | 3.12 |
 | Web 框架 | Django | 5.2 |
-| API 框架 | Django REST Framework (DRF) | 最新稳定版 |
-| 数据库 | PostgreSQL | 14+ |
-| 缓存 / 队列 | Redis | 7+ |
-| 异步任务 | Celery | 用于导出 PDF / 整站打包等耗时任务 |
-| 全文搜索 | PostgreSQL `tsvector` + jieba | 中文分词预处理后写入 search_vector 字段 |
-| PDF 导出 | Playwright (headless Chromium) | 服务端渲染 HTML 截图为 PDF |
-| Markdown 解析 | `markdown-it-py` + `mdit-py-plugins` | 解析、渲染、提取双向链接 |
-| Word 导出 | `python-docx` | Markdown AST 转 docx |
-| 静态站打包 | Jinja2 + 自定义打包脚本 | 生成可独立部署的 HTML 站点 |
-| 认证 | Django 自带 Session 认证 | 单用户场景够用，预留 JWT 扩展位 |
-| 文件存储 | 本地文件系统 | 通过 Django `MEDIA_ROOT` 管理 |
+| API 框架 | Django REST Framework | 3.15+ |
+| 数据库 | PostgreSQL | 14+（psycopg 3） |
+| 缓存 / 队列 | Redis | 5+（`django-redis`） |
+| 异步任务 | Celery | 5.4+ |
+| 全文搜索 | PostgreSQL `tsvector` + jieba | 写入前用 jieba 切词，存入 `search_vector` |
+| PDF 导出 | Playwright（headless Chromium） | 通过 `pdf` 可选依赖安装 |
+| Markdown 解析 | `markdown-it-py` + `mdit-py-plugins` | 链接解析、HTML 渲染 |
+| Word 导出 | `python-docx` | Markdown AST → docx |
+| 静态站打包 | Jinja2 + `apps/exporter/services/static_site.py` | 生成可独立部署的 zip |
+| 认证 | Django Session 认证 | 多账号 + DRF SessionAuthentication |
+| 文件存储 | 本地文件系统 | `Attachment.file` + UUID 路径 |
+| 图片处理 | Pillow | 缩略图与元数据 |
 | 测试 | pytest + pytest-django | |
 
-### 前端
+### 前端（实际依赖见 `frontend/package.json`）
 
 | 类别 | 选型 | 说明 |
 |---|---|---|
-| 框架 | React | 18+ |
-| 构建工具 | Vite | 快速冷启动 |
-| 语言 | TypeScript | 强类型 |
-| UI 组件库 | Ant Design 5 | 与带宽平台技术栈对齐 |
+| 框架 | React | 18.3 |
+| 构建工具 | Vite | 5.4 |
+| 语言 | TypeScript | 5.6 |
+| UI 组件库 | Ant Design 5 | |
 | 路由 | React Router v6 | |
-| 状态管理 | Zustand | 轻量，比 Redux 简洁 |
-| HTTP 客户端 | Axios | |
-| 编辑器内核 | **Tiptap** (基于 ProseMirror) | 支持富文本、`/` 命令、块拖拽 |
-| Markdown ↔ 富文本互转 | Tiptap Markdown 扩展 | 底层存储 Markdown |
-| 代码块高亮 | lowlight + highlight.js | Tiptap 内置集成 |
-| 数学公式 | KaTeX | Tiptap Math 扩展 |
-| 流程图 | Mermaid | 自定义 Tiptap 节点 |
-| Diff 展示 | `diff-match-patch` + 自渲染 | 历史版本对比 |
+| 状态管理 | Zustand | `stores/auth.ts`、`stores/theme.ts` |
+| HTTP 客户端 | Axios | `api/client.ts` 封装 |
+| 编辑器内核 | **Tiptap 3** (ProseMirror) | 富文本 / Markdown / HTML 三种编辑器并存 |
+| Markdown 渲染 | `markdown-it` + 一系列插件（container/mark/sub/sup/task-lists） | |
+| 富文本 ↔ Markdown | `tiptap-markdown` | 底层存 Markdown |
+| 代码高亮 | `lowlight` + `highlight.js` | |
+| 数学公式 | KaTeX | |
+| 流程图 | Mermaid 11 + **PlantUML**（`plantuml-encoder`） | 自定义 Tiptap 节点 |
+| 知识图谱 | `react-force-graph-2d` | 全局文档关系可视化 |
+| PDF 预览 | `pdfjs-dist` | 附件内联预览 |
+| Word 导入 | `mammoth` | docx → HTML/Markdown |
+| Diff | `diff-match-patch` + 自渲染 | 版本对比 |
+| 安全 | `dompurify` | 公开端 HTML 净化 |
+| 拖拽 | `tiptap-extension-global-drag-handle` | 块拖拽手柄 |
 | 图标 | `@ant-design/icons` | |
 
 ### 开发与部署
 
 | 类别 | 工具 |
 |---|---|
-| IDE | Cursor (Ubuntu) |
-| 包管理 (Python) | uv 或 pip + venv |
-| 包管理 (前端) | pnpm |
-| 代码格式化 | Black + isort (Python), Prettier (TS) |
-| Lint | Ruff (Python), ESLint (TS) |
-| 容器 (可选) | Docker Compose（postgres + redis 一键启动） |
+| 包管理 (Python) | `uv` / `venv`，依赖声明在 `pyproject.toml` |
+| 包管理 (前端) | `pnpm` 9.12 |
+| 格式化 | Black + isort + Ruff (Python)，Prettier (TS) |
+| 容器 | `docker-compose.yml`（postgres + redis） |
 
 ---
 
-## 项目目录结构
+## 项目目录结构（实际）
 
 ```
 jianzhai/
 ├── backend/
 │   ├── manage.py
 │   ├── pyproject.toml
+│   ├── .env / .env.example
 │   ├── jianzhai/              # Django 项目配置
 │   │   ├── settings.py
 │   │   ├── urls.py
-│   │   └── celery.py
+│   │   ├── celery.py
+│   │   ├── wsgi.py
+│   │   └── asgi.py
 │   ├── apps/
-│   │   ├── accounts/          # 用户（即使单用户也独立 app）
-│   │   ├── knowledge/         # 知识库 / 文件夹 / 文档核心模型
-│   │   ├── editor/            # 编辑器相关 API（草稿、自动保存）
-│   │   ├── versioning/        # 历史版本与 diff
-│   │   ├── linking/           # 双向链接 @ 提及
-│   │   ├── search/            # 全文搜索
-│   │   ├── exporter/          # 导出（HTML/MD/PDF/DOCX/静态站）
+│   │   ├── accounts/          # 多用户 + 登录会话 + scoping 共享工具
+│   │   ├── knowledge/         # KnowledgeBase / Folder / Document
+│   │   ├── editor/            # 附件、文件上传、Markdown/Word 导入
+│   │   ├── versioning/        # DocumentVersion + diff + 回滚
+│   │   ├── linking/           # 双向链接（解析 + 反向链接 + 知识图谱）
+│   │   ├── search/            # tsvector + jieba + management 命令
+│   │   ├── exporter/          # 异步导出（services/ 下分格式实现）
 │   │   ├── comments/          # 文档级 + 段落级评论
-│   │   ├── tags/              # 标签系统
-│   │   └── blog/              # 博客前台 API（公开内容）
-│   ├── media/                 # 用户上传文件
-│   ├── exports/               # 导出文件临时存储
+│   │   ├── tags/              # 标签（可挂在 KB / Folder / Document）
+│   │   └── blog/              # 公开博客 API + RSS
+│   ├── media/                 # 用户上传（按 YYYY/MM/<uuid>.<ext> 分桶）
+│   ├── exports/               # 导出产物
 │   └── tests/
 ├── frontend/
 │   ├── package.json
 │   ├── vite.config.ts
-│   ├── src/
-│   │   ├── main.tsx
-│   │   ├── App.tsx
-│   │   ├── api/               # axios 封装与 API 调用
-│   │   ├── components/
-│   │   │   ├── editor/        # Tiptap 编辑器封装
-│   │   │   ├── tree/          # 知识库树形目录
-│   │   │   ├── diff/          # 版本对比组件
-│   │   │   └── common/
-│   │   ├── pages/
-│   │   │   ├── admin/         # 后台编辑界面
-│   │   │   └── blog/          # 博客前台
-│   │   ├── stores/            # Zustand stores
-│   │   ├── hooks/
-│   │   ├── types/
-│   │   └── utils/
-│   └── public/
-├── docker-compose.yml         # postgres + redis
+│   ├── tsconfig.json
+│   ├── .env / .env.example
+│   ├── index.html
+│   ├── public/
+│   └── src/
+│       ├── main.tsx
+│       ├── App.tsx
+│       ├── api/               # 按资源拆分的 axios 客户端
+│       │   ├── client.ts admin.ts archive.ts attachments.ts auth.ts
+│       │   ├── blog.ts comments.ts docs.ts exports.ts folders.ts
+│       │   ├── graph.ts kbs.ts linking.ts search.ts tags.ts
+│       │   ├── users.ts versions.ts
+│       ├── components/
+│       │   ├── editor/        # Tiptap 编辑器（富文本/Markdown/HTML）+ 扩展
+│       │   ├── tree/          # 知识库树形目录
+│       │   ├── diff/          # 版本对比
+│       │   ├── admin/         # 管理端可视化（如 ArchitectureSVG）
+│       │   └── common/        # 搜索、附件预览、目录、TOC、主题切换等
+│       ├── pages/
+│       │   ├── admin/         # 后台：登录、KB 列表、工作区、编辑、
+│       │   │                  # 导出、版本抽屉、用户、知识图谱、系统总览
+│       │   ├── blog/          # 博客：首页、文章详情、归档、标签云、KB 浏览
+│       │   └── DocLinkResolver.tsx
+│       ├── stores/            # auth、theme
+│       ├── hooks/
+│       ├── types/             # 类型 + 第三方库声明（plantuml/tiptap-markdown）
+│       ├── utils/             # markdown / mermaid / plantuml / paper / 字体等
+│       └── styles/            # tiptap.css + 多套主题 / 阅读样式 CSS
+├── docker-compose.yml
+├── Test.html                  # 设计概念稿
 ├── README.md
 └── .gitignore
 ```
 
 ---
 
-## 数据模型设计
+## 数据模型设计（与实现一致）
 
 ### 核心模型清单
 
-| 模型 | 说明 |
-|---|---|
-| `User` | 用户（单用户，复用 Django 自带 User 模型） |
-| `KnowledgeBase` | 知识库（顶层容器） |
-| `Folder` | 文件夹，可嵌套（self-referencing FK） |
-| `Document` | 文档（核心模型） |
-| `DocumentVersion` | 文档版本快照 |
-| `DocumentLink` | 文档间的双向链接关系 |
-| `Tag` | 标签 |
-| `DocumentTag` | 文档与标签的多对多 |
-| `Comment` | 评论（文档级 + 段落级） |
-| `Attachment` | 附件（图片、文件） |
+| 模型 | App | 说明 |
+|---|---|---|
+| `User` | django.contrib.auth | Django 内建 User，多账号 |
+| `KnowledgeBase` | knowledge | 知识库（顶层容器） |
+| `Folder` | knowledge | 文件夹，self-FK 可嵌套 |
+| `Document` | knowledge | 文档（核心） |
+| `DocumentVersion` | versioning | 文档历史快照（每文档保留最近 100 个） |
+| `DocumentLink` | linking | `@提及` 解析后的链接关系（去重到 source/target/position） |
+| `Tag` | tags | 标签 |
+| `DocumentTag` / `KnowledgeBaseTag` / `FolderTag` | tags | 三种通过表，标签可挂在 KB / Folder / Document |
+| `Comment` | comments | 评论（`block_id` 区分文档级 / 段落级） |
+| `Attachment` | editor | 附件（KIND: image/document/other） |
+| `ExportTask` | exporter | 导出任务（scope × format 状态机） |
 
-### Document 模型关键字段
+### 通用模式
+
+- **软删除**：`KnowledgeBase` / `Folder` / `Document` 均含 `is_deleted` + `deleted_at`，配合 `SoftDeleteManager`（默认排除已删）与 `all_objects`（包含已删）。`Folder.soft_delete()` 会级联软删子文件夹与文档。
+- **唯一性**：`UniqueConstraint(..., condition=Q(is_deleted=False))` 保证 slug 在「未删除」范围内唯一，回收站不冲突。
+- **多租户隔离**：`apps/accounts/scoping.py` 的 `scope_queryset(qs, user)`——匿名 → 空集；超级用户 → 不过滤；其他用户 → `filter(owner=user)`（或 `knowledge_base__owner=user`）。所有 viewset 都走它。
+
+### Document 关键字段
 
 ```python
 class Document(models.Model):
     knowledge_base = ForeignKey(KnowledgeBase)
-    folder = ForeignKey(Folder, null=True, blank=True)  # null = 知识库根目录
+    folder = ForeignKey(Folder, null=True, blank=True)   # null = KB 根目录
+
     title = CharField(max_length=200)
-    slug = SlugField(unique_per_kb=True)                # 用于公开 URL
+    slug = SlugField(max_length=220, allow_unicode=True)  # 在「同 KB + 未删除」内唯一
 
     # 双内容字段（核心设计）
-    raw_content = TextField()                            # 原始笔记（Markdown）
-    published_content = TextField(blank=True)            # 发布版本（Markdown）
+    raw_content = TextField(blank=True)                   # 原始笔记（Markdown）
+    published_content = TextField(blank=True)             # 发布版本（Markdown）
 
-    # 状态
     status = CharField(choices=['draft', 'published'])
-    visibility = CharField(choices=['private', 'public'])  # 是否进入博客前台
+    visibility = CharField(choices=['private', 'public']) # 是否进入博客前台
 
-    # 搜索
-    search_vector = SearchVectorField(null=True)         # PostgreSQL 全文搜索
+    paper_style = CharField(max_length=40, blank=True)    # 博客阅读端纸张样式预设
+    search_vector = SearchVectorField(null=True)          # PG 全文搜索
 
-    # 元数据
-    created_at = DateTimeField(auto_now_add=True)
-    updated_at = DateTimeField(auto_now=True)
-    published_at = DateTimeField(null=True)
-    order = IntegerField(default=0)                      # 同级排序
+    order = IntegerField(default=0)
+    is_deleted / deleted_at
+    created_at / updated_at / published_at
 
     class Meta:
-        indexes = [GinIndex(fields=['search_vector'])]
+        indexes = [
+            GinIndex(fields=['search_vector']),
+            Index(fields=['knowledge_base', 'folder']),
+            Index(fields=['visibility', 'status', '-published_at']),
+        ]
 ```
 
-### 双向链接模型
+`publish()` / `unpublish()` 方法封装了「拷贝 raw → published」和状态切换；首次发布时记录 `published_at`。
+
+### KnowledgeBase 关键字段
+
+```python
+class KnowledgeBase(models.Model):
+    owner = ForeignKey(User)
+    name / slug
+    description = TextField(blank=True)
+    cover_image = CharField(max_length=500, blank=True)   # 封面 URL
+    accent_color = CharField(max_length=20, blank=True)   # 主题色 "#1677ff"
+    visibility = CharField(choices=['private', 'public'])
+    order = IntegerField(default=0)
+    is_deleted / deleted_at / created_at / updated_at
+```
+
+### 双向链接
 
 ```python
 class DocumentLink(models.Model):
-    source = ForeignKey(Document, related_name='outgoing_links')
-    target = ForeignKey(Document, related_name='incoming_links')
-    context = TextField()  # 引用处的上下文片段（用于反向链接展示）
-    position = IntegerField()  # 在源文档中的位置
-    created_at = DateTimeField(auto_now_add=True)
-
-    class Meta:
-        unique_together = [('source', 'target', 'position')]
+    source = FK(Document, related_name='outgoing_links')
+    target = FK(Document, related_name='incoming_links')
+    context = TextField()       # 引用处上下文（用于反向链接展示）
+    position = IntegerField()   # 在 source.raw_content 中的字符偏移
+    unique_together = ('source', 'target', 'position')
 ```
 
-链接维护策略：保存文档时解析 `@文档名` 语法，同步更新 `DocumentLink` 表。
+链接维护：`apps/linking/parser.py` 解析 `@[标题](doc:ID)` 语法；`apps/linking/signals.py` 在文档保存时同步更新 `DocumentLink` 表；删除文档前由前端 / 后端检查反向链接并提示。
 
----
+### DocumentVersion
 
-## 功能需求清单
-
-### 模块 1：知识库与目录管理
-
-**功能点**
-- 创建 / 重命名 / 删除知识库（软删除，回收站机制）
-- 知识库列表展示（封面、文档数、最后更新时间）
-- 文件夹多层嵌套（无层级限制，前端做合理 UX 限制如 5 层）
-- 文件夹仅作组织容器，**不存内容**
-- 树形目录的**拖拽排序**（同级排序 + 跨级移动）
-- 树形目录折叠 / 展开状态本地持久化
-
-**API 端点**
+```python
+class DocumentVersion(models.Model):
+    document = FK(Document)
+    content = TextField()
+    message = CharField(max_length=300, blank=True)
+    word_count = IntegerField()     # CJK 单字 + 字母数字 token
+    created_by = FK(User, null=True)
+    created_at = DateTimeField()
 ```
-GET    /api/v1/kbs/                       # 知识库列表
-POST   /api/v1/kbs/                       # 创建知识库
-PATCH  /api/v1/kbs/{id}/                  # 修改
-DELETE /api/v1/kbs/{id}/                  # 删除
-GET    /api/v1/kbs/{id}/tree/             # 获取完整目录树（含文件夹和文档）
 
-POST   /api/v1/folders/                   # 创建文件夹
-PATCH  /api/v1/folders/{id}/              # 修改 / 移动
-DELETE /api/v1/folders/{id}/
+`create_snapshot(document, content, message, created_by)` 是入口；每次插入后会自动裁剪超过 `VERSION_HISTORY_LIMIT=100` 的旧版本。
 
-POST   /api/v1/tree/reorder/              # 批量调整节点排序与父子关系
+### Attachment（上传）
+
+```python
+class Attachment(models.Model):
+    document = FK(Document, null=True)         # 可独立于文档存在（媒体库）
+    uploaded_by = FK(User, null=True)
+    file = FileField(upload_to='uploads/YYYY/MM/<uuid>.<ext>')
+    original_filename = CharField(max_length=255)
+    kind = CharField(choices=[image|document|other])
+    mime_type / size / created_at
 ```
 
 ---
 
-### 模块 2：文档与编辑器
+## URL 总览
 
-**功能点**
-- 创建 / 重命名 / 删除文档
-- 编辑器支持 **Markdown 模式** 和 **富文本模式** 切换（底层存 Markdown）
-- 编辑器功能元素：
-  - 基础：H1-H6、加粗、斜体、删除线、引用、有序/无序列表、任务列表
-  - 代码：行内代码、代码块（语法高亮，支持 50+ 语言）
-  - 表格：增删行列、合并单元格
-  - 媒体：图片上传（拖拽 + 粘贴）、附件上传、视频嵌入（B 站 / YouTube 等）
-  - 进阶：LaTeX 数学公式、Mermaid 流程图、PlantUML
-  - 特殊：分割线、TOC 占位符、Callout 块（提示/警告/信息）
-- `/` 命令：输入 `/` 弹出块类型选择器
-- 块级拖拽：每个块左侧拖拽手柄，可拖拽改变顺序
-- `@提及` 双向链接：输入 `@` 弹出文档搜索器，选中后插入链接
-- **自动保存**（每 5 秒检测变化，有变化则写入 `raw_content`）
-- **手动发布**：将 `raw_content` 拷贝到 `published_content` 并标记发布
-- **独立编辑发布版本**：可以单独修改 `published_content` 而不影响 `raw_content`
-- 文档元信息侧栏：创建时间、字数统计、标签、可见性切换
+`backend/jianzhai/urls.py` 顶层挂载：
 
-**API 端点**
 ```
-GET    /api/v1/documents/{id}/            # 文档详情（含两份内容）
-PATCH  /api/v1/documents/{id}/            # 更新 raw_content（自动保存调用）
-POST   /api/v1/documents/{id}/publish/    # 发布（拷贝 raw → published）
-PATCH  /api/v1/documents/{id}/published/  # 单独修改发布版本
-POST   /api/v1/documents/{id}/unpublish/  # 撤回发布
-
-POST   /api/v1/uploads/image/             # 图片上传
-POST   /api/v1/uploads/attachment/        # 附件上传
-GET    /api/v1/documents/mentions/?q=xxx  # @提及搜索（跨知识库）
+/admin/                  Django admin
+/api/v1/auth/            登录、登出、CSRF、session、system-info、UserViewSet（管理员）
+/api/v1/kbs|folders|documents/   knowledge 模型 CRUD（DRF Router）
+/api/v1/tree/reorder/    批量调整节点排序与父子关系
+/api/v1/uploads/         附件上传
+/api/v1/imports/         Word/Markdown 文件单/批量导入为文档
+/api/v1/attachments/     媒体库
+/api/v1/documents/{id}/attachments/
+/api/v1/documents/{id}/backlinks/
+/api/v1/documents/{id}/versions/      （含 diff / restore 子路径）
+/api/v1/documents/{id}/comments/
+/api/v1/documents/{id}/tags/
+/api/v1/kbs/{id}/tags/
+/api/v1/folders/{id}/tags/
+/api/v1/links/graph/     知识图谱
+/api/v1/search/          全文搜索
+/api/v1/exports/         异步导出任务（含 download/）
+/api/v1/tags/            标签 CRUD
+/api/v1/public/tags/     公开标签云
+/api/v1/public/posts/    公开博客列表 / by-id / by-slug / adjacent / backlinks
+/api/v1/public/kbs/      公开知识库列表 / tree
+/api/v1/public/archive/  归档
+/feed.xml                RSS
 ```
 
 ---
 
-### 模块 3：历史版本
+## 功能需求清单（含实现状态）
 
-**功能点**
-- 用户主动点击「保存版本」生成快照（类似 Git commit），可填写版本说明
-- 版本列表展示：时间、版本说明、字数变化
-- 任意两个版本之间的 **diff 对比**（行级 + 字符级）
-- 一键 **回滚** 到任意历史版本（回滚也作为新版本入栈）
-- 版本数量上限：每文档保留最近 100 个版本（可配置）
+> ✅ 已实现 / 🟡 部分实现 / 🔲 待实现
 
-**API 端点**
-```
-GET    /api/v1/documents/{id}/versions/                # 版本列表
-POST   /api/v1/documents/{id}/versions/                # 创建版本快照 {message: "..."}
-GET    /api/v1/documents/{id}/versions/{vid}/          # 查看某版本内容
-GET    /api/v1/documents/{id}/versions/diff/?a=&b=     # 两版本对比
-POST   /api/v1/documents/{id}/versions/{vid}/restore/  # 回滚
-```
+### 模块 1：知识库与目录管理 ✅
 
----
+- 创建 / 重命名 / 删除知识库（**软删除 + 回收站**，可通过 `all_objects` 查询已删）
+- KB 支持封面、主题色、可见性、排序
+- 文件夹多层嵌套（无层级硬限制，前端做合理 UX 限制）
+- 树形目录拖拽排序（同级 + 跨级），通过 `POST /tree/reorder/` 批量提交
+- 折叠 / 展开状态在前端本地持久化
 
-### 模块 4：双向链接
+### 模块 2：文档与编辑器 ✅
 
-**功能点**
-- 编辑时输入 `@` 触发文档选择器（搜索框 + 最近文档列表）
-- 选择后插入特殊节点：`@[文档标题](doc:{id})`
-- 渲染时显示为可点击链接
-- **跨知识库引用允许**
-- 文档底部展示「**反向链接区**」：列出所有引用了当前文档的其他文档，含上下文片段
-- 删除文档时检测被引用情况，提示用户
+- 文档 CRUD + 软删除
+- 编辑器有三种实现：**RichTextEditor**（Tiptap 富文本）/ **MarkdownEditor**（纯 Markdown）/ **HtmlEditor**（HTML 源码），底层统一以 Markdown 形式持久化
+- 编辑器功能：
+  - 基础排版：H1–H6、加粗 / 斜体 / 下划线 / 删除线、引用、有序 / 无序 / 任务列表
+  - 代码：行内 + 代码块（lowlight 语法高亮）
+  - 表格：增删行列
+  - 媒体：图片上传（拖拽 + 粘贴 + 裁剪），附件上传，视频嵌入（自定义 `VideoEmbed` 节点）
+  - 数学公式（KaTeX）、Mermaid、**PlantUML**、Callout 块（提示 / 警告 / 信息）
+  - **`/` 命令**：`slashCommand.ts` + `SlashCommandList.tsx`
+  - 块级拖拽手柄（`tiptap-extension-global-drag-handle`）
+  - **`@` 提及双向链接**：`MentionPicker.tsx`，跨知识库可选
+  - 批注 Mark（`AnnotationMark.ts`）
+  - 查找替换面板（`FindReplacePanel.tsx`）
+  - 文档大纲（`DocumentOutline.tsx`）
+- 自动保存（前端定时写 `raw_content`）+ 手动发布 + 单独修改发布版本 + 撤回发布
+- 文档元信息侧栏（标签、可见性、纸张样式 `paper_style`）
 
-**API 端点**
-```
-GET    /api/v1/documents/{id}/backlinks/   # 反向链接列表
-```
+附加（超出原始设计）：
 
----
+- `/api/v1/imports/` 与 `/api/v1/imports/batch/` 接受 `.md` / `.docx` / `.txt` / `.html`，可保留目录路径，自动建文件夹
 
-### 模块 5：标签系统
+### 模块 3：历史版本 ✅
 
-**功能点**
-- 标签 CRUD
-- 文档可绑定多个标签
-- 标签云页面（按使用频次展示）
-- 按标签筛选文档
+- 主动「保存版本」生成 `DocumentVersion` 快照（带 `message`）
+- 版本列表 + 字数变化
+- 任意两版本 diff（行级 + 字符级；前端 `diff-match-patch`）
+- 回滚作为新版本入栈
+- 每文档保留最近 100 个版本（`VERSION_HISTORY_LIMIT`）
 
-**API 端点**
-```
-GET    /api/v1/tags/
-POST   /api/v1/tags/
-PATCH  /api/v1/tags/{id}/
-DELETE /api/v1/tags/{id}/
-GET    /api/v1/documents/?tags=tag1,tag2
-```
+### 模块 4：双向链接 ✅
 
----
+- `@` 触发文档搜索器（`MentionPicker`），插入 `@[标题](doc:{id})`
+- 跨知识库引用允许
+- 文档底部反向链接区（`BacklinkPanel.tsx`，调用 `/documents/{id}/backlinks/`）
+- 删除文档时由前端检测反向引用并提示
 
-### 模块 6：评论（笔记批注）
+### 模块 5：标签系统 ✅（功能扩展）
 
-**功能点**
-- **文档级评论**：文档底部评论区，仅自己可见和发布
-- **段落级评论**：选中段落出现评论按钮，评论以侧边浮窗形式展示
-- 段落级评论通过文档内的 `data-block-id` 属性定位
-- 评论支持 Markdown
-- 自动通过审核（单用户场景）
+- 标签 CRUD（按用户隔离）
+- **可挂在 Document / KnowledgeBase / Folder**（原始设计只覆盖 Document）
+- 按标签筛选文档：`GET /documents/?tags=...`
+- 标签云页（前端 `TagCloudPage.tsx`，公开端 `/api/v1/public/tags/`）
 
-**API 端点**
-```
-GET    /api/v1/documents/{id}/comments/
-POST   /api/v1/documents/{id}/comments/    # {block_id?, content}
-DELETE /api/v1/comments/{id}/
-```
+### 模块 6：评论 ✅
 
----
+- 文档级评论 + 段落级评论（通过 `block_id` 定位渲染节点）
+- Markdown 内容
+- 单用户场景自动通过审核
 
-### 模块 7：全文搜索
+### 模块 7：全文搜索 ✅
 
-**功能点**
-- 全局搜索框（顶部，快捷键 `Cmd+K` / `Ctrl+K`）
-- 搜索范围：**标题 + 正文 + 标签名 + 评论内容**
-- 中文分词：保存时用 jieba 处理后写入 `search_vector`
-- 搜索结果展示：标题高亮、匹配片段、所属知识库
-- 高级筛选：知识库、标签、时间范围、状态
+- 顶部 `GlobalSearch.tsx`（`Cmd+K` / `Ctrl+K` 快捷键）
+- 搜索范围：标题 + 正文 + 标签名 + 评论
+- jieba 切词 + PostgreSQL `SearchVector` / `SearchRank` / `SearchHeadline`
+- Django Signal 在文档保存时更新 `search_vector`
+- 提供管理命令（`apps/search/management/commands/`）用于重建索引
 
-**实现要点**
-- Django Signal：文档保存时触发 `search_vector` 更新
-- 使用 PostgreSQL `SearchVector` + `SearchRank` + `SearchHeadline`
+### 模块 8：导出 ✅
 
-**API 端点**
-```
-GET    /api/v1/search/?q=keyword&kb=&tag=&from=&to=
-```
+- 粒度：单文档 / 文件夹（含子级）/ 整知识库（`ExportTask.scope`）
+- 格式：`md` / `html` / `pdf` / `docx` / `site`（zip）
+- 各格式实现在 `apps/exporter/services/`：
+  - `markdown_export.py` / `html_export.py` / `docx_export.py` / `pdf_export.py`（Playwright）/ `static_site.py`（Jinja2 模板）
+- Celery 异步执行，前端轮询 `/api/v1/exports/{id}/`
+- 静态站包含：每篇独立 HTML、CSS/JS、资源、`sitemap.xml`、`feed.xml`、本地静态搜索索引
 
----
+### 模块 9：博客前台 ✅
 
-### 模块 8：导出
+- 完全匿名访问
+- 首页、KB 浏览（含树形目录）、文章详情（TOC、阅读进度、相邻文章导航）、归档、标签云、RSS
+- 公开 backlinks（`/public/posts/by-id/{id}/backlinks/`）
+- 多套主题与「纸张」背景：`deepsea.css` / `starry.css` / `paper.css` / `book-card.css` 等，配合 `ReaderFontPicker` 与 `PaperPicker`
+- 暗 / 亮主题切换（`stores/theme.ts`）
 
-**功能点**
-- **粒度**：单文档 / 文件夹（含子级）/ 整知识库
-- **格式**：HTML 单页、Markdown、PDF、Word (.docx)、整站 zip
-- 导出任务异步执行（Celery），前端轮询状态或 WebSocket 推送
-- 导出历史记录页面，可重新下载
+### 模块 10：附件与媒体管理 ✅
 
-**整站静态导出特性**
-- 生成的 zip 包含：
-  - `index.html`（首页，文档列表 + 分类）
-  - 每篇文档独立 HTML 文件，保留目录层级
-  - 完整 CSS / JS（无外部 CDN 依赖）
-  - 静态搜索（基于预生成的 JSON 索引 + lunr.js / minisearch）
-  - 资源文件（图片、附件）
-  - `sitemap.xml`、`robots.txt`、`feed.xml` (RSS)
-  - 可直接部署到 Nginx / GitHub Pages / Vercel
+- 通过 `MultiPartParser` 上传
+- 路径：`MEDIA_ROOT/uploads/{YYYY}/{MM}/{uuid}.{ext}`
+- 三类型：`image` / `document`（pdf/docx/html/md）/ `other`
+- 媒体库页（`/attachments/`）支持浏览与删除
+- 前端附件预览：`AttachmentInlinePreview` / `PdfCanvas`（pdfjs-dist）/ `FilePreview`
 
-**API 端点**
-```
-POST   /api/v1/exports/                           # 创建导出任务
-                                                  # {scope: 'doc'|'folder'|'kb', target_id, format}
-GET    /api/v1/exports/                           # 任务列表
-GET    /api/v1/exports/{id}/                      # 任务状态
-GET    /api/v1/exports/{id}/download/             # 下载结果
-```
+### 模块 11：知识图谱 ✅（新增）
 
-**关键实现**
-- PDF：用 Playwright 渲染前端的「打印预览页面」截图为 PDF，保真度最高
-- Word：解析 Markdown AST，按节点类型映射到 `python-docx` 的段落、表格、图片
-- 整站：渲染 React 应用为静态 HTML（或用 Jinja2 模板直接生成）
+- `GET /api/v1/links/graph/` 返回节点（文档）+ 边（DocumentLink）
+- 前端 `KnowledgeGraphPage.tsx` 基于 `react-force-graph-2d` 渲染
+- 节点点击跳转文档；支持按知识库着色 / 过滤
+
+### 模块 12：多用户与权限 ✅（增强）
+
+- `accounts.UserViewSet` 提供管理员可见的用户管理
+- 登录态、CSRF、session 查询、`system-info`
+- 通过 `apps/accounts/scoping.py` 在每个 viewset 做 owner 维度的隔离
+- 自定义权限类 `IsStaffUser` / `IsSuperUser`
 
 ---
 
-### 模块 9：博客前台（公开阅读端）
+## 非功能与已配置项
 
-**功能点**
-- 完全匿名访问，无需登录
-- **首页**：流式展示最新发布的公开文档（封面图、标题、摘要、发布时间、标签）
-- **知识库浏览页**：左侧树形目录 + 右侧文档阅读
-- **文档详情页**：渲染 `published_content`、目录 TOC、阅读进度条
-- **归档页**：按年/月归档
-- **标签云页**
-- **关于页**（可在后台配置内容）
-- **RSS / Atom 订阅源**
-- 暗色 / 亮色主题切换（用户偏好持久化到 localStorage）
-- 响应式设计（移动端友好）
-
-**API 端点**（不需要认证）
-```
-GET    /api/v1/public/posts/              # 已发布文档列表（分页）
-GET    /api/v1/public/posts/{slug}/       # 文档详情
-GET    /api/v1/public/kbs/                # 公开的知识库列表
-GET    /api/v1/public/kbs/{slug}/tree/    # 公开知识库的目录树
-GET    /api/v1/public/tags/               # 标签云
-GET    /api/v1/public/archive/            # 归档
-GET    /feed.xml                          # RSS
-```
+- **DRF 节流**：匿名 `120/min`
+- **上传限制**：单文件 50MB（`DATA_UPLOAD_MAX_MEMORY_SIZE` / `FILE_UPLOAD_MAX_MEMORY_SIZE`）
+- **CSRF**：`CSRF_COOKIE_HTTPONLY=False`（SPA 读取并塞回 `X-CSRFToken`），`CSRF_TRUSTED_ORIGINS` 默认包含 `:3001` / `:8002`
+- **iframe**：`X_FRAME_OPTIONS = "SAMEORIGIN"`，让博客端可以 `<iframe>` 内联预览 HTML/PDF 附件
+- **时区**：`Asia/Shanghai`，语言 `zh-hans`，`USE_TZ=True`
+- **缓存**：`django_redis`
+- **Celery**：broker `redis://localhost:6379/1`，result backend `:6379/2`
 
 ---
 
-### 模块 10：附件与媒体管理
-
-**功能点**
-- 文件上传通过 `MultiPartParser`
-- 图片：自动生成缩略图（用 Pillow）、记录元数据（尺寸、格式）
-- 附件：保留原文件名，存储路径用 UUID 防冲突
-- 媒体库管理页：浏览所有上传的资源、删除未引用文件
-- 存储路径：`MEDIA_ROOT/uploads/{year}/{month}/{uuid}.{ext}`
-
----
-
-## 非功能需求
-
-### 性能
-- 文档列表懒加载（虚拟滚动）
-- 编辑器对超长文档（10000+ 字）保持流畅
-- 自动保存防抖（5 秒）
-- 图片上传压缩（>2MB 自动压缩为 WebP）
-
-### 可维护性
-- 每个 Django app 独立 `models.py` / `serializers.py` / `views.py` / `urls.py`
-- 前端组件单文件不超过 300 行
-- 关键业务逻辑（双向链接解析、版本快照、导出）必须有单元测试
-
-### 安全
-- CSRF 保护（DRF 默认）
-- 上传文件类型白名单（图片：jpg/png/webp/gif；附件：pdf/zip/常用文档类型）
-- 文件大小限制：单文件 50MB
-- 公开 API 添加速率限制（DRF Throttle）
-
-### 数据安全
-- 数据库每日定时备份（cron + pg_dump）
-- 媒体文件夹纳入备份范围
-- 删除操作软删除 + 回收站（30 天后清理）
-
----
-
-## 分阶段交付计划
-
-| 阶段 | 内容 | 工期估算 |
-|---|---|---|
-| **v0.1 MVP** | 知识库 + 文件夹 + 文档 CRUD + Markdown 编辑器 + 基础预览 + 私密/公开切换 + 博客前台展示 | 2-3 周 |
-| **v0.2 编辑器增强** | Tiptap 富文本模式、`/` 命令、块拖拽、`@提及` 双向链接、反向链接区 | 1-2 周 |
-| **v0.3 协作辅助** | 历史版本（commit / diff / 回滚）、PostgreSQL 全文搜索（含 jieba） | 1-2 周 |
-| **v0.4 导出能力** | 单文档/文件夹/知识库导出，HTML/MD/PDF/DOCX 四格式 + 整站静态站打包 | 1-2 周 |
-| **v0.5 完善** | 评论（文档级 + 段落级）、标签云、归档、RSS、移动端适配 | 1 周 |
-
-总计：**6-10 周**（按业余时间投入估算）
-
----
-
-## 关键风险与注意事项
+## 关键风险与注意事项（仍有效）
 
 1. **Tiptap Markdown 互转保真度**
-   - 富文本 → Markdown 时部分复杂格式（如合并单元格表格）会丢失
-   - 建议：在切换前提示用户，并在数据库保留 Tiptap JSON 作为备份字段（可选优化）
+   - 复杂表格 / 合并单元格在富文本 ↔ Markdown 间可能丢失，必要时提示用户。
 
 2. **双向链接的引用完整性**
-   - 跨知识库引用：被引用文档移动 / 删除时需级联更新链接
-   - 使用 Django Signal 维护一致性，并在删除时弹出确认
+   - 跨知识库引用：被引用文档移动 / 删除时由 `linking/signals.py` 维护一致性，删除时由前端弹确认。
 
 3. **大文档性能**
-   - 编辑器虚拟滚动可考虑 Tiptap 的 `lazy rendering` 方案
-   - 自动保存仅传输 diff 而非全文（可作为 v0.6 优化）
+   - 编辑器在 10000+ 字时仍流畅，但建议未来对超长文档启用 Tiptap 的 lazy rendering。
+   - 自动保存目前传全文，可在 v0.6 优化为传 diff。
 
 4. **PDF 导出资源占用**
-   - Playwright 单次启动约 200MB 内存
-   - 用 Celery 任务队列串行处理，避免并发崩溃
+   - Playwright 单次启动约 200MB 内存。`exporter.tasks` 通过 Celery 串行处理。
+   - 安装 PDF 能力：`pip install -e .[pdf]` + `playwright install chromium`。
 
 5. **PostgreSQL 中文全文搜索**
-   - `tsvector` 默认不支持中文分词
-   - 方案：保存前用 jieba 切词后以空格拼接，再写入 `search_vector`
-   - 缺点：搜索时也需对查询词切词
+   - 默认 `tsvector` 不支持中文分词；写入与查询两端都需用 jieba 切词。
+
+6. **超级用户的全租户可见**
+   - `scope_queryset` 对超级用户不做过滤——在多账号环境下要小心 staff 误操作。
 
 ---
 
-## 开发起步顺序建议
+## 阶段交付计划（当前进度）
 
-1. 初始化项目骨架（Django 项目 + Vite React 项目 + Docker Compose）
-2. 配置 PostgreSQL、Redis、Celery 跑通
-3. 实现 User、KnowledgeBase、Folder、Document 模型与基础 CRUD API
-4. 前端搭建 Ant Design 后台框架 + 路由
-5. 集成 Tiptap 编辑器（先 Markdown 模式）
-6. 实现树形目录组件 + 拖拽
-7. 完成 MVP 流程：建库 → 建文件夹 → 写文档 → 预览 → 发布 → 博客前台展示
-8. 按 v0.2-v0.5 顺序迭代
+| 阶段 | 内容 | 状态 |
+|---|---|---|
+| **v0.1 MVP** | KB + Folder + Document CRUD + Markdown 编辑器 + 私密/公开切换 + 博客前台 | ✅ |
+| **v0.2 编辑器增强** | Tiptap 富文本、`/` 命令、块拖拽、`@提及` 双向链接、反向链接区 | ✅ |
+| **v0.3 协作辅助** | 历史版本（diff / 回滚）、PG 全文搜索（jieba） | ✅ |
+| **v0.4 导出能力** | 单文档/文件夹/KB 导出，HTML/MD/PDF/DOCX + 整站 zip | ✅ |
+| **v0.5 完善** | 评论、标签云、归档、RSS、移动端适配 | ✅ |
+| **附加（已落地）** | 知识图谱、PlantUML、Word 导入、多账号权限、多主题与纸张、PDF 预览 | ✅ |
+| **v0.6 后续优化候选** | 增量自动保存（diff 传输）、Tiptap lazy rendering、回收站 UI、导出预设 | 🔲 |
+
+---
+
+## 开发起步建议（针对新加入的协作者）
+
+1. 复制 `.env.example` 为 `.env`，按需修改数据库 / Redis / SECRET_KEY
+2. `docker compose up -d` 启动 Postgres + Redis
+3. 后端：`uv sync` / `pip install -e .[dev]`，执行 `python manage.py migrate` 与 `createsuperuser`
+4. 启动后端：`python manage.py runserver 0.0.0.0:8002`
+5. 启动 Celery：`celery -A jianzhai worker -l info`
+6. 前端：`cd frontend && pnpm install && pnpm dev`（默认 3001）
+7. 访问 `http://localhost:3001`，使用 superuser 登录进入后台
 
 ---
 
@@ -505,9 +472,13 @@ SECRET_KEY=
 DATABASE_URL=postgresql://jianzhai:password@localhost:5432/jianzhai
 REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/1
+CELERY_RESULT_BACKEND=redis://localhost:6379/2
 MEDIA_ROOT=./media
 ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:3001
+CSRF_TRUSTED_ORIGINS=http://localhost:3001,http://localhost:8002
+LANGUAGE_CODE=zh-hans
+TIME_ZONE=Asia/Shanghai
 ```
 
 ```env
@@ -518,6 +489,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v1.0
-**最后更新**：2026-05-17
-
+**文档版本**：v2.0
+**最后更新**：2026-05-21

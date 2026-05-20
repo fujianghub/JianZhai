@@ -6,6 +6,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document
 
 from .services import segment
@@ -43,7 +44,7 @@ def search(request):
 
     pg_query = SearchQuery(segmented, config="simple", search_type="plain")
     qs = (
-        Document.objects.filter(knowledge_base__owner=request.user)
+        scope_queryset(Document.objects.all(), request.user)
         .filter(search_vector=pg_query)
         .annotate(rank=SearchRank(F("search_vector"), pg_query))
         .select_related("knowledge_base")

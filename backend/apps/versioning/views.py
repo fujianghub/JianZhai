@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document
 
 from .models import DocumentVersion
@@ -18,7 +19,7 @@ from .serializers import (
 
 
 def _get_owned_document(user, doc_id: int) -> Document:
-    return get_object_or_404(Document.objects.filter(knowledge_base__owner=user), pk=doc_id)
+    return get_object_or_404(scope_queryset(Document.objects.all(), user), pk=doc_id)
 
 
 class VersionListCreate(APIView):

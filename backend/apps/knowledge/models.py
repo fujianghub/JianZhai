@@ -150,6 +150,10 @@ class Document(models.Model):
     search_vector = SearchVectorField(null=True, blank=True)
 
     order = models.IntegerField(default=0)
+    # Optimistic-concurrency token. Increments on every save where content
+    # actually changed; the API uses it to detect "you and another tab edited
+    # the same doc" and refuse a stale overwrite.
+    version = models.PositiveIntegerField(default=1)
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
