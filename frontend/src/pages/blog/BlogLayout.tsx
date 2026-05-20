@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { Button, Layout, Space } from 'antd';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { SearchOutlined } from '@ant-design/icons';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
+import {
+  JzArchiveIcon,
+  JzTagsIcon,
+  JzRssIcon,
+  JzAdminIcon,
+  JzSearchIcon,
+} from '@/components/common/JzIcon';
 
 const { Header, Content, Footer } = Layout;
 
@@ -39,14 +45,22 @@ export default function BlogLayout() {
           <span className="jz-brand-sep" aria-hidden>·</span>
           <span className="jz-brand-en">JianZhai</span>
         </Link>
-        <Space size={28} wrap align="center">
-          <NavLink to="/archive" className="jz-nav-link">归档</NavLink>
-          <NavLink to="/tags" className="jz-nav-link">标签</NavLink>
-          <a href="/feed.xml" target="_blank" rel="noreferrer" className="jz-nav-link">RSS</a>
-          <NavLink to="/admin" className="jz-nav-link">后台</NavLink>
+        <Space size={20} wrap align="center">
+          <NavLink to="/archive" className="jz-nav-link">
+            <JzArchiveIcon style={{ marginRight: 4 }} /> 归档
+          </NavLink>
+          <NavLink to="/tags" className="jz-nav-link">
+            <JzTagsIcon style={{ marginRight: 4 }} /> 标签
+          </NavLink>
+          <a href="/feed.xml" target="_blank" rel="noreferrer" className="jz-nav-link">
+            <JzRssIcon style={{ marginRight: 4 }} /> RSS
+          </a>
+          <NavLink to="/admin" className="jz-nav-link">
+            <JzAdminIcon style={{ marginRight: 4 }} /> 后台
+          </NavLink>
           <Button
             type="text"
-            icon={<SearchOutlined />}
+            icon={<JzSearchIcon />}
             onClick={() => setSearchOpen(true)}
             aria-label="搜索 (Ctrl+K)"
             style={{ color: 'var(--jz-text-muted)' }}

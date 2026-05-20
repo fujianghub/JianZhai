@@ -1703,3 +1703,75 @@ h4.jz-post-card-title.ant-typography {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--jz-accent);
 }
+
+/* ════════════════════════════════════════════════════════════════════════
+   图标主题联动 — JzIcon "印泥色" 在选中态跟随 accent
+   通过 CSS 变量 --jz-icon-accent-active 覆写 SVG 内部填充
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* 后台侧栏：选中态把所有彩点统一染成 accent + 微微发光 */
+.jz-admin-glass .jz-admin-menu .ant-menu-item-selected {
+  --jz-icon-accent-active: var(--jz-accent);
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item-selected svg {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--jz-accent) 50%, transparent));
+  transform: scale(1.08);
+  transition: transform 0.22s ease, filter 0.22s ease;
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item svg {
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item:hover svg {
+  transform: scale(1.06);
+}
+
+/* 博客顶栏导航：hover/active 时图标染朱砂 + 发光 */
+.jz-nav-link svg {
+  font-size: 14px;
+  transition: transform 0.22s cubic-bezier(.34, 1.56, .64, 1), filter 0.22s ease;
+  vertical-align: -2px;
+}
+.jz-nav-link:hover svg,
+.jz-nav-link.active svg {
+  --jz-icon-accent-active: var(--jz-accent);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 40%, transparent));
+  transform: scale(1.1);
+}
+
+/* AI 管理 Segmented：选中态图标染翡翠/朱砂（跟随 admin accent）+ 发光 */
+.jz-admin-glass .ant-segmented-item-selected {
+  --jz-icon-accent-active: currentColor;
+}
+.jz-admin-glass .ant-segmented-item-selected svg {
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--jz-accent) 35%, transparent));
+}
+.jz-admin-glass .ant-segmented-item svg {
+  vertical-align: -2px;
+  transition: transform 0.22s ease;
+}
+
+/* 编辑器侧栏 Tab：is-active 时图标染朱砂 + 微缩放 */
+.jz-sidebar-tab svg {
+  font-size: 16px;
+  transition: transform 0.2s ease, filter 0.2s ease;
+}
+.jz-sidebar-tab:hover svg {
+  transform: scale(1.08);
+}
+.jz-sidebar-tab.is-active {
+  --jz-icon-accent-active: var(--jz-accent);
+}
+.jz-sidebar-tab.is-active svg {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--jz-accent) 45%, transparent));
+  transform: scale(1.08);
+}
+
+/* 搜索按钮的图标也跟随 hover 染色 */
+.jz-admin-glass .jz-admin-search svg,
+.blog-header .ant-btn svg {
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.jz-admin-glass .jz-admin-search:hover svg,
+.blog-header .ant-btn:hover svg {
+  transform: scale(1.1);
+}

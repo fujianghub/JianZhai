@@ -1,16 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
+import { LogoutOutlined } from '@ant-design/icons';
 import {
-  BookOutlined,
-  DeploymentUnitOutlined,
-  DownloadOutlined,
-  GlobalOutlined,
-  LogoutOutlined,
-  PartitionOutlined,
-  RobotOutlined,
-  SearchOutlined,
-  TeamOutlined,
-} from '@ant-design/icons';
+  JzKbIcon,
+  JzGraphIcon,
+  JzExportIcon,
+  JzAiIcon,
+  JzUsersIcon,
+  JzArchitectureIcon,
+  JzBlogIcon,
+  JzSearchIcon,
+} from '@/components/common/JzIcon';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
@@ -73,27 +73,27 @@ export default function AdminLayout() {
           selectedKeys={[selectedKey]}
           className="jz-admin-menu"
           items={[
-            { key: 'kbs', icon: <BookOutlined />, label: <Link to="/admin/kbs">知识库</Link> },
+            { key: 'kbs', icon: <JzKbIcon />, label: <Link to="/admin/kbs">知识库</Link> },
             {
               key: 'graph',
-              icon: <PartitionOutlined />,
+              icon: <JzGraphIcon />,
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
-            { key: 'exports', icon: <DownloadOutlined />, label: <Link to="/admin/exports">导出</Link> },
-            { key: 'ai', icon: <RobotOutlined />, label: <Link to="/admin/ai">AI 助手</Link> },
+            { key: 'exports', icon: <JzExportIcon />, label: <Link to="/admin/exports">导出</Link> },
+            { key: 'ai', icon: <JzAiIcon />, label: <Link to="/admin/ai">AI 助手</Link> },
             ...(user?.is_staff
-              ? [{ key: 'users', icon: <TeamOutlined />, label: <Link to="/admin/users">用户</Link> }]
+              ? [{ key: 'users', icon: <JzUsersIcon />, label: <Link to="/admin/users">用户</Link> }]
               : []),
             ...(user?.is_superuser
               ? [
                   {
                     key: 'overview',
-                    icon: <DeploymentUnitOutlined />,
+                    icon: <JzArchitectureIcon />,
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
                 ]
               : []),
-            { key: 'blog', icon: <GlobalOutlined />, label: <Link to="/">查看博客</Link> },
+            { key: 'blog', icon: <JzBlogIcon />, label: <Link to="/">查看博客</Link> },
           ]}
         />
       </Sider>
@@ -102,7 +102,7 @@ export default function AdminLayout() {
           <Tooltip title="搜索 (⌘/Ctrl + K)">
             <Button
               shape="round"
-              icon={<SearchOutlined />}
+              icon={<JzSearchIcon />}
               onClick={() => setSearchOpen(true)}
               className="jz-admin-search"
             >

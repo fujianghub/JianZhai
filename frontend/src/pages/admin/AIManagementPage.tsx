@@ -27,6 +27,12 @@ import {
   CheckCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
+import {
+  JzOverviewIcon,
+  JzModelIcon,
+  JzUsageIcon,
+  JzSettingsIcon,
+} from '@/components/common/JzIcon';
 import dayjs from 'dayjs';
 import {
   getAISettings,
@@ -166,10 +172,38 @@ export default function AIManagementPage() {
               value={tab}
               onChange={(v) => setTab(v as typeof tab)}
               options={[
-                { label: '概览', value: 'overview' },
-                { label: '模型', value: 'models' },
-                { label: '用量', value: 'usage' },
-                { label: '设置', value: 'settings' },
+                {
+                  value: 'overview',
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <JzOverviewIcon /> 概览
+                    </span>
+                  ),
+                },
+                {
+                  value: 'models',
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <JzModelIcon /> 模型
+                    </span>
+                  ),
+                },
+                {
+                  value: 'usage',
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <JzUsageIcon /> 用量
+                    </span>
+                  ),
+                },
+                {
+                  value: 'settings',
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      <JzSettingsIcon /> 设置
+                    </span>
+                  ),
+                },
               ]}
             />
           </Col>

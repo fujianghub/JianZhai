@@ -25,9 +25,6 @@ import {
   ExportOutlined,
   FullscreenOutlined,
   HistoryOutlined,
-  LinkOutlined,
-  MessageOutlined,
-  PaperClipOutlined,
   UnorderedListOutlined,
   RocketOutlined,
   StopOutlined,
@@ -53,6 +50,12 @@ import VersionsDrawer from './VersionsDrawer';
 import ExportDialog from '@/components/common/ExportDialog';
 import { SelectionAI } from '@/components/common/SelectionAI';
 import { DocAIPanel } from '@/components/common/DocAIPanel';
+import {
+  JzOutlineIcon,
+  JzBacklinkIcon,
+  JzCommentIcon,
+  JzAttachmentIcon,
+} from '@/components/common/JzIcon';
 import { PAPER_STYLES } from '@/utils/paper';
 import type { DocFormat, DocumentDetail, KnowledgeBase, Visibility } from '@/types';
 
@@ -529,10 +532,10 @@ export default function DocEditorPage() {
           <aside className="jz-editor-sidebar">
             <div className="jz-editor-sidebar-tabs">
               {([
-                { key: 'outline' as const, icon: <UnorderedListOutlined />, label: '大纲' },
-                { key: 'backlinks' as const, icon: <LinkOutlined />, label: '反链' },
-                { key: 'comments' as const, icon: <MessageOutlined />, label: '评论' },
-                { key: 'attachments' as const, icon: <PaperClipOutlined />, label: '附件' },
+                { key: 'outline' as const, icon: <JzOutlineIcon />, label: '大纲' },
+                { key: 'backlinks' as const, icon: <JzBacklinkIcon />, label: '反链' },
+                { key: 'comments' as const, icon: <JzCommentIcon />, label: '评论' },
+                { key: 'attachments' as const, icon: <JzAttachmentIcon />, label: '附件' },
               ]).map(t => (
                 <button
                   key={t.key}
