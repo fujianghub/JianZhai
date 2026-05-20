@@ -72,6 +72,8 @@ import { useDocLinkHoverCards, DocHoverCard } from '@/components/common/DocHover
 import { BlockHoverMenu } from './BlockHoverMenu';
 import { AIAssistantMenu } from './AIAssistant';
 import { paperClassName } from '@/utils/paper';
+import DocumentOutline from './DocumentOutline';
+import { CloseOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 
@@ -508,13 +510,22 @@ export default function RichTextEditor({
 
   // Fullscreen / immersive mode
   const [fullscreen, setFullscreen] = useState(false);
+  const [fsOutlineOpen, setFsOutlineOpen] = useState(true);
   useEffect(() => {
-    if (!fullscreen) return;
+    if (!fullscreen) {
+      document.body.classList.remove('jz-fullscreen-active');
+      return;
+    }
+    // 让外层 CSS 隐藏 AdminLayout 的 sider / header
+    document.body.classList.add('jz-fullscreen-active');
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setFullscreen(false);
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.classList.remove('jz-fullscreen-active');
+    };
   }, [fullscreen]);
 
   const count = useMemo(() => wordCount(value), [value]);
@@ -531,20 +542,47 @@ export default function RichTextEditor({
 
   return (
     <div
+      className={fullscreen ? 'jz-fullscreen-shell' : undefined}
       style={
         fullscreen
-          ? {
-              display: 'flex',
-              flexDirection: 'column',
-              position: 'fixed',
-              inset: 0,
-              zIndex: 1080,
-              background: 'var(--jz-bg, var(--jz-surface))',
-              padding: '8px 12px',
-            }
+          ? undefined
           : { display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }
       }
     >
+      {fullscreen && (
+        <>
+          {/* 大纲切换浮按钮 */}
+          <button
+            type="button"
+            className="jz-fullscreen-outline-toggle"
+            onClick={() => setFsOutlineOpen((v) => !v)}
+            title={fsOutlineOpen ? '关闭大纲' : '显示大纲'}
+            aria-label="大纲"
+          >
+            <UnorderedListOutlined />
+          </button>
+          {/* 退出全屏浮按钮 — 顶部右上角，独立于工具栏 */}
+          <button
+            type="button"
+            className="jz-fullscreen-exit"
+            onClick={() => setFullscreen(false)}
+            title="退出全屏 (Esc)"
+            aria-label="退出全屏"
+          >
+            <CloseOutlined />
+            <span className="jz-fullscreen-exit-label">退出全屏 · Esc</span>
+          </button>
+          {/* 右侧大纲抽屉 */}
+          {fsOutlineOpen && (
+            <aside className="jz-fullscreen-outline" aria-label="大纲">
+              <div className="jz-fullscreen-outline-title">大纲</div>
+              <div className="jz-fullscreen-outline-body">
+                <DocumentOutline editor={editor} />
+              </div>
+            </aside>
+          )}
+        </>
+      )}
       <div className="jz-editor-toolbar" role="toolbar" aria-label="编辑器工具栏">
         {/* status + word count + manual save */}
         <Tag color={statusLabel[status].color} style={{ margin: 0 }}>

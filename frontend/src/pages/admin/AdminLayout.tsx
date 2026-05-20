@@ -45,6 +45,7 @@ export default function AdminLayout() {
 
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith('/admin/exports')) return 'exports';
+    if (location.pathname.startsWith('/admin/ai')) return 'ai';
     if (location.pathname.startsWith('/admin/users')) return 'users';
     if (location.pathname.startsWith('/admin/overview')) return 'overview';
     if (location.pathname.startsWith('/admin/graph')) return 'graph';

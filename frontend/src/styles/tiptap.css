@@ -560,6 +560,12 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  /* 长文档滚动时大纲常驻可见。72px 是 admin sticky header (64) + 8px 缓冲。 */
+  position: sticky;
+  top: 72px;
+  max-height: calc(100vh - 88px);
+  align-self: start; /* 在 grid 里不要被纵向拉伸 */
+  z-index: 5;
 }
 .jz-editor-sidebar-tabs {
   display: flex;
@@ -811,4 +817,141 @@
 }
 @media (max-width: 768px) {
   .jz-doc-ai-fab { right: 16px; bottom: 80px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   全屏 / 沉浸编辑模式（N5 + N6）
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* body 上挂 .jz-fullscreen-active → 隐藏外层 AdminLayout 的侧栏 / 顶栏 */
+body.jz-fullscreen-active .jz-admin-sider,
+body.jz-fullscreen-active .jz-admin-header,
+body.jz-fullscreen-active .blog-header {
+  display: none !important;
+}
+body.jz-fullscreen-active .jz-admin-content {
+  padding: 0 !important;
+}
+
+/* 全屏外壳 */
+.jz-fullscreen-shell {
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  background: var(--jz-bg-app);
+  padding: 8px 12px;
+}
+
+/* 顶部退出按钮（朱砂胶囊，置于工具栏右上方） */
+.jz-fullscreen-exit {
+  position: fixed;
+  top: 14px;
+  right: 18px;
+  z-index: 1100;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 60%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--jz-surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--jz-accent);
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--jz-accent) 25%, transparent);
+  transition: all 0.2s ease;
+}
+.jz-fullscreen-exit:hover {
+  background: var(--jz-accent);
+  color: #faf3e0;
+  border-color: var(--jz-accent);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 18px color-mix(in srgb, var(--jz-accent) 40%, transparent);
+}
+.jz-fullscreen-exit-label {
+  font-weight: 500;
+}
+
+/* 大纲切换浮按钮 */
+.jz-fullscreen-outline-toggle {
+  position: fixed;
+  top: 60px;
+  right: 18px;
+  z-index: 1099;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--jz-border);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--jz-surface) 92%, transparent);
+  backdrop-filter: blur(8px);
+  color: var(--jz-text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.jz-fullscreen-outline-toggle:hover {
+  color: var(--jz-accent);
+  border-color: var(--jz-accent);
+  transform: translateY(-1px);
+}
+
+/* 右侧大纲抽屉 */
+.jz-fullscreen-outline {
+  position: fixed;
+  top: 110px;
+  right: 18px;
+  bottom: 24px;
+  width: 260px;
+  z-index: 1090;
+  background: color-mix(in srgb, var(--jz-surface) 95%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--jz-border);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: jzFsOutlineIn 0.22s ease;
+}
+@keyframes jzFsOutlineIn {
+  from { transform: translateX(20px); opacity: 0; }
+  to   { transform: translateX(0);     opacity: 1; }
+}
+.jz-fullscreen-outline-title {
+  padding: 10px 14px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+  font-size: 13px;
+  letter-spacing: 2px;
+  color: var(--jz-text);
+  border-bottom: 1px solid var(--jz-divider);
+  background: color-mix(in srgb, var(--jz-surface-2) 50%, transparent);
+}
+.jz-fullscreen-outline-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+/* 全屏下移动端：大纲改为底部抽屉 */
+@media (max-width: 768px) {
+  .jz-fullscreen-outline {
+    top: auto;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    width: 100%;
+    max-height: 50vh;
+    border-radius: 12px 12px 0 0;
+  }
+  .jz-fullscreen-exit { font-size: 12px; padding: 6px 10px; }
+  .jz-fullscreen-exit-label { display: none; }
 }

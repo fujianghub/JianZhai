@@ -140,13 +140,21 @@
   font-size: 12.5px;
   letter-spacing: 0.5px;
 }
+/* 「阅 →」── 朱砂胶囊按钮态，hover 时填充加深 */
 .jz-book-meta-action {
-  color: var(--jz-accent);
-  font-weight: 600;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  transition: gap 180ms ease;
+  padding: 3px 12px 3px 14px;
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+  color: var(--jz-accent);
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+  font-size: 12.5px;
+  letter-spacing: 1px;
+  transition: all 0.22s cubic-bezier(.34, 1.56, .64, 1);
 }
 
 /* Hover: lift, micro-tilt, and let the "进入 →" arrow drift forward */
@@ -160,6 +168,26 @@
 }
 .jz-book:hover .jz-book-meta-action {
   gap: 8px;
+  padding-right: 14px;
+  background: var(--jz-accent);
+  border-color: var(--jz-accent);
+  color: #faf3e0;
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--jz-accent) 45%, transparent);
+}
+
+/* 标签容器：hover 时整体微微抬升，给彩色标签更活泼的感觉 */
+.jz-book-tags .ant-tag {
+  margin-inline-end: 4px;
+  margin-bottom: 4px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 11.5px;
+  letter-spacing: 0.5px;
+  transition: transform 0.18s ease;
+}
+.jz-book:hover .jz-book-tags .ant-tag {
+  transform: translateY(-1px);
 }
 
 /* Dark / starry / deepsea: ink-paper covers with brighter gold accents */

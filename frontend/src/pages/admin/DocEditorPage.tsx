@@ -51,6 +51,8 @@ import CommentsPanel from '@/components/common/CommentsPanel';
 import AttachmentPanel from '@/components/common/AttachmentPanel';
 import VersionsDrawer from './VersionsDrawer';
 import ExportDialog from '@/components/common/ExportDialog';
+import { SelectionAI } from '@/components/common/SelectionAI';
+import { DocAIPanel } from '@/components/common/DocAIPanel';
 import { PAPER_STYLES } from '@/utils/paper';
 import type { DocFormat, DocumentDetail, KnowledgeBase, Visibility } from '@/types';
 
@@ -590,6 +592,12 @@ export default function DocEditorPage() {
         targetLabel={doc.title}
         allowSiteFormat={false}
       />
+
+      {/* AI 助手 — 选区 ✨ + 右下角浮窗，覆盖所有编辑模式 (md/rich/html) */}
+      <SelectionAI contextProvider={() => doc.raw_content} />
+      {(mode === 'markdown' || mode === 'rich' || mode === 'html') && (
+        <DocAIPanel content={doc.raw_content} title={doc.title} />
+      )}
     </div>
   );
 }
