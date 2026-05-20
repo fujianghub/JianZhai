@@ -1,0 +1,18 @@
+{
+  "name": "简斋 / JianZhai",
+  "short_name": "简斋",
+  "description": "个人知识库 + 公开博客一体化系统",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f3ebd6",
+  "theme_color": "#b94a3b",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -4,6 +4,7 @@ import { Tag } from 'antd';
 import { CaretDownOutlined, CaretRightOutlined, FolderOpenOutlined, FolderOutlined } from '@ant-design/icons';
 import type { PublicFolder, PublicPost } from '@/types';
 import DocFormatTag from './DocFormatTag';
+import { resolveTagColor } from '@/utils/tagColor';
 
 interface Props {
   /** Top-level folders in this KB (already pruned of empty subtrees). */
@@ -166,7 +167,7 @@ export default function PublicKbFolderTree({
           {(f.tags ?? []).slice(0, 3).map((t) => (
             <Tag
               key={t.id}
-              color={t.color || undefined}
+              color={resolveTagColor(t)}
               className="jz-folder-tag"
               style={{ marginInlineEnd: 0, fontSize: 10, lineHeight: '15px', padding: '0 5px' }}
             >

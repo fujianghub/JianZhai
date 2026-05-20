@@ -38,6 +38,7 @@ import { useAuthStore } from '@/stores/auth';
 import type { PublicFolder, PublicKBTree, PublicPost } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import PublicKbFolderTree from '@/components/common/PublicKbFolderTree';
+import { resolveTagColor } from '@/utils/tagColor';
 
 const { Title, Paragraph } = Typography;
 
@@ -210,7 +211,7 @@ export default function KBPostsPage() {
             )}
             <Space size={6} wrap>
               {tree.tags.map((t) => (
-                <Tag key={t.id} color={t.color || undefined} className="jz-post-tag">
+                <Tag key={t.id} color={resolveTagColor(t)} className="jz-post-tag">
                   {t.name}
                 </Tag>
               ))}
@@ -616,7 +617,7 @@ function FolderGroup({
           {(folder.tags ?? []).map((t) => (
             <Tag
               key={t.id}
-              color={t.color || undefined}
+              color={resolveTagColor(t)}
               className="jz-folder-tag jz-post-tag"
               style={{ fontWeight: 400, letterSpacing: 0 }}
             >
@@ -655,7 +656,7 @@ function PostRow({ post: p }: { post: PublicPost }) {
             {p.tags.map((t) => (
               <Tag
                 key={t.id}
-                color={t.color || undefined}
+                color={resolveTagColor(t)}
                 className="jz-post-tag"
                 style={{ marginInlineEnd: 0 }}
               >
@@ -705,7 +706,7 @@ function PostCard({ post: p }: { post: PublicPost }) {
         {p.tags.length > 0 && (
           <Space size={4}>
             {p.tags.map((t) => (
-              <Tag key={t.id} color={t.color || undefined} className="jz-post-tag">
+              <Tag key={t.id} color={resolveTagColor(t)} className="jz-post-tag">
                 {t.name}
               </Tag>
             ))}

@@ -4,6 +4,7 @@ import { FileTextOutlined, FolderOutlined, TagsOutlined } from '@ant-design/icon
 import type { DataNode } from 'antd/es/tree';
 import type { KBTree, TreeDocument, TreeFolder } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
+import { resolveTagColor } from '@/utils/tagColor';
 
 export interface CheckedSelection {
   docIds: number[];
@@ -93,7 +94,7 @@ function folderNode(
         {(f.tags ?? []).map((t) => (
           <Tag
             key={t.id}
-            color={t.color || undefined}
+            color={resolveTagColor(t)}
             style={{ marginInlineEnd: 0, fontSize: 11, lineHeight: '16px', padding: '0 6px' }}
           >
             {t.name}

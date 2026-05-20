@@ -1,14 +1,64 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="geometricPrecision">
+  <title>简斋 / JianZhai</title>
   <defs>
-    <linearGradient id="paper" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#f3ebd6"/>
-      <stop offset="100%" stop-color="#e6d8b3"/>
+    <!-- 朱砂渐变：印泥中心略亮、边缘渗深 -->
+    <radialGradient id="seal" cx="50%" cy="42%" r="62%">
+      <stop offset="0%" stop-color="#d8553f"/>
+      <stop offset="55%" stop-color="#b94a3b"/>
+      <stop offset="100%" stop-color="#8d3023"/>
+    </radialGradient>
+    <!-- 顶部高光：纸面反光 -->
+    <linearGradient id="highlight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
+    <!-- 颗粒滤镜：模拟印章压在纸上的不均匀肌理 -->
+    <filter id="grain" x="-5%" y="-5%" width="110%" height="110%">
+      <feTurbulence type="fractalNoise" baseFrequency="2.4" numOctaves="2" seed="7"/>
+      <feColorMatrix values="0 0 0 0 0
+                             0 0 0 0 0
+                             0 0 0 0 0
+                             0 0 0 0.16 0"/>
+      <feComposite in2="SourceGraphic" operator="in"/>
+      <feComposite in="SourceGraphic" operator="over"/>
+    </filter>
+    <!-- "簡" 字的轻压痕：模拟刻印时下沉 -->
+    <filter id="press" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="0.35"/>
+      <feOffset dx="0" dy="0.5"/>
+      <feFlood flood-color="#5a1a10" flood-opacity="0.55"/>
+      <feComposite in2="SourceAlpha" operator="in"/>
+      <feMerge>
+        <feMergeNode/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect width="64" height="64" rx="10" fill="url(#paper)"/>
-  <rect x="6" y="6" width="52" height="52" rx="7" fill="none" stroke="#b8895f" stroke-width="1.2" opacity="0.7"/>
-  <rect x="9" y="9" width="46" height="46" rx="5" fill="none" stroke="#b8895f" stroke-width="0.6" opacity="0.4"/>
-  <text x="50%" y="56%" text-anchor="middle" dominant-baseline="middle"
-        font-family="'Noto Serif SC', 'Songti SC', 'STSong', serif"
-        font-size="42" font-weight="700" fill="#b94a3b">简</text>
+
+  <!-- 朱砂方印底 + 颗粒肌理 -->
+  <g filter="url(#grain)">
+    <rect x="4" y="4" width="56" height="56" rx="9" fill="url(#seal)"/>
+    <!-- 四角磨痕，让印章像真盖出来的 -->
+    <path d="M 5 14 Q 7 8 14 6"  stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
+    <path d="M 50 5 Q 56 7 58 14" stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
+    <path d="M 58 50 Q 56 56 50 58" stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
+    <path d="M 14 58 Q 7 56 5 50"  stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
+  </g>
+
+  <!-- 顶部高光（在印底之上、字之下） -->
+  <rect x="4" y="4" width="56" height="22" rx="9" fill="url(#highlight)"/>
+
+  <!-- 双线印框 -->
+  <rect x="6.5" y="6.5" width="51" height="51" rx="7" fill="none"
+        stroke="#5a1a10" stroke-width="1.4" opacity="0.55"/>
+  <rect x="9.5" y="9.5" width="45" height="45" rx="5" fill="none"
+        stroke="#f7e6c4" stroke-width="0.5" opacity="0.42"/>
+
+  <!-- "簡" 字：宋体，米白印面色，带压痕 -->
+  <text x="32" y="44" text-anchor="middle"
+        font-family="'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif"
+        font-size="38" font-weight="700"
+        fill="#f7e6c4"
+        filter="url(#press)">簡</text>
 </svg>

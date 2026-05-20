@@ -26,7 +26,18 @@
   --jz-gold: #c9a875;
 }
 
-html, body, #root { background: var(--jz-bg-app); color: var(--jz-text); }
+/* ── Reset ── 浏览器默认 8px body margin 会在四周留白；强制铺满 */
+*, *::before, *::after { box-sizing: border-box; }
+html, body, #root {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh;
+  background: var(--jz-bg-app);
+  color: var(--jz-text);
+}
+body, #root { display: flex; flex-direction: column; }
+#root > * { flex: 1 1 auto; min-height: 0; }
 body {
   transition: background-color 0.2s ease;
   /* Body font stack — antd's ConfigProvider also sets one, but pinning it
@@ -91,20 +102,49 @@ body {
     radial-gradient(ellipse 70% 50% at 80% 90%, rgba(20, 184, 166, 0.10) 0, transparent 65%);
 }
 
-/* ── Brand wordmark in the blog header ── */
+/* ── Brand wordmark in the blog header ── 印章式品牌 */
 .jz-brand {
   display: inline-flex;
-  align-items: baseline;
-  gap: 12px;
+  align-items: center;
+  gap: 14px;
   color: inherit;
   text-decoration: none;
   line-height: 1;
+  padding: 4px 8px 4px 0;
+  position: relative;
+  transition: transform 0.25s ease;
+}
+.jz-brand::before {
+  /* 微缩印章 ── 朱砂方块衬在「简斋」之前，呼应 favicon */
+  content: '簡';
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 5px;
+  background: linear-gradient(135deg, #d8553f 0%, var(--jz-accent) 50%, #8d3023 100%);
+  color: #f7e6c4;
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-weight: 700;
+  font-size: 18px;
+  letter-spacing: 0;
+  box-shadow:
+    0 2px 6px color-mix(in srgb, var(--jz-accent) 35%, transparent),
+    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+  transition: transform 0.3s cubic-bezier(.34, 1.56, .64, 1);
+}
+.jz-brand:hover {
+  transform: translateY(-1px);
+}
+.jz-brand:hover::before {
+  transform: rotate(-6deg) scale(1.05);
 }
 .jz-brand-cn {
   font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
   font-weight: 700;
-  font-size: 23px;
-  letter-spacing: 6px;
+  font-size: 22px;
+  letter-spacing: 5px;
   color: var(--jz-accent);          /* 朱砂题字 */
   text-shadow: 0 1px 0 rgba(255, 240, 200, 0.4);
 }
@@ -138,24 +178,56 @@ body {
   transition: color 160ms ease;
 }
 
-/* ── Nav links ── */
+/* ── Nav links ── 胶囊式悬停背景 + 朱砂下划线指示器 */
 .jz-nav-link {
-  font-size: 13px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  color: var(--jz-text-muted);
+  letter-spacing: 2px;
+  color: var(--jz-text);
   text-decoration: none;
-  padding: 4px 0;
-  border-bottom: 1.5px solid transparent;
-  transition: color 160ms ease, border-color 160ms ease;
+  padding: 6px 14px;
+  border-radius: var(--jz-radius-pill, 999px);
+  background: transparent;
+  transition: color 0.22s ease, background-color 0.22s ease;
+}
+/* 下划线指示器：从中间往两边展开，scaleX 动画更轻量 */
+.jz-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 14px; right: 14px; bottom: 4px;
+  height: 1.5px;
+  background: var(--jz-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.28s cubic-bezier(.34, 1.56, .64, 1);
+  border-radius: 1px;
 }
 .jz-nav-link:hover {
-  color: var(--jz-text);
-  opacity: 1;
+  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 6%, transparent);
 }
+.jz-nav-link:hover::after { transform: scaleX(0.7); }
 .jz-nav-link.active {
-  color: var(--jz-text);
-  border-bottom-color: var(--jz-accent);
+  color: var(--jz-accent);
+  font-weight: 600;
+}
+.jz-nav-link.active::after { transform: scaleX(1); }
+.jz-nav-link.active:hover { background: color-mix(in srgb, var(--jz-accent) 10%, transparent); }
+
+/* 搜索按钮、主题切换、时钟在顶栏的容器 —— 给它们也加胶囊 hover */
+.blog-header .ant-btn-text,
+.blog-header .jz-clock {
+  border-radius: var(--jz-radius-pill, 999px) !important;
+  padding: 4px 10px !important;
+  transition: background-color 0.22s ease, color 0.22s ease !important;
+}
+.blog-header .ant-btn-text:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent) !important;
+  color: var(--jz-accent) !important;
 }
 
 /* Monospace digits look cleaner for the live clock. */
@@ -679,8 +751,8 @@ h4.jz-post-card-title.ant-typography {
    followed by a faded-ink attribution on a thin gold rule. */
 .jz-hero {
   text-align: center;
-  margin: 36px 0 48px;
-  padding: 8px 0;
+  margin: 8px 0 24px;       /* 顶部从 36 → 8；底部从 48 → 24 */
+  padding: 0;               /* 移除上下 8px padding */
 }
 .jz-hero-quote {
   display: inline-flex;
@@ -690,10 +762,10 @@ h4.jz-post-card-title.ant-typography {
   flex-wrap: wrap;
   font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
   font-weight: 700;
-  font-size: clamp(1.6rem, 4vw, 2.4rem);
-  letter-spacing: 6px;
+  font-size: clamp(1.4rem, 3.4vw, 2rem);  /* 缩小：原 1.6-2.4rem → 1.4-2rem */
+  letter-spacing: 5px;
   color: var(--jz-text);
-  line-height: 1.6;
+  line-height: 1.4;
 }
 .jz-hero-quote-sep {
   color: var(--jz-gold);
@@ -740,12 +812,12 @@ h4.jz-post-card-title.ant-typography {
 }
 
 .jz-hero-attr {
-  margin-top: 16px;
+  margin-top: 10px;            /* 16 → 10 */
   display: inline-flex;
   align-items: center;
   gap: 12px;
   font-family: 'Noto Serif SC', 'Songti SC', serif;
-  font-size: 13px;
+  font-size: 12px;             /* 13 → 12 */
   letter-spacing: 4px;
   color: var(--jz-text-muted);
   opacity: 0.85;
@@ -758,13 +830,13 @@ h4.jz-post-card-title.ant-typography {
 }
 
 .jz-hero-sub {
-  margin-top: 36px;
-  padding-top: 20px;
+  margin-top: 20px;        /* 36 → 20 */
+  padding-top: 14px;       /* 20 → 14 */
   border-top: 1px dashed var(--jz-divider);
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 14px;
+  gap: 10px;               /* 14 → 10 */
 }
 
 /* ── "藏经阁" sub-title ──
@@ -775,10 +847,10 @@ h4.jz-post-card-title.ant-typography {
   margin: 0;
   display: inline-flex;
   align-items: center;
-  gap: clamp(14px, 3vw, 32px);
+  gap: clamp(10px, 2.2vw, 24px);     /* 14-32 → 10-24 */
   font-family: 'Ma Shan Zheng', 'Noto Serif SC', 'Songti SC', 'KaiTi', 'STKaiti', serif;
   font-weight: 400;
-  font-size: clamp(2rem, 5vw, 3rem);
+  font-size: clamp(1.6rem, 4vw, 2.4rem);  /* 2-3rem → 1.6-2.4rem */
   letter-spacing: 0;
   line-height: 1;
   color: var(--jz-text);
@@ -867,8 +939,39 @@ h4.jz-post-card-title.ant-typography {
      6. 内容区充足留白 (32px) + 卡片间距 (20px)
    ════════════════════════════════════════════════════════════════════════ */
 
+/* 默认 = LIGHT GLASS（Apple macOS Big Sur 浅玻璃）
+   亮底 + 翡翠深一档 #059669（在白底上对比度更好） */
 .jz-admin-glass {
-  /* 在 admin 范围内覆盖朱砂为翡翠，不影响 root --jz-accent */
+  --jz-accent: #059669;
+  --jz-accent-soft: #10b981;
+  --jz-accent-glow: rgba(5, 150, 105, 0.25);
+  --jz-gold: #d97706;
+
+  --glass-bg-deep:    #f5f5f7;   /* macOS Big Sur 浅灰 */
+  --glass-bg-mid:     #ffffff;
+  --glass-surface:        rgba(255, 255, 255, 0.62);
+  --glass-surface-strong: rgba(255, 255, 255, 0.82);
+  --glass-border:    rgba(60, 60, 67, 0.13);    /* 苹果分隔线灰 */
+  --glass-divider:   rgba(60, 60, 67, 0.07);
+  --glass-text:      #1c1c1e;
+  --glass-text-muted: #6e6e73;
+
+  --glass-radius: 14px;
+  --glass-radius-lg: 18px;
+  --glass-radius-pill: 999px;
+
+  --glass-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.06),
+                       0 2px 6px rgba(0, 0, 0, 0.04),
+                       0 0 0 1px rgba(0, 0, 0, 0.025) inset;
+  --glass-shadow-hero: 0 14px 40px rgba(0, 0, 0, 0.10),
+                       0 2px 6px rgba(0, 0, 0, 0.06);
+  --glass-shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* DARK GLASS（dark / starry / deepsea 都用同一套深色玻璃，仅光晕色调微调）*/
+[data-theme='dark'] .jz-admin-glass,
+[data-theme='starry'] .jz-admin-glass,
+[data-theme='deepsea'] .jz-admin-glass {
   --jz-accent: #10b981;
   --jz-accent-soft: #34d399;
   --jz-accent-glow: rgba(16, 185, 129, 0.35);
@@ -876,16 +979,12 @@ h4.jz-post-card-title.ant-typography {
 
   --glass-bg-deep: #07090f;
   --glass-bg-mid:  #0e1320;
-  --glass-surface: rgba(255, 255, 255, 0.045);
+  --glass-surface:        rgba(255, 255, 255, 0.045);
   --glass-surface-strong: rgba(255, 255, 255, 0.06);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-border:  rgba(255, 255, 255, 0.08);
   --glass-divider: rgba(255, 255, 255, 0.04);
-  --glass-text: #e6ebf2;
+  --glass-text:       #e6ebf2;
   --glass-text-muted: #8c96a8;
-
-  --glass-radius: 14px;
-  --glass-radius-lg: 18px;
-  --glass-radius-pill: 999px;
 
   --glass-shadow-card: 0 8px 28px rgba(0, 0, 0, 0.45),
                        0 2px 6px rgba(0, 0, 0, 0.35),
@@ -899,17 +998,31 @@ h4.jz-post-card-title.ant-typography {
 .jz-admin-glass.ant-layout {
   background: var(--glass-bg-deep) !important;
   color: var(--glass-text);
-  /* 多层渐变模拟 macOS Big Sur dock 后景 + Vision Pro 氛围 */
+  /* 亮色版渐变：低饱和、低 alpha，模拟 Apple Liquid Glass 浅底 */
+  background-image:
+    radial-gradient(ellipse 70% 50% at  0%  0%, rgba(5, 150, 105, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100%  0%, rgba(59, 130, 246, 0.07) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 55% 45% at  20% 90%, rgba(251, 191, 36, 0.06) 0%, transparent 65%);
+  background-attachment: fixed;
+}
+
+/* 暗色版：高对比、更高 alpha，玄黑底上才看得见的光晕 */
+[data-theme='dark'] .jz-admin-glass.ant-layout,
+[data-theme='starry'] .jz-admin-glass.ant-layout,
+[data-theme='deepsea'] .jz-admin-glass.ant-layout {
   background-image:
     radial-gradient(ellipse 70% 50% at  0%  0%, rgba(16, 185, 129, 0.18) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 100%  0%, rgba(96, 165, 250, 0.14) 0%, transparent 60%),
     radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.16) 0%, transparent 60%),
     radial-gradient(ellipse 55% 45% at  20% 90%, rgba(251, 191, 36, 0.10) 0%, transparent 65%);
-  background-attachment: fixed;
 }
 
-/* 浮点星尘 — 极淡的网点，给玻璃下添纹理而不抢眼 */
-.jz-admin-glass.ant-layout::before {
+/* 浮点星尘 — 只在暗色主题下显示（亮色无意义） */
+.jz-admin-glass.ant-layout::before { content: none; }
+[data-theme='dark'] .jz-admin-glass.ant-layout::before,
+[data-theme='starry'] .jz-admin-glass.ant-layout::before,
+[data-theme='deepsea'] .jz-admin-glass.ant-layout::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -1068,10 +1181,15 @@ h4.jz-post-card-title.ant-typography {
   padding: 2px 7px;
   border: 1px solid var(--glass-border);
   border-radius: 5px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.06);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 11px;
   color: var(--glass-text-muted);
+}
+[data-theme='dark']  .jz-admin-glass .jz-admin-search-kbd,
+[data-theme='starry'] .jz-admin-glass .jz-admin-search-kbd,
+[data-theme='deepsea'] .jz-admin-glass .jz-admin-search-kbd {
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* ── 主内容区：宽松 ─────────────────────────────────────────────────── */
@@ -1234,13 +1352,18 @@ h4.jz-post-card-title.ant-typography {
   color: var(--glass-text) !important;
 }
 .jz-admin-glass .ant-table-thead > tr > th {
-  background: rgba(255, 255, 255, 0.025) !important;
+  background: rgba(0, 0, 0, 0.025) !important;
   color: var(--glass-text-muted) !important;
   font-weight: 600 !important;
   font-size: 11px !important;
   letter-spacing: 0.6px;
   text-transform: uppercase;
   border-bottom: 1px solid var(--glass-border) !important;
+}
+[data-theme='dark']  .jz-admin-glass .ant-table-thead > tr > th,
+[data-theme='starry'] .jz-admin-glass .ant-table-thead > tr > th,
+[data-theme='deepsea'] .jz-admin-glass .ant-table-thead > tr > th {
+  background: rgba(255, 255, 255, 0.025) !important;
 }
 .jz-admin-glass .ant-table-tbody > tr > td {
   border-bottom: 1px solid var(--glass-divider) !important;
@@ -1308,7 +1431,13 @@ h4.jz-post-card-title.ant-typography {
 .jz-admin-glass .ant-segmented-item-selected .ant-segmented-item-label { color: inherit !important; }
 
 /* ── Switch / InputNumber / Select 等表单元素 ──────────────────────── */
+/* Switch 未开启时的轨道：亮色用浅灰，暗色用半透明白 */
 .jz-admin-glass .ant-switch {
+  background: rgba(60, 60, 67, 0.20) !important;
+}
+[data-theme='dark']  .jz-admin-glass .ant-switch,
+[data-theme='starry'] .jz-admin-glass .ant-switch,
+[data-theme='deepsea'] .jz-admin-glass .ant-switch {
   background: rgba(255, 255, 255, 0.15) !important;
 }
 .jz-admin-glass .ant-switch-checked {
@@ -1351,12 +1480,24 @@ h4.jz-post-card-title.ant-typography {
 .jz-admin-glass .ant-dropdown-menu,
 .jz-admin-glass .ant-popover-inner,
 .jz-admin-glass .ant-select-dropdown {
-  background: rgba(14, 19, 32, 0.92) !important;
+  /* 亮色：白底半透明；暗色：深色半透明（被下面 [data-theme=...] 块覆盖） */
+  background: rgba(255, 255, 255, 0.95) !important;
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid var(--glass-border) !important;
   border-radius: 12px !important;
   box-shadow: var(--glass-shadow-card) !important;
+}
+[data-theme='dark']  .jz-admin-glass .ant-dropdown-menu,
+[data-theme='dark']  .jz-admin-glass .ant-popover-inner,
+[data-theme='dark']  .jz-admin-glass .ant-select-dropdown,
+[data-theme='starry'] .jz-admin-glass .ant-dropdown-menu,
+[data-theme='starry'] .jz-admin-glass .ant-popover-inner,
+[data-theme='starry'] .jz-admin-glass .ant-select-dropdown,
+[data-theme='deepsea'] .jz-admin-glass .ant-dropdown-menu,
+[data-theme='deepsea'] .jz-admin-glass .ant-popover-inner,
+[data-theme='deepsea'] .jz-admin-glass .ant-select-dropdown {
+  background: rgba(14, 19, 32, 0.92) !important;
 }
 .jz-admin-glass .ant-dropdown-menu-item,
 .jz-admin-glass .ant-select-item {
@@ -1378,3 +1519,187 @@ h4.jz-post-card-title.ant-typography {
 
 /* ── Spin ────────────────────────────────────────────────────────────── */
 .jz-admin-glass .ant-spin-dot-item { background-color: var(--jz-accent) !important; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   博客端美化（K2）
+   作用域：blog-content / blog-header（BlogLayout 已用这些 className）
+   原则：保留宣纸朱砂主调，只升级"质感"层 —— 圆角 / 阴影 / 过渡 / hover
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* 顶栏 ── sticky + 半透明毛玻璃，模拟书页边缘上滚动的章名 */
+.blog-header.ant-layout-header {
+  background: color-mix(in srgb, var(--jz-surface) 78%, transparent) !important;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border-bottom: 1px solid color-mix(in srgb, var(--jz-border) 70%, transparent);
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  height: 60px;
+  line-height: 60px;
+  /* 给底部一条极细朱砂高光 —— 像一根线装书的红线 */
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--jz-accent) 18%, transparent),
+    0 4px 12px rgba(44, 34, 24, 0.04);
+}
+
+/* 导航链接：hover 朱砂下划线滑入 */
+.jz-nav-link {
+  position: relative;
+  padding: 4px 2px;
+  color: var(--jz-text);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  transition: color 0.2s ease;
+  text-decoration: none;
+}
+.jz-nav-link::after {
+  content: '';
+  position: absolute;
+  left: 0; right: 0; bottom: -2px;
+  height: 1.5px;
+  background: var(--jz-accent);
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+}
+.jz-nav-link:hover { color: var(--jz-accent); }
+.jz-nav-link:hover::after { transform: scaleX(1); }
+.jz-nav-link.active { color: var(--jz-accent); }
+.jz-nav-link.active::after { transform: scaleX(1); }
+
+/* 主内容区 ── 大留白、居中。顶部留白减小，让 hero 上移 */
+.blog-content {
+  padding: 20px 48px 40px !important;
+  max-width: 1440px;
+  margin: 0 auto;
+  width: 100%;
+}
+@media (max-width: 768px) {
+  .blog-content { padding: 12px 16px 24px !important; }
+}
+
+/* ── 博客 Card 通用升级（不影响后台，作用在 .blog-content 里） ── */
+.blog-content .ant-card {
+  border-radius: 12px !important;
+  border: 1px solid var(--jz-border) !important;
+  background: color-mix(in srgb, var(--jz-surface) 92%, transparent) !important;
+  box-shadow:
+    0 1px 2px rgba(44, 34, 24, 0.05),
+    0 4px 14px rgba(44, 34, 24, 0.06) !important;
+  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
+}
+.blog-content .ant-card.ant-card-hoverable:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--jz-accent) 35%, var(--jz-border)) !important;
+  box-shadow:
+    0 4px 8px rgba(44, 34, 24, 0.08),
+    0 12px 32px rgba(185, 74, 59, 0.12) !important;
+}
+.blog-content .ant-card-head {
+  border-bottom: 1px solid var(--jz-divider) !important;
+  background: transparent !important;
+  min-height: 48px !important;
+}
+.blog-content .ant-card-head-title {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+}
+
+/* 标签 / 章节标题：用宋体 + 朱砂底纹气质 */
+.blog-content h1, .blog-content h2, .blog-content h3 {
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+}
+
+/* Tag：朱砂调 + 圆角小 + hover 加深 */
+.blog-content .ant-tag {
+  border-radius: 6px !important;
+  font-size: 11.5px !important;
+  padding: 1px 9px !important;
+  border: 1px solid color-mix(in srgb, var(--jz-border) 80%, transparent);
+  background: color-mix(in srgb, var(--jz-surface-2) 50%, transparent) !important;
+  color: var(--jz-text-muted);
+  transition: all 0.18s ease;
+}
+.blog-content .ant-tag:hover {
+  border-color: var(--jz-accent);
+  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 8%, var(--jz-surface)) !important;
+}
+
+/* 按钮：博客端按钮也升级一下 */
+.blog-content .ant-btn {
+  border-radius: 8px !important;
+  transition: all 0.2s ease !important;
+}
+.blog-content .ant-btn-primary {
+  background: var(--jz-accent) !important;
+  border-color: var(--jz-accent) !important;
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--jz-accent) 30%, transparent);
+}
+.blog-content .ant-btn-primary:hover {
+  background: var(--jz-accent-soft) !important;
+  border-color: var(--jz-accent-soft) !important;
+  box-shadow: 0 5px 14px color-mix(in srgb, var(--jz-accent) 40%, transparent);
+  transform: translateY(-1px);
+}
+
+/* 面包屑：更克制 */
+.blog-content .ant-breadcrumb {
+  font-size: 13px;
+  color: var(--jz-text-muted);
+  margin-bottom: 16px;
+}
+.blog-content .ant-breadcrumb a {
+  color: var(--jz-text-muted) !important;
+  transition: color 0.18s ease;
+}
+.blog-content .ant-breadcrumb a:hover { color: var(--jz-accent) !important; }
+
+/* paper article 升级阴影 —— 看起来更像浮起的纸 */
+.blog-content .paper {
+  box-shadow:
+    0 2px 4px rgba(44, 34, 24, 0.05),
+    0 12px 28px rgba(44, 34, 24, 0.08),
+    0 32px 64px rgba(44, 34, 24, 0.05) !important;
+  transition: transform 0.3s ease, box-shadow 0.3s ease !important;
+}
+
+/* List item 文章卡片：hover 上移 */
+.blog-content .ant-list-item {
+  padding: 16px !important;
+  border-radius: 10px;
+  transition: all 0.22s ease;
+}
+.blog-content .ant-list-item:hover {
+  background: color-mix(in srgb, var(--jz-surface-2) 35%, transparent);
+  transform: translateX(2px);
+}
+
+/* Footer：更精致的居中印章感 */
+.ant-layout-footer {
+  padding: 24px !important;
+  background: transparent !important;
+}
+
+/* Statistic 数字：宋体大字号 */
+.blog-content .ant-statistic-content {
+  font-family: 'Noto Serif SC', 'Songti SC', serif !important;
+  font-weight: 600;
+}
+
+/* Breadcrumb separator 用一抹朱砂 */
+.blog-content .ant-breadcrumb-separator {
+  color: color-mix(in srgb, var(--jz-accent) 50%, var(--jz-divider)) !important;
+}
+
+/* 滚动条：让博客和后台都用古风极简滚动条 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--jz-text-muted) 40%, transparent);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--jz-accent);
+}

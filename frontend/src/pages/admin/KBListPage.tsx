@@ -22,6 +22,7 @@ import { formatApiError } from '@/api/client';
 import type { KnowledgeBase, Visibility } from '@/types';
 import ExportDialog from '@/components/common/ExportDialog';
 import TagPicker from '@/components/common/TagPicker';
+import { resolveTagColor } from '@/utils/tagColor';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -168,7 +169,7 @@ export default function KBListPage() {
                 </Paragraph>
                 <Space wrap size={6} style={{ marginBottom: 8 }}>
                   {kb.tags.map((t) => (
-                    <Tag key={t.id} color={t.color || 'blue'}>{t.name}</Tag>
+                    <Tag key={t.id} color={resolveTagColor(t)}>{t.name}</Tag>
                   ))}
                 </Space>
                 <Space split={<span style={{ opacity: 0.4 }}>·</span>}>
