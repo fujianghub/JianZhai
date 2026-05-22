@@ -202,7 +202,7 @@ export default function CodeBlockView({ node, updateAttributes, editor }: NodeVi
           // Don't propagate clicks into the editor — picking from the dropdown
           // would otherwise blur and immediately re-select the code block.
           onClick={(e) => e.stopPropagation()}
-          dropdownStyle={{ minWidth: 180 }}
+          styles={{ popup: { root: { minWidth: 180 } } }}
           options={UNIQUE_CODE_LANGUAGES.map((l) => ({ value: l.slug, label: l.label }))}
           showSearch
           optionFilterProp="label"

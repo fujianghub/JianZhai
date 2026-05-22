@@ -5,6 +5,7 @@ from .views import (
     document_attachments,
     import_batch,
     import_file,
+    link_preview,
     my_attachments,
     upload,
 )
@@ -16,4 +17,5 @@ urlpatterns = [
     path("attachments/", my_attachments, name="my-attachments"),
     path("attachments/<int:pk>/", delete_attachment, name="delete-attachment"),
     path("documents/<int:doc_id>/attachments/", document_attachments, name="document-attachments"),
+    path("link-preview/", link_preview, name="link-preview"),
 ]

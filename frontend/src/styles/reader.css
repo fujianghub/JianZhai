@@ -1,115 +1,202 @@
-/* Three-column blog post reader: KB nav | article | TOC.
-   Defaults to the full 3 columns on wide screens. Below 1280px the right TOC
-   folds away, below 960px the left KB nav folds too — at that point you get
-   the classic single-column reader. */
+/* Three-column blog post reader: KB nav | resizer | article | resizer | TOC
+   Column widths are set inline from PostDetail (drag + localStorage). */
 
 .jz-post-layout {
   display: grid;
-  gap: 24px;
+  gap: 0;
   align-items: start;
-  /* Default: both sidebars on. Specific combos below override. */
-  grid-template-columns: 220px minmax(0, 1fr) 220px;
-}
-.jz-post-layout[data-show-kb='true'][data-show-toc='false'] {
-  grid-template-columns: 220px minmax(0, 1fr);
-}
-.jz-post-layout[data-show-kb='false'][data-show-toc='true'] {
-  grid-template-columns: minmax(0, 1fr) 220px;
-}
-.jz-post-layout[data-show-kb='false'][data-show-toc='false'] {
   grid-template-columns: minmax(0, 1fr);
 }
 
 .jz-post-aside {
   position: sticky;
-  top: 80px; /* clear the fixed blog header */
+  top: 72px;
   align-self: start;
-  max-height: calc(100vh - 100px);
+  max-height: calc(100vh - 88px);
   overflow-y: auto;
-  padding: 16px 12px;
+  padding: 14px 10px;
   font-size: 13px;
   scrollbar-width: thin;
+  background: var(--glass-surface, color-mix(in srgb, var(--jz-surface) 70%, transparent));
+  backdrop-filter: blur(14px);
+  border-radius: var(--glass-radius, 14px);
+  border: 1px solid var(--glass-border, var(--jz-border));
 }
 .jz-post-aside-left {
-  border-right: 1px solid var(--jz-divider);
+  border-left: 3px solid var(--jz-doc-accent, var(--jz-accent));
 }
 .jz-post-aside-right {
-  border-left: 1px solid var(--jz-divider);
+  border-left: 3px solid var(--jz-doc-accent, var(--jz-accent));
 }
 .jz-post-aside::-webkit-scrollbar {
   width: 6px;
 }
 .jz-post-aside::-webkit-scrollbar-thumb {
-  background: var(--jz-divider);
+  background: var(--glass-divider, var(--jz-divider));
   border-radius: 3px;
 }
 
 .jz-post-main {
-  min-width: 0; /* let the article column shrink inside the grid */
+  min-width: 0;
+  max-width: none;
+  width: 100%;
+  margin: 0;
+  justify-self: stretch;
+  padding: 0 12px;
 }
 
-/* Hover/focus polish on the TOC and KB-nav links. */
+/* Post reader column dividers (reuse .jz-kb-resizer from theme.css) */
+.jz-post-layout .jz-post-col-resizer {
+  position: sticky;
+  top: 72px;
+  height: calc(100vh - 88px);
+  align-self: start;
+}
+
+.jz-post-main .paper,
+.jz-post-main .jz-post-article {
+  width: 100%;
+}
+
 .jz-toc-link:hover {
-  color: var(--jz-accent) !important;
-  border-left-color: color-mix(in srgb, var(--jz-accent) 50%, transparent) !important;
+  color: var(--jz-doc-accent, var(--jz-accent)) !important;
+  border-left-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 50%, transparent) !important;
 }
 .jz-kb-nav-link:hover {
-  background: color-mix(in srgb, var(--jz-accent) 6%, transparent) !important;
-  color: var(--jz-accent) !important;
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 6%, transparent) !important;
+  color: var(--jz-doc-accent, var(--jz-accent)) !important;
 }
 
-/* Floating "show TOC / show KB list" buttons — visible when the matching
-   sidebar is collapsed. Vertically centered to the viewport so they never
-   collide with the article's bottom edge, no matter how long the doc is. */
+/* Blog KB nav — three levels: KB list → current KB → folder tree */
+.jz-kb-nav {
+  font-size: 13px;
+  line-height: 1.45;
+}
+.jz-kb-nav-top {
+  display: flex;
+  justify-content: flex-end;
+  min-height: 0;
+  margin: -4px -4px 4px 0;
+}
+.jz-kb-nav-close {
+  flex-shrink: 0;
+}
+.jz-kb-nav-loading {
+  padding: 20px 0;
+  text-align: center;
+}
+.jz-kb-nav-section {
+  margin-bottom: 10px;
+}
+.jz-kb-nav-section-title {
+  margin: 0 0 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+}
+.jz-kb-nav-divider {
+  height: 1px;
+  margin: 10px 0;
+  background: var(--glass-divider, var(--jz-divider));
+}
+.jz-kb-nav-kb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.jz-kb-nav-kb-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  border-radius: 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: background-color 0.18s ease, color 0.18s ease;
+}
+.jz-kb-nav-kb-item:hover {
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 6%, transparent);
+  color: var(--jz-doc-accent, var(--jz-accent));
+}
+.jz-kb-nav-kb-item.is-active {
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 12%, transparent);
+  color: var(--jz-doc-accent, var(--jz-accent));
+  font-weight: 600;
+}
+.jz-kb-nav-kb-item-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-kb-nav-kb-item-count {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+}
+.jz-kb-nav-kb-current {
+  display: block;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 28%, var(--glass-border, var(--jz-border)));
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 8%, var(--glass-surface, var(--jz-surface)));
+  color: inherit;
+  text-decoration: none;
+  transition: border-color 0.18s ease, background 0.18s ease;
+}
+.jz-kb-nav-kb-current:hover {
+  border-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 45%, var(--glass-border, var(--jz-border)));
+}
+.jz-kb-nav-kb-current-name {
+  display: block;
+  font-weight: 600;
+  font-size: 14px;
+  line-height: 1.35;
+  margin-bottom: 2px;
+}
+.jz-kb-nav-kb-current-meta {
+  font-size: 11px !important;
+}
+.jz-kb-nav-hint {
+  margin: 0 0 6px;
+  font-size: 11px;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+}
+
 .jz-toc-fab,
 .jz-kbnav-fab {
   position: fixed;
   top: 50%;
   transform: translateY(-50%);
   z-index: 50;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
-  background: var(--jz-surface) !important;
+  box-shadow: var(--glass-shadow-soft, 0 4px 16px rgba(0, 0, 0, 0.12));
+  background: var(--glass-surface-strong, var(--jz-surface)) !important;
+  backdrop-filter: blur(12px);
 }
-.jz-toc-fab {
-  right: 16px;
-}
-.jz-kbnav-fab {
-  left: 16px;
-}
-.jz-toc-fab:hover,
-.jz-kbnav-fab:hover {
-  background: var(--jz-surface-2) !important;
-}
+.jz-toc-fab { right: 16px; }
+.jz-kbnav-fab { left: 16px; }
 
-/* Responsive: collapse the right TOC below 1280, then the left KB below 960.
-   These rules override the toggle-driven grid above so narrow viewports stay
-   readable even if the user opened both sidebars on a wide monitor first. */
-@media (max-width: 1280px) {
-  .jz-post-layout,
-  .jz-post-layout[data-show-kb='true'][data-show-toc='true'],
-  .jz-post-layout[data-show-kb='true'][data-show-toc='false'] {
-    grid-template-columns: 220px minmax(0, 1fr);
-  }
-  .jz-post-layout[data-show-kb='false'] {
-    grid-template-columns: minmax(0, 1fr);
-  }
-  .jz-post-aside-right {
+@media (max-width: 1100px) {
+  .jz-post-layout .jz-post-col-resizer {
     display: none;
-  }
-}
-
-@media (max-width: 960px) {
-  .jz-post-layout,
-  .jz-post-layout[data-show-kb='true'][data-show-toc='true'],
-  .jz-post-layout[data-show-kb='true'][data-show-toc='false'],
-  .jz-post-layout[data-show-kb='false'][data-show-toc='true'],
-  .jz-post-layout[data-show-kb='false'][data-show-toc='false'] {
-    grid-template-columns: 1fr;
   }
   .jz-post-aside-left,
   .jz-post-aside-right {
     display: none;
   }
+  .jz-post-main {
+    padding: 0;
+  }
+  .jz-toc-fab,
+  .jz-kbnav-fab {
+    display: inline-flex;
+  }
+}
+
+@media (max-width: 960px) {
   .jz-toc-fab,
   .jz-kbnav-fab {
     display: none;

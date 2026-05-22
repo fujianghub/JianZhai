@@ -3,6 +3,7 @@ import BlogLayout from '@/pages/blog/BlogLayout';
 import BlogHome from '@/pages/blog/BlogHome';
 import KBPostsPage from '@/pages/blog/KBPostsPage';
 import PostDetail from '@/pages/blog/PostDetail';
+import PostEditRoute from '@/pages/blog/PostEditPage';
 import ArchivePage from '@/pages/blog/ArchivePage';
 import TagCloudPage from '@/pages/blog/TagCloudPage';
 import LoginPage from '@/pages/admin/LoginPage';
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/" element={<BlogHome />} />
         <Route path="/kb/:slug" element={<KBPostsPage />} />
         <Route path="/posts/:slug" element={<PostDetail />} />
+        <Route path="/posts/:slug/edit" element={<PostEditRoute />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/tags" element={<TagCloudPage />} />
       </Route>

@@ -22,12 +22,12 @@ import {
 import {
   ApiOutlined,
   ClockCircleOutlined,
-  RobotOutlined,
   ThunderboltOutlined,
   CheckCircleOutlined,
   WarningOutlined,
 } from '@ant-design/icons';
 import {
+  JzAiIcon,
   JzOverviewIcon,
   JzModelIcon,
   JzUsageIcon,
@@ -158,7 +158,7 @@ export default function AIManagementPage() {
         <Row gutter={[24, 16]} align="middle">
           <Col flex="auto">
             <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-              <RobotOutlined style={{ marginRight: 10, color: 'var(--jz-accent)' }} />
+              <JzAiIcon size={22} style={{ marginRight: 10, color: 'var(--jz-accent)' }} />
               AI 助手
             </Title>
             <Paragraph type="secondary" style={{ marginBottom: 8 }}>
@@ -369,7 +369,8 @@ function ModelsSection({
               >
                 <Space direction="vertical" style={{ width: '100%' }} size={4}>
                   <Space size={6}>
-                    <RobotOutlined
+                    <JzAiIcon
+                      size={16}
                       style={{ color: active ? 'var(--jz-accent)' : 'var(--jz-text-muted)' }}
                     />
                     <Text strong style={{ fontSize: 15 }}>{m.label}</Text>

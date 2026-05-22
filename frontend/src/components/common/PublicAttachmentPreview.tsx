@@ -38,10 +38,10 @@ export default function PublicAttachmentPreview({ att }: { att: PublicAttachment
   // gets the same vertical footprint the Markdown reader enjoys.
   const frameStyle: React.CSSProperties = {
     width: '100%',
-    height: 'min(calc(100vh - 200px), 1200px)',
-    minHeight: 640,
-    border: '1px solid var(--jz-border)',
-    borderRadius: 8,
+    height: 'min(85vh, calc(100vh - 120px))',
+    minHeight: 720,
+    border: '1px solid var(--glass-border, var(--jz-border))',
+    borderRadius: 12,
   };
 
   if (kind === 'pdf') {
@@ -55,7 +55,7 @@ export default function PublicAttachmentPreview({ att }: { att: PublicAttachment
           <img
             src={url}
             alt={att.original_filename}
-            style={{ maxWidth: '100%', maxHeight: '78vh', borderRadius: 8 }}
+            style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 12 }}
           />
         </div>
       </div>

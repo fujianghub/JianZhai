@@ -37,7 +37,7 @@ import { formatApiError } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
 import type { PublicFolder, PublicKBTree, PublicPost } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
-import PublicKbFolderTree from '@/components/common/PublicKbFolderTree';
+import BlogKbNavPanel from '@/components/common/BlogKbNavPanel';
 import { resolveTagColor } from '@/utils/tagColor';
 
 const { Title, Paragraph } = Typography;
@@ -334,7 +334,7 @@ type Density = 'list' | 'summary';
 
 const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 560;
-const SIDEBAR_DEFAULT = 260;
+const SIDEBAR_DEFAULT = 240;
 
 /**
  * Body of the KB page — renders a folder tree on the left and the article
@@ -432,7 +432,44 @@ function KbBody({ tree }: { tree: PublicKBTree }) {
   const hasFolders = (tree.folders?.length ?? 0) > 0;
 
   if (tree.documents.length === 0) {
-    return <Empty description="还没有公开文章" />;
+    return (
+      <div
+        id="jz-kb-body"
+        className="jz-kb-body"
+        style={{
+          display: 'grid',
+          gridTemplateColumns: `${sidebarWidth}px 6px 1fr`,
+          gap: 0,
+          alignItems: 'start',
+        }}
+      >
+        <aside className="jz-kb-side">
+          <BlogKbNavPanel kbSlug={tree.slug} />
+        </aside>
+        <div
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="拖拽调整目录宽度（双击重置）"
+          tabIndex={0}
+          className={'jz-kb-resizer' + (dragging ? ' is-dragging' : '')}
+          onMouseDown={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT)}
+          onKeyDown={(e) => {
+            if (e.key === 'ArrowLeft') {
+              setSidebarWidth((w) => Math.max(SIDEBAR_MIN, w - 16));
+            } else if (e.key === 'ArrowRight') {
+              setSidebarWidth((w) => Math.min(SIDEBAR_MAX, w + 16));
+            }
+          }}
+        />
+        <div style={{ paddingLeft: 18, minWidth: 0 }}>
+          <Empty description="还没有公开文章" />
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -441,90 +478,60 @@ function KbBody({ tree }: { tree: PublicKBTree }) {
       className="jz-kb-body"
       style={{
         display: 'grid',
-        gridTemplateColumns: hasFolders ? `${sidebarWidth}px 6px 1fr` : '1fr',
-        gap: hasFolders ? 0 : 24,
+        gridTemplateColumns: `${sidebarWidth}px 6px 1fr`,
+        gap: 0,
         alignItems: 'start',
       }}
     >
-      {hasFolders && (
-        <>
-          <aside
-            className="jz-kb-side"
-            style={{
-              position: 'sticky',
-              top: 80,
-              padding: '14px 12px',
-              border: '1px solid var(--jz-border)',
-              borderRadius: 12,
-              background: 'var(--jz-surface)',
-              maxHeight: 'calc(100vh - 120px)',
-              overflow: 'auto',
-            }}
-          >
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                marginBottom: 8,
-              }}
-            >
-              <Typography.Text strong style={{ color: 'var(--jz-text)' }}>目录</Typography.Text>
-              <Space size={4}>
-                <Button
-                  size="small"
-                  type={view === 'folders' ? 'primary' : 'text'}
-                  icon={<UnorderedListOutlined />}
-                  onClick={() => setView('folders')}
-                  title="按文件夹分组"
-                />
-                <Button
-                  size="small"
-                  type={view === 'flat' ? 'primary' : 'text'}
-                  icon={<AppstoreOutlined />}
-                  onClick={() => setView('flat')}
-                  title="平铺所有文章"
-                />
-              </Space>
-            </div>
-            <PublicKbFolderTree
-              folders={tree.folders ?? []}
-              rootDocuments={tree.root_documents ?? []}
-              density="sidebar"
-              showCounts
-            />
-          </aside>
-          {/* Drag-resize divider — the user drags this to widen the sidebar
-              when document titles wrap onto two lines. Double-click resets. */}
-          <div
-            role="separator"
-            aria-orientation="vertical"
-            aria-label="拖拽调整目录宽度（双击重置）"
-            tabIndex={0}
-            className={'jz-kb-resizer' + (dragging ? ' is-dragging' : '')}
-            onMouseDown={(e) => {
-              e.preventDefault();
-              setDragging(true);
-            }}
-            onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT)}
-            onKeyDown={(e) => {
-              // Keyboard-accessible: ←/→ tweak the width by 16px.
-              if (e.key === 'ArrowLeft') {
-                setSidebarWidth((w) => Math.max(SIDEBAR_MIN, w - 16));
-              } else if (e.key === 'ArrowRight') {
-                setSidebarWidth((w) => Math.min(SIDEBAR_MAX, w + 16));
-              }
-            }}
-          />
-        </>
-      )}
+      <aside className="jz-kb-side">
+        <BlogKbNavPanel kbSlug={tree.slug} />
+      </aside>
+      <div
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="拖拽调整目录宽度（双击重置）"
+        tabIndex={0}
+        className={'jz-kb-resizer' + (dragging ? ' is-dragging' : '')}
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') {
+            setSidebarWidth((w) => Math.max(SIDEBAR_MIN, w - 16));
+          } else if (e.key === 'ArrowRight') {
+            setSidebarWidth((w) => Math.min(SIDEBAR_MAX, w + 16));
+          }
+        }}
+      />
 
-      <div style={{ paddingLeft: hasFolders ? 18 : 0, minWidth: 0 }}>
+      <div style={{ paddingLeft: 18, minWidth: 0 }}>
         <div className="jz-kb-toolbar">
           <Typography.Text type="secondary" style={{ fontSize: 13 }}>
             共 {tree.documents.length} 篇文档
           </Typography.Text>
           <div style={{ flex: 1 }} />
+          <Space size={4}>
+            <Tooltip title="按文件夹分组">
+              <Button
+                size="small"
+                type={view === 'folders' ? 'primary' : 'default'}
+                icon={<UnorderedListOutlined />}
+                onClick={() => setView('folders')}
+                aria-label="按文件夹分组"
+              />
+            </Tooltip>
+            <Tooltip title="平铺所有文章">
+              <Button
+                size="small"
+                type={view === 'flat' ? 'primary' : 'default'}
+                icon={<AppstoreOutlined />}
+                onClick={() => setView('flat')}
+                aria-label="平铺所有文章"
+              />
+            </Tooltip>
+          </Space>
           <Space size={4}>
             <Tooltip title="摘要视图（标题 + 标签 + 摘要 + 时间）">
               <Button

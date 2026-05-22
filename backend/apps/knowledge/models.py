@@ -154,6 +154,23 @@ class Document(models.Model):
     # actually changed; the API uses it to detect "you and another tab edited
     # the same doc" and refuse a stale overwrite.
     version = models.PositiveIntegerField(default=1)
+    # Authorship attribution — surfaced in the doc stats panel.
+    # `created_by` is set once on creation; `last_edited_by` is updated on
+    # every content-altering PATCH.
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documents_created",
+    )
+    last_edited_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="documents_last_edited",
+    )
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

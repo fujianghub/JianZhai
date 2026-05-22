@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
 import { LogoutOutlined } from '@ant-design/icons';
 import {
@@ -19,6 +19,12 @@ import LiveClock from '@/components/common/LiveClock';
 import { AIModelBadge } from '@/components/common/AIModelBadge';
 
 const { Header, Sider, Content } = Layout;
+
+const MENU_ICON_SIZE = 20;
+
+function menuIcon(node: ReactNode) {
+  return <span className="jz-menu-icon-slot">{node}</span>;
+}
 
 export default function AdminLayout() {
   const navigate = useNavigate();
@@ -54,7 +60,7 @@ export default function AdminLayout() {
   }, [location.pathname]);
 
   return (
-    <Layout className="jz-admin-glass" style={{ minHeight: '100vh' }}>
+    <Layout className="jz-admin-glass jz-glass" style={{ minHeight: '100vh' }}>
       <Sider
         width={232}
         breakpoint="lg"
@@ -73,27 +79,47 @@ export default function AdminLayout() {
           selectedKeys={[selectedKey]}
           className="jz-admin-menu"
           items={[
-            { key: 'kbs', icon: <JzKbIcon />, label: <Link to="/admin/kbs">知识库</Link> },
+            {
+              key: 'kbs',
+              icon: menuIcon(<JzKbIcon size={MENU_ICON_SIZE} />),
+              label: <Link to="/admin/kbs">知识库</Link>,
+            },
             {
               key: 'graph',
-              icon: <JzGraphIcon />,
+              icon: menuIcon(<JzGraphIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
-            { key: 'exports', icon: <JzExportIcon />, label: <Link to="/admin/exports">导出</Link> },
-            { key: 'ai', icon: <JzAiIcon />, label: <Link to="/admin/ai">AI 助手</Link> },
+            {
+              key: 'exports',
+              icon: menuIcon(<JzExportIcon size={MENU_ICON_SIZE} />),
+              label: <Link to="/admin/exports">导出</Link>,
+            },
+            {
+              key: 'ai',
+              icon: menuIcon(<JzAiIcon size={MENU_ICON_SIZE} />),
+              label: <Link to="/admin/ai">AI 助手</Link>,
+            },
             ...(user?.is_staff
-              ? [{ key: 'users', icon: <JzUsersIcon />, label: <Link to="/admin/users">用户</Link> }]
+              ? [{
+                  key: 'users',
+                  icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
+                  label: <Link to="/admin/users">用户</Link>,
+                }]
               : []),
             ...(user?.is_superuser
               ? [
                   {
                     key: 'overview',
-                    icon: <JzArchitectureIcon />,
+                    icon: menuIcon(<JzArchitectureIcon size={MENU_ICON_SIZE} />),
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
                 ]
               : []),
-            { key: 'blog', icon: <JzBlogIcon />, label: <Link to="/">查看博客</Link> },
+            {
+              key: 'blog',
+              icon: menuIcon(<JzBlogIcon size={MENU_ICON_SIZE} />),
+              label: <Link to="/">查看博客</Link>,
+            },
           ]}
         />
       </Sider>
@@ -102,7 +128,7 @@ export default function AdminLayout() {
           <Tooltip title="搜索 (⌘/Ctrl + K)">
             <Button
               shape="round"
-              icon={<JzSearchIcon />}
+              icon={<JzSearchIcon size={18} />}
               onClick={() => setSearchOpen(true)}
               className="jz-admin-search"
             >

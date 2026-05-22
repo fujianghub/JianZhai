@@ -7,14 +7,13 @@
   border: 1px solid var(--jz-border);
   background: var(--jz-surface);
   /* Warmer earthy drop-shadow — softer than the cold gray default. */
-  box-shadow:
-    0 1px 0 color-mix(in srgb, var(--jz-gold) 35%, transparent),
-    0 8px 28px -8px rgba(120, 80, 35, 0.18);
+  box-shadow: var(--glass-shadow-card, 0 8px 24px rgba(0, 0, 0, 0.06));
+  backdrop-filter: blur(12px);
 }
-[data-theme='dark'] .paper {
-  box-shadow:
-    0 1px 0 color-mix(in srgb, var(--jz-gold) 25%, transparent),
-    0 10px 32px -8px rgba(0, 0, 0, 0.6);
+[data-theme='dark'] .paper,
+[data-theme='starry'] .paper,
+[data-theme='deepsea'] .paper {
+  box-shadow: var(--glass-shadow-card, 0 10px 32px rgba(0, 0, 0, 0.45));
 }
 /* Lets embeds (HTML iframes, PDF canvases) break out of .paper's horizontal
    padding so the full reader width is available — important for HTML pages
@@ -264,4 +263,24 @@
 [data-theme='starry'] .paper-parchment .markdown-preview code,
 [data-theme='deepsea'] .paper-parchment .markdown-preview code {
   background: rgba(255, 255, 255, 0.1);
+}
+
+/* 博客玻璃主站：弱化偏黄纸张预设，保持中性玻璃底 */
+.jz-blog-glass .paper-rice,
+.jz-blog-glass .paper-kraft,
+.jz-blog-glass .paper-parchment {
+  background: var(--glass-surface-strong, var(--jz-surface-2)) !important;
+  color: var(--glass-text, var(--jz-text)) !important;
+}
+[data-theme='dark'] .jz-blog-glass .paper-rice,
+[data-theme='dark'] .jz-blog-glass .paper-kraft,
+[data-theme='dark'] .jz-blog-glass .paper-parchment,
+[data-theme='starry'] .jz-blog-glass .paper-rice,
+[data-theme='starry'] .jz-blog-glass .paper-kraft,
+[data-theme='starry'] .jz-blog-glass .paper-parchment,
+[data-theme='deepsea'] .jz-blog-glass .paper-rice,
+[data-theme='deepsea'] .jz-blog-glass .paper-kraft,
+[data-theme='deepsea'] .jz-blog-glass .paper-parchment {
+  background: var(--glass-surface-strong, var(--jz-surface-2)) !important;
+  color: var(--glass-text, var(--jz-text)) !important;
 }

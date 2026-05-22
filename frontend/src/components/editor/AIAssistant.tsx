@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Dropdown, Modal, Select, Spin, Tooltip, message } from 'antd';
-import { RobotOutlined } from '@ant-design/icons';
+import { JzAiIcon } from '@/components/common/JzIcon';
 import type { Editor } from '@tiptap/core';
 import { getCapabilities, streamAI, type AIModelOption, type AIOperation } from '@/api/ai';
 
@@ -146,7 +146,7 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
   if (configured === false) {
     return (
       <Tooltip title="未配置 ANTHROPIC_API_KEY，AI 助手暂不可用">
-        <Button size="small" icon={<RobotOutlined />} disabled>
+        <Button size="small" icon={<JzAiIcon size={14} />} disabled>
           AI
         </Button>
       </Tooltip>
@@ -157,7 +157,7 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     <>
       <Dropdown menu={{ items }} disabled={configured === null}>
         <Tooltip title={`AI 写作助手 · 当前模型：${modelLabel || '加载中…'}`}>
-          <Button size="small" icon={<RobotOutlined />}>AI ▾</Button>
+          <Button size="small" icon={<JzAiIcon size={14} />}>AI ▾</Button>
         </Tooltip>
       </Dropdown>
       {models.length > 1 && (

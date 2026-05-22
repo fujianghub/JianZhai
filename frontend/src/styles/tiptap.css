@@ -472,12 +472,12 @@
 
 /* P0-2: Outline active heading highlight */
 .jz-outline-item--active {
-  background: color-mix(in srgb, var(--jz-accent) 18%, transparent);
-  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 18%, transparent);
+  color: var(--jz-doc-accent, var(--jz-accent));
   font-weight: 600;
 }
 .jz-outline-item--active .jz-outline-bullet {
-  color: var(--jz-accent);
+  color: var(--jz-doc-accent, var(--jz-accent));
 }
 
 /* P1-4: Code block line numbers */
@@ -593,12 +593,12 @@
   transition: background 0.12s, color 0.12s;
 }
 .jz-sidebar-tab:hover {
-  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 10%, transparent);
   color: var(--jz-text);
 }
 .jz-sidebar-tab.is-active {
-  background: color-mix(in srgb, var(--jz-accent) 18%, transparent);
-  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 18%, transparent);
+  color: var(--jz-doc-accent, var(--jz-accent));
 }
 .jz-sidebar-tab-label {
   font-size: 10px;
@@ -795,16 +795,16 @@
   justify-content: center;
   border: none;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1677ff, #722ed1);
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%);
   color: #fff;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(22, 119, 255, 0.4);
+  box-shadow: 0 4px 16px rgba(6, 182, 212, 0.45), 0 0 20px rgba(139, 92, 246, 0.25);
   font-size: 14px;
   transition: transform 0.15s, box-shadow 0.15s;
 }
 .jz-selection-ai-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 16px rgba(22, 119, 255, 0.5);
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.55), 0 0 24px rgba(139, 92, 246, 0.35);
 }
 
 /* ── Doc-level AI FAB ──────────────────────────────────────────────── */
@@ -813,7 +813,17 @@
   right: 24px;
   bottom: 24px;
   z-index: 1050;
-  box-shadow: 0 6px 18px rgba(22, 119, 255, 0.4);
+  background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%) !important;
+  border: none !important;
+  box-shadow: 0 6px 20px rgba(6, 182, 212, 0.45), 0 0 24px rgba(139, 92, 246, 0.3) !important;
+  animation: jz-ai-fab-pulse 3s ease-in-out infinite;
+}
+@keyframes jz-ai-fab-pulse {
+  0%, 100% { box-shadow: 0 6px 20px rgba(6, 182, 212, 0.45), 0 0 20px rgba(139, 92, 246, 0.25); }
+  50% { box-shadow: 0 8px 28px rgba(6, 182, 212, 0.6), 0 0 32px rgba(139, 92, 246, 0.45); }
+}
+.jz-doc-ai-fab:hover {
+  transform: scale(1.06);
 }
 @media (max-width: 768px) {
   .jz-doc-ai-fab { right: 16px; bottom: 80px; }
@@ -954,4 +964,1449 @@ body.jz-fullscreen-active .jz-admin-content {
   }
   .jz-fullscreen-exit { font-size: 12px; padding: 6px 10px; }
   .jz-fullscreen-exit-label { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   图片行内裁剪（Q2）
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-crop-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  user-select: none;
+  pointer-events: auto;
+}
+
+.jz-crop-mask {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(1px);
+  pointer-events: none;
+}
+
+.jz-crop-box {
+  position: absolute;
+  border: 2px solid #faf3e0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 4px 16px rgba(0, 0, 0, 0.25);
+  cursor: move;
+}
+
+.jz-crop-grid { position: absolute; inset: 0; pointer-events: none; }
+.jz-crop-grid span { position: absolute; background: rgba(255, 255, 255, 0.4); }
+.jz-crop-grid span:nth-child(1) { left: 33.33%; top: 0; bottom: 0; width: 1px; }
+.jz-crop-grid span:nth-child(2) { left: 66.66%; top: 0; bottom: 0; width: 1px; }
+.jz-crop-grid span:nth-child(3) { top: 33.33%; left: 0; right: 0; height: 1px; }
+.jz-crop-grid span:nth-child(4) { top: 66.66%; left: 0; right: 0; height: 1px; }
+
+.jz-crop-handle {
+  position: absolute;
+  width: 12px; height: 12px;
+  background: var(--jz-accent);
+  border: 2px solid #faf3e0;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  z-index: 1;
+}
+.jz-crop-handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.jz-crop-handle-n  { top: -6px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.jz-crop-handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.jz-crop-handle-e  { top: 50%; right: -6px; transform: translateY(-50%); cursor: ew-resize; }
+.jz-crop-handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+.jz-crop-handle-s  { bottom: -6px; left: 50%; transform: translateX(-50%); cursor: ns-resize; }
+.jz-crop-handle-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.jz-crop-handle-w  { top: 50%; left: -6px; transform: translateY(-50%); cursor: ew-resize; }
+
+.jz-crop-action-bar {
+  position: absolute;
+  bottom: -44px;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 4px 4px 10px;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(8px);
+  border-radius: 6px;
+  font-size: 12px;
+  color: #faf3e0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  white-space: nowrap;
+}
+.jz-crop-size { padding-right: 4px; opacity: 0.85; }
+.jz-crop-action {
+  width: 26px; height: 26px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: none; border-radius: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.jz-crop-action:hover { transform: scale(1.1); }
+.jz-crop-action:disabled { opacity: 0.5; cursor: not-allowed; }
+.jz-crop-cancel { background: rgba(255, 255, 255, 0.15); color: #faf3e0; }
+.jz-crop-cancel:hover { background: rgba(220, 38, 38, 0.85); }
+.jz-crop-confirm { background: var(--jz-accent); color: #faf3e0; }
+.jz-crop-confirm:hover { background: color-mix(in srgb, var(--jz-accent) 80%, #fff); }
+
+@media (max-width: 480px) {
+  .jz-crop-action-bar { bottom: 4px; right: 4px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   文档统计面板（R1/R2）
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-doc-more-dropdown {
+  min-width: 280px;
+  background: var(--jz-surface);
+  border-radius: 8px;
+  border: 1px solid var(--jz-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+}
+.jz-doc-more-divider {
+  height: 1px;
+  background: var(--jz-divider);
+  margin: 4px 0;
+}
+.jz-doc-stats {
+  padding: 14px 16px 12px;
+  font-size: 12.5px;
+  color: var(--jz-text);
+}
+.jz-stats-title {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--jz-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.jz-stats-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.jz-stats-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  line-height: 1.5;
+}
+.jz-stats-key {
+  color: var(--jz-text-muted);
+  font-size: 11.5px;
+  letter-spacing: 1px;
+  min-width: 56px;
+  flex-shrink: 0;
+}
+.jz-stats-val {
+  color: var(--jz-text);
+  font-size: 12.5px;
+}
+.jz-stats-num {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  color: var(--jz-accent);
+}
+.jz-stats-by {
+  color: var(--jz-text-muted);
+  margin-left: 2px;
+  font-size: 11.5px;
+}
+.jz-stats-contributors {
+  padding-top: 10px;
+  border-top: 1px dashed var(--jz-divider);
+}
+.jz-stats-loading,
+.jz-stats-error {
+  padding: 16px;
+  text-align: center;
+  color: var(--jz-text-muted);
+  font-size: 12px;
+}
+.jz-stats-error { color: #cf1322; }
+
+/* 后台玻璃风格下 */
+.jz-admin-glass .jz-doc-more-dropdown {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(160%);
+  border-color: var(--glass-border);
+  color: var(--glass-text);
+}
+[data-theme='dark']  .jz-admin-glass .jz-doc-more-dropdown,
+[data-theme='starry'] .jz-admin-glass .jz-doc-more-dropdown,
+[data-theme='deepsea'] .jz-admin-glass .jz-doc-more-dropdown {
+  background: rgba(14, 19, 32, 0.92);
+  color: var(--glass-text);
+}
+.jz-admin-glass .jz-stats-num { color: var(--jz-accent); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   块菜单升级（R3）
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-block-hover-menu {
+  background: var(--jz-surface);
+  border: 1px solid var(--jz-border);
+  border-radius: 5px;
+  padding: 2px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+.jz-block-anchor-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: transparent;
+  color: var(--jz-text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.jz-block-anchor-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  color: var(--jz-accent);
+}
+
+/* Popover 面板 */
+.jz-block-panel-overlay .ant-popover-inner {
+  padding: 0 !important;
+  background: var(--jz-surface) !important;
+  border: 1px solid var(--jz-border) !important;
+  border-radius: 10px !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+.jz-block-panel {
+  width: 320px;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.jz-block-panel-section {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--jz-divider);
+}
+.jz-block-panel-section:last-child { border-bottom: 0; }
+.jz-block-panel-title {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--jz-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.jz-block-panel-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+.jz-block-panel-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.jz-block-panel-row:last-child { margin-bottom: 0; }
+.jz-block-panel-row > .jz-block-panel-btn { flex: 1; }
+
+.jz-block-panel-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border: 1px solid var(--jz-border);
+  background: var(--jz-surface);
+  color: var(--jz-text);
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+.jz-block-panel-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, var(--jz-surface));
+  border-color: var(--jz-accent);
+  color: var(--jz-accent);
+}
+.jz-block-panel-btn-wrap {
+  background: color-mix(in srgb, var(--jz-surface-2) 50%, transparent);
+}
+.jz-block-panel-btn-danger {
+  color: #cf1322;
+}
+.jz-block-panel-btn-danger:hover {
+  background: rgba(207, 19, 34, 0.08);
+  border-color: #cf1322;
+  color: #cf1322;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   拖拽创建分栏指示器（R4）
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-drop-column-indicator {
+  position: fixed;
+  width: 4px;
+  background: linear-gradient(
+    180deg,
+    var(--jz-accent) 0%,
+    color-mix(in srgb, var(--jz-accent) 60%, transparent) 100%
+  );
+  border-radius: 2px;
+  z-index: 100;
+  box-shadow:
+    0 0 8px color-mix(in srgb, var(--jz-accent) 55%, transparent),
+    0 0 16px color-mix(in srgb, var(--jz-accent) 25%, transparent);
+  pointer-events: none;
+  animation: jzColumnIndicatorPulse 1.2s ease-in-out infinite;
+}
+.jz-drop-column-indicator::before {
+  content: '✦';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 14px;
+  height: 14px;
+  background: var(--jz-accent);
+  color: #faf3e0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 9px;
+  box-shadow: 0 0 8px color-mix(in srgb, var(--jz-accent) 50%, transparent);
+}
+.jz-drop-column-indicator::after {
+  content: '创建分栏';
+  position: absolute;
+  top: -28px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--jz-accent);
+  color: #faf3e0;
+  padding: 3px 9px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.jz-drop-column-indicator[data-side='right']::after {
+  transform: translateX(-50%);
+}
+@keyframes jzColumnIndicatorPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   图片 4 角 + 4 边手柄（S1）
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* 替换之前的单 BR 手柄：现在 8 个手柄按位置定位 */
+.jz-image-resize-handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--jz-accent);
+  border: 2px solid var(--jz-surface);
+  border-radius: 50%;
+  z-index: 4;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.jz-image-resize-handle-nw { top: -6px; left: -6px; cursor: nwse-resize; }
+.jz-image-resize-handle-ne { top: -6px; right: -6px; cursor: nesw-resize; }
+.jz-image-resize-handle-sw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.jz-image-resize-handle-se { bottom: -6px; right: -6px; cursor: nwse-resize; }
+.jz-image-resize-handle-e  { top: 50%; right: -6px; transform: translateY(-50%); cursor: ew-resize; }
+.jz-image-resize-handle-w  { top: 50%; left: -6px; transform: translateY(-50%); cursor: ew-resize; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   图片样式预设（S3）
+   ════════════════════════════════════════════════════════════════════════ */
+
+img.jz-image-style-rounded        { border-radius: 16px; }
+img.jz-image-style-circle         { border-radius: 50%; aspect-ratio: 1 / 1; object-fit: cover; }
+img.jz-image-style-bordered       { border: 4px solid var(--jz-surface); box-shadow: 0 0 0 1px var(--jz-border); }
+img.jz-image-style-shadow         { box-shadow: 0 12px 32px rgba(44, 34, 24, 0.18), 0 4px 12px rgba(44, 34, 24, 0.10); }
+img.jz-image-style-shadow-bordered{
+  border: 4px solid var(--jz-surface);
+  box-shadow: 0 0 0 1px var(--jz-border), 0 12px 32px rgba(44, 34, 24, 0.18), 0 4px 12px rgba(44, 34, 24, 0.10);
+  border-radius: 4px;
+}
+img.jz-image-style-reflection {
+  -webkit-box-reflect: below 4px linear-gradient(transparent 60%, rgba(0,0,0,0.18));
+}
+img.jz-image-style-sepia { filter: sepia(0.6) contrast(0.95) brightness(0.95); }
+
+/* 样式下拉的小色片 */
+.jz-image-style-chip {
+  display: inline-block;
+  width: 20px;
+  height: 20px;
+  background: var(--jz-surface-2);
+  border: 1px solid var(--jz-border);
+  flex-shrink: 0;
+}
+.jz-image-style-chip-rounded         { border-radius: 6px; }
+.jz-image-style-chip-circle          { border-radius: 50%; }
+.jz-image-style-chip-bordered        { border-width: 3px; border-color: var(--jz-text-muted); }
+.jz-image-style-chip-shadow          { box-shadow: 0 3px 6px rgba(0,0,0,0.3); }
+.jz-image-style-chip-shadow-bordered { box-shadow: 0 3px 6px rgba(0,0,0,0.3); border-width: 3px; border-color: var(--jz-surface); outline: 1px solid var(--jz-border); }
+.jz-image-style-chip-reflection      { background: linear-gradient(180deg, var(--jz-text-muted) 60%, transparent); }
+.jz-image-style-chip-sepia           { background: linear-gradient(135deg, #b89568, #8b6a3f); }
+
+/* ════════════════════════════════════════════════════════════════════════
+   尺寸 Popover（S2）
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-image-size-popover .ant-popover-inner {
+  padding: 12px 14px !important;
+}
+.jz-image-size-panel {
+  width: 280px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.jz-image-size-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.jz-image-size-key {
+  width: 32px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--jz-text-muted);
+  flex-shrink: 0;
+}
+.jz-image-size-pct {
+  font-family: ui-monospace, monospace;
+  font-size: 12px;
+  color: var(--jz-accent);
+  min-width: 38px;
+  text-align: right;
+}
+.jz-image-size-reset {
+  height: 24px;
+  padding: 0 8px;
+  font-size: 11px;
+  border: 1px solid var(--jz-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--jz-text-muted);
+  cursor: pointer;
+}
+.jz-image-size-reset:hover {
+  border-color: var(--jz-accent);
+  color: var(--jz-accent);
+}
+.jz-image-size-row-presets {
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-top: 6px;
+  border-top: 1px dashed var(--jz-divider);
+}
+.jz-image-size-preset {
+  padding: 3px 8px;
+  font-size: 11px;
+  border: 1px solid var(--jz-border);
+  background: var(--jz-surface);
+  color: var(--jz-text);
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: ui-monospace, monospace;
+}
+.jz-image-size-preset:hover {
+  border-color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 10%, var(--jz-surface));
+  color: var(--jz-accent);
+}
+
+/* 裁剪 hint */
+.jz-crop-hint {
+  padding: 0 8px;
+  font-size: 11px;
+  opacity: 0.7;
+}
+@media (max-width: 480px) {
+  .jz-crop-hint { display: none; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Emoji Picker (T1)
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-emoji-picker {
+  background: var(--jz-surface);
+  border: 1px solid var(--jz-border);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  padding: 6px;
+  width: 360px;
+  max-height: 320px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.jz-emoji-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 2px;
+  overflow-y: auto;
+  flex: 1;
+  padding-bottom: 4px;
+}
+.jz-emoji-cell {
+  border: none;
+  background: transparent;
+  border-radius: 6px;
+  padding: 6px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 0.12s ease, transform 0.12s ease;
+}
+.jz-emoji-cell:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  transform: scale(1.1);
+}
+.jz-emoji-cell.is-active {
+  background: color-mix(in srgb, var(--jz-accent) 18%, transparent);
+  transform: scale(1.1);
+}
+.jz-emoji-char {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+}
+.jz-emoji-hint {
+  padding: 8px 10px;
+  border-top: 1px solid var(--jz-divider);
+  font-size: 12px;
+  color: var(--jz-text-muted);
+  display: flex;
+  align-items: center;
+}
+.jz-emoji-empty {
+  background: var(--jz-surface);
+  border: 1px solid var(--jz-border);
+  border-radius: 8px;
+  padding: 14px 18px;
+  font-size: 12px;
+  color: var(--jz-text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   外部链接卡片 (T2)
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-link-card-shell {
+  display: flex;
+  align-items: stretch;
+  margin: 12px 0;
+  border: 1px solid var(--jz-border);
+  border-radius: 10px;
+  background: var(--jz-surface);
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+  max-width: 100%;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.jz-link-card-shell:hover {
+  transform: translateY(-2px);
+  border-color: var(--jz-accent);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+.jz-link-card-text {
+  flex: 1;
+  min-width: 0;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.jz-link-card-site {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--jz-text-muted);
+  letter-spacing: 0.3px;
+}
+.jz-link-card-favicon {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+.jz-link-card-site-name { font-weight: 500; }
+.jz-link-card-title {
+  font-size: 15px;
+  font-weight: 600;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  color: var(--jz-text);
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.jz-link-card-desc {
+  font-size: 12.5px;
+  color: var(--jz-text-muted);
+  line-height: 1.55;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.jz-link-card-url {
+  font-size: 11px;
+  color: var(--jz-text-muted);
+  font-family: ui-monospace, monospace;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 4px;
+}
+.jz-link-card-image-wrap {
+  width: 140px;
+  flex-shrink: 0;
+  background: var(--jz-surface-2);
+}
+.jz-link-card-image {
+  width: 100%;
+  height: 100%;
+  min-height: 100px;
+  object-fit: cover;
+  display: block;
+}
+@media (max-width: 600px) {
+  .jz-link-card-shell { flex-direction: column-reverse; }
+  .jz-link-card-image-wrap { width: 100%; height: 140px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   标题层级折叠 (T3)
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* heading 左侧 hit-zone + ▸ 按钮 */
+.tiptap-shell .ProseMirror h1,
+.tiptap-shell .ProseMirror h2,
+.tiptap-shell .ProseMirror h3,
+.tiptap-shell .ProseMirror h4 {
+  position: relative;
+  padding-left: 28px;
+  margin-left: -28px;
+  transition: color 0.15s ease;
+}
+/* 默认隐藏；hover heading 才出现 */
+.tiptap-shell .ProseMirror h1::before,
+.tiptap-shell .ProseMirror h2::before,
+.tiptap-shell .ProseMirror h3::before,
+.tiptap-shell .ProseMirror h4::before {
+  content: '▾';
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--jz-text-muted);
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.18s ease;
+}
+.tiptap-shell .ProseMirror h1:hover::before,
+.tiptap-shell .ProseMirror h2:hover::before,
+.tiptap-shell .ProseMirror h3:hover::before,
+.tiptap-shell .ProseMirror h4:hover::before {
+  opacity: 0.7;
+}
+.tiptap-shell .ProseMirror h1::before:hover,
+.tiptap-shell .ProseMirror h2::before:hover,
+.tiptap-shell .ProseMirror h3::before:hover,
+.tiptap-shell .ProseMirror h4::before:hover {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-accent);
+  opacity: 1;
+}
+
+/* 折叠态：箭头变 ▸ + 标题色变 accent */
+.tiptap-shell .ProseMirror [data-folded='1']::before {
+  content: '▸';
+  opacity: 1 !important;
+  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+}
+.tiptap-shell .ProseMirror [data-folded='1'] {
+  color: var(--jz-accent);
+}
+
+/* 被折叠隐藏的兄弟节点：折叠收起 + 淡入淡出（更顺滑） */
+.tiptap-shell .ProseMirror [data-hidden-by-fold] {
+  display: none !important;
+}
+
+/* 阅读端同样支持（如果博客渲染加 data-folded） */
+.markdown-preview [data-hidden-by-fold] {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   脚注 Footnote (T4)
+   ════════════════════════════════════════════════════════════════════════ */
+
+sup.jz-footnote-ref,
+.jz-footnote-ref {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 5px;
+  margin: 0 1px;
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-accent);
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 35%, transparent);
+  border-radius: 8px;
+  font-size: 10px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+  cursor: pointer;
+  vertical-align: super;
+  line-height: 1;
+  user-select: none;
+  transition: all 0.15s ease;
+}
+sup.jz-footnote-ref:hover,
+.jz-footnote-ref:hover {
+  background: var(--jz-accent);
+  color: #faf3e0;
+}
+
+/* markdown-it-footnote 在 reader 端的输出 */
+.markdown-preview .footnote-ref a,
+.markdown-preview sup.footnote-ref a {
+  text-decoration: none;
+}
+.markdown-preview .footnotes {
+  margin-top: 32px;
+  padding-top: 16px;
+  border-top: 1px dashed var(--jz-divider);
+  font-size: 13px;
+  color: var(--jz-text-muted);
+}
+.markdown-preview .footnotes ol { padding-left: 1.5em; }
+.markdown-preview .footnotes li { margin-bottom: 4px; line-height: 1.55; }
+.markdown-preview .footnote-backref { color: var(--jz-accent); margin-left: 4px; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   U1: 后台编辑器背景 — 默认改为白色 / 玻璃，不再用宣纸黄
+   语雀风格：白底 + 极淡阴影 + 1px 细边
+   作用域：仅 .jz-admin-glass（博客阅读端保留宣纸朱砂）
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* —— 亮色后台 —— */
+.jz-admin-glass .tiptap-shell,
+.jz-admin-glass .jz-md-editor-preview,
+.jz-admin-glass .tiptap-shell.paper-default,
+.jz-admin-glass .jz-md-editor-preview.paper-default {
+  background: rgba(255, 255, 255, 0.86) !important;
+  backdrop-filter: blur(8px) saturate(120%);
+  border: 1px solid rgba(60, 60, 67, 0.10) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 4px 14px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* —— 暗色 / 星空 / 深海 —— */
+[data-theme='dark']  .jz-admin-glass .tiptap-shell,
+[data-theme='dark']  .jz-admin-glass .jz-md-editor-preview,
+[data-theme='dark']  .jz-admin-glass .tiptap-shell.paper-default,
+[data-theme='dark']  .jz-admin-glass .jz-md-editor-preview.paper-default,
+[data-theme='starry'] .jz-admin-glass .tiptap-shell,
+[data-theme='starry'] .jz-admin-glass .jz-md-editor-preview,
+[data-theme='starry'] .jz-admin-glass .tiptap-shell.paper-default,
+[data-theme='starry'] .jz-admin-glass .jz-md-editor-preview.paper-default,
+[data-theme='deepsea'] .jz-admin-glass .tiptap-shell,
+[data-theme='deepsea'] .jz-admin-glass .jz-md-editor-preview,
+[data-theme='deepsea'] .jz-admin-glass .tiptap-shell.paper-default,
+[data-theme='deepsea'] .jz-admin-glass .jz-md-editor-preview.paper-default {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 4px 14px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* paper 纸张预设（用户主动选了 rice-paper / kraft 等）仍保留各自的纹理；
+   只有 paper-default 在 admin 里转白 */
+
+/* 编辑器内部正文字色：跟随 glass-text 而非 jz-text */
+.jz-admin-glass .tiptap-shell .ProseMirror {
+  color: var(--glass-text);
+}
+[data-theme='dark']  .jz-admin-glass .tiptap-shell .ProseMirror,
+[data-theme='starry'] .jz-admin-glass .tiptap-shell .ProseMirror,
+[data-theme='deepsea'] .jz-admin-glass .tiptap-shell .ProseMirror {
+  color: var(--glass-text);
+}
+
+/* 编辑器工具栏：玻璃化 */
+.jz-admin-glass .jz-editor-toolbar {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(10px) saturate(140%);
+  border: 1px solid rgba(60, 60, 67, 0.10) !important;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+}
+[data-theme='dark']  .jz-admin-glass .jz-editor-toolbar,
+[data-theme='starry'] .jz-admin-glass .jz-editor-toolbar,
+[data-theme='deepsea'] .jz-admin-glass .jz-editor-toolbar {
+  background: rgba(255, 255, 255, 0.045) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+/* Markdown 模式预览也对齐 */
+.jz-admin-glass .markdown-preview {
+  color: var(--glass-text);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   U2: 编辑页 header 布局优化（语雀风）
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-doc-header-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+  min-width: 280px;
+  margin-right: auto;
+}
+.jz-doc-header-title.ant-typography {
+  margin: 0 !important;
+  font-family: 'Noto Serif SC', 'Songti SC', serif !important;
+  font-size: clamp(22px, 2.6vw, 30px) !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  color: var(--jz-text) !important;
+  letter-spacing: 0.5px;
+}
+.jz-doc-header-title.ant-typography .ant-typography-edit {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.jz-doc-header-title-wrap:hover .ant-typography-edit {
+  opacity: 0.6;
+}
+.jz-doc-header-meta {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--jz-text-muted);
+}
+.jz-doc-header-meta-divider {
+  color: var(--jz-text-muted);
+  opacity: 0.5;
+}
+
+/* 顶部 toolbar 容器更精致 */
+.jz-admin-glass .ant-layout-content > div > div:first-child {
+  /* 不强行改动结构，仅压缩 */
+}
+
+/* 限制编辑器主区宽度（语雀阅读宽度），并居中 */
+.jz-editor-content-wrap {
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* tiptap-shell 边框更柔和，进入语雀风 */
+.jz-admin-glass .tiptap-shell {
+  border-radius: 10px !important;
+  padding: 24px 36px !important;
+}
+.jz-admin-glass .jz-md-editor-preview {
+  border-radius: 10px !important;
+  padding: 24px 32px !important;
+}
+
+@media (max-width: 768px) {
+  .jz-admin-glass .tiptap-shell { padding: 16px 18px !important; }
+  .jz-admin-glass .jz-md-editor-preview { padding: 16px 18px !important; }
+  .jz-doc-header-title.ant-typography { font-size: 22px !important; }
+}
+
+/* 编辑器内容字号略放大（语雀视觉比例） */
+.jz-admin-glass .tiptap-shell .ProseMirror {
+  font-size: 15.5px;
+  line-height: 1.78;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   编辑页：sticky 顶栏 + 960 居中限宽 + 大纲浮动抽屉
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* ── Sticky 顶栏 ──
+   AdminLayout 顶栏高 64px；sticky 紧贴其底。.jz-admin-content padding 是 32px 36px，
+   所以 margin 负值 -36px 让 header 拉满到 content 的真实边缘。 */
+.jz-doc-header-bar {
+  position: sticky;
+  top: 64px;
+  z-index: 15;
+  padding: 12px 36px;
+  margin: 0 -36px 16px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px) saturate(150%);
+  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  border-bottom: 1px solid rgba(60, 60, 67, 0.12);
+}
+@media (max-width: 768px) {
+  .jz-doc-header-bar {
+    padding: 10px 16px;
+    margin: 0 -16px 12px;
+  }
+}
+
+/* 浅色后台 / 博客编辑 — sticky bar 不透明白底 */
+.jz-admin-glass .jz-doc-header-bar,
+.jz-blog-glass .jz-doc-header-bar {
+  background: rgba(255, 255, 255, 0.85);
+  border-bottom-color: rgba(60, 60, 67, 0.12);
+}
+[data-theme='dark']  .jz-admin-glass .jz-doc-header-bar,
+[data-theme='starry'] .jz-admin-glass .jz-doc-header-bar,
+[data-theme='deepsea'] .jz-admin-glass .jz-doc-header-bar,
+[data-theme='dark']  .jz-blog-glass .jz-doc-header-bar,
+[data-theme='starry'] .jz-blog-glass .jz-doc-header-bar,
+[data-theme='deepsea'] .jz-blog-glass .jz-doc-header-bar {
+  background: rgba(14, 19, 32, 0.85);
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+
+/* Doc editor mode switcher (MD / 富文本 / HTML / PDF) on the sticky header. */
+.jz-admin-glass .jz-doc-header-bar .ant-segmented,
+.jz-blog-glass .jz-doc-header-bar .ant-segmented {
+  background: color-mix(in srgb, var(--glass-surface) 88%, transparent) !important;
+  border: 1px solid var(--glass-border) !important;
+  padding: 3px !important;
+  border-radius: var(--glass-radius-pill, 999px) !important;
+}
+.jz-admin-glass .jz-doc-header-bar .ant-segmented-item,
+.jz-blog-glass .jz-doc-header-bar .ant-segmented-item {
+  color: var(--glass-text-muted) !important;
+  transition: color 0.2s ease, background-color 0.2s ease !important;
+}
+.jz-admin-glass .jz-doc-header-bar .ant-segmented-item .ant-segmented-item-label,
+.jz-blog-glass .jz-doc-header-bar .ant-segmented-item .ant-segmented-item-label {
+  color: inherit !important;
+  font-weight: 500;
+  font-size: 12px;
+}
+.jz-admin-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected),
+.jz-blog-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected) {
+  color: var(--glass-text) !important;
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent) !important;
+}
+.jz-admin-glass .jz-doc-header-bar .ant-segmented-item-selected,
+.jz-blog-glass .jz-doc-header-bar .ant-segmented-item-selected {
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px var(--jz-accent-glow) !important;
+}
+.jz-admin-glass .jz-doc-header-bar .ant-segmented-item-selected .ant-segmented-item-label,
+.jz-blog-glass .jz-doc-header-bar .ant-segmented-item-selected .ant-segmented-item-label {
+  color: #ffffff !important;
+  font-weight: 600;
+}
+[data-theme='dark']  .jz-admin-glass .jz-doc-header-bar .ant-segmented-item,
+[data-theme='starry'] .jz-admin-glass .jz-doc-header-bar .ant-segmented-item,
+[data-theme='deepsea'] .jz-admin-glass .jz-doc-header-bar .ant-segmented-item,
+[data-theme='dark']  .jz-blog-glass .jz-doc-header-bar .ant-segmented-item,
+[data-theme='starry'] .jz-blog-glass .jz-doc-header-bar .ant-segmented-item,
+[data-theme='deepsea'] .jz-blog-glass .jz-doc-header-bar .ant-segmented-item {
+  color: var(--glass-text-muted) !important;
+}
+[data-theme='dark']  .jz-admin-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected),
+[data-theme='starry'] .jz-admin-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected),
+[data-theme='deepsea'] .jz-admin-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected),
+[data-theme='dark']  .jz-blog-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected),
+[data-theme='starry'] .jz-blog-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected),
+[data-theme='deepsea'] .jz-blog-glass .jz-doc-header-bar .ant-segmented-item:hover:not(.ant-segmented-item-selected) {
+  color: var(--glass-text) !important;
+}
+
+/* 标签条 */
+.jz-doc-tags-bar {
+  max-width: 960px;
+  margin: 0 auto 12px;
+  width: 100%;
+}
+
+/* ── 居中限宽 960px 编辑区 —— */
+.jz-doc-body { position: relative; }
+.jz-doc-editor-col {
+  max-width: 960px;
+  margin: 0 auto;
+  width: 100%;
+  flex: 1;
+}
+
+/* 博客内编辑（/posts/:slug/edit）— 铺满 content 区，后台仍 960px */
+.jz-blog-glass.jz-doc-shell-blog {
+  --jz-doc-editor-max: min(100%, 1400px);
+}
+.jz-blog-glass.jz-doc-shell-blog .jz-doc-editor-col,
+.jz-blog-glass.jz-doc-shell-blog .jz-doc-tags-bar {
+  max-width: var(--jz-doc-editor-max);
+  margin-left: 0;
+  margin-right: 0;
+  width: 100%;
+}
+.jz-blog-glass.jz-doc-shell-blog .jz-doc-header-bar {
+  margin: 0 calc(-1 * var(--jz-blog-content-pad-x, 24px)) 16px;
+  padding-left: var(--jz-blog-content-pad-x, 24px);
+  padding-right: var(--jz-blog-content-pad-x, 24px);
+  top: 60px;
+}
+.jz-blog-glass.jz-doc-shell-blog .tiptap-shell,
+.jz-blog-glass.jz-doc-shell-blog .jz-md-editor-preview {
+  width: 100%;
+}
+.jz-blog-glass.jz-doc-shell-blog .tiptap-shell {
+  border-radius: 10px !important;
+  padding: 24px 32px !important;
+}
+.jz-blog-glass.jz-doc-shell-blog .jz-md-editor-preview {
+  border-radius: 10px !important;
+  padding: 24px 28px !important;
+}
+.jz-blog-glass.jz-doc-shell-blog .tiptap-shell .ProseMirror {
+  font-size: 15.5px;
+  line-height: 1.78;
+}
+
+@media (min-width: 1280px) {
+  .jz-blog-glass.jz-doc-shell-blog .jz-editor-sidebar-floating {
+    top: 132px;
+    right: max(16px, var(--jz-blog-content-pad-x, 24px));
+    max-height: calc(100vh - 152px);
+  }
+}
+
+@media (max-width: 768px) {
+  .jz-blog-glass.jz-doc-shell-blog .jz-doc-header-bar {
+    padding: 10px 16px;
+    margin: 0 -16px 12px;
+  }
+  .jz-blog-glass.jz-doc-shell-blog .tiptap-shell {
+    padding: 16px 18px !important;
+  }
+  .jz-blog-glass.jz-doc-shell-blog .jz-md-editor-preview {
+    padding: 16px 18px !important;
+  }
+}
+
+/* ── 浮动大纲：始终 fixed，不占用文档布局空间 ──
+   关键：不要用 margin 负值"拉出布局流"，那种 hack 在不同视口宽度下行为不可控 */
+.jz-editor-sidebar-floating {
+  position: fixed !important;
+  width: 240px;
+  z-index: 50;
+  margin: 0 !important;
+  align-self: auto;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.10);
+}
+
+/* 大屏（≥1280px）：贴在居中 960 编辑区的右外侧 */
+@media (min-width: 1280px) {
+  .jz-editor-sidebar-floating {
+    top: 140px;
+    right: max(24px, calc((100vw - 960px) / 2 - 260px));
+    max-height: calc(100vh - 160px);
+  }
+}
+
+/* 中屏（1025-1279）：靠右浮动，叠在内容上 */
+@media (min-width: 1025px) and (max-width: 1279px) {
+  .jz-editor-sidebar-floating {
+    top: 140px;
+    right: 24px;
+    max-height: calc(100vh - 160px);
+  }
+}
+
+/* 小屏（≤1024px）：右上角浮动抽屉 */
+@media (max-width: 1024px) {
+  .jz-editor-sidebar-floating {
+    top: 88px;
+    right: 12px;
+    width: min(280px, calc(100vw - 24px));
+    max-height: calc(100vh - 110px);
+    z-index: 100;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.20);
+  }
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   ADMIN 编辑器：彻底白化（覆盖 --jz-* token）
+   一次性让所有用 var(--jz-surface) / --jz-border / --jz-text-muted 的
+   editor 内部元素（callout / 表格 / 侧栏 tab / TagPicker / 块菜单 /
+   FindReplace / Image caption / inline code 等）跟随主题切换。
+   注意：仅作用在 .jz-admin-glass 内，博客阅读端仍保留宣纸朱砂。
+   ════════════════════════════════════════════════════════════════════════ */
+
+.jz-admin-glass {
+  --jz-surface: rgba(255, 255, 255, 0.92);
+  --jz-surface-2: rgba(60, 60, 67, 0.04);
+  --jz-border: rgba(60, 60, 67, 0.13);
+  --jz-divider: rgba(60, 60, 67, 0.07);
+  --jz-text: #1c1c1e;
+  --jz-text-muted: #6e6e73;
+}
+[data-theme='dark']  .jz-admin-glass,
+[data-theme='starry'] .jz-admin-glass,
+[data-theme='deepsea'] .jz-admin-glass {
+  --jz-surface: rgba(255, 255, 255, 0.05);
+  --jz-surface-2: rgba(255, 255, 255, 0.03);
+  --jz-border: rgba(255, 255, 255, 0.10);
+  --jz-divider: rgba(255, 255, 255, 0.05);
+  --jz-text: #e6ebf2;
+  --jz-text-muted: #8c96a8;
+}
+
+/* ── 编辑器工具栏：组与组之间用分隔线，整体浅卡片化 ── */
+.jz-admin-glass .jz-editor-toolbar {
+  background: rgba(255, 255, 255, 0.78) !important;
+  border-radius: 8px !important;
+  padding: 8px 10px !important;
+  gap: 6px !important;
+  row-gap: 6px !important;
+  align-items: center;
+  margin-bottom: 8px;
+}
+[data-theme='dark']  .jz-admin-glass .jz-editor-toolbar,
+[data-theme='starry'] .jz-admin-glass .jz-editor-toolbar,
+[data-theme='deepsea'] .jz-admin-glass .jz-editor-toolbar {
+  background: rgba(255, 255, 255, 0.045) !important;
+}
+
+.jz-admin-glass .jz-editor-toolbar-divider {
+  background: var(--jz-border);
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+}
+
+/* ── 侧栏（大纲 / 反链 / 评论 / 附件）── */
+.jz-admin-glass .jz-editor-sidebar,
+.jz-admin-glass .jz-editor-sidebar-floating {
+  background: var(--glass-surface, var(--jz-surface)) !important;
+  backdrop-filter: blur(18px) saturate(140%);
+  border-color: var(--glass-border, var(--jz-border)) !important;
+  border-left: 3px solid var(--jz-doc-accent, var(--jz-accent)) !important;
+  border-radius: 10px !important;
+}
+.jz-admin-glass .jz-editor-sidebar-tabs {
+  background: transparent !important;
+  border-bottom-color: var(--jz-divider) !important;
+}
+.jz-admin-glass .jz-sidebar-tab {
+  color: var(--jz-text-muted) !important;
+}
+.jz-admin-glass .jz-sidebar-tab.is-active {
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 14%, transparent) !important;
+  color: var(--jz-doc-accent, var(--jz-accent)) !important;
+}
+
+/* ── ProseMirror 内部排版：白底下的对比 ── */
+.jz-admin-glass .tiptap-shell .ProseMirror blockquote {
+  background: color-mix(in srgb, var(--jz-accent) 6%, transparent);
+  border-left-color: var(--jz-accent);
+  color: var(--jz-text-muted);
+}
+.jz-admin-glass .tiptap-shell .ProseMirror code {
+  background: color-mix(in srgb, var(--jz-accent) 9%, transparent);
+  color: var(--jz-accent);
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 18%, transparent);
+}
+.jz-admin-glass .tiptap-shell .ProseMirror th {
+  background: var(--jz-surface-2);
+  color: var(--jz-text);
+}
+.jz-admin-glass .tiptap-shell .ProseMirror th,
+.jz-admin-glass .tiptap-shell .ProseMirror td {
+  border-color: var(--jz-border);
+}
+.jz-admin-glass .tiptap-shell .ProseMirror hr {
+  border-top-color: var(--jz-border);
+}
+
+/* ── Callout / 色块：白底下保留各色调对比 ── */
+.jz-admin-glass .jz-callout {
+  background: color-mix(in srgb, var(--c, var(--jz-accent)) 6%, var(--jz-surface)) !important;
+  border-left-color: var(--c, var(--jz-accent)) !important;
+}
+
+/* ── 图片说明文字 ── */
+.jz-admin-glass .jz-image-caption-input,
+.jz-admin-glass .jz-image-caption-display {
+  background: transparent !important;
+  color: var(--jz-text-muted) !important;
+  border-color: var(--jz-divider) !important;
+}
+
+/* ── 块 hover 菜单 + Popover ── */
+.jz-admin-glass .jz-block-hover-menu {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-color: var(--jz-border);
+}
+[data-theme='dark']  .jz-admin-glass .jz-block-hover-menu,
+[data-theme='starry'] .jz-admin-glass .jz-block-hover-menu,
+[data-theme='deepsea'] .jz-admin-glass .jz-block-hover-menu {
+  background: rgba(20, 25, 35, 0.92);
+}
+.jz-admin-glass .jz-block-anchor-btn { color: var(--jz-text-muted); }
+.jz-admin-glass .jz-block-anchor-btn:hover { color: var(--jz-accent); }
+.jz-admin-glass .jz-block-panel { color: var(--jz-text); }
+.jz-admin-glass .jz-block-panel-btn {
+  background: var(--jz-surface);
+  border-color: var(--jz-border);
+  color: var(--jz-text);
+}
+
+/* ── Slash menu / Emoji picker —— Popover 类弹层 ── */
+.jz-admin-glass .slash-menu,
+.jz-admin-glass .jz-emoji-picker {
+  background: rgba(255, 255, 255, 0.97);
+  backdrop-filter: blur(20px);
+  border-color: var(--jz-border);
+}
+[data-theme='dark']  .jz-admin-glass .slash-menu,
+[data-theme='dark']  .jz-admin-glass .jz-emoji-picker,
+[data-theme='starry'] .jz-admin-glass .slash-menu,
+[data-theme='starry'] .jz-admin-glass .jz-emoji-picker,
+[data-theme='deepsea'] .jz-admin-glass .slash-menu,
+[data-theme='deepsea'] .jz-admin-glass .jz-emoji-picker {
+  background: rgba(14, 19, 32, 0.95);
+}
+
+/* ── FindReplace / Image toolbar ── */
+.jz-admin-glass .jz-image-toolbar {
+  background: rgba(255, 255, 255, 0.92);
+  border-color: var(--jz-border);
+}
+[data-theme='dark']  .jz-admin-glass .jz-image-toolbar,
+[data-theme='starry'] .jz-admin-glass .jz-image-toolbar,
+[data-theme='deepsea'] .jz-admin-glass .jz-image-toolbar {
+  background: rgba(20, 25, 35, 0.92);
+}
+
+/* ── Link Card / Doc Card ── */
+.jz-admin-glass .jz-link-card-shell,
+.jz-admin-glass .jz-doc-card-shell {
+  background: var(--jz-surface);
+  border-color: var(--jz-border);
+}
+
+/* ── Tag Picker（编辑器上方的标签条） ── */
+.jz-admin-glass .jz-doc-tags-bar .ant-tag {
+  background: var(--jz-surface);
+  border-color: var(--jz-border);
+}
+
+/* ── 撤销主页面 padding + 现在 sticky bar 自己处理 ── */
+.jz-admin-glass .ant-layout-content > div:first-child {
+  /* keep default; padding is provided by .jz-admin-content */
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   编辑选项/功能优化
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* 编辑器内部 toolbar：sticky 在 tiptap-shell 顶部，滚动时常驻 */
+.jz-admin-glass .tiptap-shell {
+  /* 让内部工具栏有定位上下文 */
+  position: relative;
+}
+
+/* AntD Button 在白底下：浅灰 hover + 朱砂/翡翠选中态 */
+.jz-admin-glass .jz-editor-toolbar .ant-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, var(--jz-surface)) !important;
+  border-color: var(--jz-accent) !important;
+  color: var(--jz-accent) !important;
+}
+.jz-admin-glass .jz-editor-toolbar .ant-btn-primary {
+  background: var(--jz-accent) !important;
+  border-color: var(--jz-accent) !important;
+  color: #ffffff !important;
+}
+
+/* 工具栏内的 Space.Compact 视觉分组 */
+.jz-admin-glass .jz-editor-toolbar .ant-space-compact .ant-btn {
+  border-color: var(--jz-border);
+}
+
+/* 自定义 toolbar 按钮（非 antd 的）在白底也对齐 */
+.jz-admin-glass .jz-image-toolbar-btn {
+  color: var(--jz-text-muted);
+}
+.jz-admin-glass .jz-image-toolbar-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
+}
+
+/* 选区浮动 BubbleMenu */
+.jz-admin-glass .jz-bubble-menu {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: var(--jz-border);
+  backdrop-filter: blur(12px);
+}
+[data-theme='dark']  .jz-admin-glass .jz-bubble-menu,
+[data-theme='starry'] .jz-admin-glass .jz-bubble-menu,
+[data-theme='deepsea'] .jz-admin-glass .jz-bubble-menu {
+  background: rgba(20, 25, 35, 0.94);
+}
+.jz-glass .jz-bubble-btn,
+.jz-admin-glass .jz-bubble-btn,
+.jz-blog-glass .jz-bubble-btn { color: var(--glass-text-muted, var(--jz-text-muted)); }
+.jz-glass .jz-bubble-btn:hover,
+.jz-admin-glass .jz-bubble-btn:hover,
+.jz-blog-glass .jz-bubble-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
+}
+.jz-admin-glass .jz-bubble-btn.is-active {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  color: var(--jz-accent);
+}
+
+/* 编辑器内的标题在白底色彩对比 */
+.jz-admin-glass .tiptap-shell .ProseMirror h1,
+.jz-admin-glass .tiptap-shell .ProseMirror h2,
+.jz-admin-glass .tiptap-shell .ProseMirror h3,
+.jz-admin-glass .tiptap-shell .ProseMirror h4 {
+  color: var(--jz-text);
+}
+
+/* 编辑器链接显示更醒目 */
+.jz-admin-glass .tiptap-shell .ProseMirror a {
+  color: var(--jz-accent);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+/* 占位符颜色 */
+.jz-admin-glass .tiptap-shell .ProseMirror p.is-editor-empty:first-child::before {
+  color: var(--jz-text-muted);
+  opacity: 0.5;
+}
+
+/* 选中态高亮：从内置浅蓝改为朱砂 */
+.jz-admin-glass .tiptap-shell .ProseMirror::selection,
+.jz-admin-glass .tiptap-shell .ProseMirror ::selection {
+  background: color-mix(in srgb, var(--jz-accent) 25%, transparent);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   亮色主题：强制所有 antd 弹层为白底
+   antd Dropdown / Popover / Select / Tooltip 默认 portal 到 <body>，
+   所以 .jz-admin-glass 前缀的选择器抓不到。这里直接全局兜底（仅 light 主题）。
+   ════════════════════════════════════════════════════════════════════════ */
+
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-dropdown-menu,
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-popover-inner,
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-select-dropdown {
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #1c1c1e !important;
+  border: 1px solid rgba(60, 60, 67, 0.12) !important;
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.10),
+    0 2px 6px rgba(0, 0, 0, 0.06) !important;
+}
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-dropdown-menu-item,
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-select-item {
+  color: #1c1c1e !important;
+}
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-dropdown-menu-item:hover,
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-select-item-option-active {
+  background: rgba(5, 150, 105, 0.08) !important;
+}
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-select-item-option-selected {
+  background: rgba(5, 150, 105, 0.14) !important;
+  color: #059669 !important;
+}
+
+/* tippy 弹层（emoji / slash menu / mention） */
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .tippy-box {
+  background: transparent !important;
+}
+
+/* slash-menu 在 light 主题强制白底 */
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .slash-menu,
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .jz-emoji-picker {
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #1c1c1e !important;
+  border-color: rgba(60, 60, 67, 0.12) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   亮色主题：AntD Tooltip 改白底（默认是深色，与玻璃后台不和谐）
+   ════════════════════════════════════════════════════════════════════════ */
+
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-tooltip-inner {
+  background: rgba(255, 255, 255, 0.98) !important;
+  color: #1c1c1e !important;
+  border: 1px solid rgba(60, 60, 67, 0.13) !important;
+  box-shadow:
+    0 6px 24px rgba(0, 0, 0, 0.10),
+    0 2px 6px rgba(0, 0, 0, 0.06) !important;
+  font-size: 12px;
+}
+/* 箭头颜色对齐 */
+html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
+  .ant-tooltip-arrow::before {
+  background: rgba(255, 255, 255, 0.98) !important;
 }

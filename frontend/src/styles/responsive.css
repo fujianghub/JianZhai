@@ -13,8 +13,15 @@
   .jz-brand-en {
     font-size: 18px !important;
   }
+  .jz-blog-glass {
+    --jz-blog-content-pad-x: 16px;
+    --jz-blog-content-pad-y: 12px;
+  }
   .blog-content {
-    padding: 16px !important;
+    padding: var(--jz-blog-content-pad-y) var(--jz-blog-content-pad-x) 20px !important;
+  }
+  .jz-post-meta .jz-meta-controls {
+    gap: 6px;
   }
   .markdown-preview h1 { font-size: 1.6em !important; }
   .markdown-preview h2 { font-size: 1.35em !important; }

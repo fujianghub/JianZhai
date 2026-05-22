@@ -13,6 +13,28 @@ export interface DocumentPreview {
   published_at: string | null;
 }
 
+export interface DocumentContributor {
+  id: number;
+  username: string;
+  is_staff: boolean;
+}
+
+export interface DocumentStats {
+  word_count: number;
+  created_at: string | null;
+  updated_at: string | null;
+  published_at: string | null;
+  created_by: DocumentContributor | null;
+  last_edited_by: DocumentContributor | null;
+  contributors: DocumentContributor[];
+  version_count: number;
+}
+
+export async function getDocumentStats(id: number): Promise<DocumentStats> {
+  const { data } = await apiClient.get<DocumentStats>(`/documents/${id}/stats/`);
+  return data;
+}
+
 export async function getDocument(id: number): Promise<DocumentDetail> {
   const { data } = await apiClient.get<DocumentDetail>(`/documents/${id}/`);
   return data;

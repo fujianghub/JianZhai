@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Tag, Tooltip } from 'antd';
-import { RobotOutlined } from '@ant-design/icons';
+import { JzAiIcon } from '@/components/common/JzIcon';
 import { getCapabilities } from '@/api/ai';
 
 /**
@@ -51,7 +51,7 @@ export function AIModelBadge() {
   if (!configured) {
     return (
       <Tooltip title="后端未配置 ANTHROPIC_API_KEY">
-        <Tag icon={<RobotOutlined />} color="default">
+        <Tag icon={<JzAiIcon size={12} />} color="default">
           AI 未配置
         </Tag>
       </Tooltip>
@@ -60,7 +60,7 @@ export function AIModelBadge() {
   if (!enabled) {
     return (
       <Tooltip title="管理员已关闭 AI 功能">
-        <Tag icon={<RobotOutlined />} color="warning">
+        <Tag icon={<JzAiIcon size={12} />} color="warning">
           AI 已禁用
         </Tag>
       </Tooltip>
@@ -68,7 +68,7 @@ export function AIModelBadge() {
   }
   return (
     <Tooltip title="当前使用的 AI 模型（在文档工具栏可切换）">
-      <Tag icon={<RobotOutlined />} color="blue" style={{ marginRight: 0 }}>
+      <Tag icon={<JzAiIcon size={12} />} color="blue" style={{ marginRight: 0 }}>
         {label || 'AI'}
       </Tag>
     </Tooltip>

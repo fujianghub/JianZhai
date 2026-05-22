@@ -1,29 +1,29 @@
-/* ── Palette: 简斋古风 ──
-   宣纸 (rice paper) ground + 墨 (ink) text + 朱砂 (cinnabar) accent.
-   Inspired by the muted warm tones of aged paper, sumi ink, and seal red. */
+/* ── Palette: Apple 玻璃 · 翡翠重音（博客 + 后台统一） ── */
 :root {
-  --jz-accent: #b94a3b;        /* 朱砂 cinnabar */
-  --jz-accent-soft: #d77361;
-  --jz-bg-app: #f3ebd6;        /* 宣纸 rice paper */
-  --jz-text: #2c2218;          /* 墨 ink */
-  --jz-text-muted: #8a7a5e;    /* 淡墨 faded ink */
-  --jz-border: #d4c4a0;        /* 折痕 crease */
-  --jz-surface: #faf3e0;       /* 米白 cream */
-  --jz-surface-2: #ece1c3;     /* 旧纸 aged paper */
-  --jz-divider: #e2d4b3;
-  --jz-gold: #b8895f;          /* 暗金 antique gold */
+  --jz-accent: #059669;
+  --jz-accent-soft: #10b981;
+  --jz-accent-glow: rgba(5, 150, 105, 0.25);
+  --jz-bg-app: #f5f5f7;
+  --jz-text: #1c1c1e;
+  --jz-text-muted: #6e6e73;
+  --jz-border: rgba(60, 60, 67, 0.13);
+  --jz-surface: rgba(255, 255, 255, 0.62);
+  --jz-surface-2: rgba(255, 255, 255, 0.82);
+  --jz-divider: rgba(60, 60, 67, 0.07);
+  --jz-gold: #94a3b8;
 }
 [data-theme='dark'] {
-  --jz-accent: #d36052;        /* 朱砂亮 (灯下) */
-  --jz-accent-soft: #e0816e;
-  --jz-bg-app: #1a1612;        /* 浓墨 deep ink */
-  --jz-text: #ece1c3;          /* 米白 — 墨纸上的字 */
-  --jz-text-muted: #9b8b6c;
-  --jz-border: #3a312a;
-  --jz-surface: #261f1a;       /* 墨纸 inked paper */
-  --jz-surface-2: #1f1a16;
-  --jz-divider: #322a23;
-  --jz-gold: #c9a875;
+  --jz-accent: #10b981;
+  --jz-accent-soft: #34d399;
+  --jz-accent-glow: rgba(16, 185, 129, 0.35);
+  --jz-bg-app: #07090f;
+  --jz-text: #e6ebf2;
+  --jz-text-muted: #8c96a8;
+  --jz-border: rgba(255, 255, 255, 0.08);
+  --jz-surface: rgba(255, 255, 255, 0.045);
+  --jz-surface-2: rgba(255, 255, 255, 0.06);
+  --jz-divider: rgba(255, 255, 255, 0.04);
+  --jz-gold: #94a3b8;
 }
 
 /* ── Reset ── 浏览器默认 8px body margin 会在四周留白；强制铺满 */
@@ -47,19 +47,17 @@ body {
     -apple-system, BlinkMacSystemFont, 'Segoe UI',
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
     'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
-  /* Faint speckled mottling — like fibre texture in rice paper. Layered
-     radial gradients fake the noise without bringing a raster asset. */
   background-image:
-    radial-gradient(circle at 12% 18%, rgba(139, 109, 65, 0.05) 0, transparent 32%),
-    radial-gradient(circle at 88% 76%, rgba(139, 109, 65, 0.045) 0, transparent 36%),
-    radial-gradient(circle at 60% 22%, rgba(185, 74, 59, 0.025) 0, transparent 28%);
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(5, 150, 105, 0.08) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(59, 130, 246, 0.06) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.06) 0%, transparent 60%);
   background-attachment: fixed;
 }
 [data-theme='dark'] body {
   background-image:
-    radial-gradient(circle at 12% 18%, rgba(201, 168, 117, 0.04) 0, transparent 32%),
-    radial-gradient(circle at 88% 76%, rgba(201, 168, 117, 0.03) 0, transparent 36%),
-    radial-gradient(circle at 60% 22%, rgba(211, 96, 82, 0.025) 0, transparent 28%);
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(16, 185, 129, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(96, 165, 250, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.12) 0%, transparent 60%);
 }
 
 /* ── 星空 starry ── 夜空：靛紫深蓝底 + 金紫高光 */
@@ -73,7 +71,7 @@ body {
   --jz-surface: #0e1530;           /* 墨蓝纸 */
   --jz-surface-2: #0a1024;
   --jz-divider: #1a2042;
-  --jz-gold: #fbbf24;              /* 金 — 给星点/月亮共用 */
+  --jz-gold: #c4b5fd;
 }
 [data-theme='starry'] body {
   background-image:
@@ -93,7 +91,7 @@ body {
   --jz-surface: #062a48;           /* 海纸 */
   --jz-surface-2: #04223a;
   --jz-divider: #0c3a55;
-  --jz-gold: #facc15;              /* 透过水的金光 */
+  --jz-gold: #5eead4;
 }
 [data-theme='deepsea'] body {
   background-image:
@@ -123,8 +121,8 @@ body {
   width: 28px;
   height: 28px;
   border-radius: 5px;
-  background: linear-gradient(135deg, #d8553f 0%, var(--jz-accent) 50%, #8d3023 100%);
-  color: #f7e6c4;
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  color: #0a1f1a;
   font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
   font-weight: 700;
   font-size: 18px;
@@ -353,19 +351,33 @@ a:hover { opacity: 0.85; }
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
 }
 
+/* Reader meta-bar icon buttons (font / paper pickers). */
+.jz-reader-control-btn,
 .paper-picker-btn {
   width: 28px;
   height: 28px;
   border-radius: 50%;
-  border: 1px solid var(--jz-border);
-  background: var(--jz-surface);
+  border: 1px solid var(--glass-border, var(--jz-border));
+  background: var(--glass-surface, var(--jz-surface));
   color: var(--jz-accent);
   cursor: pointer;
   display: inline-grid;
   place-items: center;
-  transition: transform 120ms ease;
+  flex-shrink: 0;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: transform 120ms ease, background-color 120ms ease, border-color 120ms ease;
 }
-.paper-picker-btn:hover { transform: scale(1.06); }
+.jz-reader-control-btn:hover,
+.paper-picker-btn:hover {
+  transform: scale(1.06);
+  background: color-mix(in srgb, var(--jz-accent) 10%, var(--glass-surface, var(--jz-surface))) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 40%, var(--glass-border, var(--jz-border))) !important;
+}
+.jz-reader-control-btn .anticon,
+.paper-picker-btn .anticon {
+  font-size: 14px;
+}
 
 /* Soft accent stripe along admin content frame */
 .ant-layout-content.jz-fade-in {
@@ -449,6 +461,21 @@ a:hover { opacity: 0.85; }
 /* KB tree (left sidebar / page sidebar) — folder toggle hover */
 .jz-kb-folder-toggle:hover {
   background: color-mix(in srgb, var(--jz-surface-2) 60%, transparent);
+}
+
+/* KB page left rail — three-level BlogKbNavPanel */
+.jz-kb-side {
+  position: sticky;
+  top: 80px;
+  padding: 12px 10px;
+  border: 1px solid var(--glass-border, var(--jz-border));
+  border-radius: var(--glass-radius, 12px);
+  background: var(--glass-surface, var(--jz-surface));
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  max-height: calc(100vh - 120px);
+  overflow: auto;
+  scrollbar-width: thin;
 }
 
 /* ── KB sidebar drag-resize handle ──
@@ -620,7 +647,14 @@ h4.jz-post-card-title.ant-typography {
 .jz-post-meta .jz-meta-controls {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.jz-blog-glass .jz-post-meta .jz-meta-controls .jz-reader-control-btn,
+.jz-blog-glass .jz-post-meta .jz-meta-controls .paper-picker-btn {
+  border-color: var(--glass-border);
+  background: var(--glass-surface);
+  box-shadow: var(--glass-shadow-soft);
 }
 
 /* Shared pill scaffold. */
@@ -719,17 +753,31 @@ h4.jz-post-card-title.ant-typography {
   color: color-mix(in srgb, var(--jz-tag-c, var(--jz-text)) 75%, #fff);
 }
 
-/* "编辑" button — keep the cinnabar accent fill consistent across themes. */
+/* Post meta "编辑" pill — outline style; must win over .blog-content .ant-btn-primary. */
 .ant-btn.jz-edit-btn.ant-btn-background-ghost {
-  color: var(--jz-accent);
-  border-color: color-mix(in srgb, var(--jz-accent) 60%, var(--jz-divider));
-  height: 24px;
-  font-size: 12px;
-  border-radius: 12px;
-  padding: 0 10px;
+  height: 28px !important;
+  min-height: 28px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  border-radius: 14px !important;
+  padding: 0 12px !important;
+  color: var(--jz-accent) !important;
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 45%, var(--glass-border, var(--jz-border))) !important;
+  background: color-mix(in srgb, var(--jz-accent) 10%, var(--glass-surface, var(--jz-surface))) !important;
+  box-shadow: var(--glass-shadow-soft, 0 2px 8px rgba(0, 0, 0, 0.06)) !important;
+}
+.ant-btn.jz-edit-btn.ant-btn-background-ghost .anticon {
+  color: var(--jz-accent) !important;
 }
 .ant-btn.jz-edit-btn.ant-btn-background-ghost:hover {
-  background: color-mix(in srgb, var(--jz-accent) 14%, transparent) !important;
+  color: var(--jz-accent) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--glass-border, var(--jz-border))) !important;
+  background: color-mix(in srgb, var(--jz-accent) 18%, var(--glass-surface, var(--jz-surface))) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--jz-accent) 22%, transparent) !important;
+}
+.ant-btn.jz-edit-btn.ant-btn-background-ghost:hover .anticon {
+  color: var(--jz-accent) !important;
 }
 
 /* Card list still uses the legacy ``.jz-post-tag`` class on antd Tag.
@@ -788,10 +836,10 @@ h4.jz-post-card-title.ant-typography {
       transparent 0 2px,
       rgba(255, 255, 255, 0.06) 2px 3px
     ),
-    linear-gradient(135deg, #c0392b, #8b1a1a);
-  border: 1.5px solid #6b0f0f;
-  border-radius: 4px;
-  color: #fdf5e0;
+    linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  border: 1.5px solid color-mix(in srgb, var(--jz-accent) 60%, transparent);
+  border-radius: 8px;
+  color: #0a1f1a;
   /* Slight rotation so it feels hand-stamped, not stenciled */
   transform: rotate(-2deg);
   box-shadow:
@@ -864,9 +912,9 @@ h4.jz-post-card-title.ant-typography {
      real gold against deep ink. */
   background:
     linear-gradient(180deg,
-      color-mix(in srgb, var(--jz-gold) 80%, #fff8d4) 10%,
-      color-mix(in srgb, var(--jz-gold) 70%, var(--jz-accent)) 55%,
-      color-mix(in srgb, var(--jz-gold) 60%, #5a3a1c) 90%);
+      color-mix(in srgb, var(--jz-accent-soft) 90%, #fff) 10%,
+      var(--jz-accent) 55%,
+      color-mix(in srgb, var(--jz-accent) 70%, #1c1c1e) 90%);
   -webkit-background-clip: text;
           background-clip: text;
   color: transparent;
@@ -939,9 +987,10 @@ h4.jz-post-card-title.ant-typography {
      6. 内容区充足留白 (32px) + 卡片间距 (20px)
    ════════════════════════════════════════════════════════════════════════ */
 
-/* 默认 = LIGHT GLASS（Apple macOS Big Sur 浅玻璃）
-   亮底 + 翡翠深一档 #059669（在白底上对比度更好） */
-.jz-admin-glass {
+/* 共享玻璃令牌（后台 + 博客） */
+.jz-glass,
+.jz-admin-glass,
+.jz-blog-glass {
   --jz-accent: #059669;
   --jz-accent-soft: #10b981;
   --jz-accent-glow: rgba(5, 150, 105, 0.25);
@@ -966,16 +1015,29 @@ h4.jz-post-card-title.ant-typography {
   --glass-shadow-hero: 0 14px 40px rgba(0, 0, 0, 0.10),
                        0 2px 6px rgba(0, 0, 0, 0.06);
   --glass-shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.05);
+
+  /* JzIcon — 柔和双色，全部跟随 --jz-accent */
+  --jz-icon-stroke: var(--glass-text-muted);
+  --jz-icon-stroke-active: var(--jz-accent);
+  --jz-icon-fill: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  --jz-icon-spot: var(--jz-accent);
 }
 
 /* DARK GLASS（dark / starry / deepsea 都用同一套深色玻璃，仅光晕色调微调）*/
+[data-theme='dark'] .jz-glass,
 [data-theme='dark'] .jz-admin-glass,
+[data-theme='dark'] .jz-blog-glass,
+[data-theme='starry'] .jz-glass,
 [data-theme='starry'] .jz-admin-glass,
-[data-theme='deepsea'] .jz-admin-glass {
+[data-theme='starry'] .jz-blog-glass,
+[data-theme='deepsea'] .jz-glass,
+[data-theme='deepsea'] .jz-admin-glass,
+[data-theme='deepsea'] .jz-blog-glass {
   --jz-accent: #10b981;
   --jz-accent-soft: #34d399;
   --jz-accent-glow: rgba(16, 185, 129, 0.35);
-  --jz-gold: #fbbf24;
+  --jz-gold: #94a3b8;
 
   --glass-bg-deep: #07090f;
   --glass-bg-mid:  #0e1320;
@@ -994,35 +1056,38 @@ h4.jz-post-card-title.ant-typography {
   --glass-shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.35);
 }
 
-/* 整个 admin layout 接管 body 背景 ── 玄黑渐变 + 三色光晕 */
-.jz-admin-glass.ant-layout {
+/* 玻璃 layout 背景（后台 + 博客） */
+.jz-admin-glass.ant-layout,
+.jz-blog-glass.ant-layout {
   background: var(--glass-bg-deep) !important;
   color: var(--glass-text);
-  /* 亮色版渐变：低饱和、低 alpha，模拟 Apple Liquid Glass 浅底 */
   background-image:
     radial-gradient(ellipse 70% 50% at  0%  0%, rgba(5, 150, 105, 0.10) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 100%  0%, rgba(59, 130, 246, 0.07) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 55% 45% at  20% 90%, rgba(251, 191, 36, 0.06) 0%, transparent 65%);
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.08) 0%, transparent 60%);
   background-attachment: fixed;
 }
 
-/* 暗色版：高对比、更高 alpha，玄黑底上才看得见的光晕 */
 [data-theme='dark'] .jz-admin-glass.ant-layout,
+[data-theme='dark'] .jz-blog-glass.ant-layout,
 [data-theme='starry'] .jz-admin-glass.ant-layout,
-[data-theme='deepsea'] .jz-admin-glass.ant-layout {
+[data-theme='starry'] .jz-blog-glass.ant-layout,
+[data-theme='deepsea'] .jz-admin-glass.ant-layout,
+[data-theme='deepsea'] .jz-blog-glass.ant-layout {
   background-image:
     radial-gradient(ellipse 70% 50% at  0%  0%, rgba(16, 185, 129, 0.18) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 100%  0%, rgba(96, 165, 250, 0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.16) 0%, transparent 60%),
-    radial-gradient(ellipse 55% 45% at  20% 90%, rgba(251, 191, 36, 0.10) 0%, transparent 65%);
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.16) 0%, transparent 60%);
 }
 
-/* 浮点星尘 — 只在暗色主题下显示（亮色无意义） */
-.jz-admin-glass.ant-layout::before { content: none; }
+.jz-admin-glass.ant-layout::before,
+.jz-blog-glass.ant-layout::before { content: none; }
 [data-theme='dark'] .jz-admin-glass.ant-layout::before,
+[data-theme='dark'] .jz-blog-glass.ant-layout::before,
 [data-theme='starry'] .jz-admin-glass.ant-layout::before,
-[data-theme='deepsea'] .jz-admin-glass.ant-layout::before {
+[data-theme='starry'] .jz-blog-glass.ant-layout::before,
+[data-theme='deepsea'] .jz-admin-glass.ant-layout::before,
+[data-theme='deepsea'] .jz-blog-glass.ant-layout::before {
   content: '';
   position: fixed;
   inset: 0;
@@ -1140,6 +1205,39 @@ h4.jz-post-card-title.ant-typography {
 .jz-admin-glass .jz-admin-menu .ant-menu-item .anticon {
   font-size: 16px;
   margin-right: 12px;
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item-icon {
+  width: auto !important;
+  min-width: 0 !important;
+  margin-inline-end: 10px !important;
+  line-height: 1 !important;
+}
+.jz-admin-glass .jz-menu-icon-slot {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  border: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--glass-surface-strong) 90%, transparent);
+  box-shadow: var(--glass-shadow-soft);
+  color: var(--jz-icon-stroke);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease, color 0.22s ease;
+}
+.jz-admin-glass .jz-menu-icon-slot .jz-icon {
+  display: block;
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot {
+  border-color: color-mix(in srgb, var(--jz-accent) 32%, var(--glass-border));
+  color: var(--jz-icon-stroke-active);
+  transform: scale(1.03);
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-menu-icon-slot {
+  border-color: color-mix(in srgb, var(--jz-accent) 48%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-accent) 16%, var(--glass-surface-strong));
+  color: var(--jz-icon-stroke-active);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-accent) 18%, transparent);
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item a {
   color: inherit !important;
@@ -1378,8 +1476,10 @@ h4.jz-post-card-title.ant-typography {
   border-color: var(--glass-border) !important;
 }
 
-/* ── Tag ─────────────────────────────────────────────────────────────── */
-.jz-admin-glass .ant-tag {
+/* ── Tag（后台 + 博客玻璃） ───────────────────────────────────────────── */
+.jz-glass .ant-tag,
+.jz-admin-glass .ant-tag,
+.jz-blog-glass .ant-tag {
   border-radius: 8px !important;
   font-size: 11px !important;
   padding: 2px 10px !important;
@@ -1394,9 +1494,11 @@ h4.jz-post-card-title.ant-typography {
   border-color: rgba(16, 185, 129, 0.35) !important;
   color: var(--jz-accent) !important;
 }
-.jz-admin-glass .ant-tag-warning {
-  background: rgba(251, 191, 36, 0.15) !important;
-  border-color: rgba(251, 191, 36, 0.35) !important;
+.jz-glass .ant-tag-warning,
+.jz-admin-glass .ant-tag-warning,
+.jz-blog-glass .ant-tag-warning {
+  background: rgba(148, 163, 184, 0.15) !important;
+  border-color: rgba(148, 163, 184, 0.35) !important;
   color: var(--jz-gold) !important;
 }
 .jz-admin-glass .ant-tag-error {
@@ -1422,11 +1524,28 @@ h4.jz-post-card-title.ant-typography {
   transition: all 0.25s ease !important;
 }
 .jz-admin-glass .ant-segmented-item:hover { color: var(--glass-text) !important; }
-.jz-admin-glass .ant-segmented-item-selected {
+.jz-glass .ant-segmented-item-selected,
+.jz-admin-glass .ant-segmented-item-selected,
+.jz-blog-glass .ant-segmented-item-selected {
   background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
-  color: #042820 !important;
+  color: #ffffff !important;
   box-shadow: 0 4px 14px var(--jz-accent-glow) !important;
   font-weight: 600;
+}
+
+.jz-glass .ant-btn-default:not(:disabled),
+.jz-admin-glass .ant-btn-default:not(:disabled),
+.jz-blog-glass .ant-btn-default:not(:disabled) {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--glass-text-muted) !important;
+}
+.jz-glass .ant-btn-default:not(:disabled):hover,
+.jz-admin-glass .ant-btn-default:not(:disabled):hover,
+.jz-blog-glass .ant-btn-default:not(:disabled):hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--glass-border)) !important;
+  color: var(--jz-accent) !important;
+  background: color-mix(in srgb, var(--jz-accent) 8%, var(--glass-surface)) !important;
 }
 .jz-admin-glass .ant-segmented-item-selected .ant-segmented-item-label { color: inherit !important; }
 
@@ -1521,80 +1640,174 @@ h4.jz-post-card-title.ant-typography {
 .jz-admin-glass .ant-spin-dot-item { background-color: var(--jz-accent) !important; }
 
 /* ════════════════════════════════════════════════════════════════════════
-   博客端美化（K2）
-   作用域：blog-content / blog-header（BlogLayout 已用这些 className）
-   原则：保留宣纸朱砂主调，只升级"质感"层 —— 圆角 / 阴影 / 过渡 / hover
+   博客端美化 — Apple 玻璃（与后台 .jz-glass 令牌一致）
    ════════════════════════════════════════════════════════════════════════ */
 
-/* 顶栏 ── sticky + 半透明毛玻璃，模拟书页边缘上滚动的章名 */
+.jz-blog-glass {
+  --jz-blog-content-max: min(100%, 1920px);
+  --jz-blog-content-pad-x: 24px;
+  --jz-blog-content-pad-y: 20px;
+}
+
 .blog-header.ant-layout-header {
-  background: color-mix(in srgb, var(--jz-surface) 78%, transparent) !important;
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
-  border-bottom: 1px solid color-mix(in srgb, var(--jz-border) 70%, transparent);
+  padding-left: var(--jz-blog-content-pad-x, 24px) !important;
+  padding-right: var(--jz-blog-content-pad-x, 24px) !important;
+  background: var(--glass-surface-strong, color-mix(in srgb, var(--jz-surface) 78%, transparent)) !important;
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border-bottom: 1px solid var(--glass-border, var(--jz-border)) !important;
   position: sticky;
   top: 0;
   z-index: 30;
   height: 60px;
   line-height: 60px;
-  /* 给底部一条极细朱砂高光 —— 像一根线装书的红线 */
   box-shadow:
-    0 1px 0 color-mix(in srgb, var(--jz-accent) 18%, transparent),
-    0 4px 12px rgba(44, 34, 24, 0.04);
+    0 1px 0 color-mix(in srgb, var(--jz-accent) 12%, transparent),
+    var(--glass-shadow-soft, 0 4px 12px rgba(0, 0, 0, 0.04));
 }
 
-/* 导航链接：hover 朱砂下划线滑入 */
-.jz-nav-link {
+/* 博客顶栏导航 — 图标底座 + 宋体标签（覆盖旧版仅下划线样式） */
+.jz-blog-glass .jz-nav-link {
   position: relative;
-  padding: 4px 2px;
-  color: var(--jz-text);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 12px 5px 6px;
+  border-radius: var(--glass-radius-pill, 999px);
+  color: var(--glass-text, var(--jz-text));
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 14px;
   font-weight: 500;
-  letter-spacing: 0.5px;
-  transition: color 0.2s ease;
+  letter-spacing: 1.5px;
   text-decoration: none;
+  background: transparent;
+  transition: color 0.22s ease, background-color 0.22s ease, box-shadow 0.22s ease;
 }
-.jz-nav-link::after {
-  content: '';
-  position: absolute;
-  left: 0; right: 0; bottom: -2px;
-  height: 1.5px;
-  background: var(--jz-accent);
-  transform: scaleX(0);
-  transform-origin: center;
-  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+.jz-blog-glass .jz-nav-link::after {
+  display: none;
 }
-.jz-nav-link:hover { color: var(--jz-accent); }
-.jz-nav-link:hover::after { transform: scaleX(1); }
-.jz-nav-link.active { color: var(--jz-accent); }
-.jz-nav-link.active::after { transform: scaleX(1); }
+.jz-blog-glass .jz-nav-link-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border-radius: 11px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface-strong);
+  box-shadow: var(--glass-shadow-soft);
+  color: var(--jz-icon-stroke);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transition: transform 0.22s cubic-bezier(.34, 1.56, .64, 1), box-shadow 0.22s ease, border-color 0.22s ease, color 0.22s ease, background 0.22s ease;
+}
+.jz-blog-glass .jz-nav-link-icon .jz-icon {
+  display: block;
+}
+.jz-blog-glass .jz-nav-link:hover {
+  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+}
+.jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon {
+  border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
+  color: var(--jz-icon-stroke-active);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-accent) 16%, transparent);
+  transform: translateY(-1px);
+}
+.jz-blog-glass .jz-nav-link.active {
+  color: var(--jz-accent);
+  font-weight: 600;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+}
+.jz-blog-glass .jz-nav-link.active .jz-nav-link-icon {
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-accent) 14%, var(--glass-surface-strong));
+  color: var(--jz-icon-stroke-active);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-accent) 20%, transparent);
+}
+.jz-blog-glass .jz-nav-search-btn {
+  height: auto !important;
+  padding: 5px 6px !important;
+  border-radius: 11px !important;
+}
+.jz-blog-glass .jz-nav-search-btn .jz-nav-link-icon {
+  color: var(--jz-icon-stroke);
+}
+.jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon {
+  border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
+  color: var(--jz-icon-stroke-active);
+}
 
-/* 主内容区 ── 大留白、居中。顶部留白减小，让 hero 上移 */
+/* 主内容区 — 宽屏尽量铺满，仅保留适度左右边距 */
 .blog-content {
-  padding: 20px 48px 40px !important;
-  max-width: 1440px;
+  max-width: var(--jz-blog-content-max, min(100%, 1920px)) !important;
+  padding: var(--jz-blog-content-pad-y, 20px) var(--jz-blog-content-pad-x, 24px) 28px !important;
   margin: 0 auto;
   width: 100%;
 }
 @media (max-width: 768px) {
-  .blog-content { padding: 12px 16px 24px !important; }
+  .jz-blog-glass {
+    --jz-blog-content-pad-x: 16px;
+    --jz-blog-content-pad-y: 12px;
+  }
+  .blog-content {
+    padding: var(--jz-blog-content-pad-y) var(--jz-blog-content-pad-x) 20px !important;
+  }
 }
 
-/* ── 博客 Card 通用升级（不影响后台，作用在 .blog-content 里） ── */
+/* 博客页脚 — 压缩垂直占位 */
+.jz-blog-glass .jz-blog-footer.ant-layout-footer {
+  min-height: 0 !important;
+  padding: 6px var(--jz-blog-content-pad-x, 24px) 8px !important;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--jz-text-muted);
+  font-size: 12px;
+  background: transparent !important;
+}
+.jz-blog-footer-inner {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  letter-spacing: 1px;
+}
+.jz-blog-footer-rule {
+  display: inline-block;
+  width: 20px;
+  height: 1px;
+  flex-shrink: 0;
+}
+.jz-blog-footer-rule--left {
+  background: linear-gradient(to right, transparent, var(--jz-divider));
+}
+.jz-blog-footer-rule--right {
+  background: linear-gradient(to left, transparent, var(--jz-divider));
+}
+.jz-blog-footer-brand {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+  color: var(--jz-text);
+  letter-spacing: 2px;
+}
+.jz-blog-footer-dot {
+  opacity: 0.5;
+}
+
+.jz-blog-glass .blog-content .ant-card,
 .blog-content .ant-card {
-  border-radius: 12px !important;
-  border: 1px solid var(--jz-border) !important;
-  background: color-mix(in srgb, var(--jz-surface) 92%, transparent) !important;
-  box-shadow:
-    0 1px 2px rgba(44, 34, 24, 0.05),
-    0 4px 14px rgba(44, 34, 24, 0.06) !important;
+  border-radius: var(--glass-radius, 14px) !important;
+  border: 1px solid var(--glass-border, var(--jz-border)) !important;
+  background: var(--glass-surface, var(--jz-surface)) !important;
+  backdrop-filter: blur(16px) saturate(140%);
+  box-shadow: var(--glass-shadow-card) !important;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
 }
+.jz-blog-glass .blog-content .ant-card.ant-card-hoverable:hover,
 .blog-content .ant-card.ant-card-hoverable:hover {
   transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--jz-accent) 35%, var(--jz-border)) !important;
-  box-shadow:
-    0 4px 8px rgba(44, 34, 24, 0.08),
-    0 12px 32px rgba(185, 74, 59, 0.12) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 35%, var(--glass-border, var(--jz-border))) !important;
+  box-shadow: var(--glass-shadow-hero) !important;
 }
 .blog-content .ant-card-head {
   border-bottom: 1px solid var(--jz-divider) !important;
@@ -1632,16 +1845,61 @@ h4.jz-post-card-title.ant-typography {
   border-radius: 8px !important;
   transition: all 0.2s ease !important;
 }
-.blog-content .ant-btn-primary {
+.blog-content .ant-btn-primary:not(.ant-btn-background-ghost) {
   background: var(--jz-accent) !important;
   border-color: var(--jz-accent) !important;
+  color: #ffffff !important;
   box-shadow: 0 3px 10px color-mix(in srgb, var(--jz-accent) 30%, transparent);
 }
-.blog-content .ant-btn-primary:hover {
+.blog-content .ant-btn-primary:not(.ant-btn-background-ghost):hover {
   background: var(--jz-accent-soft) !important;
   border-color: var(--jz-accent-soft) !important;
+  color: #ffffff !important;
   box-shadow: 0 5px 14px color-mix(in srgb, var(--jz-accent) 40%, transparent);
   transform: translateY(-1px);
+}
+
+/* Reader font / paper picker popovers (portal to body). */
+.jz-glass-popover .ant-popover-inner {
+  background: rgba(255, 255, 255, 0.96) !important;
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid var(--glass-border, rgba(60, 60, 67, 0.13)) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--glass-shadow-card, 0 8px 24px rgba(0, 0, 0, 0.1)) !important;
+  color: var(--glass-text, var(--jz-text)) !important;
+}
+[data-theme='dark'] .jz-glass-popover .ant-popover-inner,
+[data-theme='starry'] .jz-glass-popover .ant-popover-inner,
+[data-theme='deepsea'] .jz-glass-popover .ant-popover-inner {
+  background: rgba(14, 19, 32, 0.94) !important;
+  color: var(--glass-text, #e6ebf2) !important;
+}
+.jz-glass-popover .ant-popover-title {
+  color: var(--glass-text-muted, var(--jz-text-muted)) !important;
+  border-bottom-color: var(--glass-divider, var(--jz-divider)) !important;
+}
+.jz-font-picker-item {
+  display: block;
+  width: 100%;
+  padding: 7px 10px;
+  background: transparent;
+  color: var(--glass-text, var(--jz-text));
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  font-size: 14px;
+  letter-spacing: 0.5px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.jz-font-picker-item:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+}
+.jz-font-picker-item.is-active {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-accent);
+  font-weight: 500;
 }
 
 /* 面包屑：更克制 */
@@ -1705,65 +1963,50 @@ h4.jz-post-card-title.ant-typography {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   图标主题联动 — JzIcon "印泥色" 在选中态跟随 accent
-   通过 CSS 变量 --jz-icon-accent-active 覆写 SVG 内部填充
+   JzIcon — 内部填色/点缀跟随 --jz-icon-* 与 --jz-accent
    ════════════════════════════════════════════════════════════════════════ */
 
-/* 后台侧栏：选中态把所有彩点统一染成 accent + 微微发光 */
-.jz-admin-glass .jz-admin-menu .ant-menu-item-selected {
-  --jz-icon-accent-active: var(--jz-accent);
-}
-.jz-admin-glass .jz-admin-menu .ant-menu-item-selected svg {
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--jz-accent) 50%, transparent));
-  transform: scale(1.08);
+.jz-glass .jz-icon {
   transition: transform 0.22s ease, filter 0.22s ease;
 }
-.jz-admin-glass .jz-admin-menu .ant-menu-item svg {
-  transition: transform 0.22s ease, color 0.22s ease;
-}
-.jz-admin-glass .jz-admin-menu .ant-menu-item:hover svg {
-  transform: scale(1.06);
+
+.jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-icon {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 30%, transparent));
 }
 
-/* 博客顶栏导航：hover/active 时图标染朱砂 + 发光 */
-.jz-nav-link svg {
-  font-size: 14px;
-  transition: transform 0.22s cubic-bezier(.34, 1.56, .64, 1), filter 0.22s ease;
-  vertical-align: -2px;
-}
-.jz-nav-link:hover svg,
-.jz-nav-link.active svg {
-  --jz-icon-accent-active: var(--jz-accent);
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 40%, transparent));
-  transform: scale(1.1);
+.jz-blog-glass .jz-nav-link.active .jz-icon {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 28%, transparent));
 }
 
-/* AI 管理 Segmented：选中态图标染翡翠/朱砂（跟随 admin accent）+ 发光 */
-.jz-admin-glass .ant-segmented-item-selected {
-  --jz-icon-accent-active: currentColor;
-}
-.jz-admin-glass .ant-segmented-item-selected svg {
-  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--jz-accent) 35%, transparent));
-}
+/* AI 管理 Segmented */
 .jz-admin-glass .ant-segmented-item svg {
   vertical-align: -2px;
-  transition: transform 0.22s ease;
+  color: var(--jz-icon-stroke);
+  transition: transform 0.22s ease, color 0.22s ease;
+}
+.jz-admin-glass .ant-segmented-item-selected svg {
+  color: #fff;
 }
 
-/* 编辑器侧栏 Tab：is-active 时图标染朱砂 + 微缩放 */
+/* 编辑器侧栏 Tab */
+.jz-sidebar-tab {
+  color: var(--jz-icon-stroke, var(--jz-text-muted));
+}
 .jz-sidebar-tab svg {
   font-size: 16px;
-  transition: transform 0.2s ease, filter 0.2s ease;
+  transition: transform 0.2s ease, color 0.2s ease;
+}
+.jz-sidebar-tab:hover {
+  color: var(--jz-icon-stroke-active, var(--jz-accent));
 }
 .jz-sidebar-tab:hover svg {
-  transform: scale(1.08);
+  transform: scale(1.06);
 }
 .jz-sidebar-tab.is-active {
-  --jz-icon-accent-active: var(--jz-accent);
+  color: var(--jz-icon-stroke-active, var(--jz-doc-accent, var(--jz-accent)));
 }
 .jz-sidebar-tab.is-active svg {
-  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--jz-accent) 45%, transparent));
-  transform: scale(1.08);
+  transform: scale(1.06);
 }
 
 /* 搜索按钮的图标也跟随 hover 染色 */

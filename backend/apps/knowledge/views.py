@@ -102,6 +102,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return DocumentPublishedContentSerializer
         return DocumentSerializer
 
+    def perform_create(self, serializer):
+        # Authorship: on create both fields point to the same user.
+        u = self.request.user
+        serializer.save(created_by=u, last_edited_by=u)
+
+    def perform_update(self, serializer):
+        serializer.save(last_edited_by=self.request.user)
+
     def perform_destroy(self, instance: Document):
         instance.soft_delete()
 
@@ -157,6 +165,63 @@ class DocumentViewSet(viewsets.ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(DocumentSerializer(doc).data)
+
+    @action(detail=True, methods=["get"], url_path="stats")
+    def stats(self, request, pk=None):
+        """Authorship / activity statistics for the doc panel.
+
+        Returns:
+          - word_count: CJK chars + alphanumeric tokens
+          - created_at / created_by
+          - updated_at / last_edited_by
+          - contributors[]: distinct users who created any DocumentVersion,
+            unioned with created_by / last_edited_by
+        """
+        from apps.versioning.models import DocumentVersion, _word_count
+        doc = self.get_object()
+        body = doc.raw_content or ""
+        wc = _word_count(body)
+
+        def _user_dict(u) -> dict | None:
+            if not u:
+                return None
+            return {
+                "id": u.id,
+                "username": u.username,
+                "is_staff": bool(u.is_staff),
+            }
+
+        # Distinct contributors: version creators + created_by + last_edited_by
+        contributor_ids: set[int] = set()
+        if doc.created_by_id:
+            contributor_ids.add(doc.created_by_id)
+        if doc.last_edited_by_id:
+            contributor_ids.add(doc.last_edited_by_id)
+        version_user_ids = (
+            DocumentVersion.objects
+            .filter(document=doc, created_by__isnull=False)
+            .values_list("created_by_id", flat=True)
+            .distinct()
+        )
+        for uid in version_user_ids:
+            contributor_ids.add(uid)
+
+        # Fetch user objects (single query)
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        users_map = {u.id: u for u in User.objects.filter(id__in=contributor_ids)}
+        contributors = [_user_dict(users_map[uid]) for uid in contributor_ids if uid in users_map]
+
+        return Response({
+            "word_count": wc,
+            "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
+            "published_at": doc.published_at.isoformat() if doc.published_at else None,
+            "created_by": _user_dict(doc.created_by),
+            "last_edited_by": _user_dict(doc.last_edited_by),
+            "contributors": contributors,
+            "version_count": DocumentVersion.objects.filter(document=doc).count(),
+        })
 
     @action(detail=True, methods=["get"], url_path="preview")
     def preview(self, request, pk=None):

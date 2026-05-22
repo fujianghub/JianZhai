@@ -1,6 +1,7 @@
 import { Editor, Extension, Range } from '@tiptap/core';
 import Suggestion from '@tiptap/suggestion';
 import { ReactRenderer } from '@tiptap/react';
+import { PluginKey } from '@tiptap/pm/state';
 import tippy, { type Instance as TippyInstance } from 'tippy.js';
 import SlashCommandList, { type SlashCommandListRef } from './SlashCommandList';
 import { runAI } from '@/api/ai';
@@ -453,10 +454,34 @@ const COMMANDS: SlashCommandItem[] = [
       editor.chain().focus().deleteRange(range).insertDocCard(id).run();
     },
   },
+  {
+    category: '结构',
+    icon: '注',
+    title: '脚注',
+    description: '上标编号 + 弹窗编辑内容',
+    keywords: ['footnote', '脚注', '注释', 'note'],
+    command: ({ editor, range }) => {
+      const text = window.prompt('脚注内容：');
+      if (!text?.trim()) return;
+      editor.chain().focus().deleteRange(range).insertFootnote(text.trim()).run();
+    },
+  },
+  {
+    category: '结构',
+    icon: '🌐',
+    title: '外部链接卡片',
+    description: '粘贴 URL 自动生成预览卡',
+    keywords: ['link', 'card', '外链', 'og', 'preview', '链接', '网页'],
+    command: ({ editor, range }) => {
+      const url = window.prompt('输入 URL（http:// 或 https://）：');
+      if (!url || !/^https?:\/\//.test(url.trim())) return;
+      editor.chain().focus().deleteRange(range).insertLinkCard(url.trim()).run();
+    },
+  },
   // ── AI ───────────────────────────────────────────────────────────────
   {
     category: 'AI',
-    icon: '🤖',
+    icon: '✦',
     title: 'AI 生成段落',
     description: '描述你想写什么',
     keywords: ['ai', 'gpt', '生成', 'claude', 'assist'],
@@ -498,6 +523,7 @@ export const SlashCommand = Extension.create({
     return [
       Suggestion({
         editor: this.editor,
+        pluginKey: new PluginKey('slashCommand'),
         ...this.options.suggestion,
         items: ({ query }: { query: string }) => {
           const q = query.trim().toLowerCase();

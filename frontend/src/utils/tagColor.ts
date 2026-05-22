@@ -1,46 +1,46 @@
 /**
  * Stable color derivation for tags whose `color` field is empty.
- *
- * Why hash-based: standard Ant Design `<Tag>` colors are limited, and if every
- * untyped tag gets the same one ("blue"), the homepage looks monochrome. We
- * pick from a 12-color cinnabar-leaning palette using a deterministic hash so
- * the same tag name always ends up the same color.
  */
 
-/** Cinnabar-friendly palette. Each entry maps to an Ant Design tag color
- *  preset that renders well on the rice-paper background. Order matters: we
- *  put warmer / 朱砂-adjacent hues earlier so the first few tags feel "home". */
 const PALETTE: readonly string[] = [
-  'red',        // 朱砂 — main accent family
-  'volcano',    // 朱赤偏暖
-  'orange',     // 橘 — 暖调
-  'gold',       // 金 — 古铜
-  'lime',       // 嫩绿
-  'green',      // 苍翠
-  'cyan',       // 青
-  'blue',       // 黛蓝
-  'geekblue',   // 深蓝
-  'purple',     // 紫
-  'magenta',    // 桃红
-  'default',    // 灰 — 收尾
+  'cyan',
+  'geekblue',
+  'blue',
+  'purple',
+  'magenta',
+  'green',
+  'lime',
+  'volcano',
+  'red',
+  'orange',
+  'gold',
+  'default',
 ];
 
-/** djb2 hash — small, fast, well-distributed over short strings. */
 function djb2(str: string): number {
   let hash = 5381;
   for (let i = 0; i < str.length; i++) {
     hash = ((hash << 5) + hash + str.charCodeAt(i)) | 0;
   }
-  // Always return non-negative
   return Math.abs(hash);
 }
 
-/**
- * Resolve a Tag's display color.
- *
- * - If the tag has an explicit `color` (CSS hex or AntD preset name), use it.
- * - Otherwise derive a stable preset from the tag's name / slug.
- */
+/** Map Ant Design preset names to CSS colors for inline --jz-tag-c. */
+const PRESET_HEX: Record<string, string> = {
+  red: '#f5222d',
+  volcano: '#fa541c',
+  orange: '#fa8c16',
+  gold: '#faad14',
+  lime: '#a0d911',
+  green: '#52c41a',
+  cyan: '#13c2c2',
+  blue: '#1677ff',
+  geekblue: '#2f54eb',
+  purple: '#722ed1',
+  magenta: '#eb2f96',
+  default: '#8c8c8c',
+};
+
 export function resolveTagColor(input: {
   color?: string | null;
   name?: string | null;
@@ -52,4 +52,16 @@ export function resolveTagColor(input: {
   const key = (input.slug || input.name || String(input.id ?? '')).trim();
   if (!key) return 'default';
   return PALETTE[djb2(key) % PALETTE.length];
+}
+
+/** CSS color for meta pills / seals (hex or ant preset). */
+export function resolveTagCssColor(input: {
+  color?: string | null;
+  name?: string | null;
+  slug?: string | null;
+  id?: number | null;
+}): string {
+  const c = resolveTagColor(input);
+  if (c.startsWith('#')) return c;
+  return PRESET_HEX[c] ?? PRESET_HEX.default;
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Dropdown, Input, Modal, Spin } from 'antd';
-import { ThunderboltOutlined, RobotOutlined } from '@ant-design/icons';
+import { JzAiIcon, JzAiSparkIcon } from '@/components/common/JzIcon';
 import { streamAI, type AIOperation } from '@/api/ai';
 
 interface SelectionState {
@@ -164,7 +164,7 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
             }}
             aria-label="AI 操作"
           >
-            <RobotOutlined />
+            <JzAiSparkIcon size={16} style={{ color: '#fff' }} />
           </button>
         </Dropdown>
       )}
@@ -173,7 +173,7 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
         open={showAsk}
         title={
           <span>
-            <ThunderboltOutlined style={{ color: '#1677ff', marginRight: 6 }} />
+            <JzAiIcon size={16} style={{ marginRight: 6, verticalAlign: -2 }} />
             AI 助手
           </span>
         }

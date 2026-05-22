@@ -5,6 +5,7 @@ import * as tagsApi from '@/api/tags';
 import type { Tag } from '@/api/tags';
 import * as kbsApi from '@/api/kbs';
 import { formatApiError } from '@/api/client';
+import { resolveTagColor } from '@/utils/tagColor';
 
 interface Props {
   /** Target — either a document or a knowledge base. */
@@ -154,7 +155,7 @@ export default function TagPicker({ target }: Props) {
               </AntTag>
             );
           return (
-            <AntTag color={tag.color || 'blue'} closable={closable} onClose={onClose}>
+            <AntTag color={resolveTagColor(tag)} closable={closable} onClose={onClose}>
               <span style={{ marginRight: 4 }}>{tag.name}</span>
               <Popover content={renderColorPalette(tag)} trigger="click" placement="bottomLeft">
                 <span

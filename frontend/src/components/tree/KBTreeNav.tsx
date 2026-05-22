@@ -69,7 +69,7 @@ function renderHighlight(text: string, q: string): React.ReactNode {
       {text.slice(0, idx)}
       <mark
         style={{
-          background: 'color-mix(in srgb, var(--jz-accent) 30%, transparent)',
+          background: 'color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 30%, transparent)',
           borderRadius: 2,
           padding: '0 2px',
         }}

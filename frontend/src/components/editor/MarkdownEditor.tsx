@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Input, Space, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Input, Segmented, Space, Tag, Tooltip, Typography } from 'antd';
 import {
   BgColorsOutlined,
   CommentOutlined,
@@ -36,6 +36,8 @@ interface Props {
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
+type MdLayoutMode = 'split' | 'edit' | 'preview';
+const MD_LAYOUT_KEY = 'jz-md-layout';
 
 export default function MarkdownEditor({
   value,
@@ -48,6 +50,22 @@ export default function MarkdownEditor({
   paperStyle,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
+  const [layoutMode, setLayoutMode] = useState<MdLayoutMode>(() => {
+    try {
+      const v = localStorage.getItem(MD_LAYOUT_KEY);
+      if (v === 'edit' || v === 'preview' || v === 'split') return v;
+    } catch {
+      /* noop */
+    }
+    return 'split';
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem(MD_LAYOUT_KEY, layoutMode);
+    } catch {
+      /* noop */
+    }
+  }, [layoutMode]);
   const [mentionOpen, setMentionOpen] = useState(false);
   /** Cursor offset captured when @ trigger or button fired; insertion replaces text from here. */
   const triggerRangeRef = useRef<{ from: number; to: number } | null>(null);
@@ -381,8 +399,33 @@ export default function MarkdownEditor({
             </Button>
           </Tooltip>
         </Dropdown>
+        <Segmented
+          size="small"
+          value={layoutMode}
+          onChange={(v) => setLayoutMode(v as MdLayoutMode)}
+          options={[
+            { label: '编辑', value: 'edit' },
+            { label: '预览', value: 'preview' },
+            { label: '并排', value: 'split' },
+          ]}
+        />
       </Space>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, flex: 1, minHeight: 0 }}>
+      <div
+        className="jz-md-editor-split"
+        style={{
+          display: 'grid',
+          gridTemplateColumns:
+            layoutMode === 'edit'
+              ? '1fr'
+              : layoutMode === 'preview'
+                ? '1fr'
+                : 'minmax(220px, 30%) minmax(0, 70%)',
+          gap: 12,
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        {layoutMode !== 'preview' && (
         <TextArea
           ref={(el) => {
             const ta = el?.resizableTextArea?.textArea ?? null;
@@ -405,18 +448,22 @@ export default function MarkdownEditor({
           }}
           placeholder="使用 Markdown 书写；键入 @ 引用其他文档"
         />
+        )}
+        {layoutMode !== 'edit' && (
         <div
           ref={previewRef}
           className={`markdown-preview jz-md-editor-preview paper ${paperClassName(paperStyle)}`}
           style={{
             overflow: 'auto',
-            padding: '12px 16px',
-            border: '1px solid var(--jz-border)',
-            borderRadius: 6,
+            padding: '24px 28px',
+            border: '1px solid var(--glass-border, var(--jz-border))',
+            borderRadius: 10,
+            minHeight: layoutMode === 'preview' ? 'min(72vh, 900px)' : 0,
           }}
           onScroll={onPreviewScroll}
           dangerouslySetInnerHTML={{ __html: html }}
         />
+        )}
         <CodeBlockEnhancer selector=".jz-md-editor-preview" bindKey={html} />
       </div>
       <MentionPicker

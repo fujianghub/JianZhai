@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Button, Layout, Space } from 'antd';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Button, Layout, Space, Tooltip } from 'antd';
 import { Link, NavLink, Outlet } from 'react-router-dom';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
@@ -13,6 +13,41 @@ import {
 } from '@/components/common/JzIcon';
 
 const { Header, Content, Footer } = Layout;
+
+const NAV_ICON_SIZE = 20;
+
+function BlogNavItem({
+  to,
+  label,
+  icon,
+  external,
+}: {
+  to: string;
+  label: string;
+  icon: ReactNode;
+  external?: boolean;
+}) {
+  const inner = (
+    <>
+      <span className="jz-nav-link-icon" aria-hidden>
+        {icon}
+      </span>
+      <span className="jz-nav-link-label">{label}</span>
+    </>
+  );
+  if (external) {
+    return (
+      <a href={to} target="_blank" rel="noreferrer" className="jz-nav-link">
+        {inner}
+      </a>
+    );
+  }
+  return (
+    <NavLink to={to} className={({ isActive }) => 'jz-nav-link' + (isActive ? ' active' : '')}>
+      {inner}
+    </NavLink>
+  );
+}
 
 export default function BlogLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
@@ -29,7 +64,7 @@ export default function BlogLayout() {
   }, []);
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout className="jz-blog-glass jz-glass" style={{ minHeight: '100vh' }}>
       <Header
         className="blog-header"
         style={{
@@ -37,7 +72,6 @@ export default function BlogLayout() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          padding: '0 32px',
         }}
       >
         <Link to="/" className="jz-brand" aria-label="简斋 / JianZhai">
@@ -45,34 +79,46 @@ export default function BlogLayout() {
           <span className="jz-brand-sep" aria-hidden>·</span>
           <span className="jz-brand-en">JianZhai</span>
         </Link>
-        <Space size={20} wrap align="center">
-          <NavLink to="/archive" className="jz-nav-link">
-            <JzArchiveIcon style={{ marginRight: 4 }} /> 归档
-          </NavLink>
-          <NavLink to="/tags" className="jz-nav-link">
-            <JzTagsIcon style={{ marginRight: 4 }} /> 标签
-          </NavLink>
-          <a href="/feed.xml" target="_blank" rel="noreferrer" className="jz-nav-link">
-            <JzRssIcon style={{ marginRight: 4 }} /> RSS
-          </a>
-          <NavLink to="/admin" className="jz-nav-link">
-            <JzAdminIcon style={{ marginRight: 4 }} /> 后台
-          </NavLink>
-          <Button
-            type="text"
-            icon={<JzSearchIcon />}
-            onClick={() => setSearchOpen(true)}
-            aria-label="搜索 (Ctrl+K)"
-            style={{ color: 'var(--jz-text-muted)' }}
+        <Space size={12} wrap align="center" className="jz-blog-header-nav">
+          <BlogNavItem
+            to="/archive"
+            label="归档"
+            icon={<JzArchiveIcon size={NAV_ICON_SIZE} />}
           />
+          <BlogNavItem
+            to="/tags"
+            label="标签"
+            icon={<JzTagsIcon size={NAV_ICON_SIZE} />}
+          />
+          <BlogNavItem
+            to="/feed.xml"
+            label="RSS"
+            icon={<JzRssIcon size={NAV_ICON_SIZE} />}
+            external
+          />
+          <BlogNavItem
+            to="/admin"
+            label="后台"
+            icon={<JzAdminIcon size={NAV_ICON_SIZE} />}
+          />
+          <Tooltip title="搜索 (Ctrl+K)">
+            <Button
+              type="text"
+              className="jz-nav-search-btn"
+              icon={
+                <span className="jz-nav-link-icon" aria-hidden>
+                  <JzSearchIcon size={NAV_ICON_SIZE} />
+                </span>
+              }
+              onClick={() => setSearchOpen(true)}
+              aria-label="搜索 (Ctrl+K)"
+            />
+          </Tooltip>
           <LiveClock compact />
           <ThemeSwitcher />
         </Space>
       </Header>
-      <Content
-        className="blog-content jz-fade-in"
-        style={{ padding: '32px 48px', maxWidth: 1440, margin: '0 auto', width: '100%' }}
-      >
+      <Content className="blog-content jz-fade-in">
         <Outlet />
       </Content>
       <GlobalSearch
@@ -83,54 +129,13 @@ export default function BlogLayout() {
           : `/admin/kbs/${r.knowledge_base.id}?doc=${r.id}`
         }
       />
-      <Footer
-        style={{
-          textAlign: 'center',
-          color: 'var(--jz-text-muted)',
-          fontSize: 12,
-          padding: '14px 24px 18px',
-          lineHeight: 1.5,
-          background: 'transparent',
-        }}
-      >
-        <div
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 10,
-            letterSpacing: 1,
-          }}
-        >
-          <span
-            aria-hidden
-            style={{
-              display: 'inline-block',
-              width: 28,
-              height: 1,
-              background: 'linear-gradient(to right, transparent, var(--jz-divider))',
-            }}
-          />
-          <span
-            style={{
-              fontFamily: "'Noto Serif SC', 'Songti SC', serif",
-              fontWeight: 600,
-              color: 'var(--jz-text)',
-              letterSpacing: 2,
-            }}
-          >
-            简斋
-          </span>
-          <span style={{ opacity: 0.5 }}>·</span>
+      <Footer className="jz-blog-footer">
+        <div className="jz-blog-footer-inner">
+          <span className="jz-blog-footer-rule jz-blog-footer-rule--left" aria-hidden />
+          <span className="jz-blog-footer-brand">简斋</span>
+          <span className="jz-blog-footer-dot">·</span>
           <span>冯富江的个人博客</span>
-          <span
-            aria-hidden
-            style={{
-              display: 'inline-block',
-              width: 28,
-              height: 1,
-              background: 'linear-gradient(to left, transparent, var(--jz-divider))',
-            }}
-          />
+          <span className="jz-blog-footer-rule jz-blog-footer-rule--right" aria-hidden />
         </div>
       </Footer>
     </Layout>

@@ -170,54 +170,34 @@
   display: inline-flex;
   align-items: baseline;
   gap: 5px;
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
-  font-weight: 700;
-  color: #fdf5e0;
-  background:
-    repeating-linear-gradient(90deg,
-      transparent 0 2px,
-      rgba(255, 255, 255, 0.05) 2px 3px),
-    linear-gradient(180deg, #c0392b, #8b1a1a);
-  border: 1.5px solid #6b0f0f;
-  border-radius: 4px;
-  letter-spacing: 3px;
+  font-family: 'PingFang SC', 'Noto Serif SC', serif;
+  font-weight: 600;
+  color: var(--jz-seal-c, var(--jz-accent));
+  background: color-mix(in srgb, var(--jz-seal-c, var(--jz-accent)) 12%, var(--glass-surface, var(--jz-surface)));
+  border: 1px solid color-mix(in srgb, var(--jz-seal-c, var(--jz-accent)) 40%, var(--glass-border, var(--jz-border)));
+  border-radius: 10px;
+  letter-spacing: 1px;
   line-height: 1;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
-    0 3px 8px -2px rgba(120, 30, 25, 0.4);
-  transition: transform 180ms ease, box-shadow 180ms ease;
+  text-shadow: none;
+  box-shadow: var(--glass-shadow-soft, 0 2px 8px rgba(0, 0, 0, 0.06));
+  backdrop-filter: blur(12px);
+  transition: transform 180ms ease, box-shadow 180ms ease, border-color 180ms ease;
   cursor: pointer;
   user-select: none;
 }
 .jz-seal-link:hover .jz-seal-stamp {
-  transform: scale(1.08);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.35),
-    0 6px 14px -2px rgba(120, 30, 25, 0.55);
+  transform: scale(1.06);
+  border-color: var(--jz-seal-c, var(--jz-accent));
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--jz-seal-c, var(--jz-accent)) 25%, transparent);
 }
 .jz-seal-count {
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.55em;
   font-weight: 500;
   letter-spacing: 0;
-  background: rgba(0, 0, 0, 0.25);
-  color: #fbeec3;
+  background: color-mix(in srgb, var(--jz-seal-c, var(--jz-accent)) 18%, transparent);
+  color: var(--jz-seal-c, var(--jz-accent));
   padding: 1px 5px;
   border-radius: 6px;
   margin-left: 2px;
-  text-shadow: none;
-}
-
-/* Dark / starry / deepsea: seals stay red on dark — they're naturally
-   high-contrast — but bump the outer glow so they pop against deep bg. */
-[data-theme='dark'] .jz-seal-stamp,
-[data-theme='starry'] .jz-seal-stamp,
-[data-theme='deepsea'] .jz-seal-stamp {
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.2),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.3),
-    0 4px 14px -2px rgba(180, 60, 50, 0.55);
 }

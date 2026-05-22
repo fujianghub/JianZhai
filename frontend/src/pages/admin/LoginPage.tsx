@@ -29,12 +29,11 @@ export default function LoginPage() {
 
   return (
     <div
+      className="jz-glass"
       style={{
         minHeight: '100vh',
         display: 'grid',
         placeItems: 'center',
-        background:
-          'radial-gradient(1200px 600px at 80% -10%, color-mix(in srgb, var(--jz-accent) 18%, transparent), transparent), var(--jz-bg-app)',
         padding: 16,
       }}
     >

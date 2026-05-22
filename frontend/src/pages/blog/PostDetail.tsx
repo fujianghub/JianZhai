@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { AdjacentPosts } from '@/api/blog';
 import { Breadcrumb, Button, Result, Spin, Tooltip, Typography } from 'antd';
 import { Link, useParams } from 'react-router-dom';
@@ -25,11 +25,34 @@ import KbNavSidebar from '@/components/common/KbNavSidebar';
 import TocPanel from '@/components/common/TocPanel';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { paperClassName, getReaderOverride, setReaderOverride } from '@/utils/paper';
+import { resolveTagCssColor } from '@/utils/tagColor';
 import { loadArticleFont, saveArticleFont, stackFor } from '@/utils/articleFont';
 import { SelectionAI } from '@/components/common/SelectionAI';
 import { DocAIPanel } from '@/components/common/DocAIPanel';
+import ReadingProgressBar from '@/components/common/ReadingProgressBar';
+import ColumnResizer from '@/components/common/ColumnResizer';
+import { useColumnResize } from '@/hooks/useColumnResize';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const { Title, Text } = Typography;
+
+const POST_KB_W = { min: 200, max: 480, default: 240, key: 'jz-post-kb-w' };
+const POST_TOC_W = { min: 160, max: 400, default: 200, key: 'jz-post-toc-w' };
+
+function buildPostGridColumns(kbW: number, tocW: number, showKb: boolean, showToc: boolean): string {
+  const main = 'minmax(0, 1fr)';
+  const gap = '6px';
+  if (showKb && showToc) {
+    return `${kbW}px ${gap} ${main} ${gap} ${tocW}px`;
+  }
+  if (showKb) {
+    return `${kbW}px ${gap} ${main}`;
+  }
+  if (showToc) {
+    return `${main} ${gap} ${tocW}px`;
+  }
+  return main;
+}
 
 export default function PostDetail() {
   const { slug } = useParams<{ slug: string }>();
@@ -47,10 +70,31 @@ export default function PostDetail() {
   const authLoaded = useAuthStore((s) => s.loaded);
   const loadSession = useAuthStore((s) => s.loadSession);
   const articleRef = useRef<HTMLDivElement | null>(null);
+  const layoutRef = useRef<HTMLDivElement | null>(null);
+  const layoutWide = useMediaQuery('(min-width: 1101px)');
+  const tocRailWide = useMediaQuery('(min-width: 1281px)');
+
+  const kbResize = useColumnResize({
+    storageKey: POST_KB_W.key,
+    min: POST_KB_W.min,
+    max: POST_KB_W.max,
+    defaultWidth: POST_KB_W.default,
+    mode: 'fromLeft',
+    containerRef: layoutRef,
+  });
+
+  const tocResize = useColumnResize({
+    storageKey: POST_TOC_W.key,
+    min: POST_TOC_W.min,
+    max: POST_TOC_W.max,
+    defaultWidth: POST_TOC_W.default,
+    mode: 'fromRight',
+    containerRef: layoutRef,
+  });
   useEffect(() => {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
-  const canEdit = !!authUser?.is_staff;
+  const canEdit = !!authUser?.is_superuser;
   /** TOC visibility — persisted per browser, defaults to shown. */
   const [tocOpen, setTocOpen] = useState<boolean>(() => {
     try {
@@ -131,22 +175,35 @@ export default function PostDetail() {
   // — PDFs, HTML iframes — have no headings we can hook into.
   const canShowToc = !hasInlineFile && rendered.toc.length > 0;
   const showToc = canShowToc && tocOpen;
+  const showKbRail = kbNavOpen && layoutWide;
+  const showTocRail = showToc && tocRailWide;
 
-  /** Edit-button target: the admin editor, parameterised with a `return` URL
-   * so the editor can offer a one-click jump back here after save/publish. */
-  const editHref =
-    `/admin/kbs/${post.knowledge_base.id}/docs/${post.id}` +
-    `?return=${encodeURIComponent(`/posts/${post.slug}`)}`;
+  const postGridColumns = buildPostGridColumns(
+    kbResize.width,
+    tocResize.width,
+    showKbRail,
+    showTocRail,
+  );
+
+  const editHref = `/posts/${encodeURIComponent(post.slug)}/edit`;
 
   return (
     <div
+      id="jz-post-layout"
+      ref={layoutRef}
       className="jz-post-layout"
-      data-show-kb={kbNavOpen ? 'true' : 'false'}
-      data-show-toc={showToc ? 'true' : 'false'}
-      style={{ ['--jz-post-accent' as string]: accent } as React.CSSProperties}
+      data-show-kb={showKbRail ? 'true' : 'false'}
+      data-show-toc={showTocRail ? 'true' : 'false'}
+      style={
+        {
+          ['--jz-post-accent' as string]: accent,
+          ['--jz-doc-accent' as string]: accent,
+          gridTemplateColumns: postGridColumns,
+        } as CSSProperties
+      }
     >
       <ReadingProgressBar />
-      {kbNavOpen && (
+      {showKbRail && (
         <aside className="jz-post-aside jz-post-aside-left">
           <KbNavSidebar
             kbSlug={post.knowledge_base.slug}
@@ -154,6 +211,16 @@ export default function PostDetail() {
             onClose={() => setKbNavOpen(false)}
           />
         </aside>
+      )}
+
+      {showKbRail && (
+        <ColumnResizer
+          dragging={kbResize.dragging}
+          ariaLabel="拖拽调整左侧目录宽度（双击重置）"
+          onMouseDown={kbResize.onResizerMouseDown}
+          onDoubleClick={kbResize.onResizerDoubleClick}
+          onKeyDown={kbResize.onResizerKeyDown}
+        />
       )}
 
       <div className="jz-post-main">
@@ -175,7 +242,7 @@ export default function PostDetail() {
         <article
           ref={articleRef}
           className={`paper ${paperClassName(effectivePaper)} jz-fade-in`}
-          style={{ ['--jz-article-font' as string]: stackFor(readerFont) } as React.CSSProperties}
+          style={{ ['--jz-article-font' as string]: stackFor(readerFont) } as CSSProperties}
         >
           <header className="jz-post-header" style={{ marginBottom: 12 }}>
             <Title
@@ -192,7 +259,12 @@ export default function PostDetail() {
             </Title>
             <div
               className="jz-post-meta"
-              style={{ ['--jz-post-accent' as string]: accent } as React.CSSProperties}
+              style={
+                {
+                  ['--jz-post-accent' as string]: accent,
+                  ['--jz-doc-accent' as string]: accent,
+                } as CSSProperties
+              }
             >
               {/* KB + format — these belong together: "knowledge base · document type". */}
               <Link
@@ -242,9 +314,7 @@ export default function PostDetail() {
                         key={t.id}
                         className="jz-meta-tag"
                         style={
-                          t.color
-                            ? ({ ['--jz-tag-c' as string]: t.color } as React.CSSProperties)
-                            : undefined
+                          { ['--jz-tag-c' as string]: resolveTagCssColor(t) } as CSSProperties
                         }
                       >
                         {t.name}
@@ -273,14 +343,14 @@ export default function PostDetail() {
                   }}
                 />
                 {canEdit && (
-                  <Tooltip title="打开完整编辑器（保存后可一键回到博客视图）">
+                  <Tooltip title="在博客中编辑（保存后可返回阅读页）">
                     <Link to={editHref} style={{ textDecoration: 'none' }}>
                       <Button
                         size="small"
                         type="primary"
                         ghost
                         icon={<EditOutlined />}
-                        className="jz-edit-btn"
+                        className="jz-edit-btn jz-meta-edit-btn"
                       >
                         编辑
                       </Button>
@@ -301,11 +371,11 @@ export default function PostDetail() {
                 sandbox="allow-scripts allow-popups allow-forms"
                 style={{
                   width: '100%',
-                  height: 'min(calc(100vh - 240px), 1080px)',
-                  minHeight: 600,
-                  border: '1px solid var(--jz-border)',
-                  borderRadius: 8,
-                  background: '#fff',
+                  height: 'min(calc(100vh - 160px), 1400px)',
+                  minHeight: 720,
+                  border: '1px solid var(--glass-border, var(--jz-border))',
+                  borderRadius: 12,
+                  background: 'var(--glass-bg-mid, #fff)',
                 }}
               />
             </div>
@@ -391,7 +461,17 @@ export default function PostDetail() {
         </article>
       </div>
 
-      {showToc && (
+      {showTocRail && (
+        <ColumnResizer
+          dragging={tocResize.dragging}
+          ariaLabel="拖拽调整右侧目录宽度（双击重置）"
+          onMouseDown={tocResize.onResizerMouseDown}
+          onDoubleClick={tocResize.onResizerDoubleClick}
+          onKeyDown={tocResize.onResizerKeyDown}
+        />
+      )}
+
+      {showTocRail && (
         <aside className="jz-post-aside jz-post-aside-right">
           <TocPanel toc={rendered.toc} onClose={() => setTocOpen(false)} />
         </aside>
@@ -436,48 +516,5 @@ export default function PostDetail() {
         </>
       )}
     </div>
-  );
-}
-
-/**
- * 顶部细条阅读进度指示：监听窗口滚动，进度 = scrollTop / (scrollHeight - viewportHeight)。
- * 固定贴在视口顶部 2px 高，accent 色，不抢视线。Reading 状态时（仍在顶部）宽度为 0。
- */
-function ReadingProgressBar() {
-  const [pct, setPct] = useState(0);
-  useEffect(() => {
-    function update() {
-      const doc = document.documentElement;
-      const scrollable = doc.scrollHeight - doc.clientHeight;
-      if (scrollable <= 0) {
-        setPct(0);
-        return;
-      }
-      const p = Math.max(0, Math.min(1, doc.scrollTop / scrollable));
-      setPct(p);
-    }
-    update();
-    window.addEventListener('scroll', update, { passive: true });
-    window.addEventListener('resize', update);
-    return () => {
-      window.removeEventListener('scroll', update);
-      window.removeEventListener('resize', update);
-    };
-  }, []);
-  return (
-    <div
-      aria-hidden
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        height: 3,
-        width: `${pct * 100}%`,
-        background: 'var(--jz-accent)',
-        transition: 'width 100ms linear',
-        zIndex: 100,
-        pointerEvents: 'none',
-      }}
-    />
   );
 }

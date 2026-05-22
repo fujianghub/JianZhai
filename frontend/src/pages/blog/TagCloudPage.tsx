@@ -5,6 +5,7 @@ import dayjs from 'dayjs';
 import { publicTagCloud, type PublicTag } from '@/api/tags';
 import { listPublicPosts } from '@/api/blog';
 import type { PublicPost } from '@/types';
+import { resolveTagColor, resolveTagCssColor } from '@/utils/tagColor';
 
 const { Text } = Typography;
 
@@ -130,6 +131,7 @@ export default function TagCloudPage() {
                     fontSize,
                     padding: `${pad}px ${pad + 4}px`,
                     rotate: `${rot}deg`,
+                    ['--jz-seal-c' as string]: resolveTagCssColor(t),
                   }}
                 >
                   <span className="jz-seal-text">{t.name}</span>
@@ -149,7 +151,7 @@ export default function TagCloudPage() {
         title={
           activeTag ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-              <AntTag color={activeTag.color || 'blue'} style={{ marginInlineEnd: 0 }}>
+              <AntTag color={resolveTagColor(activeTag)} style={{ marginInlineEnd: 0 }}>
                 {activeTag.name}
               </AntTag>
               <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>

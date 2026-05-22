@@ -78,6 +78,16 @@ export const ResizableImage = Image.extend({
           return rot ? { 'data-rotation': String(rot), style: `transform: rotate(${rot}deg);` } : {};
         },
       },
+      /** 预设样式名（如 'rounded' / 'circle' / 'bordered' / 'shadow' / 'shadow-bordered' / 'reflection' / ''） */
+      imageStyle: {
+        default: '',
+        parseHTML: (el) => (el as HTMLElement).getAttribute('data-image-style') || '',
+        renderHTML: (attrs) => {
+          const s = (attrs.imageStyle as string) || '';
+          if (!s) return {};
+          return { 'data-image-style': s, class: `jz-image-style-${s}` };
+        },
+      },
     };
   },
 
@@ -93,9 +103,10 @@ export const ResizableImage = Image.extend({
       ...(this.parent?.() ?? {}),
       markdown: {
         serialize(state: MdState, node: MdNode) {
-          const { src, alt, title, width, height, caption, rotation } = node.attrs;
+          const { src, alt, title, width, height, caption, rotation, imageStyle } = node.attrs;
           const rot = ((Number(rotation) || 0) % 360 + 360) % 360;
-          if (width || height || caption || rot) {
+          const sty = (imageStyle || '').trim();
+          if (width || height || caption || rot || sty) {
             const esc = (v: unknown) =>
               String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
             let html = `<figure>`;
@@ -105,6 +116,7 @@ export const ResizableImage = Image.extend({
             if (width) html += ` width="${width}"`;
             if (height) html += ` height="${height}"`;
             if (caption) html += ` data-caption="${esc(caption)}"`;
+            if (sty) html += ` data-image-style="${esc(sty)}" class="jz-image-style-${esc(sty)}"`;
             if (rot) html += ` data-rotation="${rot}" style="transform: rotate(${rot}deg);"`;
             html += ' />';
             if (caption) html += `<figcaption>${esc(caption)}</figcaption>`;
@@ -141,5 +153,6 @@ interface MdNode {
     height?: number | null;
     caption?: string | null;
     rotation?: number | null;
+    imageStyle?: string | null;
   };
 }

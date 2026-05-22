@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button, Drawer, Input, Spin, Tag, Tooltip } from 'antd';
-import { RobotOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { JzAiIcon } from '@/components/common/JzIcon';
 import { streamAI, getCapabilities, type AIOperation } from '@/api/ai';
 
 interface Props {
@@ -74,7 +74,7 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
         <Button
           type="primary"
           shape="circle"
-          icon={<RobotOutlined />}
+          icon={<JzAiIcon size={18} />}
           className="jz-doc-ai-fab"
           onClick={() => setOpen(true)}
           aria-label="AI 助手"
@@ -83,7 +83,7 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
       <Drawer
         title={
           <span>
-            <ThunderboltOutlined style={{ color: '#1677ff', marginRight: 6 }} />
+            <JzAiIcon size={16} style={{ marginRight: 6, verticalAlign: -2 }} />
             AI 助手
             {modelLabel && <Tag style={{ marginLeft: 8, fontSize: 11 }}>{modelLabel}</Tag>}
           </span>

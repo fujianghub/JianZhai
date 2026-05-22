@@ -11,7 +11,13 @@ interface Props {
 export default function PaperPicker({ value, onChange }: Props) {
   const content = (
     <div style={{ width: 240 }}>
-      <div style={{ color: 'var(--jz-text-muted)', fontSize: 12, marginBottom: 8 }}>
+      <div
+        style={{
+          color: 'var(--glass-text-muted, var(--jz-text-muted))',
+          fontSize: 12,
+          marginBottom: 8,
+        }}
+      >
         阅读纸张
       </div>
       <Space wrap>
@@ -31,11 +37,16 @@ export default function PaperPicker({ value, onChange }: Props) {
     </div>
   );
   return (
-    <Popover content={content} trigger="click" placement="bottomRight">
+    <Popover
+      content={content}
+      trigger="click"
+      placement="bottomRight"
+      overlayClassName="jz-glass-popover"
+    >
       <Tooltip title="纸张样式">
         <button
           type="button"
-          className="paper-picker-btn"
+          className="jz-reader-control-btn paper-picker-btn"
           aria-label="纸张样式"
         >
           <BgColorsOutlined />

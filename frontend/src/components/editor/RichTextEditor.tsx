@@ -29,8 +29,13 @@ import { VideoEmbed } from './VideoEmbed';
 import { InlineToc } from './InlineToc';
 import { DetailsBlock } from './DetailsBlock';
 import { Columns, Column } from './Columns';
+import { DragToColumns } from './DragToColumns';
+import { EmojiSuggestion } from './EmojiSuggestion';
+import { HeadingFold } from './HeadingFold';
 import { Tabs, TabPanel } from './Tabs';
 import { DocCardEmbed } from './DocCardEmbed';
+import { LinkCardEmbed } from './LinkCardEmbed';
+import { Footnote } from './Footnote';
 import { MathInline, MathBlock } from './MathNode';
 import { CALLOUT_TEMPLATES } from './callouts';
 import { Button, Checkbox, Dropdown, Input, Modal, Popover, Space, Tag, Tooltip, Typography } from 'antd';
@@ -201,9 +206,12 @@ export default function RichTextEditor({
       DetailsBlock,
       Columns,
       Column,
+      DragToColumns,
       Tabs,
       TabPanel,
       DocCardEmbed,
+      LinkCardEmbed,
+      Footnote,
       MathInline,
       MathBlock,
       Markdown.configure({
@@ -217,6 +225,8 @@ export default function RichTextEditor({
         breaks: true,
       }),
       SlashCommand,
+      EmojiSuggestion,
+      HeadingFold,
       FindReplace,
       GlobalDragHandle,
     ],
@@ -731,7 +741,7 @@ export default function RichTextEditor({
           onOpenChange={(v) => { if (!v) setLinkPopoverOpen(false); }}
           title="插入链接"
           placement="bottomLeft"
-          destroyTooltipOnHide
+          destroyOnHidden
           content={
             <div style={{ width: 280 }}>
               <Input

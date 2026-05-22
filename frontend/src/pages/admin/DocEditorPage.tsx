@@ -50,6 +50,7 @@ import VersionsDrawer from './VersionsDrawer';
 import ExportDialog from '@/components/common/ExportDialog';
 import { SelectionAI } from '@/components/common/SelectionAI';
 import { DocAIPanel } from '@/components/common/DocAIPanel';
+import { DocStatsPanel } from '@/components/common/DocStatsPanel';
 import {
   JzOutlineIcon,
   JzBacklinkIcon,
@@ -77,16 +78,32 @@ function defaultModeFor(format: DocFormat | undefined, fallback: EditorMode): Ed
 
 const { Text } = Typography;
 
-export default function DocEditorPage() {
+export type DocEditorShell = 'admin' | 'blog';
+
+export interface DocEditorPageProps {
+  kbIdOverride?: number;
+  docIdOverride?: number;
+  returnToOverride?: string;
+  shell?: DocEditorShell;
+}
+
+export default function DocEditorPage({
+  kbIdOverride,
+  docIdOverride,
+  returnToOverride,
+  shell = 'admin',
+}: DocEditorPageProps = {}) {
   const { id, docId } = useParams<{ id: string; docId: string }>();
   const [searchParams] = useSearchParams();
-  /** When the editor was opened from a blog post via the inline-edit button,
-   * a `?return=/posts/<slug>` is appended so we can offer a one-click jump
-   * back to the public view instead of staying inside the admin UI. */
-  const returnTo = searchParams.get('return');
-  const kbId = Number(id);
-  const documentId = Number(docId);
+  /** Blog edit uses `returnToOverride`; admin may pass `?return=/posts/<slug>`. */
+  const returnTo = returnToOverride ?? searchParams.get('return');
+  const kbId = kbIdOverride ?? Number(id);
+  const documentId = docIdOverride ?? Number(docId);
   const navigate = useNavigate();
+  const isBlogShell = shell === 'blog';
+  const glassClass = isBlogShell
+    ? 'jz-blog-glass jz-glass jz-doc-shell-blog'
+    : 'jz-admin-glass jz-glass';
 
   const [kb, setKb] = useState<KnowledgeBase | null>(null);
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
@@ -285,10 +302,14 @@ export default function DocEditorPage() {
 
   if (notFound) {
     return (
-      <div style={{ padding: 24 }}>
+      <div className={glassClass} style={{ padding: 24 }}>
         <Alert type="error" message="文档不存在或已删除" />
         <div style={{ marginTop: 12 }}>
-          <Link to={`/admin/kbs/${kbId}`}>← 返回知识库</Link>
+          {returnTo ? (
+            <Link to={returnTo}>← 返回文章</Link>
+          ) : (
+            <Link to={`/admin/kbs/${kbId}`}>← 返回知识库</Link>
+          )}
         </div>
       </div>
     );
@@ -304,20 +325,37 @@ export default function DocEditorPage() {
   const primary = doc.primary_attachment;
   const primaryUrl = primary ? attachmentAbsoluteUrl(primary.url) : null;
 
+  const docAccentStyle = {
+    ['--jz-doc-accent' as string]: kb?.accent_color || 'var(--jz-accent)',
+  } as React.CSSProperties;
+
+  const kbPublicHref =
+    kb && isBlogShell
+      ? `/kb/${encodeURIComponent(kb.slug)}`
+      : kb
+        ? `/admin/kbs/${kb.id}`
+        : '#';
+
   return (
     <div
-      style={focusMode ? {
-        position: 'fixed',
-        inset: 0,
-        zIndex: 999,
-        background: 'var(--jz-bg)',
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-      } : {
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: 'calc(100vh - 120px)',
+      className={focusMode ? (isBlogShell ? 'jz-blog-glass jz-glass jz-doc-shell-blog' : undefined) : glassClass}
+      style={{
+        ...docAccentStyle,
+        ...(focusMode
+          ? {
+              position: 'fixed',
+              inset: 0,
+              zIndex: 999,
+              background: 'var(--jz-bg-app)',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+            }
+          : {
+              display: 'flex',
+              flexDirection: 'column',
+              minHeight: 'calc(100vh - 120px)',
+            }),
       }}
     >
       {/* 专注模式顶栏 */}
@@ -347,24 +385,22 @@ export default function DocEditorPage() {
         </div>
       )}
 
-      {/* HEADER ROW — runs full width, single line, title left-aligned with controls flowing to the right */}
+      {/* HEADER ROW — sticky 顶栏，滚动时保持在视图顶端 */}
       <div
+        className={focusMode ? '' : 'jz-doc-header-bar'}
         style={{
           display: focusMode ? 'none' : 'flex',
           alignItems: 'center',
           gap: 12,
-          paddingBottom: 12,
-          borderBottom: '1px solid var(--jz-border)',
-          marginBottom: 16,
           flexWrap: 'wrap',
         }}
       >
-        {returnTo ? (
-          <Tooltip title="返回博客视图">
+        {returnTo || isBlogShell ? (
+          <Tooltip title={isBlogShell ? '返回文章阅读页' : '返回博客视图'}>
             <Button
               type="text"
               icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(returnTo)}
+              onClick={() => navigate(returnTo || '/')}
             />
           </Tooltip>
         ) : (
@@ -378,53 +414,65 @@ export default function DocEditorPage() {
         )}
         {kb && (
           <Text type="secondary" style={{ fontSize: 13 }}>
-            <Link to={`/admin/kbs/${kb.id}`}>{kb.name}</Link>
+            <Link to={kbPublicHref}>{kb.name}</Link>
             <span style={{ margin: '0 6px', opacity: 0.5 }}>/</span>
           </Text>
         )}
-        <Typography.Title
-          level={3}
-          editable={{ onChange: handleRename, triggerType: ['text', 'icon'] }}
-          style={{ margin: 0, flex: 1, minWidth: 220 }}
-        >
-          {doc.title}
-        </Typography.Title>
+        <div className="jz-doc-header-title-wrap">
+          <Typography.Title
+            level={2}
+            editable={{ onChange: handleRename, triggerType: ['text', 'icon'] }}
+            className="jz-doc-header-title"
+          >
+            {doc.title}
+          </Typography.Title>
+          <div className="jz-doc-header-meta">
+            <Tag color={doc.status === 'published' ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
+              {doc.status === 'published' ? '已发布' : '草稿'}
+            </Tag>
+            <span className="jz-doc-header-meta-divider" aria-hidden>·</span>
+            <Space size={4}>
+              <Text type="secondary" style={{ fontSize: 12 }}>公开</Text>
+              <Switch
+                size="small"
+                checked={doc.visibility === 'public'}
+                onChange={(checked) => handleVisibilityChange(checked ? 'public' : 'private')}
+              />
+            </Space>
+            <span className="jz-doc-header-meta-divider" aria-hidden>·</span>
+            <Tooltip title="纸张样式">
+              <Select
+                size="small"
+                style={{ minWidth: 108 }}
+                value={doc.paper_style || ''}
+                onChange={(v) => handlePaperStyleChange(v)}
+                variant="borderless"
+                options={PAPER_STYLES.map((p) => ({ value: p.key, label: `${p.label}` }))}
+              />
+            </Tooltip>
+          </div>
+        </div>
 
         <Space wrap size={8}>
           <Segmented
+            size="small"
             value={mode}
             onChange={(v) => {
               setMode(v as EditorMode);
               setModeTouched(true);
             }}
             options={[
-              { label: 'Markdown', value: 'markdown' },
+              { label: 'MD', value: 'markdown' },
               { label: '富文本', value: 'rich' },
               { label: 'HTML', value: 'html' },
               { label: 'PDF', value: 'pdf' },
             ]}
           />
-          <Select
-            style={{ minWidth: 130 }}
-            value={doc.paper_style || ''}
-            onChange={(v) => handlePaperStyleChange(v)}
-            options={PAPER_STYLES.map((p) => ({ value: p.key, label: `纸张：${p.label}` }))}
-          />
-          <Tag color={doc.status === 'published' ? 'green' : 'default'}>
-            {doc.status === 'published' ? '已发布' : '草稿'}
-          </Tag>
-          <Space size={4}>
-            <Text type="secondary">公开</Text>
-            <Switch
-              size="small"
-              checked={doc.visibility === 'public'}
-              onChange={(checked) => handleVisibilityChange(checked ? 'public' : 'private')}
-            />
-          </Space>
           <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
             <Button
               icon={<UnorderedListOutlined />}
-              type={outlineOpen ? 'primary' : 'default'}
+              type={outlineOpen ? 'primary' : 'text'}
+              className="jz-toolbar-btn"
               onClick={() => setOutlineOpen((v) => !v)}
               aria-pressed={outlineOpen}
             />
@@ -474,6 +522,13 @@ export default function DocEditorPage() {
                 },
               ],
             }}
+            popupRender={(menu) => (
+              <div className="jz-doc-more-dropdown">
+                {menu}
+                <div className="jz-doc-more-divider" />
+                <DocStatsPanel documentId={doc.id} />
+              </div>
+            )}
           >
             <Button icon={<EllipsisOutlined />} />
           </Dropdown>
@@ -481,31 +536,36 @@ export default function DocEditorPage() {
       </div>
 
       {!focusMode && (
-        <div style={{ marginBottom: 12 }}>
+        <div className="jz-doc-tags-bar">
           <TagPicker key={doc.id} target={{ kind: 'document', id: doc.id }} />
         </div>
       )}
 
       <div
-        style={focusMode ? {
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          maxWidth: 800,
-          width: '100%',
-          margin: '0 auto',
-          padding: '16px 24px 40px',
-          minWidth: 0,
-        } : {
-          flex: 1,
-          minHeight: 480,
-          display: 'grid',
-          gridTemplateColumns: outlineOpen && mode !== 'pdf' ? '1fr 240px' : '1fr',
-          gap: 12,
-          minWidth: 0,
+        className={focusMode ? '' : 'jz-doc-body'}
+        style={{
+          ['--jz-doc-accent' as string]: kb?.accent_color || 'var(--jz-accent)',
+          ...(focusMode
+            ? {
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                maxWidth: isBlogShell ? 'min(1400px, 96vw)' : 800,
+                width: '100%',
+                margin: '0 auto',
+                padding: '16px 24px 40px',
+                minWidth: 0,
+              }
+            : {
+                flex: 1,
+                minHeight: 480,
+                display: 'flex',
+                flexDirection: 'column',
+                minWidth: 0,
+              }),
         }}
       >
-        <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
+        <div className="jz-doc-editor-col" style={{ display: 'flex', flexDirection: 'column', minWidth: 0, minHeight: 0 }}>
           <EditorSurface
             mode={mode}
             doc={doc}
@@ -529,7 +589,7 @@ export default function DocEditorPage() {
           />
         </div>
         {outlineOpen && mode !== 'pdf' && !focusMode && (
-          <aside className="jz-editor-sidebar">
+          <aside className="jz-editor-sidebar jz-editor-sidebar-floating">
             <div className="jz-editor-sidebar-tabs">
               {([
                 { key: 'outline' as const, icon: <JzOutlineIcon />, label: '大纲' },

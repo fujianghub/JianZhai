@@ -9,6 +9,8 @@ import mdSub from 'markdown-it-sub';
 import mdSup from 'markdown-it-sup';
 // @ts-expect-error — no types
 import mdMark from 'markdown-it-mark';
+// @ts-expect-error — no types
+import mdFootnote from 'markdown-it-footnote';
 import DOMPurify from 'dompurify';
 import { highlightCode, languageLabel, normalizeLanguage } from './codeBlocks';
 
@@ -36,6 +38,7 @@ md.use(mdTaskLists, { enabled: true, label: false, labelAfter: false });
 md.use(mdSub);
 md.use(mdSup);
 md.use(mdMark);
+md.use(mdFootnote);
 
 /**
  * markdown-it normally wraps a fenced block in ``<pre><code class="…">…</code></pre>``

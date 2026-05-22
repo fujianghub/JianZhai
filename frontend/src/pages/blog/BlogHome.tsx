@@ -101,6 +101,11 @@ export default function BlogHome() {
             key={kb.id}
             to={`/kb/${encodeURIComponent(kb.slug)}`}
             className="jz-book jz-fade-in"
+            style={
+              {
+                ['--jz-book-accent' as string]: kb.accent_color || 'var(--jz-accent)',
+              } as React.CSSProperties
+            }
           >
             <div className="jz-book-label">
               <span className="jz-book-label-text">{kb.name}</span>

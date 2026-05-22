@@ -11,6 +11,7 @@ export interface AccentPreset {
 }
 
 export const ACCENT_PRESETS: AccentPreset[] = [
+  { key: 'jade', label: '翡翠', color: '#059669', bg: '#f5f5f7', bgDark: '#07090f' },
   { key: 'blue', label: '靛蓝', color: '#1677ff', bg: '#fafbfd', bgDark: '#141a24' },
   { key: 'green', label: '苔绿', color: '#52c41a', bg: '#fafdf8', bgDark: '#15201a' },
   { key: 'orange', label: '柿橙', color: '#fa8c16', bg: '#fdfaf6', bgDark: '#211a14' },
@@ -42,9 +43,10 @@ function loadMode(): ThemeMode {
 }
 
 function loadAccent(): AccentPreset {
-  if (typeof localStorage === 'undefined') return ACCENT_PRESETS[0];
+  const fallback = ACCENT_PRESETS.find((p) => p.key === 'jade') ?? ACCENT_PRESETS[0];
+  if (typeof localStorage === 'undefined') return fallback;
   const key = localStorage.getItem(ACCENT_KEY);
-  return ACCENT_PRESETS.find((p) => p.key === key) ?? ACCENT_PRESETS[0];
+  return ACCENT_PRESETS.find((p) => p.key === key) ?? fallback;
 }
 
 function applyToDocument(mode: ThemeMode, accent: AccentPreset) {
@@ -56,6 +58,9 @@ function applyToDocument(mode: ThemeMode, accent: AccentPreset) {
   if (mode === 'starry' || mode === 'deepsea') {
     document.documentElement.style.removeProperty('--jz-bg-app');
     document.documentElement.style.removeProperty('--jz-accent');
+  } else if (accent.key === 'jade') {
+    document.documentElement.style.removeProperty('--jz-accent');
+    document.documentElement.style.removeProperty('--jz-bg-app');
   } else {
     document.documentElement.style.setProperty('--jz-accent', accent.color);
     document.documentElement.style.setProperty(

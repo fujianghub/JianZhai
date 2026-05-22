@@ -1,123 +1,77 @@
-/* ── 古书装帧 KB 卡 ──
-   Visually treats each knowledge base as a thread-bound Chinese book:
-   - paper-coloured cover with subtle warp/grain
-   - dark spine on the left with four stitch holes
-   - cinnabar (朱砂) title label rotated ~−1.5°
-   - faint inner frame mimicking 包角 corner protectors
-   - lifts and tilts very slightly on hover, like picking up a volume */
+/* ── 玻璃 KB 卡（首页知识库网格） ── */
 
 .jz-book {
   position: relative;
   display: block;
-  padding: 24px 26px 22px 50px;            /* leave room for the spine */
-  border: 1px solid var(--jz-border);
-  border-radius: 4px 8px 8px 4px;          /* tighter on the spine side */
-  background:
-    /* faint vertical fibre — handmade paper grain (帘纹) */
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 2px,
-      rgba(120, 80, 35, 0.02) 2px 3px
-    ),
-    /* warm paper hue with light corner shading */
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--jz-surface) 92%, #f7e7c4),
-      var(--jz-surface) 60%,
-      color-mix(in srgb, var(--jz-surface) 88%, #c9b787));
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--jz-gold) 18%, transparent),
-    inset 0 0 12px rgba(120, 80, 35, 0.05),
-    0 1px 0 color-mix(in srgb, var(--jz-gold) 35%, transparent),
-    0 10px 28px -10px rgba(120, 80, 35, 0.30);
+  padding: 22px 24px 20px 28px;
+  border: 1px solid var(--glass-border, var(--jz-border));
+  border-radius: var(--glass-radius-lg, 18px);
+  background: var(--glass-surface, var(--jz-surface));
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: var(--glass-shadow-card, 0 8px 24px rgba(0, 0, 0, 0.06));
   overflow: hidden;
-  min-height: 200px;
-  color: var(--jz-text);
+  min-height: 180px;
+  color: var(--glass-text, var(--jz-text));
   text-decoration: none;
-  transform: rotate(0deg);
-  transition: transform 220ms ease, box-shadow 220ms ease;
+  transition: transform 220ms ease, box-shadow 220ms ease, border-color 220ms ease;
 }
 
-/* 书脊: dark vertical strip with four stitch holes ─ */
+/* 左侧 accent 色条 —— 由 inline --jz-book-accent 驱动 */
 .jz-book::before {
   content: '';
   position: absolute;
-  top: 0; bottom: 0; left: 0;
-  width: 26px;
-  background:
-    /* four stitch holes evenly spaced */
-    radial-gradient(circle at 50% 14%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
-    radial-gradient(circle at 50% 38%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
-    radial-gradient(circle at 50% 62%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
-    radial-gradient(circle at 50% 86%, rgba(20, 12, 6, 0.85) 1.4px, transparent 2.4px),
-    /* spine body — darker brown, with a thin gold rule at its inner edge */
-    linear-gradient(to right,
-      #5a3a1c 0%,
-      #6b4a25 35%,
-      #7a5630 75%,
-      color-mix(in srgb, var(--jz-gold) 60%, #5a3a1c) 95%,
-      var(--jz-border) 100%);
-}
-
-/* 右边一束「书页边」灰白细线，暗示厚度 */
-.jz-book::after {
-  content: '';
-  position: absolute;
-  top: 6px; bottom: 6px; right: 0;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
   width: 4px;
-  background: repeating-linear-gradient(
-    to right,
-    color-mix(in srgb, var(--jz-text) 10%, transparent) 0 0.6px,
-    transparent 0.6px 1.4px
-  );
-  opacity: 0.55;
   border-radius: 0 4px 4px 0;
+  background: linear-gradient(
+    180deg,
+    var(--jz-book-accent, var(--jz-accent)) 0%,
+    color-mix(in srgb, var(--jz-book-accent, var(--jz-accent)) 55%, #06d6a0) 100%
+  );
+  box-shadow: 0 0 12px color-mix(in srgb, var(--jz-book-accent, var(--jz-accent)) 35%, transparent);
 }
 
-/* 题签: cinnabar rectangle anchored top-left with slight rotation */
+.jz-book::after {
+  content: none;
+}
+
 .jz-book-label {
   position: relative;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
-  padding: 8px 14px;
-  margin-bottom: 16px;
-  background:
-    repeating-linear-gradient(90deg, transparent 0 2px, rgba(255,255,255,0.05) 2px 3px),
-    linear-gradient(180deg, #c0392b, #8b1a1a);
-  border: 1px solid #6b0f0f;
-  color: #fdf5e0;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
-  font-weight: 700;
-  font-size: 15px;
-  letter-spacing: 3px;
-  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
-    0 3px 6px -2px rgba(120, 30, 25, 0.45);
-  transform: rotate(-1.4deg);
-  border-radius: 2px;
+  justify-content: flex-start;
+  padding: 0;
+  margin-bottom: 12px;
+  background: transparent;
+  border: none;
+  color: var(--glass-text, var(--jz-text));
+  font-family: 'PingFang SC', 'Noto Serif SC', 'Songti SC', serif;
+  font-weight: 600;
+  font-size: 17px;
+  letter-spacing: 1px;
+  text-shadow: none;
+  box-shadow: none;
+  transform: none;
+  border-radius: 0;
   max-width: 100%;
-  word-break: break-all;
 }
 
-/* The 题签 above is small for short names; this larger variant for KB names
-   uses the same look but stretches horizontally. */
 .jz-book-label .jz-book-label-text {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
+  max-width: 100%;
 }
 
 .jz-book-desc {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
   font-size: 13.5px;
-  line-height: 1.75;
-  color: var(--jz-text-muted);
-  min-height: 44px;
+  line-height: 1.7;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  min-height: 40px;
   margin-bottom: 12px;
-  /* clamp to 2 lines */
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -134,79 +88,40 @@
   align-items: center;
   justify-content: space-between;
   padding-top: 12px;
-  border-top: 1px dashed color-mix(in srgb, var(--jz-gold) 35%, transparent);
-  color: var(--jz-text-muted);
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  border-top: 1px solid var(--glass-divider, var(--jz-divider));
+  color: var(--glass-text-muted, var(--jz-text-muted));
   font-size: 12.5px;
-  letter-spacing: 0.5px;
 }
-/* 「阅 →」── 朱砂胶囊按钮态，hover 时填充加深 */
+
 .jz-book-meta-action {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 3px 12px 3px 14px;
-  border: 1px solid color-mix(in srgb, var(--jz-accent) 45%, transparent);
+  padding: 4px 12px;
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 35%, transparent);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
   color: var(--jz-accent);
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
   font-weight: 600;
-  font-size: 12.5px;
-  letter-spacing: 1px;
-  transition: all 0.22s cubic-bezier(.34, 1.56, .64, 1);
+  font-size: 12px;
+  transition: all 0.22s ease;
 }
 
-/* Hover: lift, micro-tilt, and let the "进入 →" arrow drift forward */
 .jz-book:hover {
-  transform: translateY(-3px) rotate(-0.4deg);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--jz-gold) 35%, transparent),
-    inset 0 0 12px rgba(120, 80, 35, 0.08),
-    0 2px 0 color-mix(in srgb, var(--jz-gold) 50%, transparent),
-    0 16px 40px -10px rgba(120, 80, 35, 0.40);
-}
-.jz-book:hover .jz-book-meta-action {
-  gap: 8px;
-  padding-right: 14px;
-  background: var(--jz-accent);
-  border-color: var(--jz-accent);
-  color: #faf3e0;
-  box-shadow: 0 4px 14px color-mix(in srgb, var(--jz-accent) 45%, transparent);
+  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--jz-book-accent, var(--jz-accent)) 40%, var(--glass-border, var(--jz-border)));
+  box-shadow: var(--glass-shadow-hero, 0 14px 40px rgba(0, 0, 0, 0.1));
 }
 
-/* 标签容器：hover 时整体微微抬升，给彩色标签更活泼的感觉 */
+.jz-book:hover .jz-book-meta-action {
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  border-color: transparent;
+  color: #fff;
+}
+
 .jz-book-tags .ant-tag {
   margin-inline-end: 4px;
   margin-bottom: 4px;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
-  border-radius: 4px;
-  padding: 0 8px;
-  font-size: 11.5px;
-  letter-spacing: 0.5px;
-  transition: transform 0.18s ease;
-}
-.jz-book:hover .jz-book-tags .ant-tag {
-  transform: translateY(-1px);
-}
-
-/* Dark / starry / deepsea: ink-paper covers with brighter gold accents */
-[data-theme='dark'] .jz-book,
-[data-theme='starry'] .jz-book,
-[data-theme='deepsea'] .jz-book {
-  background:
-    repeating-linear-gradient(
-      90deg,
-      transparent 0 2px,
-      rgba(201, 168, 117, 0.03) 2px 3px
-    ),
-    linear-gradient(135deg,
-      color-mix(in srgb, var(--jz-surface) 85%, #2a1f15),
-      var(--jz-surface) 60%,
-      color-mix(in srgb, var(--jz-surface) 80%, #1a1208));
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--jz-gold) 25%, transparent),
-    inset 0 0 12px rgba(0, 0, 0, 0.3),
-    0 1px 0 color-mix(in srgb, var(--jz-gold) 30%, transparent),
-    0 10px 32px -8px rgba(0, 0, 0, 0.6);
+  border-radius: 8px;
+  font-size: 11px;
 }
