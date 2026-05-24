@@ -166,7 +166,8 @@ export default function ArchitectureSVG() {
             ['Tiptap', 'ProseMirror 内核'],
             ['StarterKit · Table · TaskList', ''],
             ['CodeBlock(lowlight) · Mermaid · KaTeX', ''],
-            ['MarkdownEditor', '双栏预览'],
+            ['HtmlEditor · HtmlPostReader', ''],
+            ['SelectionAI · DocAIPanel', '三模式编辑'],
           ]}
         />
         <Box
@@ -180,6 +181,7 @@ export default function ArchitectureSVG() {
             ['/', 'BlogHome'],
             ['/kb/:slug', 'KBPostsPage'],
             ['/posts/:slug', 'PostDetail'],
+            ['?kb= slug 消歧', 'HTML iframe 阅读'],
             ['/archive', 'ArchivePage'],
             ['/tags', 'TagCloudPage'],
             ['/d/:id', 'DocLinkResolver'],
@@ -220,6 +222,7 @@ export default function ArchitectureSVG() {
             ['IsAuthenticated', ''],
             ['IsStaffUser', ''],
             ['IsSuperUser', ''],
+            ['ai_write 30/min', ''],
           ]}
         />
 
@@ -255,7 +258,8 @@ export default function ArchitectureSVG() {
           <AppCell x={931} y={216} label="comments" desc="文档级·段落级" />
 
           <AppCell x={577} y={282} label="exporter" desc="MD/HTML/PDF/DOCX" />
-          <AppCell x={695} y={282} label="blog" desc="公开 API · RSS" />
+          <AppCell x={695} y={282} label="blog" desc="公开 API · slug 消歧" />
+          <AppCell x={813} y={282} label="ai" desc="Claude 代理 · SSE" />
 
           {/* signal → on_commit → .delay() 说明区，留充足上边距避免压到第三行 */}
           <SubLabel x={577} y={362} text="post_save signal" />
@@ -317,6 +321,9 @@ export default function ArchitectureSVG() {
           <text x={577} y={760} fontSize={11.5} fill="var(--jz-text-muted)">
             celery -A jianzhai worker -l info
           </text>
+          <text x={577} y={778} fontSize={11.5} fill="var(--jz-text-muted)" fontStyle="italic">
+            apps.ai → Anthropic API（仅后端，key 不暴露前端）
+          </text>
         </Box>
 
         {/* ════ C4 持久层 ══════════════════════════════════════ */}
@@ -336,22 +343,23 @@ export default function ArchitectureSVG() {
           <DBRow x={1092} y={172} table="document_link  (反向链接)" />
           <DBRow x={1092} y={196} table="attachment · tag · documenttag" />
           <DBRow x={1092} y={220} table="comment · export_task" />
-          <DBRow x={1092} y={244} table="auth_user · django_session" />
+          <DBRow x={1092} y={244} table="ai_settings · ai_usage_log" />
+          <DBRow x={1092} y={268} table="auth_user · django_session" />
 
-          <SubLabel x={1092} y={284} text="索引 / 约束" />
-          <text x={1092} y={302} fontSize={11.5} fill="var(--jz-text-muted)">
+          <SubLabel x={1092} y={308} text="索引 / 约束" />
+          <text x={1092} y={326} fontSize={11.5} fill="var(--jz-text-muted)">
             · GIN (search_vector)
           </text>
-          <text x={1092} y={322} fontSize={11.5} fill="var(--jz-text-muted)">
+          <text x={1092} y={346} fontSize={11.5} fill="var(--jz-text-muted)">
             · 软删除 partial index
           </text>
-          <text x={1092} y={342} fontSize={11.5} fill="var(--jz-text-muted)">
+          <text x={1092} y={366} fontSize={11.5} fill="var(--jz-text-muted)">
             · slug 唯一 (按 KB 分区)
           </text>
-          <text x={1092} y={362} fontSize={11.5} fill="var(--jz-text-muted)">
+          <text x={1092} y={386} fontSize={11.5} fill="var(--jz-text-muted)">
             · psycopg 3 · conn_max_age=600
           </text>
-          <text x={1092} y={400} fontSize={11.5} fill="var(--jz-text-muted)" fontStyle="italic">
+          <text x={1092} y={424} fontSize={11.5} fill="var(--jz-text-muted)" fontStyle="italic">
             备份: pg_dump 每日 + 文件夹
           </text>
         </Box>
@@ -600,7 +608,7 @@ export default function ArchitectureSVG() {
             动态光点 · 主请求路径 浏览器 → Vite → Django → PG
           </text>
           <text x={14} y={38} fontSize={11} fill="var(--jz-text-muted)">
-            盒子描边色：accent / 紫=Celery / 蓝=PG / 红=Redis / 橄榄=本地文件系统。鼠标悬停盒子或单元格可看悬浮说明。
+            11 个 Django app（含 ai 代理）· 盒子描边：accent / 紫=Celery / 蓝=PG / 红=Redis / 橄榄=文件系统。悬停查看说明。
           </text>
         </g>
       </svg>

@@ -17,12 +17,24 @@ export interface AdjacentPosts {
   next: AdjacentPost | null;
 }
 
-export async function getAdjacentPosts(slug: string): Promise<AdjacentPosts> {
-  const { data } = await apiClient.get<AdjacentPosts>(`/public/posts/${encodeURIComponent(slug)}/adjacent/`);
+export async function getAdjacentPosts(
+  slug: string,
+  params?: { kb?: string },
+): Promise<AdjacentPosts> {
+  const { data } = await apiClient.get<AdjacentPosts>(
+    `/public/posts/${encodeURIComponent(slug)}/adjacent/`,
+    { params },
+  );
   return data;
 }
 
-export async function getPublicPost(slug: string): Promise<PublicPostDetail> {
-  const { data } = await apiClient.get<PublicPostDetail>(`/public/posts/${encodeURIComponent(slug)}/`);
+export async function getPublicPost(
+  slug: string,
+  params?: { kb?: string },
+): Promise<PublicPostDetail> {
+  const { data } = await apiClient.get<PublicPostDetail>(
+    `/public/posts/${encodeURIComponent(slug)}/`,
+    { params },
+  );
   return data;
 }

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { AdjacentPosts } from '@/api/blog';
 import { Alert, Breadcrumb, Button, Result, Spin, Tooltip, Typography } from 'antd';
-import { Link, useParams } from 'react-router-dom';
+import { isAxiosError } from 'axios';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
   BookOutlined,
@@ -41,6 +42,11 @@ const { Title, Text } = Typography;
 const POST_KB_W = { min: 200, max: 480, default: 240, key: 'jz-post-kb-w' };
 const POST_TOC_W = { min: 160, max: 400, default: 200, key: 'jz-post-toc-w' };
 
+function postHref(postSlug: string, kb?: string) {
+  const path = `/posts/${encodeURIComponent(postSlug)}`;
+  return kb ? `${path}?kb=${encodeURIComponent(kb)}` : path;
+}
+
 function buildPostGridColumns(kbW: number, tocW: number, showKb: boolean, showToc: boolean): string {
   const main = 'minmax(0, 1fr)';
   const gap = '6px';
@@ -58,8 +64,11 @@ function buildPostGridColumns(kbW: number, tocW: number, showKb: boolean, showTo
 
 export default function PostDetail() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
+  const kbSlug = searchParams.get('kb') ?? undefined;
   const [post, setPost] = useState<PublicPostDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [adjacent, setAdjacent] = useState<AdjacentPosts | null>(null);
   /** Reader-side override; falls back to the doc's authored paper_style. */
   const [readerPaper, setReaderPaperState] = useState<string | null>(getReaderOverride());
@@ -138,15 +147,23 @@ export default function PostDetail() {
   useEffect(() => {
     setPost(null);
     setNotFound(false);
+    setLoadError(null);
     setAdjacent(null);
     setHtmlMeta(null);
     if (!slug) return;
+    const kbParams = kbSlug ? { kb: kbSlug } : undefined;
     blogApi
-      .getPublicPost(slug)
+      .getPublicPost(slug, kbParams)
       .then(setPost)
-      .catch(() => setNotFound(true));
-    blogApi.getAdjacentPosts(slug).then(setAdjacent).catch(() => {/* ignore */});
-  }, [slug]);
+      .catch((err) => {
+        if (isAxiosError(err) && err.response?.status === 404) {
+          setNotFound(true);
+        } else {
+          setLoadError('加载失败，请稍后重试');
+        }
+      });
+    blogApi.getAdjacentPosts(slug, kbParams).then(setAdjacent).catch(() => {/* ignore */});
+  }, [slug, kbSlug]);
 
   const rendered = useMemo(
     () => (post ? renderMarkdownWithToc(post.published_content) : { html: '', toc: [] }),
@@ -155,6 +172,16 @@ export default function PostDetail() {
 
   if (notFound) {
     return <Result status="404" title="未找到该文章" extra={<Link to="/">返回首页</Link>} />;
+  }
+  if (loadError) {
+    return (
+      <Result
+        status="error"
+        title={loadError}
+        subTitle={slug ? `文章：${slug}` : undefined}
+        extra={<Link to="/">返回首页</Link>}
+      />
+    );
   }
   if (!post) {
     return (
@@ -473,7 +500,10 @@ export default function PostDetail() {
               >
                 {adjacent.prev && (
                   <Link
-                    to={`/posts/${encodeURIComponent(adjacent.prev.slug)}`}
+                    to={postHref(
+                      adjacent.prev.slug,
+                      kbSlug ?? post.knowledge_base.slug,
+                    )}
                     style={{ textDecoration: 'none' }}
                   >
                     <div
@@ -493,7 +523,10 @@ export default function PostDetail() {
                 )}
                 {adjacent.next && (
                   <Link
-                    to={`/posts/${encodeURIComponent(adjacent.next.slug)}`}
+                    to={postHref(
+                      adjacent.next.slug,
+                      kbSlug ?? post.knowledge_base.slug,
+                    )}
                     style={{ textDecoration: 'none', gridColumn: adjacent.prev ? 'auto' : '1 / -1' }}
                   >
                     <div

@@ -1551,6 +1551,151 @@ h4.jz-post-card-title.ant-typography {
   filter: blur(20px);
 }
 
+/* ── 架构总览页 Hero（青蓝主色 + 翡翠点缀）──────────────────────────── */
+.jz-admin-glass .jz-overview-hero {
+  background:
+    radial-gradient(ellipse at top right, rgba(58, 110, 165, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(16, 185, 129, 0.1) 0%, transparent 55%),
+    var(--glass-surface) !important;
+  border: 1px solid rgba(58, 110, 165, 0.28) !important;
+  box-shadow: var(--glass-shadow-hero) !important;
+  position: relative;
+  overflow: hidden;
+}
+.jz-admin-glass .jz-overview-hero::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  right: -8%;
+  width: 300px;
+  height: 300px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(58, 110, 165, 0.28) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(22px);
+}
+
+/* ── 架构总览：统计小卡 ─────────────────────────────────────────────── */
+.jz-admin-glass .jz-overview-stat {
+  padding: 16px 18px;
+  border-radius: var(--glass-radius-md, 14px);
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  height: 100%;
+}
+.jz-admin-glass .jz-overview-stat:hover {
+  border-color: rgba(58, 110, 165, 0.35);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+[data-theme='dark'] .jz-admin-glass .jz-overview-stat:hover,
+[data-theme='starry'] .jz-admin-glass .jz-overview-stat:hover,
+[data-theme='deepsea'] .jz-admin-glass .jz-overview-stat:hover {
+  border-color: rgba(16, 185, 129, 0.35);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+}
+
+/* ── 架构总览：功能模块卡 ───────────────────────────────────────────── */
+.jz-admin-glass .jz-feature-card {
+  padding: 14px 16px;
+  border-radius: var(--glass-radius-md, 14px);
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  height: 100%;
+  transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+}
+.jz-admin-glass .jz-feature-card:hover {
+  border-color: rgba(16, 185, 129, 0.45);
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.12);
+  transform: translateY(-1px);
+}
+.jz-admin-glass .jz-feature-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.jz-admin-glass .jz-feature-card-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--jz-accent);
+  flex-shrink: 0;
+}
+.jz-admin-glass .jz-feature-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--glass-text);
+  line-height: 1.3;
+}
+.jz-admin-glass .jz-feature-card-desc {
+  font-size: 12px;
+  color: var(--glass-text-muted);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ── 架构总览：技术栈标签 ───────────────────────────────────────────── */
+.jz-admin-glass .jz-stack-tag {
+  border: 1px solid transparent !important;
+  font-weight: 500;
+}
+.jz-admin-glass .jz-stack-tag--backend {
+  background: rgba(58, 110, 165, 0.14) !important;
+  border-color: rgba(58, 110, 165, 0.35) !important;
+  color: #3a6ea5 !important;
+}
+[data-theme='dark'] .jz-admin-glass .jz-stack-tag--backend,
+[data-theme='starry'] .jz-admin-glass .jz-stack-tag--backend,
+[data-theme='deepsea'] .jz-admin-glass .jz-stack-tag--backend {
+  background: rgba(96, 165, 250, 0.15) !important;
+  border-color: rgba(96, 165, 250, 0.35) !important;
+  color: #93c5fd !important;
+}
+.jz-admin-glass .jz-stack-tag--frontend {
+  background: rgba(167, 139, 250, 0.14) !important;
+  border-color: rgba(167, 139, 250, 0.35) !important;
+  color: #7c3aed !important;
+}
+[data-theme='dark'] .jz-admin-glass .jz-stack-tag--frontend,
+[data-theme='starry'] .jz-admin-glass .jz-stack-tag--frontend,
+[data-theme='deepsea'] .jz-admin-glass .jz-stack-tag--frontend {
+  background: rgba(167, 139, 250, 0.15) !important;
+  border-color: rgba(167, 139, 250, 0.4) !important;
+  color: #c4b5fd !important;
+}
+.jz-admin-glass .jz-stack-tag--infra {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+  color: #059669 !important;
+}
+[data-theme='dark'] .jz-admin-glass .jz-stack-tag--infra,
+[data-theme='starry'] .jz-admin-glass .jz-stack-tag--infra,
+[data-theme='deepsea'] .jz-admin-glass .jz-stack-tag--infra {
+  color: var(--jz-accent) !important;
+}
+
+/* ── 架构总览：Mermaid 容器 ─────────────────────────────────────────── */
+.jz-admin-glass .jz-overview-page .jz-mermaid-block {
+  padding: 20px 24px;
+  border-radius: var(--glass-radius-md, 14px);
+  background: var(--glass-surface);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+.jz-admin-glass .jz-overview-page .jz-mermaid-canvas {
+  display: flex;
+  justify-content: center;
+  overflow-x: auto;
+}
+
 /* ── 模型卡片 ────────────────────────────────────────────────────────── */
 .jz-admin-glass .jz-model-card {
   transition: all 0.25s ease !important;

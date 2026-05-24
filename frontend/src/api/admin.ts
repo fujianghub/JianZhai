@@ -21,6 +21,8 @@ export interface SystemInfo {
     users_staff: number;
     attachments_total: number;
     attachments_bytes: number;
+    documents_html: number;
+    ai_calls_24h: number;
   };
 }
 

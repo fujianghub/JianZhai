@@ -96,6 +96,7 @@ def system_info(request):
     Aggregates a handful of cheap COUNT/SUM queries so the page can render a
     stats grid that refreshes on a 30s interval without paginating heavy data.
     """
+    from apps.ai.models import AIUsageLog
     from apps.editor.models import Attachment
     from apps.knowledge.models import Document, Folder, KnowledgeBase
 
@@ -104,6 +105,7 @@ def system_info(request):
 
     doc_qs = Document.objects.all()
     attachment_agg = Attachment.objects.aggregate(total=Sum("size"))
+    html_docs = doc_qs.filter(published_content__icontains="<!DOCTYPE").count()
 
     return Response(
         {
@@ -127,6 +129,8 @@ def system_info(request):
                 "users_staff": User.objects.filter(is_staff=True).count(),
                 "attachments_total": Attachment.objects.count(),
                 "attachments_bytes": attachment_agg["total"] or 0,
+                "documents_html": html_docs,
+                "ai_calls_24h": AIUsageLog.objects.filter(created_at__gte=one_day_ago).count(),
             },
         }
     )

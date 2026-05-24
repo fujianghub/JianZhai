@@ -47,6 +47,11 @@ import {
 
 const { Title, Paragraph } = Typography;
 
+function postHref(postSlug: string, kbSlug?: string) {
+  const path = `/posts/${encodeURIComponent(postSlug)}`;
+  return kbSlug ? `${path}?kb=${encodeURIComponent(kbSlug)}` : path;
+}
+
 export default function KBPostsPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -571,11 +576,11 @@ function KbBody({ tree }: { tree: PublicKBTree }) {
         </div>
 
         {view === 'flat' || !hasFolders ? (
-          <PostList posts={tree.documents} density={density} />
+          <PostList posts={tree.documents} density={density} kbSlug={tree.slug} />
         ) : (
           <Space direction="vertical" size={28} style={{ width: '100%' }}>
             {(tree.folders ?? []).map((f) => (
-              <FolderGroup key={f.id} folder={f} depth={0} density={density} />
+              <FolderGroup key={f.id} folder={f} depth={0} density={density} kbSlug={tree.slug} />
             ))}
             {(tree.root_documents ?? []).length > 0 && (
               <section>
@@ -584,7 +589,7 @@ function KbBody({ tree }: { tree: PublicKBTree }) {
                   根目录
                   <span className="jz-kb-folder-count">{(tree.root_documents ?? []).length}</span>
                 </h3>
-                <PostList posts={tree.root_documents ?? []} density={density} />
+                <PostList posts={tree.root_documents ?? []} density={density} kbSlug={tree.slug} />
               </section>
             )}
           </Space>
@@ -595,17 +600,29 @@ function KbBody({ tree }: { tree: PublicKBTree }) {
 }
 
 /** Wrapper that picks summary-card vs compact-row rendering for a list of posts. */
-function PostList({ posts, density }: { posts: PublicPost[]; density: Density }) {
+function PostList({
+  posts,
+  density,
+  kbSlug,
+}: {
+  posts: PublicPost[];
+  density: Density;
+  kbSlug?: string;
+}) {
   if (density === 'list') {
     return (
       <ul className="jz-post-list">
-        {posts.map((p) => <PostRow key={p.id} post={p} />)}
+        {posts.map((p) => (
+          <PostRow key={p.id} post={p} kbSlug={kbSlug} />
+        ))}
       </ul>
     );
   }
   return (
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-      {posts.map((p) => <PostCard key={p.id} post={p} />)}
+      {posts.map((p) => (
+        <PostCard key={p.id} post={p} kbSlug={kbSlug} />
+      ))}
     </Space>
   );
 }
@@ -615,10 +632,12 @@ function FolderGroup({
   folder,
   depth,
   density,
+  kbSlug,
 }: {
   folder: PublicFolder;
   depth: number;
   density: Density;
+  kbSlug?: string;
 }) {
   const totalDocs =
     folder.documents.length +
@@ -649,12 +668,12 @@ function FolderGroup({
         <span className="jz-kb-folder-count">{totalDocs}</span>
       </h3>
       {folder.documents.length > 0 && (
-        <PostList posts={folder.documents} density={density} />
+        <PostList posts={folder.documents} density={density} kbSlug={kbSlug} />
       )}
       {folder.children.length > 0 && (
         <Space direction="vertical" size={20} style={{ width: '100%', marginTop: 16 }}>
           {folder.children.map((c) => (
-            <FolderGroup key={c.id} folder={c} depth={depth + 1} density={density} />
+            <FolderGroup key={c.id} folder={c} depth={depth + 1} density={density} kbSlug={kbSlug} />
           ))}
         </Space>
       )}
@@ -663,11 +682,11 @@ function FolderGroup({
 }
 
 /** Compact single-row rendering: title + tags, no excerpt. */
-function PostRow({ post: p }: { post: PublicPost }) {
+function PostRow({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
   return (
     <li className="jz-post-row">
       <Link
-        to={`/posts/${encodeURIComponent(p.slug)}`}
+        to={postHref(p.slug, kbSlug)}
         className="jz-post-row-link"
       >
         <span className="jz-post-row-title" title={p.title}>{p.title}</span>
@@ -695,7 +714,7 @@ function PostRow({ post: p }: { post: PublicPost }) {
 }
 
 /** Single article card — extracted so both the flat and grouped views share it. */
-function PostCard({ post: p }: { post: PublicPost }) {
+function PostCard({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
   return (
     <Card
       className="jz-card jz-fade-in jz-post-card"
@@ -703,7 +722,7 @@ function PostCard({ post: p }: { post: PublicPost }) {
       style={{ borderRadius: 12 }}
     >
       <Link
-        to={`/posts/${encodeURIComponent(p.slug)}`}
+        to={postHref(p.slug, kbSlug)}
         style={{ color: 'inherit', textDecoration: 'none' }}
       >
         <Title

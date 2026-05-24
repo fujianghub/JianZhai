@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, viewsets
 from rest_framework.permissions import AllowAny
@@ -42,6 +43,26 @@ def _published_qs():
     )
 
 
+def resolve_public_post_by_slug(
+    qs,
+    slug: str,
+    kb_slug: str | None = None,
+) -> Document:
+    """Resolve a single published public post by slug.
+
+    Slugs are unique per knowledge base, not globally. Without ``kb_slug``,
+    multiple KBs may share the same slug — we return the most recently
+    published match instead of raising ``MultipleObjectsReturned``.
+    """
+    candidates = qs.filter(slug=slug)
+    if kb_slug:
+        candidates = candidates.filter(knowledge_base__slug=kb_slug)
+    post = candidates.order_by("-published_at", "-id").first()
+    if post is None:
+        raise Http404
+    return post
+
+
 class PublicPostViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
 ):
@@ -62,6 +83,12 @@ class PublicPostViewSet(
         if self.action == "retrieve":
             return PublicPostDetailSerializer
         return PublicPostListSerializer
+
+    def get_object(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        slug = self.kwargs[self.lookup_field]
+        kb_slug = self.request.query_params.get("kb")
+        return resolve_public_post_by_slug(queryset, slug, kb_slug)
 
 
 class PublicKBViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
@@ -235,7 +262,8 @@ class PublicPostAdjacentView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, slug: str):
-        post = get_object_or_404(_published_qs(), slug=slug)
+        kb_slug = request.query_params.get("kb")
+        post = resolve_public_post_by_slug(_published_qs(), slug, kb_slug)
         qs = _published_qs()
         # "上一篇" = older (published before this one); qs ordered by -published_at so .first() = most recent older
         older = qs.filter(published_at__lt=post.published_at).first()
