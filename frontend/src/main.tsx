@@ -6,6 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { useThemeStore } from '@/stores/theme';
 import { setMessageInstance } from '@/utils/notify';
+import { initCodeBlockGlobalPrefs } from '@/utils/codeBlockPrefs';
 
 /** Captures the App-scoped message instance so `notify.*` calls work app-wide. */
 function MessageBridge() {
@@ -28,6 +29,9 @@ const DARK_MODES = new Set(['dark', 'starry', 'deepsea']);
 
 function Root() {
   const { mode, accent } = useThemeStore();
+  useEffect(() => {
+    initCodeBlockGlobalPrefs();
+  }, []);
   const isDark = DARK_MODES.has(mode);
   const colorPrimary = MODE_ACCENT[mode] ?? accent.color;
   return (

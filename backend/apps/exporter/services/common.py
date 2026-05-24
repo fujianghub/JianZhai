@@ -12,6 +12,31 @@ from markdown_it import MarkdownIt
 
 from ..scope import ExportScope
 
+_HTML_BODY_RE = re.compile(r"<body[^>]*>(.*?)</body>", re.S | re.I)
+
+
+def html_body_or_self(html: str) -> str:
+    """Return the contents of ``<body>…</body>`` if present, else the input.
+
+    Used to embed an HTML-format document inside our export shell without the
+    nested ``<html>``/``<head>`` tags clobbering the wrapper page.
+    """
+    if not html:
+        return ""
+    match = _HTML_BODY_RE.search(html)
+    return match.group(1) if match else html
+
+
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
+def html_to_plain_text(html: str) -> str:
+    """Strip tags and collapse whitespace — used for search snippets."""
+    text = re.sub(r"<(script|style)[^>]*>.*?</\1>", "", html or "", flags=re.S | re.I)
+    text = _HTML_TAG_RE.sub(" ", text)
+    return re.sub(r"\s+", " ", text).strip()
+
+
 EXPORT_ROOT = Path(settings.MEDIA_ROOT).parent / "exports"
 EXPORT_ROOT.mkdir(parents=True, exist_ok=True)
 
@@ -90,7 +115,15 @@ img { max-width: 100%; height: auto; }
 
 
 def doc_html_body(scope: ExportScope, render: bool = True) -> str:
-    """Concatenate every document in scope into a single HTML body."""
+    """Concatenate every document in scope into a single HTML body.
+
+    HTML-format documents (``detect_doc_format == 'html'``) are kept as their
+    original markup — only the ``<body>`` contents are extracted so they nest
+    cleanly inside the surrounding shell, instead of being run through the
+    Markdown renderer (which would mangle real HTML).
+    """
+    from apps.knowledge.serializers import detect_doc_format
+
     parts: list[str] = []
     for doc in scope.documents:
         title = _escape(doc.title)
@@ -98,7 +131,10 @@ def doc_html_body(scope: ExportScope, render: bool = True) -> str:
         if doc.published_at:
             meta += f" · {doc.published_at.strftime('%Y-%m-%d')}"
         meta += "</div>"
-        body = render_markdown(doc.raw_content) if render else (doc.raw_content or "")
+        if detect_doc_format(doc) == "html":
+            body = html_body_or_self(doc.raw_content or "")
+        else:
+            body = render_markdown(doc.raw_content) if render else (doc.raw_content or "")
         parts.append(
             f'<section class="post" id="doc-{doc.id}">\n'
             f"<h1>{title}</h1>\n{meta}\n{body}\n</section>"

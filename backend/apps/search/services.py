@@ -1,6 +1,7 @@
 """jieba-based pre-tokenization so PostgreSQL tsvector can handle Chinese."""
 from __future__ import annotations
 
+from html.parser import HTMLParser
 from typing import Iterable
 
 import jieba
@@ -9,6 +10,52 @@ from django.db.models import Value
 
 # Silence jieba's startup log spam
 jieba.setLogLevel(60)
+
+
+class _PlainTextExtractor(HTMLParser):
+    """Walk an HTML document and collect just its visible text.
+
+    Skips ``<script>`` and ``<style>`` contents (they're noise for full-text
+    search). The output is whitespace-collapsed at join time.
+    """
+
+    _SKIP_TAGS = {"script", "style"}
+
+    def __init__(self) -> None:
+        super().__init__()
+        self._chunks: list[str] = []
+        self._skip_depth = 0
+
+    def handle_starttag(self, tag: str, _attrs) -> None:
+        if tag.lower() in self._SKIP_TAGS:
+            self._skip_depth += 1
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in self._SKIP_TAGS and self._skip_depth > 0:
+            self._skip_depth -= 1
+
+    def handle_data(self, data: str) -> None:
+        if self._skip_depth > 0:
+            return
+        text = (data or "").strip()
+        if text:
+            self._chunks.append(text)
+
+    def get(self) -> str:
+        return " ".join(self._chunks)
+
+
+def _strip_html_tags(html: str) -> str:
+    """Best-effort tag-stripping for search indexing of HTML documents."""
+    if not html:
+        return ""
+    parser = _PlainTextExtractor()
+    try:
+        parser.feed(html)
+    except Exception:  # noqa: BLE001 — HTMLParser raises a few subclasses on broken input
+        # Fall through with whatever we managed to collect.
+        pass
+    return parser.get()
 
 
 def segment(text: str) -> str:
@@ -27,11 +74,21 @@ def _iter_unique(items: Iterable[str]) -> Iterable[str]:
 
 
 def update_search_vector(document) -> None:
-    """Recompute and persist `document.search_vector`."""
+    """Recompute and persist `document.search_vector`.
+
+    HTML documents (``detect_doc_format == 'html'``) are stripped of tags first
+    so ``<div>``/``<span>`` etc. don't pollute the jieba token stream — the
+    blog reader never shows raw HTML, search shouldn't index it either.
+    """
     from apps.knowledge.models import Document  # local import to avoid cycle
+    from apps.knowledge.serializers import detect_doc_format
+
+    body = document.raw_content or ""
+    if detect_doc_format(document) == "html":
+        body = _strip_html_tags(body)
 
     segmented_title = segment(document.title or "")
-    segmented_body = segment(document.raw_content or "")
+    segmented_body = segment(body)
     blob = f"{segmented_title} {segmented_body}".strip()
 
     Document.all_objects.filter(pk=document.pk).update(

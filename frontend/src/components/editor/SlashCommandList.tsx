@@ -24,14 +24,22 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
     const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
     const [recentTitles] = useState<string[]>(() => getRecentSlashTitles());
 
-    useEffect(() => setSelectedIndex(0), [items]);
-
-    /** Group items by category, preserving the original order of categories. */
-    const grouped = useMemo(() => {
-      if (hasQuery) return null;
-      const recentItems = recentTitles
-        .map((t) => items.find((it) => it.title === t))
-        .filter((it): it is SlashCommandItem => !!it);
+    /** Build a single flat ordering used by BOTH the render path and the
+     * keyboard navigation. Without this alignment the visible "active" row
+     * desyncs from the row that Enter actually fires. */
+    const { displayItems, groups } = useMemo(() => {
+      if (hasQuery) {
+        return { displayItems: items, groups: null as null | Array<[string, SlashCommandItem[]]> };
+      }
+      const recentItems: SlashCommandItem[] = [];
+      const seen = new Set<string>();
+      for (const title of recentTitles) {
+        const hit = items.find((it) => it.title === title);
+        if (hit && !seen.has(hit.title)) {
+          recentItems.push(hit);
+          seen.add(hit.title);
+        }
+      }
       const map = new Map<string, SlashCommandItem[]>();
       if (recentItems.length > 0) {
         map.set('最近使用', recentItems);
@@ -41,38 +49,50 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
         list.push(it);
         map.set(it.category, list);
       }
-      return Array.from(map.entries());
+      const groups = Array.from(map.entries());
+      // Flatten in the exact render order so index-based selection matches.
+      const flat: SlashCommandItem[] = [];
+      for (const [, list] of groups) flat.push(...list);
+      return { displayItems: flat, groups };
     }, [items, hasQuery, recentTitles]);
 
+    useEffect(() => setSelectedIndex(0), [displayItems]);
+
     function selectItem(index: number) {
-      const item = items[index];
+      const item = displayItems[index];
       if (item) command(item);
     }
 
-    useImperativeHandle(ref, () => ({
-      onKeyDown: (event) => {
-        if (event.key === 'ArrowUp') {
-          setSelectedIndex((i) => (i + items.length - 1) % Math.max(items.length, 1));
-          return true;
-        }
-        if (event.key === 'ArrowDown') {
-          setSelectedIndex((i) => (i + 1) % Math.max(items.length, 1));
-          return true;
-        }
-        if (event.key === 'Enter') {
-          selectItem(selectedIndex);
-          return true;
-        }
-        return false;
-      },
-    }));
+    useImperativeHandle(
+      ref,
+      () => ({
+        onKeyDown: (event) => {
+          const n = displayItems.length;
+          if (n === 0) return false;
+          if (event.key === 'ArrowUp') {
+            setSelectedIndex((i) => (i + n - 1) % n);
+            return true;
+          }
+          if (event.key === 'ArrowDown') {
+            setSelectedIndex((i) => (i + 1) % n);
+            return true;
+          }
+          if (event.key === 'Enter') {
+            selectItem(selectedIndex);
+            return true;
+          }
+          return false;
+        },
+      }),
+      // selectedIndex must be in deps so Enter fires the *current* row.
+      [displayItems, selectedIndex],
+    );
 
-    // Keep the selected row visible while navigating with arrow keys
     useEffect(() => {
       itemRefs.current[selectedIndex]?.scrollIntoView({ block: 'nearest' });
     }, [selectedIndex]);
 
-    if (items.length === 0) {
+    if (displayItems.length === 0) {
       return (
         <div className="slash-menu">
           <div className="slash-menu-empty">无匹配命令</div>
@@ -83,7 +103,7 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
     function renderRow(item: SlashCommandItem, idx: number) {
       return (
         <button
-          key={`${item.category}-${item.title}`}
+          key={`${item.category}-${item.title}-${idx}`}
           ref={(el) => {
             itemRefs.current[idx] = el;
           }}
@@ -105,11 +125,11 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
       );
     }
 
-    if (grouped) {
+    if (groups) {
       let idx = -1;
       return (
         <div className="slash-menu">
-          {grouped.map(([category, list]) => (
+          {groups.map(([category, list]) => (
             <div key={category} className="slash-menu-group">
               <div className="slash-menu-group-title">{category}</div>
               {list.map((item) => {
@@ -124,7 +144,7 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
 
     return (
       <div className="slash-menu">
-        {items.map((item, idx) => renderRow(item, idx))}
+        {displayItems.map((item, idx) => renderRow(item, idx))}
       </div>
     );
   },

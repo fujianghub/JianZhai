@@ -31,26 +31,45 @@ export const ImageUpload = Extension.create<ImageUploadOptions>({
 
   addProseMirrorPlugins() {
     const opts = this.options;
+    // Reference-count concurrent uploads so onUploading(false) fires only
+    // when ALL in-flight uploads have settled. Without this, when 3 images
+    // are pasted at once, the first onFinally(false) silently clears the
+    // indicator while two uploads are still running.
+    let inFlight = 0;
+    const beginUpload = () => {
+      inFlight += 1;
+      if (inFlight === 1) opts.onUploading?.(true);
+    };
+    const endUpload = () => {
+      inFlight = Math.max(0, inFlight - 1);
+      if (inFlight === 0) opts.onUploading?.(false);
+    };
 
-    function uploadAndInsert(view: import('@tiptap/pm/view').EditorView, file: File, pos: number | null) {
-      opts.onUploading?.(true);
-      uploadFile(file, opts.documentId)
-        .then((att) => {
-          const { schema, tr } = view.state;
+    async function uploadSequential(
+      view: import('@tiptap/pm/view').EditorView,
+      files: File[],
+      initialPos: number | null,
+    ) {
+      let pos = initialPos ?? view.state.selection.from;
+      for (const file of files) {
+        beginUpload();
+        try {
+          const att = await uploadFile(file, opts.documentId);
+          const { schema } = view.state;
           const imageNode = schema.nodes.image?.create({
             src: att.url,
             alt: att.original_filename || file.name,
           });
-          if (!imageNode) return;
-          const insertAt = pos ?? view.state.selection.from;
-          view.dispatch(tr.insert(insertAt, imageNode));
-        })
-        .catch((err: unknown) => {
+          if (!imageNode) continue;
+          const tr = view.state.tr.insert(pos, imageNode);
+          view.dispatch(tr);
+          pos += imageNode.nodeSize;
+        } catch (err: unknown) {
           opts.onError?.(err instanceof Error ? err.message : '图片上传失败');
-        })
-        .finally(() => {
-          opts.onUploading?.(false);
-        });
+        } finally {
+          endUpload();
+        }
+      }
     }
 
     return [
@@ -65,7 +84,7 @@ export const ImageUpload = Extension.create<ImageUploadOptions>({
               .filter((f): f is File => !!f);
             if (images.length === 0) return false;
             event.preventDefault();
-            for (const file of images) uploadAndInsert(view, file, null);
+            void uploadSequential(view, images, null);
             return true;
           },
           handleDrop(view, event) {
@@ -80,7 +99,7 @@ export const ImageUpload = Extension.create<ImageUploadOptions>({
               top: (event as DragEvent).clientY,
             });
             const insertAt = coords?.pos ?? view.state.selection.from;
-            for (const file of files) uploadAndInsert(view, file, insertAt);
+            void uploadSequential(view, files, insertAt);
             return true;
           },
         },

@@ -10,6 +10,7 @@ from xml.sax.saxutils import escape as xml_escape
 from django.conf import settings
 
 from apps.knowledge.models import Document
+from apps.knowledge.serializers import detect_doc_format
 
 from ..scope import ExportScope
 from . import common
@@ -149,6 +150,22 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     search_index = []
     for doc in docs:
         body_md = doc.published_content or doc.raw_content or ""
+        fname = _doc_filename(doc)
+        # HTML-format docs are shipped verbatim — wrapping them in PAGE_TEMPLATE
+        # would inject a second <html>/<head> and clobber the author's styling.
+        # Site navigation remains reachable via index.html.
+        if detect_doc_format(doc) == "html" and body_md.strip():
+            entries.append((fname, body_md.encode("utf-8")))
+            search_index.append(
+                {
+                    "id": doc.id,
+                    "title": doc.title,
+                    "url": fname,
+                    "body": common.html_to_plain_text(body_md)[:600],
+                }
+            )
+            continue
+
         body_html = common.render_markdown(body_md)
         meta = doc.knowledge_base.name + (
             f" · {doc.published_at:%Y-%m-%d}" if doc.published_at else ""
@@ -164,7 +181,6 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             index_link="index.html",
             search_script="search.js",
         )
-        fname = _doc_filename(doc)
         entries.append((fname, page.encode("utf-8")))
         search_index.append(
             {

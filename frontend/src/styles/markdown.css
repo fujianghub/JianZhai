@@ -51,28 +51,345 @@
    is emitted by ``renderCodeBlock`` in utils/markdown.ts for rendered
    Markdown, and by ``CodeBlockView.tsx`` for the Tiptap editor.
    ─────────────────────────────────────────────────────────────────────── */
+
+/* One Dark Pro — default chrome when no data-code-theme is set. */
+.jz-code-block,
+.jz-code-block[data-code-theme='one-dark-pro'] {
+  --jz-code-bg: #282c34;
+  --jz-code-toolbar-bg: #21252b;
+  --jz-code-border: #3e4451;
+  --jz-code-text: #abb2bf;
+  --jz-code-toolbar-text: #9da5b4;
+  --jz-code-gutter-bg: #1e2227;
+  --jz-code-line-number: #5c6370;
+}
+
+.jz-code-block[data-code-theme='yuque-light-pro'] {
+  --jz-code-bg: #f5f5f5;
+  --jz-code-toolbar-bg: #ececec;
+  --jz-code-border: #dcdcdc;
+  --jz-code-text: #262626;
+  --jz-code-toolbar-text: #595959;
+  --jz-code-gutter-bg: #ebebeb;
+  --jz-code-line-number: #8c8c8c;
+}
+
+.jz-code-block[data-code-theme='yuque-light'] {
+  --jz-code-bg: #fafafa;
+  --jz-code-toolbar-bg: #f2f3f5;
+  --jz-code-border: #e5e6eb;
+  --jz-code-text: #262626;
+  --jz-code-toolbar-text: #595959;
+  --jz-code-gutter-bg: #f0f0f0;
+  --jz-code-line-number: #8c8c8c;
+}
+
+.jz-code-block[data-code-theme='bracket-lights-pro'] {
+  --jz-code-bg: #ffffff;
+  --jz-code-toolbar-bg: #f0f3f8;
+  --jz-code-border: #d0d7de;
+  --jz-code-text: #24292f;
+  --jz-code-toolbar-text: #57606a;
+  --jz-code-gutter-bg: #f6f8fa;
+  --jz-code-line-number: #8c959f;
+}
+
+.jz-code-block[data-code-theme='night-owl'] {
+  --jz-code-bg: #011627;
+  --jz-code-toolbar-bg: #0b2942;
+  --jz-code-border: #1d3b53;
+  --jz-code-text: #d6deeb;
+  --jz-code-toolbar-text: #89a4c1;
+  --jz-code-gutter-bg: #0a1929;
+  --jz-code-line-number: #637777;
+}
+
+.jz-code-block[data-code-theme='darcula'] {
+  --jz-code-bg: #2b2b2b;
+  --jz-code-toolbar-bg: #313335;
+  --jz-code-border: #4b4b4b;
+  --jz-code-text: #a9b7c6;
+  --jz-code-toolbar-text: #808080;
+  --jz-code-gutter-bg: #252526;
+  --jz-code-line-number: #606366;
+}
+
+.jz-code-block.is-collapsed .jz-code-body-wrap,
+.jz-code-block.is-collapsed .jz-codeblock-mermaid-preview,
+.jz-code-block.is-collapsed .jz-code-pre,
+.jz-code-block.is-collapsed .jz-mermaid-canvas {
+  display: none;
+}
+
+.jz-code-hide-all-titles .jz-code-title-area {
+  display: none !important;
+}
+
+.jz-code-collapse-btn,
+.jz-code-collapse-placeholder {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--jz-code-toolbar-text);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.jz-code-collapse-placeholder {
+  cursor: default;
+  opacity: 0.7;
+  font-size: 11px;
+}
+
+.jz-code-title-area {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 42%;
+}
+.jz-code-title-input.ant-input {
+  color: var(--jz-code-text) !important;
+  font-size: 12px;
+  padding: 0 4px;
+}
+.jz-code-title-input::placeholder {
+  color: var(--jz-code-toolbar-text);
+  opacity: 0.85;
+}
+.jz-code-title-text {
+  font-size: 12px;
+  color: var(--jz-code-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.jz-code-theme-label {
+  font-size: 12px;
+  color: var(--jz-code-toolbar-text);
+  padding: 0 6px;
+  white-space: nowrap;
+}
+
+.jz-code-lang-select {
+  width: 118px !important;
+  flex-shrink: 0;
+}
+
+.jz-code-theme-trigger-wrap {
+  flex-shrink: 0;
+}
+
+.jz-code-block.jz-code-no-line-numbers .jz-code-line::before {
+  display: none;
+}
+.jz-code-block.jz-code-no-line-numbers .jz-code-pre > code {
+  padding-left: 16px;
+}
+
+/* Yuque 图1 — settings panel */
+.jz-code-settings-panel {
+  min-width: 240px;
+  padding: 6px 0;
+  border-radius: 8px;
+  border: 1px solid var(--jz-code-border, #3e4451);
+  background: var(--jz-code-toolbar-bg, #21252b);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+  color: var(--jz-code-text, #abb2bf);
+  font-size: 13px;
+}
+.jz-code-settings-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--jz-code-text, #abb2bf);
+  text-align: left;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.jz-code-settings-item:hover {
+  background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
+}
+.jz-code-settings-divider {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--jz-code-border, #3e4451);
+}
+.jz-code-settings-switch-row {
+  justify-content: space-between;
+  cursor: pointer;
+}
+.jz-code-settings-switch {
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: none;
+  background: #4b5263;
+  position: relative;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.jz-code-settings-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 120ms ease;
+}
+.jz-code-settings-switch.is-on {
+  background: #10b981;
+}
+.jz-code-settings-switch.is-on::after {
+  transform: translateX(16px);
+}
+.jz-code-settings-kbd-row {
+  justify-content: space-between;
+}
+.jz-code-settings-kbd {
+  font-size: 11px;
+  color: var(--jz-code-toolbar-text);
+  border: 1px solid var(--jz-code-border);
+  border-radius: 4px;
+  padding: 1px 5px;
+  font-family: ui-monospace, monospace;
+}
+.jz-code-settings-submenu {
+  position: relative;
+}
+.jz-code-settings-submenu-trigger {
+  justify-content: space-between;
+}
+.jz-code-settings-chevron {
+  color: var(--jz-code-toolbar-text);
+  font-size: 12px;
+}
+.jz-code-settings-sub {
+  display: none;
+  padding: 4px 8px 8px 12px;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.jz-code-settings-submenu:hover .jz-code-settings-sub {
+  display: flex;
+}
+.jz-code-settings-sub-item {
+  border: 1px solid var(--jz-code-border);
+  background: transparent;
+  color: var(--jz-code-text);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  cursor: pointer;
+}
+.jz-code-settings-sub-item.is-active,
+.jz-code-settings-sub-item:hover {
+  background: color-mix(in srgb, var(--jz-code-text) 12%, transparent);
+}
+.jz-code-settings-panel .ant-switch-checked {
+  background: #10b981 !important;
+}
+
 .markdown-preview .jz-code-block,
 .tiptap-shell .ProseMirror .jz-code-block {
   position: relative;
   margin: 1em 0;
-  border: 1px solid #2f343c;
-  border-radius: 8px;
-  background: #1f232a;
+  border: 1px solid var(--jz-code-border, #3e4451);
+  border-radius: 10px;
+  background: var(--jz-code-bg, #282c34);
   overflow: hidden;
-  box-shadow: 0 4px 18px -8px rgba(0, 0, 0, 0.35);
+  box-shadow: 0 6px 24px -10px rgba(0, 0, 0, 0.45);
+}
+.markdown-preview .jz-code-block::after,
+.tiptap-shell .ProseMirror .jz-code-block::after {
+  content: '';
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.12);
+  pointer-events: none;
 }
 .markdown-preview .jz-code-toolbar,
 .tiptap-shell .ProseMirror .jz-code-toolbar {
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: linear-gradient(180deg, #262b34, #1d2128);
-  border-bottom: 1px solid #2f343c;
-  color: #c8d0db;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 12px;
+  background: var(--jz-code-toolbar-bg, #21252b);
+  border-bottom: 1px solid var(--jz-code-border, #3e4451);
+  color: var(--jz-code-toolbar-text, #9da5b4);
   font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   user-select: none;
+}
+.jz-code-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+.jz-code-toolbar-divider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin: 0 4px;
+  background: var(--jz-code-border, #3e4451);
+  flex-shrink: 0;
+}
+.jz-code-more-wrap {
+  position: relative;
+}
+.jz-code-more-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 20;
+  min-width: 140px;
+  padding: 4px;
+  border-radius: 8px;
+  border: 1px solid var(--jz-code-border, #3e4451);
+  background: var(--jz-code-toolbar-bg, #21252b);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  display: none;
+  flex-direction: column;
+  gap: 2px;
+}
+.jz-code-more-menu .jz-code-btn {
+  width: 100%;
+  text-align: left;
+  padding: 6px 10px;
+  border-radius: 6px;
+}
+.jz-code-block.jz-code-more-open .jz-code-more-menu {
+  display: flex;
+}
+.jz-code-btn-icon {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.jz-code-btn-text {
+  min-width: auto;
+  height: 28px;
+  padding: 0 8px;
+  font-size: 12px;
 }
 .jz-code-lang {
   display: inline-flex;
@@ -80,15 +397,15 @@
   height: 22px;
   padding: 0 8px;
   border-radius: 4px;
-  background: rgba(255, 255, 255, 0.06);
-  color: #d5d9e0;
+  background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
+  color: var(--jz-code-text, #abb2bf);
   font-weight: 500;
   letter-spacing: 0.4px;
 }
 .jz-code-fontsize {
   font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.55);
+  color: var(--jz-code-toolbar-text, #9da5b4);
   min-width: 22px;
   text-align: center;
 }
@@ -96,7 +413,7 @@
 .jz-code-btn {
   background: transparent;
   border: 1px solid transparent;
-  color: rgba(255, 255, 255, 0.65);
+  color: var(--jz-code-toolbar-text, #9da5b4);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   line-height: 1;
@@ -106,14 +423,14 @@
   transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 .jz-code-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.15);
+  background: color-mix(in srgb, var(--jz-code-text) 12%, transparent);
+  color: var(--jz-code-text, #abb2bf);
+  border-color: color-mix(in srgb, var(--jz-code-border) 80%, transparent);
 }
 .jz-code-btn:active { transform: translateY(1px); }
 .jz-code-btn.is-active {
   background: color-mix(in srgb, var(--jz-accent) 40%, transparent);
-  color: #fff;
+  color: var(--jz-code-text, #abb2bf);
   border-color: color-mix(in srgb, var(--jz-accent) 60%, transparent);
 }
 .jz-code-btn.is-success { color: #6bd687; border-color: rgba(107, 214, 135, 0.4); }
@@ -122,8 +439,8 @@
 .markdown-preview .jz-code-pre,
 .tiptap-shell .ProseMirror .jz-code-pre {
   /* reset the global pre style applied at the top of this file */
-  background: #1f232a;
-  color: #d6d9de;
+  background: var(--jz-code-bg, #282c34);
+  color: var(--jz-code-text, #abb2bf);
   margin: 0;
   padding: 10px 0;
   border-radius: 0;
@@ -134,7 +451,7 @@
   /* Default at the tightest comfortable spacing — readers tend to want code
      as dense as possible. CodeBlockEnhancer / CodeBlockView override the
      inline ``style.lineHeight`` based on the user's slider preference. */
-  line-height: 1.0;
+  line-height: 1.6;
   overflow-x: auto;
   white-space: pre;
   tab-size: 4;
@@ -172,7 +489,7 @@
   left: -48px;
   width: 36px;
   text-align: right;
-  color: rgba(255, 255, 255, 0.28);
+  color: var(--jz-code-line-number, #5c6370);
   font-variant-numeric: tabular-nums;
   user-select: none;
   pointer-events: none;
@@ -183,43 +500,363 @@
   padding: 0 16px;
 }
 
-/* hljs token colours — atom-one-dark-ish palette, theme-independent so code
-   reads the same on every page background. */
-.hljs .hljs-comment, .hljs .hljs-quote { color: #7c7f86; font-style: italic; }
-.hljs .hljs-keyword, .hljs .hljs-selector-tag, .hljs .hljs-doctag { color: #c678dd; }
-.hljs .hljs-string, .hljs .hljs-attr, .hljs .hljs-attribute, .hljs .hljs-symbol { color: #98c379; }
-.hljs .hljs-number, .hljs .hljs-literal, .hljs .hljs-meta, .hljs .hljs-deletion { color: #d19a66; }
-.hljs .hljs-built_in, .hljs .hljs-class .hljs-title, .hljs .hljs-title.class_, .hljs .hljs-type {
-  color: #e5c07b;
+/* hljs — scoped syntax palettes per code-block theme */
+
+/* One Dark Pro */
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-comment,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-comment,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-quote,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-quote { color: #5c6370; font-style: italic; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-keyword,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-keyword,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-selector-tag,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-selector-tag,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-doctag,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-doctag { color: #c678dd; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-string,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-string,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-attr,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-attr,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-attribute,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-attribute,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-symbol,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-symbol { color: #98c379; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-number,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-number,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-literal,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-literal,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-meta,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-meta,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-deletion,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-deletion { color: #d19a66; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-built_in,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-built_in,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-class .hljs-title,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-class .hljs-title,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-title.class_,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-title.class_,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-type,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-type { color: #e5c07b; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-function .hljs-title,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-function .hljs-title,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-title.function_,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-title.function_,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-section,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-section { color: #61afef; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-name,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-name,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-tag,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-tag { color: #e06c75; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-variable,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-variable,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-template-variable,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-template-variable,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-regexp,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-regexp { color: #d19a66; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-link,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-link,
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-emphasis,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-emphasis { color: #56b6c2; font-style: italic; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-strong,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-strong { font-weight: 600; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-addition,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-addition { color: #98c379; }
+.jz-code-block[data-code-theme='one-dark-pro'] .hljs .hljs-subst,
+.jz-code-block:not([data-code-theme]) .hljs .hljs-subst { color: #abb2bf; }
+
+/* Night Owl */
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-comment,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-quote { color: #637777; font-style: italic; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-keyword,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-selector-tag,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-doctag { color: #c792ea; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-string,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-attr,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-attribute,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-symbol { color: #ecc48d; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-number,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-literal,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-meta,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-deletion { color: #f78c6c; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-built_in,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-class .hljs-title,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-title.class_,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-type { color: #ffcb8b; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-function .hljs-title,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-title.function_,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-section { color: #82aaff; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-name,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-tag { color: #f07178; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-variable,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-template-variable,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-regexp { color: #c792ea; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-link,
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-emphasis { color: #7fdbca; font-style: italic; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-addition { color: #addb67; }
+.jz-code-block[data-code-theme='night-owl'] .hljs .hljs-subst { color: #d6deeb; }
+
+/* Darcula */
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-comment,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-quote { color: #808080; font-style: italic; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-keyword,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-selector-tag,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-doctag { color: #cc7832; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-string,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-attr,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-attribute,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-symbol { color: #6a8759; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-number,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-literal,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-meta,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-deletion { color: #6897bb; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-built_in,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-class .hljs-title,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-title.class_,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-type { color: #ffc66d; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-function .hljs-title,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-title.function_,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-section { color: #ffc66d; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-name,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-tag { color: #e8bf6a; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-variable,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-template-variable,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-regexp { color: #9876aa; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-link,
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-emphasis { color: #6897bb; font-style: italic; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-addition { color: #6a8759; }
+.jz-code-block[data-code-theme='darcula'] .hljs .hljs-subst { color: #a9b7c6; }
+
+/* Light themes — shared GitHub-like token palette with minor chrome differences */
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-comment,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-comment,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-comment,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-quote,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-quote,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-quote { color: #6a737d; font-style: italic; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-keyword,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-keyword,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-keyword,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-selector-tag,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-selector-tag,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-selector-tag,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-doctag,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-doctag,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-doctag { color: #d73a49; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-string,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-string,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-string,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-attr,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-attr,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-attr,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-attribute,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-attribute,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-attribute,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-symbol,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-symbol,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-symbol { color: #032f62; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-number,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-number,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-number,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-literal,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-literal,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-literal,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-meta,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-meta,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-meta { color: #005cc5; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-built_in,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-built_in,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-built_in,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-class .hljs-title,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-class .hljs-title,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-class .hljs-title,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-title.class_,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-title.class_,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-title.class_,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-type,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-type,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-type { color: #6f42c1; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-function .hljs-title,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-function .hljs-title,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-function .hljs-title,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-title.function_,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-title.function_,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-title.function_,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-section,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-section,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-section { color: #6f42c1; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-name,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-name,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-name,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-tag,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-tag,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-tag { color: #22863a; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-variable,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-variable,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-variable,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-template-variable,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-template-variable,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-template-variable,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-regexp,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-regexp,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-regexp { color: #032f62; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-link,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-link,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-link,
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-emphasis,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-emphasis,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-emphasis { color: #005cc5; font-style: italic; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-addition,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-addition,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-addition { color: #22863a; }
+.jz-code-block[data-code-theme='yuque-light-pro'] .hljs .hljs-subst,
+.jz-code-block[data-code-theme='yuque-light'] .hljs .hljs-subst,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-subst { color: #24292f; }
+
+/* Bracket Lights Pro — slightly warmer accent on strings */
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-string,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-attr,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-attribute,
+.jz-code-block[data-code-theme='bracket-lights-pro'] .hljs .hljs-symbol { color: #aa5500; }
+
+/* Yuque theme picker dropdown */
+.jz-code-theme-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 132px;
+  max-width: 160px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--jz-code-border, #3e4451);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--jz-code-text) 6%, transparent);
+  color: var(--jz-code-text, #abb2bf);
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  cursor: pointer;
+  user-select: none;
 }
-.hljs .hljs-function .hljs-title, .hljs .hljs-title.function_, .hljs .hljs-section { color: #61afef; }
-.hljs .hljs-name, .hljs .hljs-tag { color: #e06c75; }
-.hljs .hljs-variable, .hljs .hljs-template-variable, .hljs .hljs-regexp { color: #d19a66; }
-.hljs .hljs-link, .hljs .hljs-emphasis { color: #56b6c2; font-style: italic; }
-.hljs .hljs-strong { font-weight: 600; }
-.hljs .hljs-addition { color: #98c379; }
-.hljs .hljs-subst { color: #d6d9de; }
+.jz-code-theme-trigger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--jz-code-text) 12%, transparent);
+}
+.jz-code-theme-trigger:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.jz-code-theme-trigger-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+}
+.jz-code-theme-trigger .anticon {
+  font-size: 10px;
+  color: var(--jz-code-toolbar-text, #9da5b4);
+}
+.jz-code-theme-menu {
+  min-width: 200px;
+  padding: 6px 0;
+  border-radius: 8px;
+  border: 1px solid var(--jz-code-border, #3e4451);
+  background: var(--jz-code-toolbar-bg, #21252b);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
+}
+.jz-code-theme-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: var(--jz-code-text, #abb2bf);
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.jz-code-theme-item:hover {
+  background: color-mix(in srgb, var(--jz-code-text) 10%, transparent);
+}
+.jz-code-theme-item-check {
+  width: 14px;
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--jz-code-text, #abb2bf);
+  opacity: 0;
+}
+.jz-code-theme-item.is-active .jz-code-theme-item-check {
+  opacity: 1;
+}
 
 /* Tiptap NodeView wrapper styling — keep the body editable but make sure
    the toolbar Select and buttons don't inherit ProseMirror's caret. */
 .tiptap-shell .ProseMirror .jz-code-block .jz-code-toolbar {
-  /* Ant's Select renders an absolute popup; let it overflow the block. */
   position: relative;
 }
-.tiptap-shell .ProseMirror .jz-code-block .ant-select-selector {
-  background: rgba(255, 255, 255, 0.05) !important;
-  border-color: rgba(255, 255, 255, 0.12) !important;
-  color: #d6d9de !important;
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-lang-select {
+  width: 130px;
 }
-.tiptap-shell .ProseMirror .jz-code-block .ant-select-arrow {
-  color: rgba(255, 255, 255, 0.55) !important;
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-theme-trigger-wrap {
+  display: inline-flex;
 }
-.tiptap-shell .ProseMirror .jz-code-block .ant-btn-text {
-  color: rgba(255, 255, 255, 0.7) !important;
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-lang-select .ant-select-selector {
+  background: color-mix(in srgb, var(--jz-code-text) 6%, transparent) !important;
+  border-color: var(--jz-code-border, #3e4451) !important;
+  color: var(--jz-code-text, #abb2bf) !important;
+  border-radius: 6px !important;
+  min-height: 28px !important;
 }
-.tiptap-shell .ProseMirror .jz-code-block .ant-btn-text:hover {
-  background: rgba(255, 255, 255, 0.08) !important;
-  color: #fff !important;
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-lang-select .ant-select-selection-item {
+  color: var(--jz-code-text, #abb2bf) !important;
+}
+.tiptap-shell .ProseMirror .jz-code-block .ant-select-arrow,
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-lang-select .anticon {
+  color: var(--jz-code-toolbar-text, #9da5b4) !important;
+}
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-toolbar-icon.ant-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  color: var(--jz-code-toolbar-text, #9da5b4) !important;
+  border-radius: 6px;
+}
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-toolbar-icon.ant-btn .anticon {
+  color: inherit !important;
+}
+.tiptap-shell .ProseMirror .jz-code-block .jz-code-toolbar-icon.ant-btn:hover {
+  background: color-mix(in srgb, var(--jz-code-text) 12%, transparent) !important;
+  color: var(--jz-code-text, #abb2bf) !important;
+}
+.tiptap-shell .ProseMirror .jz-code-block .ant-btn-primary.jz-code-toolbar-icon {
+  background: color-mix(in srgb, var(--jz-accent) 35%, transparent) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 50%, transparent) !important;
+  color: var(--jz-code-text, #abb2bf) !important;
+}
+
+/* Editor「更多」下拉 — 与代码块顶栏同色 */
+.jz-code-dropdown .ant-dropdown-menu {
+  background: var(--jz-code-toolbar-bg, #21252b) !important;
+  border: 1px solid var(--jz-code-border, #3e4451);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+}
+.jz-code-dropdown .ant-dropdown-menu-item {
+  color: var(--jz-code-text, #abb2bf) !important;
+  border-radius: 6px;
+}
+.jz-code-dropdown .ant-dropdown-menu-item:hover,
+.jz-code-dropdown .ant-dropdown-menu-item-active {
+  background: color-mix(in srgb, var(--jz-code-text) 10%, transparent) !important;
+  color: var(--jz-code-text, #abb2bf) !important;
+}
+.jz-code-dropdown .ant-dropdown-menu-item-divider {
+  background: var(--jz-code-border, #3e4451);
+}
+.jz-code-dropdown .ant-dropdown-menu-item .anticon {
+  color: var(--jz-code-toolbar-text, #9da5b4) !important;
 }
 
 /* ── Mermaid canvas ──
@@ -490,7 +1127,28 @@
 }
 
 /* ── Yuque inline tags ── */
-.markdown-preview font { /* legacy color tag */ }
+.markdown-preview font,
+.tiptap-shell .ProseMirror font { /* legacy color tag — inherit inline style */ }
+.markdown-preview td code,
+.markdown-preview th code,
+.tiptap-shell .ProseMirror td code,
+.tiptap-shell .ProseMirror th code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.88em;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--jz-surface-2) 75%, transparent);
+  color: var(--jz-accent);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.markdown-preview td span[style*="color"],
+.markdown-preview th span[style*="color"],
+.tiptap-shell .ProseMirror td span[style*="color"],
+.tiptap-shell .ProseMirror th span[style*="color"] {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.92em;
+}
 .markdown-preview u,
 .tiptap-shell .ProseMirror u {
   /* Push the underline well clear of the baseline so it never overlaps

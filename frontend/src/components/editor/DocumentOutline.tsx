@@ -12,9 +12,11 @@ interface Heading {
 interface Props {
   /** Tiptap editor — preferred when available; we subscribe to ``update``. */
   editor?: Editor | null;
-  /** Markdown source — used when there's no editor (e.g. MarkdownEditor host). */
+  /** Markdown / HTML source — used when there's no editor. */
   source?: string;
-  /** Markdown mode: parent supplies a callback to scroll/seek the textarea. */
+  /** Source content kind. Defaults to 'markdown'. */
+  sourceKind?: 'markdown' | 'html';
+  /** Markdown/HTML mode: parent supplies a callback to scroll/seek the textarea. */
   onSeek?: (pos: number) => void;
 }
 
@@ -25,7 +27,7 @@ interface Props {
  *
  * 渲染：每个标题一行按钮，按 level 缩进；空文档显示 Empty。
  */
-export default function DocumentOutline({ editor, source, onSeek }: Props) {
+export default function DocumentOutline({ editor, source, sourceKind = 'markdown', onSeek }: Props) {
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [activePos, setActivePos] = useState<number | null>(null);
 
@@ -52,11 +54,19 @@ export default function DocumentOutline({ editor, source, onSeek }: Props) {
     };
   }, [editor]);
 
-  // Markdown：value 变就重新解析
+  // Markdown / HTML：value 变就重新解析
   useEffect(() => {
     if (editor) return;
-    setHeadings(source ? extractMarkdownHeadings(source) : []);
-  }, [editor, source]);
+    if (!source) {
+      setHeadings([]);
+      return;
+    }
+    setHeadings(
+      sourceKind === 'html'
+        ? extractHtmlHeadings(source)
+        : extractMarkdownHeadings(source),
+    );
+  }, [editor, source, sourceKind]);
 
   function handleClick(h: Heading) {
     if (editor) {
@@ -106,6 +116,31 @@ function extractTiptapHeadings(editor: Editor): Heading[] {
       });
     }
   });
+  return out;
+}
+
+/** Scan raw HTML for <h1>…<h6> opening tags. We return character offsets
+ *  (not pos in any parsed tree) so the host can scroll a textarea to roughly
+ *  the right spot. Works for hand-authored HTML and most Yuque exports. */
+function extractHtmlHeadings(source: string): Heading[] {
+  const out: Heading[] = [];
+  const re = /<(h[1-6])\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(source)) !== null) {
+    const tag = m[1].toLowerCase();
+    const level = Number(tag.slice(1));
+    if (level >= 1 && level <= 6) {
+      const text = m[2]
+        .replace(/<[^>]+>/g, '')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/\s+/g, ' ')
+        .trim();
+      out.push({ level, text, pos: m.index });
+    }
+  }
   return out;
 }
 

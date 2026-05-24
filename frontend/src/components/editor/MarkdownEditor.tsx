@@ -41,7 +41,7 @@ const MD_LAYOUT_KEY = 'jz-md-layout';
 
 export default function MarkdownEditor({
   value,
-  onChange,
+  onChange: onChangeProp,
   onAutoSave,
   autosaveMs = 5000,
   readOnly = false,
@@ -73,12 +73,39 @@ export default function MarkdownEditor({
   const previewRef = useRef<HTMLDivElement | null>(null);
   const syncScrollLockRef = useRef(false);
   const lastSavedRef = useRef(value);
+  /** Last value emitted via local onChange — used to tell server echoes from
+   *  external updates (409 reload, version restore). */
+  const lastLocalRef = useRef(value);
+  /** Monotonic save seq so old async completions don't overwrite newer state. */
+  const saveSeqRef = useRef(0);
   const timerRef = useRef<number | null>(null);
+
+  // Wrap onChange so we can record local edits and distinguish them from
+  // external updates (409 reload, version restore).
+  const onChange = useCallback(
+    (next: string) => {
+      lastLocalRef.current = next;
+      onChangeProp(next);
+    },
+    [onChangeProp],
+  );
 
   useEffect(() => {
     lastSavedRef.current = value;
+    lastLocalRef.current = value;
     setStatus('idle');
   }, []); // sync on mount; switching docs handled by parent <MarkdownEditor key={doc.id}>
+
+  // External value sync (409 reload, version restore). Distinguish from a
+  // server echo of our own save (value === lastSavedRef) and from local
+  // typing (value === lastLocalRef).
+  useEffect(() => {
+    if (value === lastLocalRef.current) return;
+    // External update: reset bookkeeping so status indicator clears.
+    lastSavedRef.current = value;
+    lastLocalRef.current = value;
+    setStatus('idle');
+  }, [value]);
 
   useEffect(() => {
     if (!onAutoSave) return;
@@ -87,13 +114,16 @@ export default function MarkdownEditor({
     if (value === lastSavedRef.current) return;
     setStatus('pending');
     if (timerRef.current) window.clearTimeout(timerRef.current);
+    const mySeq = ++saveSeqRef.current;
     timerRef.current = window.setTimeout(async () => {
       setStatus('saving');
       try {
         await onAutoSave(value);
+        if (mySeq !== saveSeqRef.current) return;
         lastSavedRef.current = value;
         setStatus('saved');
       } catch {
+        if (mySeq !== saveSeqRef.current) return;
         setStatus('error');
       }
     }, autosaveMs);
@@ -111,12 +141,15 @@ export default function MarkdownEditor({
       timerRef.current = null;
     }
     if (value === lastSavedRef.current && status === 'saved') return;
+    const mySeq = ++saveSeqRef.current;
     setStatus('saving');
     try {
       await onAutoSave(value);
+      if (mySeq !== saveSeqRef.current) return;
       lastSavedRef.current = value;
       setStatus('saved');
     } catch {
+      if (mySeq !== saveSeqRef.current) return;
       setStatus('error');
     }
   }, [onAutoSave, value, status]);
@@ -135,7 +168,14 @@ export default function MarkdownEditor({
     return () => window.removeEventListener('keydown', onKey);
   }, [saveNow, readOnly, onAutoSave]);
 
-  const html = useMemo(() => renderMarkdown(value), [value]);
+  // Debounce the preview render so each keystroke doesn't reparse Markdown
+  // + run DOMPurify on long documents (10k+ chars chokes on every char).
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedValue(value), 200);
+    return () => window.clearTimeout(t);
+  }, [value]);
+  const html = useMemo(() => renderMarkdown(debouncedValue), [debouncedValue]);
   const count = useMemo(() => wordCount(value), [value]);
 
   function openMentionAtCursor() {
@@ -153,24 +193,66 @@ export default function MarkdownEditor({
       const pos = ta.selectionStart;
       triggerRangeRef.current = { from: pos, to: pos };
       setMentionOpen(true);
+      return;
+    }
+    // Ctrl/⌘+U — wrap selection with <u>…</u>. The browser's default for
+    // Ctrl+U inside a textarea is a noop, so we don't need to preventDefault
+    // for compat, but doing so suppresses Firefox's "view source" shortcut
+    // for completeness.
+    if (
+      (e.metaKey || e.ctrlKey) &&
+      !e.shiftKey &&
+      !e.altKey &&
+      (e.key === 'u' || e.key === 'U')
+    ) {
+      e.preventDefault();
+      wrapSelection('<u>', '</u>');
     }
   }
 
-  /** Insert an `![alt](url)` Markdown image at the current cursor. */
-  function insertImageAtCursor(url: string, alt: string) {
+  /** Escape characters that would break the Markdown image syntax `![…](…)`. */
+  function escapeMdAlt(s: string): string {
+    return s.replace(/[\\[\]\n)]/g, (c) => (c === '\n' ? ' ' : '\\' + c));
+  }
+
+  /** Upload multiple files in order, building one big insertion. Re-reads live
+   *  textarea content before each insertion so concurrent typing is preserved. */
+  async function uploadAndInsertSequential(files: File[]) {
     const ta = textareaRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? value.length;
-    const prevCharNeedsNl = start > 0 && value[start - 1] !== '\n';
-    const insertion = (prevCharNeedsNl ? '\n' : '') + `![${alt}](${url})\n`;
-    onChange(value.slice(0, start) + insertion + value.slice(end));
-    const caret = start + insertion.length;
-    queueMicrotask(() => {
-      if (ta) {
-        ta.focus();
-        ta.setSelectionRange(caret, caret);
+    let start = ta?.selectionStart ?? lastLocalRef.current.length;
+    let end = ta?.selectionEnd ?? start;
+    let caret = end;
+    let any = false;
+    for (const file of files) {
+      const base = ta?.value ?? lastLocalRef.current;
+      start = Math.min(start, base.length);
+      end = Math.min(end, base.length);
+      try {
+        const att = await uploadFile(file, documentId);
+        const next = ta?.value ?? lastLocalRef.current;
+        const prevCharNeedsNl = start > 0 && next[start - 1] !== '\n';
+        const altText = escapeMdAlt(att.original_filename || file.name);
+        const insertion =
+          (prevCharNeedsNl ? '\n' : '') + `![${altText}](${att.url})\n`;
+        const merged = next.slice(0, start) + insertion + next.slice(end);
+        lastLocalRef.current = merged;
+        start += insertion.length;
+        end = start;
+        caret = start;
+        any = true;
+      } catch (err) {
+        message.error(err instanceof Error ? err.message : '图片上传失败');
       }
-    });
+    }
+    if (any) {
+      onChange(lastLocalRef.current);
+      queueMicrotask(() => {
+        if (ta) {
+          ta.focus();
+          ta.setSelectionRange(caret, caret);
+        }
+      });
+    }
   }
 
   /** Clipboard paste handler — intercept image-bearing paste and upload. */
@@ -183,14 +265,7 @@ export default function MarkdownEditor({
       .filter((f): f is File => !!f);
     if (images.length === 0) return;
     e.preventDefault();
-    for (const file of images) {
-      try {
-        const att = await uploadFile(file, documentId);
-        insertImageAtCursor(att.url, att.original_filename || file.name);
-      } catch (err) {
-        message.error(err instanceof Error ? err.message : '图片上传失败');
-      }
-    }
+    await uploadAndInsertSequential(images);
   }
 
   /** Drop handler — same as paste but for dragged files. */
@@ -201,14 +276,15 @@ export default function MarkdownEditor({
     );
     if (files.length === 0) return;
     e.preventDefault();
-    for (const file of files) {
-      try {
-        const att = await uploadFile(file, documentId);
-        insertImageAtCursor(att.url, att.original_filename || file.name);
-      } catch (err) {
-        message.error(err instanceof Error ? err.message : '图片上传失败');
-      }
-    }
+    await uploadAndInsertSequential(files);
+  }
+
+  /** Without an explicit dragover preventDefault, browsers refuse the drop —
+   *  the file is forwarded to the OS / new tab instead of our handler. */
+  function handleDragOver(e: React.DragEvent<HTMLTextAreaElement>) {
+    if (readOnly) return;
+    const items = Array.from(e.dataTransfer?.items ?? []);
+    if (items.some((i) => i.kind === 'file')) e.preventDefault();
   }
 
   function handleMentionSelect(s: MentionSuggestion) {
@@ -350,7 +426,7 @@ export default function MarkdownEditor({
                   {c.label}
                 </span>
               ),
-              onClick: () => wrapSelection(`<font style="color:${c.value};">`, '</font>'),
+              onClick: () => wrapSelection(`<span style="color:${c.value};">`, '</span>'),
             })),
           }}
         >
@@ -437,6 +513,7 @@ export default function MarkdownEditor({
           onKeyDown={handleKeyDown}
           onPaste={handlePaste}
           onDrop={handleDrop}
+          onDragOver={handleDragOver}
           onScroll={onTextareaScroll}
           readOnly={readOnly}
           autoSize={false}

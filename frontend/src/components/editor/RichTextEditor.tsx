@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorContent, ReactNodeViewRenderer, useEditor } from '@tiptap/react';
+import { Extension } from '@tiptap/core';
+import { Plugin } from '@tiptap/pm/state';
 import { BubbleMenu } from '@tiptap/react/menus';
 import StarterKit from '@tiptap/starter-kit';
 import Link from '@tiptap/extension-link';
@@ -70,7 +72,8 @@ import { SlashCommand } from './slashCommand';
 import { FindReplace } from './findReplace';
 import MentionPicker from './MentionPicker';
 import type { MentionSuggestion } from '@/api/linking';
-import { wordCount } from '@/utils/markdown';
+import { wordCount, preprocessMarkdown } from '@/utils/markdown';
+import { escapeFenceAttr, parseCodeFenceInfo, serializeCodeFenceInfo } from '@/utils/codeFenceMeta';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
 import { useDocLinkHoverCards, DocHoverCard } from '@/components/common/DocHoverCard';
@@ -91,6 +94,44 @@ const TEXT_COLOR_PRESETS = [
   { label: '默认 / 取消', value: 'reset' },
   ...BASE_COLOR_PRESETS,
 ];
+
+/** Tiptap Color only parses ``<span style>`` by default — add ``<font>`` fallback. */
+const ExtendedColor = Color.extend({
+  parseHTML() {
+    return [
+      {
+        tag: 'span',
+        getAttrs: (element: HTMLElement) => {
+          const color = element.style?.color;
+          return color ? { color } : false;
+        },
+      },
+      {
+        tag: 'font',
+        getAttrs: (element: HTMLElement) => {
+          const color = element.style?.color || element.getAttribute('color');
+          return color ? { color } : false;
+        },
+      },
+    ];
+  },
+});
+
+/** Preprocess Yuque/legacy MD on paste before ProseMirror ingests plain text. */
+const MarkdownPreprocessPaste = Extension.create({
+  name: 'markdownPreprocessPaste',
+  addProseMirrorPlugins() {
+    return [
+      new Plugin({
+        props: {
+          transformPastedText(text) {
+            return preprocessMarkdown(text);
+          },
+        },
+      }),
+    ];
+  },
+});
 
 interface Props {
   /** Markdown source — authoritative storage. */
@@ -124,9 +165,18 @@ export default function RichTextEditor({
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [mentionOpen, setMentionOpen] = useState(false);
+  const setMentionOpenRef = useRef(setMentionOpen);
+  useEffect(() => {
+    setMentionOpenRef.current = setMentionOpen;
+  }, []);
   const [uploading, setUploading] = useState(false);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const lastSavedRef = useRef(value);
+  /** Last markdown emitted via onChange (live editor view). Used to detect
+   *  whether prop `value` is a server echo or an out-of-band external update. */
+  const lastEmittedRef = useRef(value);
+  /** Monotonic save sequence so old completions don't clobber newer state. */
+  const saveSeqRef = useRef(0);
   const timerRef = useRef<number | null>(null);
 
   // Link popover
@@ -141,9 +191,13 @@ export default function RichTextEditor({
   // so manual save isn't blocked by the debounce.
   const onChangeTimerRef = useRef<number | null>(null);
   const onChangeRef = useRef(onChange);
+  const onAutoSaveRef = useRef(onAutoSave);
   useEffect(() => {
     onChangeRef.current = onChange;
   }, [onChange]);
+  useEffect(() => {
+    onAutoSaveRef.current = onAutoSave;
+  }, [onAutoSave]);
 
   const editor = useEditor({
     extensions: [
@@ -152,11 +206,71 @@ export default function RichTextEditor({
       // collide ("Duplicate extension names" warning).
       StarterKit.configure({ codeBlock: false, link: false, underline: false }),
       CodeBlockLowlight.extend({
-        // Wrap each code block in a React NodeView that provides a language
-        // selector + font-size / wrap / copy toolbar. The underlying schema is
-        // unchanged so Markdown serialisation keeps emitting ``` fences.
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            title: {
+              default: '',
+              parseHTML: (el) => el.getAttribute('data-title') ?? '',
+              renderHTML: (attrs) => (attrs.title ? { 'data-title': attrs.title } : {}),
+            },
+            collapsed: {
+              default: false,
+              parseHTML: (el) => el.getAttribute('data-collapsed') === 'true',
+              renderHTML: (attrs) => (attrs.collapsed ? { 'data-collapsed': 'true' } : {}),
+            },
+          };
+        },
         addNodeView() {
           return ReactNodeViewRenderer(CodeBlockView);
+        },
+        addStorage() {
+          return {
+            markdown: {
+              // tiptap-markdown serializer state — loosely typed upstream.
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              serialize(state: any, node: any) {
+                const info = serializeCodeFenceInfo(
+                  (node.attrs.language as string) || '',
+                  (node.attrs.title as string) || '',
+                  Boolean(node.attrs.collapsed)
+                );
+                state.write('```' + info + '\n');
+                state.text(node.textContent, false);
+                state.ensureNewLine();
+                state.write('```');
+                state.closeBlock(node);
+              },
+              parse: {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                setup(markdownit: any) {
+                  markdownit.set({ langPrefix: 'language-' });
+                  const defaultFence = markdownit.renderer.rules.fence;
+                  if (!defaultFence) return;
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  markdownit.renderer.rules.fence = (tokens: any, idx: any, options: any, env: any, self: any) => {
+                    const token = tokens[idx];
+                    const meta = parseCodeFenceInfo((token.info || '').trim());
+                    let html = defaultFence(tokens, idx, options, env, self);
+                    if (meta.title || meta.collapsed) {
+                      const attrs: string[] = [];
+                      if (meta.title) attrs.push(`data-title="${escapeFenceAttr(meta.title)}"`);
+                      if (meta.collapsed) attrs.push('data-collapsed="true"');
+                      html = html.replace(/^<pre>/, `<pre ${attrs.join(' ')}>`);
+                    }
+                    return html;
+                  };
+                },
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                updateDOM(element: any) {
+                  element.innerHTML = element.innerHTML.replace(
+                    /\n<\/code><\/pre>/g,
+                    '</code></pre>'
+                  );
+                },
+              },
+            },
+          };
         },
       }).configure({ lowlight, defaultLanguage: 'plaintext' }),
       Link.configure({ openOnClick: false, autolink: true }),
@@ -186,7 +300,7 @@ export default function RichTextEditor({
       }),
       Underline,
       TextStyle,
-      Color,
+      ExtendedColor,
       Superscript,
       Subscript,
       FontFamily.configure({ types: ['textStyle'] }),
@@ -215,35 +329,87 @@ export default function RichTextEditor({
       MathInline,
       MathBlock,
       Markdown.configure({
-        // html: true so markdown-it lets <font color> / <u> / inline HTML
-        // round-trip through the editor; the public renderer separately runs
-        // DOMPurify, so the editor surface is the only place trusted HTML
-        // survives.
         html: true,
         tightLists: true,
         linkify: true,
         breaks: true,
+        transformPastedText: true,
       }),
+      MarkdownPreprocessPaste,
       SlashCommand,
       EmojiSuggestion,
       HeadingFold,
       FindReplace,
-      GlobalDragHandle,
+      GlobalDragHandle.configure({
+        dragHandleSelector: '.jz-block-drag-handle',
+        dragHandleWidth: 20,
+      }),
     ],
+    editorProps: {
+      handleKeyDown: (_view, event) => {
+        if (event.key === '@' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+          event.preventDefault();
+          setMentionOpenRef.current(true);
+          return true;
+        }
+        return false;
+      },
+    },
     // tiptap-markdown registers a parser that recognizes Markdown when `content` is a string.
-    content: value || '',
+    content: preprocessMarkdown(value || ''),
     onUpdate: ({ editor }) => {
       if (onChangeTimerRef.current) window.clearTimeout(onChangeTimerRef.current);
       onChangeTimerRef.current = window.setTimeout(() => {
         const md: string = editor.storage.markdown?.getMarkdown?.() ?? '';
+        lastEmittedRef.current = md;
         onChangeRef.current(md);
       }, 200);
     },
   });
 
+  // Mirror the editor instance into a ref so cleanup can flush even after
+  // React has cleared the closure-captured `editor` from useEditor.
+  const editorRef = useRef<typeof editor>(editor);
+  useEffect(() => {
+    editorRef.current = editor;
+  }, [editor]);
+
+  // Flush pending onChange debounce + fire-and-forget autosave on unmount
+  // (mode switch, doc nav). Without this, recent edits or pending autosave
+  // can be silently dropped.
   useEffect(() => {
     return () => {
-      if (onChangeTimerRef.current) window.clearTimeout(onChangeTimerRef.current);
+      const ed = editorRef.current;
+      let liveMd = '';
+
+      if (onChangeTimerRef.current) {
+        window.clearTimeout(onChangeTimerRef.current);
+        onChangeTimerRef.current = null;
+      }
+      if (ed) {
+        liveMd = ed.storage.markdown?.getMarkdown?.() ?? '';
+        if (liveMd !== lastEmittedRef.current) {
+          lastEmittedRef.current = liveMd;
+          onChangeRef.current(liveMd);
+        }
+      }
+
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+
+      const autoSave = onAutoSaveRef.current;
+      if (autoSave && ed && liveMd !== lastSavedRef.current) {
+        const mySeq = ++saveSeqRef.current;
+        void Promise.resolve(autoSave(liveMd)).catch(() => {
+          /* unmount — swallow */
+        }).finally(() => {
+          if (mySeq === saveSeqRef.current) {
+            lastSavedRef.current = liveMd;
+          }
+        });
+      }
     };
   }, []);
 
@@ -254,19 +420,49 @@ export default function RichTextEditor({
     return () => onEditorReady(null);
   }, [editor, onEditorReady]);
 
-  // Autosave (mirrors MarkdownEditor logic)
+  // Sync external value (409 conflict reload, version restore). Guarded so
+  // we never overwrite local edits that are still inside the 200ms debounce.
+  useEffect(() => {
+    if (!editor) return;
+    const current = editor.storage.markdown?.getMarkdown?.() ?? '';
+    if (value === current) {
+      // Server echo: refresh save bookkeeping so the status indicator clears.
+      lastSavedRef.current = value;
+      lastEmittedRef.current = value;
+      return;
+    }
+    if (editor.isFocused) return;
+    // If a debounce timer is still scheduled, local edits are pending —
+    // don't clobber them with the older `value` from props.
+    if (onChangeTimerRef.current) return;
+    // If the editor's content is newer than the prop, treat as local dirty.
+    if (current !== lastEmittedRef.current) return;
+    editor.commands.setContent(preprocessMarkdown(value), { emitUpdate: false });
+    lastSavedRef.current = value;
+    lastEmittedRef.current = value;
+    setStatus('idle');
+  }, [editor, value]);
+
+  // Autosave — read LIVE markdown from the editor so saves don't lag the
+  // 200ms onChange debounce.
   useEffect(() => {
     if (!onAutoSave) return;
     if (value === lastSavedRef.current) return;
     setStatus('pending');
     if (timerRef.current) window.clearTimeout(timerRef.current);
+    const mySeq = ++saveSeqRef.current;
     timerRef.current = window.setTimeout(async () => {
       setStatus('saving');
+      const ed = editorRef.current;
+      const liveMd: string = ed?.storage.markdown?.getMarkdown?.() ?? value;
       try {
-        await onAutoSave(value);
-        lastSavedRef.current = value;
+        await onAutoSave(liveMd);
+        if (mySeq !== saveSeqRef.current) return; // a newer save superseded us
+        lastSavedRef.current = liveMd;
+        lastEmittedRef.current = liveMd;
         setStatus('saved');
       } catch {
+        if (mySeq !== saveSeqRef.current) return;
         setStatus('error');
       }
     }, autosaveMs);
@@ -290,14 +486,20 @@ export default function RichTextEditor({
       onChangeTimerRef.current = null;
     }
     const md: string = editor?.storage.markdown?.getMarkdown?.() ?? value;
-    if (md !== value) onChangeRef.current(md);
+    if (md !== lastEmittedRef.current) {
+      lastEmittedRef.current = md;
+      onChangeRef.current(md);
+    }
     if (md === lastSavedRef.current && status === 'saved') return;
+    const mySeq = ++saveSeqRef.current;
     setStatus('saving');
     try {
       await onAutoSave(md);
+      if (mySeq !== saveSeqRef.current) return;
       lastSavedRef.current = md;
       setStatus('saved');
     } catch {
+      if (mySeq !== saveSeqRef.current) return;
       setStatus('error');
     }
   }, [editor, onAutoSave, value, status]);
@@ -539,6 +741,21 @@ export default function RichTextEditor({
   }, [fullscreen]);
 
   const count = useMemo(() => wordCount(value), [value]);
+  /** Live markdown for toolbar dirty-state (save button) — updated on every
+   *  editor keystroke, not lagged behind the 200ms onChange debounce. */
+  const [liveMd, setLiveMd] = useState(value);
+  useEffect(() => {
+    if (!editor) return;
+    const sync = () => setLiveMd(editor.storage.markdown?.getMarkdown?.() ?? '');
+    sync();
+    editor.on('update', sync);
+    return () => {
+      editor.off('update', sync);
+    };
+  }, [editor]);
+  useEffect(() => {
+    setLiveMd(value);
+  }, [value]);
 
   const statusLabel: Record<SaveStatus, { text: string; color?: string }> = {
     idle: { text: '已同步' },
@@ -605,7 +822,7 @@ export default function RichTextEditor({
             type="primary"
             icon={<SaveOutlined />}
             loading={status === 'saving'}
-            disabled={!onAutoSave || (status === 'saved' && value === lastSavedRef.current)}
+            disabled={!onAutoSave || (status === 'saved' && liveMd === lastSavedRef.current)}
             onClick={() => void saveNow()}
           >
             保存
@@ -854,7 +1071,10 @@ export default function RichTextEditor({
         </Tooltip>
 
         <span style={{ marginLeft: 'auto' }} />
-        <AIAssistantMenu editor={editor} fallbackContent={() => value} />
+        <AIAssistantMenu
+          editor={editor}
+          fallbackContent={() => editor?.storage.markdown?.getMarkdown?.() ?? value}
+        />
         <Tooltip title={fullscreen ? '退出全屏 (Esc)' : '全屏 / 沉浸模式'}>
           <Button
             size="small"

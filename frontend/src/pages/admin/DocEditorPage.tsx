@@ -17,7 +17,6 @@ import {
   Upload,
 } from 'antd';
 import {
-  ArrowLeftOutlined,
   CloudUploadOutlined,
   CompressOutlined,
   DeleteOutlined,
@@ -48,6 +47,7 @@ import CommentsPanel from '@/components/common/CommentsPanel';
 import AttachmentPanel from '@/components/common/AttachmentPanel';
 import VersionsDrawer from './VersionsDrawer';
 import ExportDialog from '@/components/common/ExportDialog';
+import { AdminBackButton } from '@/components/admin/AdminPageHeader';
 import { SelectionAI } from '@/components/common/SelectionAI';
 import { DocAIPanel } from '@/components/common/DocAIPanel';
 import { DocStatsPanel } from '@/components/common/DocStatsPanel';
@@ -63,14 +63,22 @@ import type { DocFormat, DocumentDetail, KnowledgeBase, Visibility } from '@/typ
 type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf';
 const EDITOR_MODE_KEY = 'jianzhai:editorMode';
 
-function defaultModeFor(format: DocFormat | undefined, fallback: EditorMode): EditorMode {
+function defaultModeFor(
+  format: DocFormat | undefined,
+  fallback: EditorMode,
+  rawContent?: string,
+): EditorMode {
   switch (format) {
     case 'pdf':
       return 'pdf';
     case 'html':
       return 'html';
     case 'docx':
-      return 'html'; // viewer surface; user can switch to markdown to edit body
+      // When DOCX extraction succeeded → rich (best WYSIWYG fidelity).
+      // When the backend returned no body (mammoth missing, malformed file)
+      // → markdown so the user lands in a writable surface (HTML mode would
+      // hand them an empty source pane and a static iframe with nothing).
+      return rawContent?.trim() ? 'rich' : 'markdown';
     default:
       return fallback;
   }
@@ -97,6 +105,7 @@ export default function DocEditorPage({
   const [searchParams] = useSearchParams();
   /** Blog edit uses `returnToOverride`; admin may pass `?return=/posts/<slug>`. */
   const returnTo = returnToOverride ?? searchParams.get('return');
+  const modeFromUrl = searchParams.get('mode');
   const kbId = kbIdOverride ?? Number(id);
   const documentId = docIdOverride ?? Number(docId);
   const navigate = useNavigate();
@@ -146,6 +155,7 @@ export default function DocEditorPage({
 
   const [richEditor, setRichEditor] = useState<TiptapEditor | null>(null);
   const [mdTextarea, setMdTextarea] = useState<HTMLTextAreaElement | null>(null);
+  const [htmlTextarea, setHtmlTextarea] = useState<HTMLTextAreaElement | null>(null);
   const [findOpen, setFindOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
 
@@ -153,7 +163,7 @@ export default function DocEditorPage({
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
       if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
-        if (mode === 'rich' || mode === 'markdown') {
+        if (mode === 'rich' || mode === 'markdown' || mode === 'html') {
           e.preventDefault();
           setFindOpen(true);
         }
@@ -189,9 +199,17 @@ export default function DocEditorPage({
       .then((d) => {
         setDoc(d);
         if (!modeTouched) {
-          setMode(
-            defaultModeFor(d.doc_format, (localStorage.getItem(EDITOR_MODE_KEY) as EditorMode) || 'markdown')
-          );
+          if (modeFromUrl === 'html') {
+            setMode('html');
+          } else {
+            setMode(
+              defaultModeFor(
+                d.doc_format,
+                (localStorage.getItem(EDITOR_MODE_KEY) as EditorMode) || 'markdown',
+                d.raw_content,
+              ),
+            );
+          }
         }
       })
       .catch(() => setNotFound(true))
@@ -217,14 +235,18 @@ export default function DocEditorPage({
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []); // empty deps — the ref always has the latest value
 
+  const saveGenRef = useRef(0);
+
   const handleAutoSave = useCallback(
     async (content: string) => {
       if (!doc) return;
+      const gen = ++saveGenRef.current;
       try {
         const updated = await docsApi.updateDocument(doc.id, {
           raw_content: content,
           expected_version: doc.version,
         });
+        if (gen !== saveGenRef.current) return;
         setDoc((prev) => (prev ? { ...prev, ...updated } : updated));
       } catch (err: unknown) {
         const e = err as { response?: { status?: number; data?: { code?: string; document?: DocumentDetail; current_version?: number } } };
@@ -291,7 +313,7 @@ export default function DocEditorPage({
       const fresh = await docsApi.getDocument(doc.id);
       setDoc(fresh);
       // Snap the viewer to whatever format the upload produced.
-      setMode(defaultModeFor(fresh.doc_format, mode));
+      setMode(defaultModeFor(fresh.doc_format, mode, fresh.raw_content));
       message.success(`${file.name} 已附加`);
     } catch (err) {
       message.error(formatApiError(err, '上传失败'));
@@ -306,9 +328,14 @@ export default function DocEditorPage({
         <Alert type="error" message="文档不存在或已删除" />
         <div style={{ marginTop: 12 }}>
           {returnTo ? (
-            <Link to={returnTo}>← 返回文章</Link>
+            <AdminBackButton backTo={returnTo} backLabel="文章" backTitle="返回文章" size="compact" />
           ) : (
-            <Link to={`/admin/kbs/${kbId}`}>← 返回知识库</Link>
+            <AdminBackButton
+              backTo={`/admin/kbs/${kbId}`}
+              backLabel="知识库"
+              backTitle="返回知识库"
+              size="compact"
+            />
           )}
         </div>
       </div>
@@ -396,21 +423,17 @@ export default function DocEditorPage({
         }}
       >
         {returnTo || isBlogShell ? (
-          <Tooltip title={isBlogShell ? '返回文章阅读页' : '返回博客视图'}>
-            <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(returnTo || '/')}
-            />
-          </Tooltip>
+          <AdminBackButton
+            backLabel={isBlogShell ? '文章' : '博客'}
+            backTitle={isBlogShell ? '返回文章阅读页' : '返回博客视图'}
+            onBack={() => navigate(returnTo || '/')}
+          />
         ) : (
-          <Tooltip title="返回知识库">
-            <Button
-              type="text"
-              icon={<ArrowLeftOutlined />}
-              onClick={() => navigate(`/admin/kbs/${kbId}`)}
-            />
-          </Tooltip>
+          <AdminBackButton
+            backLabel="知识库"
+            backTitle="返回知识库"
+            onBack={() => navigate(`/admin/kbs/${kbId}`)}
+          />
         )}
         {kb && (
           <Text type="secondary" style={{ fontSize: 13 }}>
@@ -586,6 +609,7 @@ export default function DocEditorPage({
             uploadingPrimary={uploadingPrimary}
             onRichEditorReady={setRichEditor}
             onMarkdownTextareaReady={setMdTextarea}
+            onHtmlTextareaReady={setHtmlTextarea}
           />
         </div>
         {outlineOpen && mode !== 'pdf' && !focusMode && (
@@ -614,7 +638,14 @@ export default function DocEditorPage({
                 <DocumentOutline
                   editor={mode === 'rich' ? richEditor : null}
                   source={mode === 'markdown' || mode === 'html' ? doc.raw_content : undefined}
-                  onSeek={(pos) => { if (mdTextarea) seekTextarea(mdTextarea, pos, doc.raw_content); }}
+                  sourceKind={mode === 'html' ? 'html' : 'markdown'}
+                  onSeek={(pos) => {
+                    if (mode === 'html' && htmlTextarea) {
+                      seekTextarea(htmlTextarea, pos, doc.raw_content);
+                    } else if (mode === 'markdown' && mdTextarea) {
+                      seekTextarea(mdTextarea, pos, doc.raw_content);
+                    }
+                  }}
                 />
               )}
               {sidebarTab === 'backlinks' && <BacklinkPanel documentId={doc.id} variant="admin" compact />}
@@ -629,10 +660,14 @@ export default function DocEditorPage({
         open={findOpen}
         onClose={() => setFindOpen(false)}
         editor={mode === 'rich' ? richEditor : null}
-        textarea={mode === 'markdown' ? mdTextarea : null}
-        source={mode === 'markdown' ? doc.raw_content : undefined}
+        textarea={
+          mode === 'markdown' ? mdTextarea : mode === 'html' ? htmlTextarea : null
+        }
+        source={
+          mode === 'markdown' || mode === 'html' ? doc.raw_content : undefined
+        }
         onSourceChange={
-          mode === 'markdown'
+          mode === 'markdown' || mode === 'html'
             ? (next) => setDoc((prev) => (prev ? { ...prev, raw_content: next } : prev))
             : undefined
         }
@@ -677,6 +712,7 @@ interface SurfaceProps {
   /** Outline / find-replace want the live editor instance — lift it. */
   onRichEditorReady?: (editor: TiptapEditor | null) => void;
   onMarkdownTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  onHtmlTextareaReady?: (el: HTMLTextAreaElement | null) => void;
 }
 
 function EditorSurface({
@@ -690,6 +726,7 @@ function EditorSurface({
   uploadingPrimary,
   onRichEditorReady,
   onMarkdownTextareaReady,
+  onHtmlTextareaReady,
 }: SurfaceProps) {
   if (mode === 'pdf') {
     if (!primaryUrl) {
@@ -730,6 +767,7 @@ function EditorSurface({
         onAutoSave={onAutoSave}
         documentId={doc.id}
         legacyAttachmentUrl={legacyUrl}
+        onTextareaReady={onHtmlTextareaReady}
       />
     );
   }

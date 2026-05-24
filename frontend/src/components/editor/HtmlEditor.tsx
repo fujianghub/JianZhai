@@ -22,6 +22,8 @@ interface Props {
    * encoding (UTF-8 → GBK fallback) and hydrates ``value`` via ``onChange``.
    */
   legacyAttachmentUrl?: string | null;
+  /** Lift the textarea up so host can scroll/seek it (find / outline). */
+  onTextareaReady?: (el: HTMLTextAreaElement | null) => void;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
@@ -57,12 +59,13 @@ function decodeHtml(buf: ArrayBuffer): { text: string; encoding: 'utf-8' | 'gbk'
 
 export default function HtmlEditor({
   value,
-  onChange,
+  onChange: onChangeProp,
   onAutoSave,
   autosaveMs = 5000,
   readOnly = false,
   documentId,
   legacyAttachmentUrl,
+  onTextareaReady,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [encoding, setEncoding] = useState<'utf-8' | 'gbk' | null>(null);
@@ -70,7 +73,21 @@ export default function HtmlEditor({
   const [uploading, setUploading] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastSavedRef = useRef(value);
+  /** Last value we emitted locally — used to detect external updates. */
+  const lastLocalRef = useRef(value);
+  /** Save sequence guard to keep stale completions from overwriting state. */
+  const saveSeqRef = useRef(0);
   const timerRef = useRef<number | null>(null);
+
+  // Wrap onChange so local edits update lastLocalRef. External value updates
+  // (legacy hydration completes after user typed) are then distinguishable.
+  const onChange = useCallback(
+    (next: string) => {
+      lastLocalRef.current = next;
+      onChangeProp(next);
+    },
+    [onChangeProp],
+  );
 
   // ── 兜底加载：若 raw_content 为空但有历史 HTML 附件，把附件内容解码进编辑器
   const hydrationKey = `${documentId ?? 'no'}::${legacyAttachmentUrl ?? ''}`;
@@ -79,18 +96,24 @@ export default function HtmlEditor({
     if (triedHydrationRef.current === hydrationKey) return;
     triedHydrationRef.current = hydrationKey;
     if (value || !legacyAttachmentUrl) return;
+    const controller = new AbortController();
     setHydrating(true);
-    fetch(legacyAttachmentUrl)
+    fetch(legacyAttachmentUrl, { signal: controller.signal })
       .then((r) => r.arrayBuffer())
       .then((buf) => {
+        // Skip if user typed or focused the editor while fetch was in flight.
+        if (lastLocalRef.current !== '') return;
+        if (textareaRef.current === document.activeElement) return;
         const { text, encoding: enc } = decodeHtml(buf);
         setEncoding(enc);
         onChange(text);
       })
-      .catch(() => {
+      .catch((err) => {
+        if ((err as { name?: string })?.name === 'AbortError') return;
         message.error('无法读取历史 HTML 附件');
       })
       .finally(() => setHydrating(false));
+    return () => controller.abort();
     // intentionally narrow deps so we only run once per (doc, url) pair —
     // onChange identity changes on every render and would loop us.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -98,21 +121,33 @@ export default function HtmlEditor({
 
   useEffect(() => {
     lastSavedRef.current = value;
+    lastLocalRef.current = value;
     setStatus('idle');
   }, []); // sync on mount
+
+  // External value sync — distinguish server echo from genuine external update.
+  useEffect(() => {
+    if (value === lastLocalRef.current) return;
+    lastSavedRef.current = value;
+    lastLocalRef.current = value;
+    setStatus('idle');
+  }, [value]);
 
   useEffect(() => {
     if (!onAutoSave) return;
     if (value === lastSavedRef.current) return;
     setStatus('pending');
     if (timerRef.current) window.clearTimeout(timerRef.current);
+    const mySeq = ++saveSeqRef.current;
     timerRef.current = window.setTimeout(async () => {
       setStatus('saving');
       try {
         await onAutoSave(value);
+        if (mySeq !== saveSeqRef.current) return;
         lastSavedRef.current = value;
         setStatus('saved');
       } catch {
+        if (mySeq !== saveSeqRef.current) return;
         setStatus('error');
       }
     }, autosaveMs);
@@ -128,12 +163,15 @@ export default function HtmlEditor({
       timerRef.current = null;
     }
     if (value === lastSavedRef.current && status === 'saved') return;
+    const mySeq = ++saveSeqRef.current;
     setStatus('saving');
     try {
       await onAutoSave(value);
+      if (mySeq !== saveSeqRef.current) return;
       lastSavedRef.current = value;
       setStatus('saved');
     } catch {
+      if (mySeq !== saveSeqRef.current) return;
       setStatus('error');
     }
   }, [onAutoSave, value, status]);
@@ -167,6 +205,61 @@ export default function HtmlEditor({
     }
   }
 
+  function escapeHtmlAttr(s: string): string {
+    return s
+      .replace(/&/g, '&amp;')
+      .replace(/"/g, '&quot;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+  }
+
+  /** Upload a batch of images in order; re-reads live textarea before each
+   *  insertion so concurrent typing is preserved. */
+  async function uploadAndInsert(files: File[]) {
+    setUploading(true);
+    try {
+      const ta = textareaRef.current;
+      let start = ta?.selectionStart ?? lastLocalRef.current.length;
+      let end = ta?.selectionEnd ?? start;
+      let caret = end;
+      let any = false;
+      for (const f of files) {
+        start = Math.min(start, ta1Len(ta));
+        end = Math.min(end, ta1Len(ta));
+        try {
+          const att = await uploadFile(f, documentId);
+          const next = ta?.value ?? lastLocalRef.current;
+          const alt = escapeHtmlAttr(att.original_filename || f.name);
+          const src = escapeHtmlAttr(att.url);
+          const tag = `<img src="${src}" alt="${alt}" />`;
+          const merged = next.slice(0, start) + tag + next.slice(end);
+          lastLocalRef.current = merged;
+          start += tag.length;
+          end = start;
+          caret = start;
+          any = true;
+        } catch (err) {
+          message.error(err instanceof Error ? err.message : '图片上传失败');
+        }
+      }
+      if (any) {
+        onChange(lastLocalRef.current);
+        queueMicrotask(() => {
+          if (ta) {
+            ta.focus();
+            ta.setSelectionRange(caret, caret);
+          }
+        });
+      }
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function ta1Len(ta: HTMLTextAreaElement | null | undefined): number {
+    return (ta?.value ?? lastLocalRef.current).length;
+  }
+
   /** Paste image → upload → insert <img src="..." /> at cursor. */
   async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
     if (readOnly) return;
@@ -176,35 +269,36 @@ export default function HtmlEditor({
       .filter((f): f is File => !!f);
     if (images.length === 0) return;
     e.preventDefault();
-    setUploading(true);
-    try {
-      for (const f of images) {
-        const att = await uploadFile(f, documentId);
-        const ta = textareaRef.current;
-        const start = ta?.selectionStart ?? value.length;
-        const end = ta?.selectionEnd ?? value.length;
-        const tag = `<img src="${att.url}" alt="${att.original_filename || f.name}" />`;
-        onChange(value.slice(0, start) + tag + value.slice(end));
-        const caret = start + tag.length;
-        queueMicrotask(() => {
-          if (ta) {
-            ta.focus();
-            ta.setSelectionRange(caret, caret);
-          }
-        });
-      }
-    } catch (err) {
-      message.error(err instanceof Error ? err.message : '图片上传失败');
-    } finally {
-      setUploading(false);
-    }
+    await uploadAndInsert(images);
+  }
+
+  async function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
+    if (readOnly) return;
+    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
+      f.type.startsWith('image/'),
+    );
+    if (files.length === 0) return;
+    e.preventDefault();
+    await uploadAndInsert(files);
+  }
+
+  function handleDragOver(e: React.DragEvent<HTMLTextAreaElement>) {
+    if (readOnly) return;
+    const items = Array.from(e.dataTransfer?.items ?? []);
+    if (items.some((i) => i.kind === 'file')) e.preventDefault();
   }
 
   // ``srcdoc`` is rebuilt on every value change; the iframe ditches its old
   // document and reparses. For long HTML this could cost a few ms, fine for
   // human typing speed. Sandboxed so scripts in the user's HTML can't read our
   // cookies or top-level DOM.
-  const previewSrcdoc = useMemo(() => value, [value]);
+  const [debouncedValue, setDebouncedValue] = useState(value);
+  useEffect(() => {
+    const t = window.setTimeout(() => setDebouncedValue(value), 200);
+    return () => window.clearTimeout(t);
+  }, [value]);
+
+  const previewSrcdoc = useMemo(() => debouncedValue, [debouncedValue]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
@@ -281,11 +375,15 @@ export default function HtmlEditor({
       >
         <TextArea
           ref={(el) => {
-            textareaRef.current = el?.resizableTextArea?.textArea ?? null;
+            const ta = el?.resizableTextArea?.textArea ?? null;
+            textareaRef.current = ta;
+            onTextareaReady?.(ta);
           }}
           value={value}
           onChange={(e) => onChange(e.target.value)}
           onPaste={handlePaste}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
           readOnly={readOnly}
           autoSize={false}
           style={{

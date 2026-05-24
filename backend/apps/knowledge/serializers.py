@@ -26,24 +26,32 @@ def detect_doc_format(doc: Document) -> str:
 
     Returns one of: ``pdf``, ``html``, ``docx``, ``image``, ``markdown``.
     Falls back to ``markdown`` (the default body editor) when the document has
-    no attachment or only inline-imported text.
+    no attachment or only inline-imported text. When there is no decisive
+    attachment, ``raw_content`` / ``published_content`` that looks like HTML
+    is treated as ``html`` (editor-created HTML docs without a ``.html`` file).
     """
+    from .html_content import looks_like_html
+
     att = _primary_attachment(doc)
-    if att is None:
+    if att is not None:
+        name = (att.original_filename or "").lower()
+        ext = Path(name).suffix
+        mime = att.mime_type or ""
+        if ext == ".pdf" or mime == "application/pdf":
+            return "pdf"
+        if ext in {".html", ".htm"} or mime in {"text/html", "application/xhtml+xml"}:
+            return "html"
+        if ext == ".docx":
+            return "docx"
+        if att.kind == "image" or mime.startswith("image/"):
+            # Text-imported docs (md/txt) leave att.kind == "document" with raw_content
+            # populated, so they correctly fall through to markdown below.
+            return "image"
         return "markdown"
-    name = (att.original_filename or "").lower()
-    ext = Path(name).suffix
-    mime = att.mime_type or ""
-    if ext == ".pdf" or mime == "application/pdf":
-        return "pdf"
-    if ext in {".html", ".htm"} or mime in {"text/html", "application/xhtml+xml"}:
+
+    body = (doc.raw_content or "") or (doc.published_content or "")
+    if looks_like_html(body):
         return "html"
-    if ext == ".docx":
-        return "docx"
-    if att.kind == "image" or mime.startswith("image/"):
-        # Text-imported docs (md/txt) leave att.kind == "document" with raw_content
-        # populated, so they correctly fall through to markdown below.
-        return "image"
     return "markdown"
 
 
@@ -192,10 +200,29 @@ class DocumentSerializer(serializers.ModelSerializer):
         )
         if content_changed:
             validated_data["version"] = instance.version + 1
+        raw_changed = new_raw is not None and new_raw != instance.raw_content
         result = super().update(instance, validated_data)
         if was_published and new_raw is not None and new_raw != result.published_content:
             result.published_content = new_raw
             result.save(update_fields=["published_content"])
+        if raw_changed:
+            request = self.context.get("request")
+            uploaded_by = getattr(request, "user", None) if request else None
+            fmt = detect_doc_format(result)
+            if fmt == "markdown":
+                from apps.editor.services.image_mirror import (
+                    mirror_images_for_document,
+                )
+
+                mirror_images_for_document(result, uploaded_by=uploaded_by)
+                result.refresh_from_db()
+            elif fmt == "html":
+                from apps.editor.services.html_asset_mirror import (
+                    mirror_html_assets_for_document,
+                )
+
+                mirror_html_assets_for_document(result, uploaded_by=uploaded_by)
+                result.refresh_from_db()
         return result
 
     def get_primary_attachment(self, obj: Document) -> dict | None:

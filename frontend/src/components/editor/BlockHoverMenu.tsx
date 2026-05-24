@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react';
 import { Popover, Tooltip } from 'antd';
 import {
   PlusOutlined,
@@ -16,16 +16,10 @@ interface Props {
   shellRef: React.RefObject<HTMLElement | null>;
 }
 
+const ANCHOR_OFFSET = 36;
+
 /**
- * 块级悬浮菜单（类似语雀的 ⋮⋮ 锚点）。
- *
- * 左侧两个按钮：
- *   ➕  在下方插入空段落
- *   ⋯  打开 Popover 面板：
- *       · 转换为 → 正文 / H1-H4 / 引用 / 任务列表 / 有序列表 / 无序列表 / 代码块
- *       · 包裹为容器（toggle） → 高亮(tips/warning/info/danger) / 引用 / 折叠 / 分栏 / 标签页
- *       · 缩进 ← / →
- *       · 复制此块 / 复制为 Markdown / 选中此块 / 删除此块
+ * 块级悬浮菜单（语雀风单锚点：拖拽 + 插入 + 更多）。
  */
 
 const TRANSFORM_OPS = [
@@ -51,81 +45,197 @@ const WRAP_OPS = [
   { key: 'tabs', label: '标签页',   apply: (e: Editor) => e.chain().focus().insertTabs(2).run() },
 ] as const;
 
+/** Resolve the position of the **outermost** block (depth=1) that contains
+ * the given DOM node. We deliberately walk down from the document root, not
+ * up from the leaf — that way nested structures (table cells, columns, tabs,
+ * details/summary) all map to their parent block rather than to a deep
+ * paragraph buried inside them.
+ */
+function resolveBlockFromDom(editor: Editor, dom: HTMLElement): number | null {
+  try {
+    const pos = editor.view.posAtDOM(dom, 0);
+    const $pos = editor.state.doc.resolve(pos);
+    if ($pos.depth < 1) return null;
+    // depth 1 == direct child of doc, which is what GlobalDragHandle expects.
+    return $pos.before(1);
+  } catch {
+    return null;
+  }
+}
+
+/** Walk up the DOM until we hit either a node-view wrapper or an element
+ * that resolves to a top-level (depth=1) block. Stops at the ProseMirror
+ * editable root. */
+function findBlockElement(
+  _editor: Editor,
+  target: HTMLElement | null,
+  pm: HTMLElement,
+): HTMLElement | null {
+  let el: HTMLElement | null = target;
+  while (el && el !== pm) {
+    if (el.parentElement === pm) return el;
+    el = el.parentElement;
+  }
+  return null;
+}
+
+function selectionSpansMultipleBlocks(editor: Editor): boolean {
+  const { from, to, empty } = editor.state.selection;
+  if (empty) return false;
+  const $from = editor.state.doc.resolve(from);
+  const $to = editor.state.doc.resolve(to);
+  const blockDepth = Math.max(1, Math.min($from.depth, $to.depth));
+  if ($from.depth < blockDepth || $to.depth < blockDepth) return false;
+  return $from.before(blockDepth) !== $to.before(blockDepth);
+}
+
+function isDragging(editor: Editor): boolean {
+  return editor.view.dom.classList.contains('dragging');
+}
+
+function BlockDragGrip() {
+  return (
+    <span className="jz-block-grip-dots" aria-hidden>
+      <span /><span /><span /><span /><span /><span />
+    </span>
+  );
+}
+
 export function BlockHoverMenu({ editor, shellRef }: Props) {
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
-  const blockPosRef = useRef<number | null>(null);
+  const [blockFrom, setBlockFrom] = useState<number | null>(null);
+  const [visible, setVisible] = useState(false);
+  const blockElRef = useRef<HTMLElement | null>(null);
   const [popoverOpen, setPopoverOpen] = useState(false);
+  const [menuHover, setMenuHover] = useState(false);
+  const popoverOpenRef = useRef(popoverOpen);
+  const menuHoverRef = useRef(menuHover);
+  const leaveTimerRef = useRef<number | null>(null);
+  const blurTimerRef = useRef<number | null>(null);
+
+  useEffect(() => { popoverOpenRef.current = popoverOpen; }, [popoverOpen]);
+  useEffect(() => { menuHoverRef.current = menuHover; }, [menuHover]);
+
+  const computePos = useCallback((block: HTMLElement, shell: HTMLElement) => {
+    const shellRect = shell.getBoundingClientRect();
+    const blockRect = block.getBoundingClientRect();
+    return {
+      top: blockRect.top - shellRect.top + shell.scrollTop + 2,
+      left: blockRect.left - shellRect.left - ANCHOR_OFFSET,
+    };
+  }, []);
+
+  const hideMenu = useCallback(() => {
+    setVisible(false);
+    blockElRef.current = null;
+  }, []);
 
   useEffect(() => {
     const shell = shellRef.current;
     if (!shell || !editor) return;
 
-    function findBlockElement(target: HTMLElement | null): HTMLElement | null {
-      let el = target;
-      const pm = shell?.querySelector('.ProseMirror');
-      if (!pm) return null;
-      while (el && el !== pm && el.parentElement) {
-        if (el.parentElement === pm) return el;
-        el = el.parentElement;
-      }
-      return null;
+    function shouldHide(): boolean {
+      if (popoverOpenRef.current || menuHoverRef.current) return false;
+      if (!editor?.view.hasFocus()) return true;
+      if (selectionSpansMultipleBlocks(editor)) return true;
+      return false;
+    }
+
+    function refreshPos() {
+      const block = blockElRef.current;
+      if (!block) return;
+      setPos(computePos(block, shell!));
     }
 
     function onMove(e: MouseEvent) {
-      try {
-        const block = findBlockElement(e.target as HTMLElement);
-        if (!block) {
-          if (!popoverOpen) {
-            setPos(null);
-            blockPosRef.current = null;
-          }
-          return;
-        }
-        const rect = block.getBoundingClientRect();
-        const result = editor?.view.posAtCoords({ left: rect.left + 4, top: rect.top + 4 });
-        if (result && editor) {
-          const pos = result.inside >= 0 ? result.inside : result.pos;
-          const $resolved = editor.state.doc.resolve(
-            Math.max(0, Math.min(pos, editor.state.doc.content.size))
-          );
-          if ($resolved.depth >= 1) {
-            blockPosRef.current = $resolved.before(1);
-          } else {
-            blockPosRef.current = null;
-          }
-        }
-        setPos({ top: rect.top, left: rect.left - 56 });
-      } catch {
-        setPos(null);
-        blockPosRef.current = null;
+      if (!editor?.isEditable) return;
+      // While drag is in progress, freeze the menu — don't hide (anchor must
+      // stay alive for GlobalDragHandle to keep the drag image anchored).
+      if (isDragging(editor)) return;
+      if (shouldHide()) {
+        if (!popoverOpenRef.current && !menuHoverRef.current) hideMenu();
+        return;
       }
+
+      const pm = shell!.querySelector('.ProseMirror') as HTMLElement | null;
+      if (!pm) return;
+
+      const block = findBlockElement(editor!, e.target as HTMLElement, pm);
+      if (!block) {
+        if (!popoverOpenRef.current && !menuHoverRef.current) hideMenu();
+        return;
+      }
+
+      const from = resolveBlockFromDom(editor!, block);
+      if (from == null) {
+        if (!popoverOpenRef.current && !menuHoverRef.current) hideMenu();
+        return;
+      }
+
+      blockElRef.current = block;
+      setBlockFrom(from);
+      setPos(computePos(block, shell!));
+      setVisible(true);
+      shell!.classList.add('is-block-hover');
     }
 
     function onLeave() {
-      window.setTimeout(() => {
-        const hovered = document.querySelector('.jz-block-hover-menu:hover');
-        if (!hovered && !popoverOpen) setPos(null);
-      }, 100);
+      if (leaveTimerRef.current) window.clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = window.setTimeout(() => {
+        leaveTimerRef.current = null;
+        const hoveredMenu = document.querySelector('.jz-block-hover-menu:hover');
+        if (!hoveredMenu && !popoverOpenRef.current && !menuHoverRef.current) {
+          shell!.classList.remove('is-block-hover');
+          hideMenu();
+        }
+      }, 120);
     }
+
+    const onSelectionUpdate = () => {
+      if (shouldHide() && !popoverOpenRef.current && !menuHoverRef.current) hideMenu();
+    };
+
+    const onBlur = () => {
+      if (blurTimerRef.current) window.clearTimeout(blurTimerRef.current);
+      blurTimerRef.current = window.setTimeout(() => {
+        blurTimerRef.current = null;
+        if (!editor?.view.hasFocus() && !popoverOpenRef.current && !menuHoverRef.current) hideMenu();
+      }, 150);
+    };
 
     shell.addEventListener('mousemove', onMove);
     shell.addEventListener('mouseleave', onLeave);
+    shell.addEventListener('scroll', refreshPos, { passive: true });
+    window.addEventListener('resize', refreshPos);
+    editor.on('selectionUpdate', onSelectionUpdate);
+    editor.on('blur', onBlur);
+
     return () => {
       shell.removeEventListener('mousemove', onMove);
       shell.removeEventListener('mouseleave', onLeave);
+      shell.removeEventListener('scroll', refreshPos);
+      window.removeEventListener('resize', refreshPos);
+      editor.off('selectionUpdate', onSelectionUpdate);
+      editor.off('blur', onBlur);
+      if (leaveTimerRef.current) window.clearTimeout(leaveTimerRef.current);
+      if (blurTimerRef.current) window.clearTimeout(blurTimerRef.current);
+      shell.classList.remove('is-block-hover');
     };
-  }, [editor, shellRef, popoverOpen]);
+  }, [editor, shellRef, computePos, hideMenu]);
 
   /** 当前块的 node + from/to */
   const blockInfo = useMemo(() => {
-    if (!editor || blockPosRef.current == null) return null;
-    const from = blockPosRef.current;
+    if (!editor || blockFrom == null) return null;
+    const from = blockFrom;
     const node = editor.state.doc.nodeAt(from);
     if (!node) return null;
     return { from, to: from + node.nodeSize, node };
-  }, [editor, popoverOpen, pos]);
+  }, [editor, blockFrom, popoverOpen, pos]);
 
-  if (!editor || !editor.isEditable || !pos) return null;
+  // Always render the anchor (so GlobalDragHandle can pick it up) but hide
+  // visually when the editor isn't editable / not hovered.
+  if (!editor || !editor.isEditable) return null;
+  const renderable: boolean = visible && pos != null && blockFrom != null;
 
   function withCurrentBlockSelected(fn: () => void) {
     if (!editor || !blockInfo) return;
@@ -152,7 +262,7 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
       .setTextSelection({ from: blockInfo.from, to: blockInfo.to })
       .deleteSelection()
       .run();
-    setPos(null);
+    hideMenu();
     setPopoverOpen(false);
   }
 
@@ -172,9 +282,13 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
 
   function copyAsMarkdown() {
     if (!blockInfo || !editor) return;
-    // 用 tiptap-markdown 的 storage 把整个文档序列化，再切片该块的内容近似
-    const md: string = editor.storage.markdown?.getMarkdown?.() ?? '';
-    void navigator.clipboard.writeText(md);
+    const serializer = editor.storage.markdown?.serializer;
+    if (serializer) {
+      const wrapDoc = editor.state.schema.nodes.doc.create(null, blockInfo.node);
+      void navigator.clipboard.writeText(serializer.serialize(wrapDoc));
+    } else {
+      void navigator.clipboard.writeText(blockInfo.node.textContent || '');
+    }
   }
 
   function indent() {
@@ -184,10 +298,8 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
     withCurrentBlockSelected(() => editor!.commands.outdent?.());
   }
 
-  /* ── Popover 主面板 ──────────────────────────────────────────────── */
   const popoverContent = (
     <div className="jz-block-panel" onMouseDown={(e) => e.stopPropagation()}>
-      {/* 转换为 */}
       <div className="jz-block-panel-section">
         <div className="jz-block-panel-title">转换为</div>
         <div className="jz-block-panel-grid">
@@ -204,7 +316,6 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
         </div>
       </div>
 
-      {/* 包裹为容器 (toggle) */}
       <div className="jz-block-panel-section">
         <div className="jz-block-panel-title">包裹为容器</div>
         <div className="jz-block-panel-grid">
@@ -221,7 +332,6 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
         </div>
       </div>
 
-      {/* 缩进 + 操作 */}
       <div className="jz-block-panel-section">
         <div className="jz-block-panel-title">操作</div>
         <div className="jz-block-panel-row">
@@ -258,23 +368,34 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
 
   return (
     <div
-      className="jz-block-hover-menu"
+      className={'jz-block-hover-menu' + (renderable ? ' is-visible' : '')}
       style={{
-        position: 'fixed',
-        top: pos.top + 2,
-        left: pos.left,
+        position: 'absolute',
+        top: renderable && pos ? pos.top : -9999,
+        left: renderable && pos ? pos.left : -9999,
         display: 'flex',
         gap: 2,
         zIndex: 50,
       }}
-      onMouseEnter={(e) => e.stopPropagation()}
+      onMouseEnter={() => setMenuHover(true)}
+      onMouseLeave={() => setMenuHover(false)}
     >
+      <Tooltip title="拖拽移动">
+        <button
+          type="button"
+          className="jz-block-anchor-btn jz-block-drag-handle"
+          aria-label="拖拽块"
+        >
+          <BlockDragGrip />
+        </button>
+      </Tooltip>
       <Tooltip title="在下方插入段落">
         <button
           type="button"
           className="jz-block-anchor-btn"
           onClick={insertAfter}
           aria-label="添加块"
+          disabled={!renderable}
         >
           <PlusOutlined />
         </button>
@@ -283,12 +404,17 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
         content={popoverContent}
         trigger="click"
         placement="bottomLeft"
-        open={popoverOpen}
+        open={popoverOpen && renderable}
         onOpenChange={setPopoverOpen}
         overlayClassName="jz-block-panel-overlay"
       >
         <Tooltip title="更多操作 — 转换 / 包裹 / 缩进">
-          <button type="button" className="jz-block-anchor-btn" aria-label="更多">
+          <button
+            type="button"
+            className="jz-block-anchor-btn"
+            aria-label="更多"
+            disabled={!renderable}
+          >
             <MoreOutlined />
           </button>
         </Tooltip>

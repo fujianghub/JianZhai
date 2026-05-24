@@ -11,8 +11,11 @@ import mdSup from 'markdown-it-sup';
 import mdMark from 'markdown-it-mark';
 // @ts-expect-error — no types
 import mdFootnote from 'markdown-it-footnote';
+import mdMultimdTable from 'markdown-it-multimd-table';
 import DOMPurify from 'dompurify';
 import { highlightCode, languageLabel, normalizeLanguage } from './codeBlocks';
+import { loadCodeBlockPrefs, themeLabel } from './codeBlockPrefs';
+import { parseCodeFenceInfo } from './codeFenceMeta';
 
 export const md = new MarkdownIt({
   /**
@@ -39,6 +42,11 @@ md.use(mdSub);
 md.use(mdSup);
 md.use(mdMark);
 md.use(mdFootnote);
+md.use(mdMultimdTable, { multiline: true, rowspan: true, headerless: false });
+
+/** Minimal markdown-it instance for GFM pipe-table → HTML conversion in preprocess. */
+const tableMd = new MarkdownIt({ html: true, linkify: false, breaks: false });
+tableMd.use(mdMultimdTable, { multiline: true, rowspan: true, headerless: false });
 
 /**
  * markdown-it normally wraps a fenced block in ``<pre><code class="…">…</code></pre>``
@@ -46,11 +54,11 @@ md.use(mdFootnote);
  * starts with ``<pre``. Our wrapper begins with ``<div class="jz-code-block">``,
  * so we override the ``fence`` renderer to emit the highlight output directly.
  */
-md.renderer.rules.fence = (tokens, idx, options) => {
+md.renderer.rules.fence = (tokens, idx) => {
   const token = tokens[idx];
   const info = (token.info || '').trim();
   const lang = info.split(/\s+/g)[0] || '';
-  const highlighted = options.highlight?.(token.content, lang, info) || '';
+  const highlighted = renderCodeBlock(token.content, lang, info) || '';
   return highlighted || `<pre><code>${escape(token.content)}</code></pre>`;
 };
 
@@ -170,6 +178,36 @@ function sanitize(html: string): string {
   return DOMPurify.sanitize(html, PURIFY_CONFIG) as unknown as string;
 }
 
+function renderYuqueToolbar(opts: {
+  label: string;
+  titleText: string;
+  themeName: string;
+  extraActions?: string;
+}): string {
+  return (
+    `<div class="jz-code-toolbar" contenteditable="false">` +
+    `<span class="jz-code-collapse-placeholder" aria-hidden="true">▾</span>` +
+    `<span class="jz-code-title-area"><span class="jz-code-title-text">${escape(opts.titleText)}</span></span>` +
+    `<span class="jz-code-toolbar-spacer"></span>` +
+    `<span class="jz-code-lang">${escape(opts.label)}</span>` +
+    `<span class="jz-code-toolbar-divider" aria-hidden="true"></span>` +
+    `<span class="jz-code-theme-label">${escape(opts.themeName)}</span>` +
+    `<span class="jz-code-toolbar-divider" aria-hidden="true"></span>` +
+    `<div class="jz-code-toolbar-actions">` +
+    (opts.extraActions ?? '') +
+    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="copy" title="复制" aria-label="复制">⧉</button>` +
+    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="more" title="更多" aria-label="更多">⋯</button>` +
+    `</div>` +
+    `</div>`
+  );
+}
+
+function readRenderPrefs() {
+  return typeof window !== 'undefined'
+    ? loadCodeBlockPrefs()
+    : { theme: 'one-dark-pro' as const, wrap: false, lineNumbers: true, fontSize: 14, lineHeight: 1.6 };
+}
+
 /**
  * Wrap highlighted code in a Yuque-style chrome:
  * - top bar with language label + toolbar buttons (copy / wrap / font-size)
@@ -180,9 +218,20 @@ function sanitize(html: string): string {
  * component attaches click handlers and toggles classes once the rendered
  * Markdown is mounted into the DOM.
  */
-function renderCodeBlock(code: string, lang: string): string {
-  const canon = normalizeLanguage(lang);
+function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string {
+  const meta = parseCodeFenceInfo(fenceInfo ?? lang);
+  const canon = normalizeLanguage(meta.language || lang);
   const label = languageLabel(canon);
+  const prefs = readRenderPrefs();
+  const themeName = themeLabel(prefs.theme);
+  const titleText = meta.title.trim() || `${label} · 代码块`;
+  const collapsedClass = meta.collapsed ? ' is-collapsed' : '';
+  const titleAttr = meta.title ? ` data-title="${escape(meta.title)}"` : '';
+  const collapsedAttr = meta.collapsed ? ' data-collapsed="true"' : '';
+  const wrapClass = prefs.wrap ? ' is-wrapped' : '';
+  const lineNumClass = prefs.lineNumbers ? '' : ' jz-code-no-line-numbers';
+  const diagramSourceBtn = (action: string) =>
+    `<button type="button" class="jz-code-btn jz-code-btn-text" data-action="${action}" title="查看源代码" aria-label="查看源代码">源码</button>`;
 
   // Mermaid intentionally takes a different path: the raw fence body is
   // emitted as a base64 attribute so the runtime enhancer can render it as
@@ -190,13 +239,13 @@ function renderCodeBlock(code: string, lang: string): string {
   if (canon === 'mermaid') {
     const b64 = base64UTF8(code.replace(/\n+$/, ''));
     return (
-      `<div class="jz-code-block jz-code-mermaid" data-lang="mermaid" data-source="${b64}">` +
-      `<div class="jz-code-toolbar" contenteditable="false">` +
-      `<span class="jz-code-lang">${escape(label)}</span>` +
-      `<span class="jz-code-toolbar-spacer"></span>` +
-      `<button type="button" class="jz-code-btn" data-action="mermaid-source" title="查看源代码" aria-label="查看源代码">源码</button>` +
-      `<button type="button" class="jz-code-btn" data-action="copy" title="复制" aria-label="复制">⧉</button>` +
-      `</div>` +
+      `<div class="jz-code-block jz-code-mermaid${collapsedClass}${wrapClass}${lineNumClass}" data-lang="mermaid" data-source="${b64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
+      renderYuqueToolbar({
+        label,
+        titleText,
+        themeName,
+        extraActions: diagramSourceBtn('mermaid-source'),
+      }) +
       `<div class="jz-mermaid-canvas" aria-live="polite">` +
       `<div class="jz-mermaid-loading">正在渲染图表…</div>` +
       `</div>` +
@@ -210,13 +259,13 @@ function renderCodeBlock(code: string, lang: string): string {
   if (canon === 'plantuml') {
     const b64 = base64UTF8(code.replace(/\n+$/, ''));
     return (
-      `<div class="jz-code-block jz-code-plantuml" data-lang="plantuml" data-source="${b64}">` +
-      `<div class="jz-code-toolbar" contenteditable="false">` +
-      `<span class="jz-code-lang">${escape(label)}</span>` +
-      `<span class="jz-code-toolbar-spacer"></span>` +
-      `<button type="button" class="jz-code-btn" data-action="plantuml-source" title="查看源代码" aria-label="查看源代码">源码</button>` +
-      `<button type="button" class="jz-code-btn" data-action="copy" title="复制" aria-label="复制">⧉</button>` +
-      `</div>` +
+      `<div class="jz-code-block jz-code-plantuml${collapsedClass}${wrapClass}${lineNumClass}" data-lang="plantuml" data-source="${b64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
+      renderYuqueToolbar({
+        label,
+        titleText,
+        themeName,
+        extraActions: diagramSourceBtn('plantuml-source'),
+      }) +
       `<div class="jz-mermaid-canvas" aria-live="polite">` +
       `<div class="jz-mermaid-loading">正在向 PlantUML 服务请求…</div>` +
       `</div>` +
@@ -226,28 +275,16 @@ function renderCodeBlock(code: string, lang: string): string {
   }
 
   const body = highlightCode(code, canon);
-  // Split into lines so we can render a line-number gutter purely with CSS
-  // counters — keeps the code copy-able without numbers.
+  const sourceB64 = base64UTF8(code.replace(/\n+$/, ''));
   const lines = body.split('\n');
-  // hljs leaves a trailing newline from the fence; drop it so we don't render
-  // a bonus empty line.
   if (lines.length && lines[lines.length - 1] === '') lines.pop();
   const numbered = lines
     .map((l) => `<span class="jz-code-line">${l || '​'}</span>`)
     .join('\n');
 
   return (
-    `<div class="jz-code-block" data-lang="${canon}">` +
-    `<div class="jz-code-toolbar" contenteditable="false">` +
-    `<span class="jz-code-lang">${escape(label)}</span>` +
-    `<span class="jz-code-toolbar-spacer"></span>` +
-    `<button type="button" class="jz-code-btn" data-action="font-down" title="缩小字号" aria-label="缩小字号">A−</button>` +
-    `<button type="button" class="jz-code-btn" data-action="font-up" title="放大字号" aria-label="放大字号">A+</button>` +
-    `<button type="button" class="jz-code-btn" data-action="line-tight" title="缩小行距" aria-label="缩小行距">↕−</button>` +
-    `<button type="button" class="jz-code-btn" data-action="line-loose" title="放大行距" aria-label="放大行距">↕+</button>` +
-    `<button type="button" class="jz-code-btn" data-action="wrap" title="自动换行 / 滚动" aria-label="切换换行">⤶</button>` +
-    `<button type="button" class="jz-code-btn" data-action="copy" title="复制" aria-label="复制">⧉</button>` +
-    `</div>` +
+    `<div class="jz-code-block${collapsedClass}${wrapClass}${lineNumClass}" data-lang="${canon}" data-code-source="${sourceB64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
+    renderYuqueToolbar({ label, titleText, themeName }) +
     `<pre class="jz-code-pre hljs"><code class="hljs language-${canon}">${numbered}</code></pre>` +
     `</div>`
   );
@@ -297,7 +334,7 @@ md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
 };
 
 export function renderMarkdown(source: string): string {
-  return sanitize(md.render(stripOcrComments(source ?? '')));
+  return sanitize(md.render(preprocessMarkdown(source ?? '')));
 }
 
 export interface TocEntry {
@@ -313,26 +350,163 @@ export interface TocEntry {
  */
 export function renderMarkdownWithToc(source: string): { html: string; toc: TocEntry[] } {
   const env: { toc: TocEntry[] } = { toc: [] };
-  const html = md.render(stripOcrComments(source ?? ''), env);
+  const html = md.render(preprocessMarkdown(source ?? ''), env);
   return { html: sanitize(html), toc: env.toc };
 }
 
 /**
- * Yuque exports often leave behind annotations like
- * ``<!-- 这是一张图片，ocr 内容为： -->`` that are noise for the reader. We
- * strip every standalone HTML comment before handing the source to
- * markdown-it (and before DOMPurify, which would also nuke them but might
- * leave whitespace artefacts in their place).
- *
- * The same preprocessing stage also repairs broken bold spans that Yuque
- * frequently emits — see ``normalizeYuqueEmphasis`` below.
+ * Apply `fn` to source segments that lie OUTSIDE fenced code blocks
+ * (``` or ~~~). Code-fence contents are passed through verbatim so
+ * preprocessors don't mangle inline HTML / table syntax shown as
+ * code samples.
  */
-function stripOcrComments(src: string): string {
-  let out = src.replace(/<!--[\s\S]*?-->/g, '');
+export function mapOutsideFencedCodeBlocks(src: string, fn: (s: string) => string): string {
+  const lines = src.split('\n');
+  const out: string[] = [];
+  let inFence = false;
+  let fenceChar = '';
+  let fenceLen = 0;
+  let buf: string[] = [];
+
+  const flush = (transform: boolean) => {
+    if (!buf.length) return;
+    out.push(transform ? fn(buf.join('\n')) : buf.join('\n'));
+    buf = [];
+  };
+
+  for (const line of lines) {
+    const m = line.match(/^(\s*)(`{3,}|~{3,})(.*)$/);
+    if (m) {
+      const ch = m[2]![0]!;
+      const len = m[2]!.length;
+      if (!inFence) {
+        flush(true);
+        inFence = true;
+        fenceChar = ch;
+        fenceLen = len;
+        buf.push(line);
+        continue;
+      }
+      if (ch === fenceChar && len >= fenceLen) {
+        buf.push(line);
+        flush(false);
+        inFence = false;
+        continue;
+      }
+    }
+    buf.push(line);
+  }
+  flush(!inFence);
+  return out.join('\n');
+}
+
+/**
+ * Shared Markdown preprocessing for blog preview, rich-text editor load, and
+ * paste. Repairs Yuque export quirks before markdown-it / tiptap-markdown parse.
+ *
+ * Stage ordering matters:
+ *   1. Strip HTML comments (Yuque puts editor metadata in them).
+ *   2. Unglue container fences glued to surrounding text.
+ *   3. {@link applyYuqueCompatMode} — Yuque bold/colour/image quirks (fence-external only).
+ *   4. GFM pipe tables → HTML (fence-external only).
+ */
+export function preprocessMarkdown(src: string): string {
+  let out = (src ?? '').replace(/<!--[\s\S]*?-->/g, '');
   out = unglueContainerFences(out);
-  out = unwrapBacktickedHtml(out);
-  out = normalizeYuqueEmphasis(out);
+  out = mapOutsideFencedCodeBlocks(out, applyYuqueCompatMode);
+  out = mapOutsideFencedCodeBlocks(out, convertGfmPipeTables);
   return out;
+}
+
+/**
+ * Yuque / 语雀 Markdown 兼容模式：在 fence 外统一修复导出怪癖，避免逐条补丁遗漏。
+ * 顺序：反引号 unwrap → 图片 emoji → font→span → emphasis 合并 → 括号 bold → bold+HTML。
+ */
+export function applyYuqueCompatMode(src: string): string {
+  let out = src;
+  out = unwrapBacktickedEmphasis(out);
+  out = normalizeYuqueImages(out);
+  out = unwrapBacktickedHtml(out);
+  out = normalizeLegacyHtmlTags(out);
+  out = normalizeYuqueEmphasis(out);
+  out = normalizeBoldWithInteriorParens(out);
+  out = normalizeBoldWrappingInlineHtml(out);
+  return out;
+}
+
+/** Map legacy ``<font>`` tags to ``<span style>`` so Tiptap Color can parse them.
+ *
+ * Iteratively replaces the **innermost** ``<font>`` tag (one whose body does
+ * NOT contain another ``<font>``) up to a fixed point. This is the only safe
+ * way to handle nested ``<font>`` from Yuque exports — a greedy/non-greedy
+ * outer match would either pair the wrong close or cut the inner span off.
+ */
+export function normalizeLegacyHtmlTags(src: string): string {
+  // Innermost-font: no other `<font` inside the body.
+  const INNER_FONT = /<font\b([^>]*)>((?:(?!<font\b)[\s\S])*?)<\/font>/gi;
+  let out = src;
+  for (let i = 0; i < 32; i++) {
+    const next = out.replace(INNER_FONT, replaceFontOnce);
+    if (next === out) break;
+    out = next;
+  }
+  return out;
+}
+
+function replaceFontOnce(_match: string, attrs: string, inner: string): string {
+  const styleMatch = attrs.match(/style\s*=\s*(["'])([\s\S]*?)\1/i);
+  let style = styleMatch?.[2]?.trim() ?? '';
+  const colorAttr = attrs.match(/color\s*=\s*(["'])([\s\S]*?)\1/i)?.[2]?.trim();
+  const face = attrs.match(/face\s*=\s*(["'])([\s\S]*?)\1/i)?.[2]?.trim();
+  if (colorAttr && !/color\s*:/i.test(style)) {
+    style = style ? `${style}; color: ${colorAttr}` : `color: ${colorAttr}`;
+  }
+  if (face && !/font-family\s*:/i.test(style)) {
+    style = style ? `${style}; font-family: ${face}` : `font-family: ${face}`;
+  }
+  return style ? `<span style="${style}">${inner}</span>` : `<span>${inner}</span>`;
+}
+
+function isGfmTableLine(line: string): boolean {
+  return /^\s*\|.*\|\s*$/.test(line);
+}
+
+function isGfmTableSeparator(line: string): boolean {
+  return /^\s*\|(?:\s*:?-+:?\s*\|)+\s*$/.test(line);
+}
+
+/** Convert GFM pipe tables to HTML ``<table>`` blocks for tiptap-markdown (html:true).
+ *
+ * Returns the input unchanged when no plausible pipe-table line is present —
+ * avoids the split('\n')/join cycle (and accidental ‘\r\n’ normalisation) for
+ * the overwhelming majority of documents that have no tables.
+ */
+export function convertGfmPipeTables(src: string): string {
+  // Quick short-circuit: nothing remotely table-shaped → bail before split.
+  if (!/^\s*\|.*\|\s*$/m.test(src)) return src;
+
+  const lines = src.split('\n');
+  const out: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    if (isGfmTableLine(lines[i]!)) {
+      const tableLines: string[] = [];
+      while (i < lines.length && isGfmTableLine(lines[i]!)) {
+        tableLines.push(lines[i]!);
+        i++;
+      }
+      if (tableLines.length >= 2 && isGfmTableSeparator(tableLines[1]!)) {
+        out.push(tableMd.render(tableLines.join('\n')).trim());
+      } else {
+        out.push(...tableLines);
+      }
+    } else {
+      out.push(lines[i]!);
+      i++;
+    }
+  }
+  return out.join('\n');
 }
 
 /**
@@ -364,6 +538,25 @@ function unglueContainerFences(src: string): string {
 }
 
 /**
+ * Yuque sometimes wraps pure emphasis markers in backticks, e.g.
+ *
+ *   `**ORM（Object-Relational Mapping，对象关系映射）**`
+ *
+ * markdown-it treats the whole span as inline code, leaving literal ``**``
+ * visible. We unwrap so emphasis can render normally. Runs before
+ * {@link unwrapBacktickedHtml} so `` `**<font>…</font>**` `` chains cleanly.
+ */
+export function unwrapBacktickedEmphasis(src: string): string {
+  let out = src;
+  // **…** and __…__ — symmetric strong markers.
+  out = out.replace(/`(\*\*)([^`]+?)\1`/g, '$1$2$1');
+  out = out.replace(/`(__)([^`]+?)\1`/g, '$1$2$1');
+  // *…* italic — body must not contain * to avoid greedy false positives.
+  out = out.replace(/`(\*)([^*`]+?)\1`/g, '$1$2$1');
+  return out;
+}
+
+/**
  * Yuque's exporter sometimes wraps presentational HTML tags (``<font>``,
  * ``<u>``, ``<br>``, ``<mark>``, ``<kbd>``, ``<sub>``, ``<sup>``) in
  * backticks, e.g.
@@ -381,7 +574,9 @@ function unglueContainerFences(src: string): string {
  * untouched because their tag name isn't on the presentational allow-list.
  */
 function unwrapBacktickedHtml(src: string): string {
-  const tags = '(?:font|u|mark|kbd|sub|sup|br)';
+  // Include <span> — colour-picker now emits <span style="color:…"> instead
+  // of <font>, and Yuque exports increasingly include backticked spans too.
+  const tags = '(?:font|span|u|mark|kbd|sub|sup|br)';
   // Allow the same marker around both sides (matched via a backreference so
   // ``**X**`` works but ``**X__`` wouldn't accidentally collapse).
   const marker = '(\\*\\*|__)?';
@@ -392,6 +587,23 @@ function unwrapBacktickedHtml(src: string): string {
   );
   // ``$1`` is the optional bold marker (may be empty); ``$2`` is the tag.
   return src.replace(re, '$1$2$1');
+}
+
+/** Yuque inline whitespace inside emphasis (NBSP, ideographic space). */
+const YUQUE_INNER_WS = '[ \\t\\u00a0\\u3000]';
+
+/**
+ * Yuque exports prefix markdown images with a picture emoji, e.g.
+ * ``🖼️![](https://cdn.nlark.com/...)``. The emoji breaks markdown-it's
+ * image tokenization so the whole line renders as plain text.
+ */
+export function normalizeYuqueImages(src: string): string {
+  let out = src;
+  // Strip zero-width / BOM immediately before image syntax.
+  out = out.replace(/[\u200b\uFEFF]+(?=\s*!\[)/g, '');
+  // Yuque picture emoji (with optional VS16) before ![
+  out = out.replace(/🖼\uFE0F?(?=\s*!\[)/g, '');
+  return out;
 }
 
 /**
@@ -423,7 +635,7 @@ function normalizeYuqueEmphasis(src: string): string {
   // We handle each variant with its own regex; both iterate so chains
   // ``**A**<t1>x</t1>**B**<t2>y</t2>**C**`` collapse cleanly.
   {
-    const inlineTag = '(?:font|u|mark|kbd|sub|sup)';
+    const inlineTag = '(?:font|span|u|mark|kbd|sub|sup)';
     // Spaced FIRST — its pattern is more specific (requires the inner bold
     // around the tag), so handling it before the tight one prevents the
     // tight regex from matching the inner ``** **`` pair as a phantom bold.
@@ -480,9 +692,11 @@ function normalizeYuqueEmphasis(src: string): string {
   // can't be a *closing* one from a preceding bold span (and vice versa for
   // the close). Without these lookarounds ``**a** plain text **b**`` would
   // misread the middle as ``**(space)plain text(space)**`` and strip the
-  // intended spaces.
-  out = out.replace(/(?<![\w*])\*\*[ \t]+([^*\n]+?)\*\*(?![\w*])/g, '**$1**');
-  out = out.replace(/(?<![\w*])\*\*([^*\n]+?)[ \t]+\*\*(?![\w*])/g, '**$1**');
+  // intended spaces. Includes NBSP / full-width space from Yuque exports.
+  const wsOpen = new RegExp(`(?<![\\w*])\\*\\*${YUQUE_INNER_WS}+([^*\\n]+?)\\*\\*(?![\\w*])`, 'g');
+  const wsClose = new RegExp(`(?<![\\w*])\\*\\*([^*\\n]+?)${YUQUE_INNER_WS}+\\*\\*(?![\\w*])`, 'g');
+  out = out.replace(wsOpen, '**$1**');
+  out = out.replace(wsClose, '**$1**');
 
   // (4) Merge two adjacent bolds separated only by whitespace into one:
   // ``**A** **B**`` → ``**A B**``. Yuque's exporter often closes/reopens
@@ -491,9 +705,10 @@ function normalizeYuqueEmphasis(src: string): string {
   // The callback joins the two halves with a single space and collapses any
   // resulting double-spacing from trailing whitespace inside ``A`` or leading
   // whitespace inside ``B``.
+  const adjWs = new RegExp(`\\*\\*([^*\\n]+?)\\*\\*(${YUQUE_INNER_WS}+)\\*\\*([^*\\n]+?)\\*\\*`, 'g');
   for (let i = 0; i < 8; i++) {
     const next = out.replace(
-      /\*\*([^*\n]+?)\*\*([ \t]+)\*\*([^*\n]+?)\*\*/g,
+      adjWs,
       (_, a: string, _gap: string, c: string) =>
         '**' + (a.trimEnd() + ' ' + c.trimStart()).replace(/\s+/g, ' ') + '**',
     );
@@ -502,16 +717,64 @@ function normalizeYuqueEmphasis(src: string): string {
   }
 
   // (5) Same for the alternate ``__…__`` strong syntax.
-  out = out.replace(/__[ \t]+([^_\n]+?)__/g, '__$1__');
-  out = out.replace(/__([^_\n]+?)[ \t]+__/g, '__$1__');
+  const uOpen = new RegExp(`__${YUQUE_INNER_WS}+([^_\\n]+?)__`, 'g');
+  const uClose = new RegExp(`__([^_\\n]+?)${YUQUE_INNER_WS}+__`, 'g');
+  out = out.replace(uOpen, '__$1__');
+  out = out.replace(uClose, '__$1__');
 
   // (6) Italic ``_…_`` — Yuque often emits ``_ word_`` or ``_word _`` because
   // its WYSIWYG exporter is sloppy about inner whitespace. CommonMark forbids
   // both forms so the entire span ends up as raw underscores. We anchor on
   // ``\w`` lookbehind/lookahead so ``snake_case`` identifiers stay untouched
   // (those have word chars on both sides of every ``_``).
-  out = out.replace(/(?<!\w)_[ \t]+([^_\n]+?)_(?!\w)/g, '_$1_');
-  out = out.replace(/(?<!\w)_([^_\n]+?)[ \t]+_(?!\w)/g, '_$1_');
+  const iOpen = new RegExp(`(?<!\\w)_${YUQUE_INNER_WS}+([^_\\n]+?)_(?!\\w)`, 'g');
+  const iClose = new RegExp(`(?<!\\w)_([^_\\n]+?)${YUQUE_INNER_WS}+_(?!\\w)`, 'g');
+  out = out.replace(iOpen, '_$1_');
+  out = out.replace(iClose, '_$1_');
+
+  return out;
+}
+
+/**
+ * CommonMark / markdown-it refuse ``**foo (bar)**`` when parentheses sit
+ * inside the delimiter run (left-/right-flanking rules). Yuque exports
+ * many such terms — convert to ``<strong>`` HTML (``html: true``).
+ */
+export function normalizeBoldWithInteriorParens(src: string): string {
+  return src.replace(
+    /\*\*([^*\n]+?[(\uFF08][^*\n]*?[)\uFF09][^*\n]*?)\*\*/g,
+    '<strong>$1</strong>',
+  );
+}
+
+const YUQUE_INLINE_HTML_TAG = '(?:font|span|u|mark|kbd|sub|sup)';
+
+/**
+ * markdown-it cannot parse ``**<span>…</span>**`` (delimiter runs must not cross
+ * inline HTML). Yuque often colours a bold phrase with ``<font>``/``<span>``.
+ * Convert to ``<strong>…</strong>`` so bold + colour both render.
+ */
+export function normalizeBoldWrappingInlineHtml(src: string): string {
+  const tag = YUQUE_INLINE_HTML_TAG;
+  let out = src;
+
+  const reWhole = new RegExp(
+    `\\*\\*(<(${tag})\\b[^>]*>[^*\\n]*?</\\2>)\\*\\*`,
+    'gi',
+  );
+  out = out.replace(reWhole, '<strong>$1</strong>');
+
+  const reInner = new RegExp(
+    `\\*\\*([^*\\n]*<(?:${tag})\\b[^>]*>[^*\\n]*)\\*\\*`,
+    'gi',
+  );
+  out = out.replace(reInner, '<strong>$1</strong>');
+
+  const reWholeAlt = new RegExp(`__(<(${tag})\\b[^>]*>[^_\\n]*?</\\2>)__`, 'gi');
+  out = out.replace(reWholeAlt, '<strong>$1</strong>');
+
+  const reInnerAlt = new RegExp(`__([^_\\n]*<(?:${tag})\\b[^>]*>[^_\\n]*)__`, 'gi');
+  out = out.replace(reInnerAlt, '<strong>$1</strong>');
 
   return out;
 }

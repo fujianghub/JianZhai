@@ -213,11 +213,30 @@ class Document(models.Model):
         self.save(update_fields=["is_deleted", "deleted_at"])
 
     def publish(self) -> None:
-        self.published_content = self.raw_content
+        from apps.knowledge.html_content import resolve_html_body
+
+        body = (self.raw_content or "").strip()
+        if not body:
+            resolved = resolve_html_body(self)
+            if resolved.strip():
+                self.raw_content = resolved
+                self.published_content = resolved
+            else:
+                self.published_content = self.raw_content
+        else:
+            self.published_content = self.raw_content
         self.status = "published"
         if not self.published_at:
             self.published_at = timezone.now()
-        self.save(update_fields=["published_content", "status", "published_at", "updated_at"])
+        self.save(
+            update_fields=[
+                "raw_content",
+                "published_content",
+                "status",
+                "published_at",
+                "updated_at",
+            ]
+        )
 
     def unpublish(self) -> None:
         self.status = "draft"

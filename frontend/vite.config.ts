@@ -1,3 +1,4 @@
+/// <reference types="vitest/config" />
 import path from 'node:path';
 import http from 'node:http';
 import { defineConfig, loadEnv } from 'vite';
@@ -32,6 +33,9 @@ export default defineConfig(({ mode }) => {
         '/media': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
         '/feed.xml': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
       },
+    },
+    test: {
+      environment: 'node',
     },
   };
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button, Input, Space, Tooltip } from 'antd';
 import {
   ArrowDownOutlined,
@@ -98,37 +98,13 @@ export default function FindReplacePanel({
     textarea.scrollTop = Math.max(0, lineIndex * lh - textarea.clientHeight / 4);
   }, [taMatches, query, textarea, editor, source]);
 
-  // ESC 关闭
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        onClose();
-      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        handleFindPrev();
-      } else if (e.key === 'Enter') {
-        // 让 Enter 在 input 里也能下一个
-        if ((e.target as HTMLElement).tagName === 'INPUT') {
-          e.preventDefault();
-          handleFindNext();
-        }
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  });
-
-  function handleFindNext() {
+  const handleFindNext = useCallback(() => {
     if (editor) {
       editor.chain().findNext().run();
-      // 让光标 / 视图跟到当前匹配
       const s = getFindState(editor);
       if (s && s.matches[s.current]) {
         const m = s.matches[s.current];
         editor.chain().setTextSelection(m.from).scrollIntoView().run();
-        // 替换后高亮可能丢，重新挂回
         editor.view.dispatch(
           editor.state.tr.setMeta(findReplaceKey, { current: s.current }),
         );
@@ -139,9 +115,9 @@ export default function FindReplacePanel({
         return { matches: prev.matches, current: (prev.current + 1) % prev.matches.length };
       });
     }
-  }
+  }, [editor]);
 
-  function handleFindPrev() {
+  const handleFindPrev = useCallback(() => {
     if (editor) {
       editor.chain().findPrev().run();
       const s = getFindState(editor);
@@ -158,7 +134,28 @@ export default function FindReplacePanel({
         };
       });
     }
-  }
+  }, [editor]);
+
+  // ESC 关闭
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        handleFindPrev();
+      } else if (e.key === 'Enter') {
+        if ((e.target as HTMLElement).tagName === 'INPUT') {
+          e.preventDefault();
+          handleFindNext();
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open, onClose, handleFindNext, handleFindPrev]);
 
   function handleReplace() {
     if (editor) {

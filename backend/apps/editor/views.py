@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import mimetypes
 from pathlib import Path
 
@@ -17,6 +18,8 @@ from apps.knowledge.serializers import DocumentSerializer
 
 from .models import Attachment
 from .serializers import AttachmentSerializer
+
+logger = logging.getLogger(__name__)
 
 # 50 MB hard limit; matches non-functional requirements
 MAX_UPLOAD_SIZE = 50 * 1024 * 1024
@@ -48,6 +51,35 @@ def _decode_text(blob: bytes) -> str:
         except UnicodeDecodeError:
             continue
     return blob.decode("utf-8", errors="replace")
+
+
+def _docx_to_markdown(blob: bytes) -> str:
+    """Convert DOCX bytes to Markdown via mammoth → HTML → markdownify.
+
+    Returns ``""`` on any failure (missing optional deps, malformed file, …)
+    so that bulk imports don't 500 on a single bad upload — the import still
+    creates the Document + Attachment, the user can then re-edit raw_content
+    manually or re-upload.
+    """
+    try:
+        import mammoth  # type: ignore[import-not-found]
+        from markdownify import markdownify  # type: ignore[import-not-found]
+    except ImportError:
+        logger.warning(
+            "mammoth/markdownify not installed — DOCX body will be left empty. "
+            "Install with `pip install mammoth markdownify` to enable extraction."
+        )
+        return ""
+
+    try:
+        result = mammoth.convert_to_html(blob)
+        for msg in result.messages:
+            logger.info("mammoth docx import: %s", msg)
+        html = result.value or ""
+        return markdownify(html, heading_style="ATX", bullets="-").strip()
+    except Exception as exc:  # noqa: BLE001 — mammoth raises many subclasses
+        logger.warning("DOCX → Markdown conversion failed: %s", exc, exc_info=True)
+        return ""
 
 
 @api_view(["POST"])
@@ -169,6 +201,9 @@ def _create_doc_from_upload(
     if ext in TEXT_IMPORT_EXT:
         raw_content = _decode_text(f.read())
         f.seek(0)
+    elif ext == ".docx":
+        raw_content = _docx_to_markdown(f.read())
+        f.seek(0)
 
     # New uploads default to public + published so the document is immediately
     # visible on the blog frontend. The admin can still flip it back to
@@ -194,6 +229,14 @@ def _create_doc_from_upload(
         mime_type=mime,
         size=f.size,
     )
+    if raw_content and ext in {".md", ".markdown"}:
+        from apps.editor.services.image_mirror import mirror_images_for_document
+
+        mirror_images_for_document(doc, uploaded_by=request.user)
+    elif raw_content and ext in {".html", ".htm"}:
+        from apps.editor.services.html_asset_mirror import mirror_html_assets_for_document
+
+        mirror_html_assets_for_document(doc, uploaded_by=request.user)
     return doc
 
 

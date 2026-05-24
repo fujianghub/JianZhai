@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from apps.knowledge.serializers import detect_doc_format
+
 from ..scope import ExportScope
 from . import common
 
@@ -46,6 +48,19 @@ EXPORT_TOC_CSS = """
 
 
 def export(scope: ExportScope) -> tuple[Path, str, str]:
+    # Single-doc HTML export of an HTML-format document → preserve the source
+    # verbatim. Wrapping it in our shell would double the <html>/<head> tags
+    # and lose the author's original styling.
+    if len(scope.documents) == 1:
+        doc = scope.documents[0]
+        if detect_doc_format(doc) == "html" and (doc.raw_content or "").strip():
+            path = common.reserve_export_path(".html")
+            common.write_text(path, doc.raw_content)
+            return (
+                path,
+                f"{common.safe_slug(doc.title)}.html",
+                "text/html; charset=utf-8",
+            )
     html = render_html(scope)
     path = common.reserve_export_path(".html")
     common.write_text(path, html)

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
+from apps.knowledge.html_content import resolve_html_body
 from apps.knowledge.models import Document, KnowledgeBase
 from apps.knowledge.serializers import detect_doc_format
 
@@ -75,6 +76,7 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
     primary_attachment = serializers.SerializerMethodField()
     doc_format = serializers.SerializerMethodField()
+    published_content = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -109,6 +111,12 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
 
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
+
+    def get_published_content(self, obj: Document) -> str:
+        """HTML posts may have body only in ``raw_content`` or a ``.html`` attachment."""
+        if detect_doc_format(obj) == "html":
+            return resolve_html_body(obj)
+        return obj.published_content or ""
 
 
 class PublicKBSerializer(serializers.ModelSerializer):

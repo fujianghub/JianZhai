@@ -8,6 +8,7 @@ import {
   Form,
   Input,
   Modal,
+  Radio,
   Result,
   Space,
   Spin,
@@ -39,6 +40,10 @@ import type { PublicFolder, PublicKBTree, PublicPost } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import BlogKbNavPanel from '@/components/common/BlogKbNavPanel';
 import { resolveTagColor } from '@/utils/tagColor';
+import {
+  NEW_HTML_DOCUMENT_TEMPLATE,
+  type NewDocContentKind,
+} from '@/utils/htmlTemplate';
 
 const { Title, Paragraph } = Typography;
 
@@ -50,7 +55,7 @@ export default function KBPostsPage() {
   const [newDocOpen, setNewDocOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [docForm] = Form.useForm<{ title: string }>();
+  const [docForm] = Form.useForm<{ title: string; content_kind: NewDocContentKind }>();
   const singleInputRef = useRef<HTMLInputElement | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
@@ -91,16 +96,19 @@ export default function KBPostsPage() {
     if (!tree) return;
     setCreating(true);
     try {
+      const isHtml = values.content_kind === 'html';
       const created = await docsApi.createDocument({
         knowledge_base: tree.id,
         folder: null,
         title: values.title,
-        raw_content: '',
+        raw_content: isHtml ? NEW_HTML_DOCUMENT_TEMPLATE : '',
       });
       setNewDocOpen(false);
       docForm.resetFields();
       message.success('文档已创建，前往编辑');
-      navigate(`/admin/kbs/${tree.id}/docs/${created.id}?return=${encodeURIComponent(`/kb/${slug}`)}`);
+      const returnQ = `return=${encodeURIComponent(`/kb/${slug}`)}`;
+      const modeQ = isHtml ? '&mode=html' : '';
+      navigate(`/admin/kbs/${tree.id}/docs/${created.id}?${returnQ}${modeQ}`);
     } catch (err) {
       message.error(formatApiError(err, '新建文档失败'));
     } finally {
@@ -314,9 +322,15 @@ export default function KBPostsPage() {
         okText="创建并编辑"
         cancelText="取消"
       >
-        <Form form={docForm} layout="vertical">
+        <Form form={docForm} layout="vertical" initialValues={{ content_kind: 'markdown' }}>
           <Form.Item label="标题" name="title" rules={[{ required: true }]}>
             <Input autoFocus placeholder="如：第三章 · 一夜的春风" />
+          </Form.Item>
+          <Form.Item label="文档类型" name="content_kind">
+            <Radio.Group>
+              <Radio value="markdown">Markdown</Radio>
+              <Radio value="html">HTML</Radio>
+            </Radio.Group>
           </Form.Item>
           <Typography.Text type="secondary" style={{ fontSize: 12 }}>
             创建后会自动跳转到编辑器，保存并发布后即可在博客前台看到。

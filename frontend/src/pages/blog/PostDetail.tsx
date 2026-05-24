@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { AdjacentPosts } from '@/api/blog';
-import { Breadcrumb, Button, Result, Spin, Tooltip, Typography } from 'antd';
+import { Alert, Breadcrumb, Button, Result, Spin, Tooltip, Typography } from 'antd';
 import { Link, useParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
   BookOutlined,
   ClockCircleOutlined,
   EditOutlined,
+  ExportOutlined,
   FolderOpenOutlined,
   HomeOutlined,
   TagOutlined,
@@ -23,6 +24,7 @@ import PublicAttachmentPreview from '@/components/common/PublicAttachmentPreview
 import DocFormatTag from '@/components/common/DocFormatTag';
 import KbNavSidebar from '@/components/common/KbNavSidebar';
 import TocPanel from '@/components/common/TocPanel';
+import HtmlPostReader, { type HtmlReaderMeta } from '@/components/blog/HtmlPostReader';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { paperClassName, getReaderOverride, setReaderOverride } from '@/utils/paper';
 import { resolveTagCssColor } from '@/utils/tagColor';
@@ -71,6 +73,12 @@ export default function PostDetail() {
   const loadSession = useAuthStore((s) => s.loadSession);
   const articleRef = useRef<HTMLDivElement | null>(null);
   const layoutRef = useRef<HTMLDivElement | null>(null);
+  /** Iframe element of the HTML reader — kept as a ref for future hooks
+   *  (e.g. analytics, scroll-spy) that may need to map between the iframe
+   *  document and the parent page. */
+  const htmlIframeRef = useRef<HTMLIFrameElement | null>(null);
+  /** Meta reported by the iframe bootstrap (height + headings + plain text). */
+  const [htmlMeta, setHtmlMeta] = useState<HtmlReaderMeta | null>(null);
   const layoutWide = useMediaQuery('(min-width: 1101px)');
   const tocRailWide = useMediaQuery('(min-width: 1281px)');
 
@@ -131,6 +139,7 @@ export default function PostDetail() {
     setPost(null);
     setNotFound(false);
     setAdjacent(null);
+    setHtmlMeta(null);
     if (!slug) return;
     blogApi
       .getPublicPost(slug)
@@ -157,24 +166,45 @@ export default function PostDetail() {
 
   const effectivePaper = readerPaper ?? post.paper_style ?? '';
   const accent = post.knowledge_base.accent_color || 'var(--jz-accent)';
-  // For binary-format docs (pdf/html/docx/image) the file IS the article — we
-  // always render it inline, regardless of whether published_content has any
-  // text content. Text formats (md/txt) inline into the body during import.
-  const binaryFormats = new Set(['pdf', 'html', 'docx', 'image']);
+  // HTML documents render via the in-flow ``HtmlPostReader`` (sandboxed iframe
+  // auto-resized to its content) — they participate in TOC / word count just
+  // like Markdown posts. Pure binary previews (PDF / DOCX / image) keep the
+  // older "the file is the article" behaviour.
+  const isHtmlDoc = post.doc_format === 'html';
+  const htmlBody = isHtmlDoc ? post.published_content || '' : '';
+  const binaryFormats = new Set(['pdf', 'docx', 'image']);
   const hasInlineFile =
     !!post.primary_attachment &&
+    !isHtmlDoc &&
     (binaryFormats.has(post.doc_format) || !post.published_content || !post.published_content.trim());
   // Only echo the original file at the bottom when it's not redundant with
   // the inlined Markdown body (text files were already imported into the body).
   const showOriginalAtBottom =
     !!post.primary_attachment &&
     !hasInlineFile &&
+    !isHtmlDoc &&
     !['md', 'text', 'html'].includes(previewKind(post.primary_attachment));
 
-  // TOC only makes sense for text content (md/text imports). Binary previews
-  // — PDFs, HTML iframes — have no headings we can hook into.
-  const canShowToc = !hasInlineFile && rendered.toc.length > 0;
+  // TOC content + active source depends on doc kind:
+  //  * Markdown → headings extracted by the renderer at parse time.
+  //  * HTML     → headings reported by the iframe bootstrap once it loads.
+  // HTML articles share the Markdown reader's column-constrained layout (same
+  // .paper wrapper, same meta strip, same KB rail). Only the TOC is dropped
+  // because Tailwind / animation-driven HTML pages mostly carry their own
+  // navigation already and a parent-page TOC adds noise.
+  const htmlHasBuiltInNav = isHtmlDoc && !!htmlMeta?.hasBuiltInNav;
+  const canShowToc = isHtmlDoc
+    ? false
+    : !hasInlineFile && rendered.toc.length > 0;
   const showToc = canShowToc && tocOpen;
+  // Word-count / reading-time: MD reads from the persisted markdown source;
+  // HTML reads the plain-text body the iframe reader extracts (same-origin
+  // direct DOM read for src-mode, or postMessage for srcDoc fallback).
+  const wcSource = isHtmlDoc ? htmlMeta?.plainText ?? '' : post.published_content ?? '';
+  const showWordCount = isHtmlDoc
+    ? !!htmlMeta?.plainText
+    : !hasInlineFile && !!post.published_content;
+  const htmlOriginalUrl = isHtmlDoc ? post.primary_attachment?.url ?? '' : '';
   const showKbRail = kbNavOpen && layoutWide;
   const showTocRail = showToc && tocRailWide;
 
@@ -192,6 +222,7 @@ export default function PostDetail() {
       id="jz-post-layout"
       ref={layoutRef}
       className="jz-post-layout"
+      data-doc-format={isHtmlDoc ? 'html' : post.doc_format}
       data-show-kb={showKbRail ? 'true' : 'false'}
       data-show-toc={showTocRail ? 'true' : 'false'}
       style={
@@ -290,14 +321,14 @@ export default function PostDetail() {
                 </time>
               </span>
 
-              {/* 字数 + 阅读时长 —— 仅对文字类内容显示（二进制 PDF/HTML/DOCX 走自己的预览） */}
-              {!hasInlineFile && post.published_content && (
+              {/* 字数 + 阅读时长 —— MD 读 published_content，HTML 读 iframe 上报的 plainText */}
+              {showWordCount && (
                 <>
                   <span className="jz-meta-sep" aria-hidden />
                   <Tooltip title="按中文 300 字/分钟、英文 200 词/分钟估算">
                     <span className="jz-meta-date" aria-label="字数与阅读时长">
-                      {wordCount(post.published_content).toLocaleString()} 字 · 约{' '}
-                      {readingMinutes(post.published_content)} 分钟
+                      {wordCount(wcSource).toLocaleString()} 字 · 约{' '}
+                      {readingMinutes(wcSource)} 分钟
                     </span>
                   </Tooltip>
                 </>
@@ -342,6 +373,23 @@ export default function PostDetail() {
                     setReaderOverride(k);
                   }}
                 />
+                {/* HTML-only: link to the original .html attachment for
+                    a true "browser tab" experience (some pages depend on
+                    full viewport width or have richer scripts). */}
+                {isHtmlDoc && htmlOriginalUrl && (
+                  <Tooltip title="在新标签页打开原 HTML 文件（浏览器原生体验）">
+                    <Button
+                      size="small"
+                      icon={<ExportOutlined />}
+                      href={htmlOriginalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="jz-meta-edit-btn"
+                    >
+                      在新标签打开
+                    </Button>
+                  </Tooltip>
+                )}
                 {canEdit && (
                   <Tooltip title="在博客中编辑（保存后可返回阅读页）">
                     <Link to={editHref} style={{ textDecoration: 'none' }}>
@@ -361,24 +409,33 @@ export default function PostDetail() {
             </div>
           </header>
 
-          {post.doc_format === 'html' && post.published_content?.trim() ? (
-            // HTML 文档已经把正文存进 published_content：直接 srcdoc 渲染，避免
-            // 走附件 iframe（绕过 Django 的编码 / X-Frame-Options 兼容问题）。
+          {isHtmlDoc && htmlHasBuiltInNav && (
+            <Alert
+              type="info"
+              showIcon
+              message="本文已包含文内目录；可使用页面内置导航或点右上角「在新标签打开」获得浏览器原生体验。"
+              style={{ marginBottom: 12 }}
+            />
+          )}
+          {isHtmlDoc && (htmlBody.trim() || htmlOriginalUrl) ? (
+            // HTML 文档：优先用 <iframe src={attachment.url}> 走真实文档 URL，
+            // 让相对路径资源 / Tailwind / JS 全部按浏览器原生方式加载；只有
+            // 纯 raw_content（admin 新建模板）才走 srcDoc 兜底。
             <div className="paper-breakout">
-              <iframe
+              <HtmlPostReader
+                html={htmlBody}
                 title={post.title}
-                srcDoc={post.published_content}
-                sandbox="allow-scripts allow-popups allow-forms"
-                style={{
-                  width: '100%',
-                  height: 'min(calc(100vh - 160px), 1400px)',
-                  minHeight: 720,
-                  border: '1px solid var(--glass-border, var(--jz-border))',
-                  borderRadius: 12,
-                  background: 'var(--glass-bg-mid, #fff)',
-                }}
+                iframeRef={htmlIframeRef}
+                onMeta={setHtmlMeta}
+                attachmentUrl={htmlOriginalUrl || undefined}
               />
             </div>
+          ) : isHtmlDoc ? (
+            <Alert
+              type="info"
+              showIcon
+              message="该 HTML 文档暂无正文内容，请在后台编辑或重新发布。"
+            />
           ) : hasInlineFile && post.primary_attachment ? (
             <div className="paper-breakout">
               <PublicAttachmentPreview att={post.primary_attachment} />
@@ -504,6 +561,7 @@ export default function PostDetail() {
           />
         </Tooltip>
       )}
+
       {/* Selection-driven AI helper — only for authenticated readers so we
           don't burn API tokens on anonymous traffic. */}
       {authUser && (

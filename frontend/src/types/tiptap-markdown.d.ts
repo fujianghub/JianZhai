@@ -25,6 +25,9 @@ declare module '@tiptap/core' {
   interface Storage {
     markdown?: {
       getMarkdown: () => string;
+      serializer?: {
+        serialize: (content: import('@tiptap/pm/model').Node) => string;
+      };
       parser?: {
         parse: (md: string) => import('@tiptap/pm/model').Node;
       };

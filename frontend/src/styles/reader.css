@@ -28,6 +28,12 @@
 .jz-post-aside-right {
   border-left: 3px solid var(--jz-doc-accent, var(--jz-accent));
 }
+
+/* HTML posts share the Markdown reader's column-constrained layout: same
+   .paper wrapper, same KB / TOC rail decisions, just no TOC content
+   (PostDetail forces canShowToc=false for HTML). The iframe inside renders
+   via <iframe src> so relative resources still resolve correctly even though
+   the iframe itself is not viewport-wide. */
 .jz-post-aside::-webkit-scrollbar {
   width: 6px;
 }

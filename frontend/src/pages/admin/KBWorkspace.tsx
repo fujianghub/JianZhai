@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import {
   Alert,
   Button,
@@ -7,11 +7,13 @@ import {
   Form,
   Input,
   Modal,
+  Radio,
   Popconfirm,
   Segmented,
   Select,
   Space,
   Spin,
+  Tag,
   Tooltip,
   Typography,
 } from 'antd';
@@ -27,19 +29,24 @@ import {
   StopOutlined,
   TagsOutlined,
 } from '@ant-design/icons';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import * as kbsApi from '@/api/kbs';
 import * as docsApi from '@/api/docs';
 import * as foldersApi from '@/api/folders';
 import * as attApi from '@/api/attachments';
 import * as tagsApi from '@/api/tags';
 import { formatApiError } from '@/api/client';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import KBTreeNav, { type CheckedSelection } from '@/components/tree/KBTreeNav';
 import ExportDialog from '@/components/common/ExportDialog';
 import type { KBTree, KnowledgeBase, TreeFolder } from '@/types';
 import type { Tag as ApiTag } from '@/api/tags';
+import {
+  NEW_HTML_DOCUMENT_TEMPLATE,
+  type NewDocContentKind,
+} from '@/utils/htmlTemplate';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 export default function KBWorkspace() {
   const { id } = useParams<{ id: string }>();
@@ -55,7 +62,11 @@ export default function KBWorkspace() {
   const importInputRef = useRef<HTMLInputElement | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
-  const [docForm] = Form.useForm<{ title: string; folder?: number | null }>();
+  const [docForm] = Form.useForm<{
+    title: string;
+    folder?: number | null;
+    content_kind: NewDocContentKind;
+  }>();
   const [folderForm] = Form.useForm<{ name: string; parent?: number | null }>();
   const [exportOpen, setExportOpen] = useState(false);
 
@@ -128,16 +139,18 @@ export default function KBWorkspace() {
       return;
     }
     try {
+      const isHtml = values.content_kind === 'html';
       const created = await docsApi.createDocument({
         knowledge_base: kbId,
         folder: values.folder ?? null,
         title: values.title,
-        raw_content: '',
+        raw_content: isHtml ? NEW_HTML_DOCUMENT_TEMPLATE : '',
       });
       setNewDocModal(false);
       docForm.resetFields();
       await refreshTree();
-      navigate(`/admin/kbs/${kbId}/docs/${created.id}`);
+      const modeQ = isHtml ? '?mode=html' : '';
+      navigate(`/admin/kbs/${kbId}/docs/${created.id}${modeQ}`);
       message.success('文档已创建');
     } catch (err) {
       message.error(formatApiError(err, '新建文档失败'));
@@ -342,23 +355,20 @@ export default function KBWorkspace() {
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          marginBottom: 16,
-          gap: 12,
-          flexWrap: 'wrap',
-        }}
-      >
-        <div>
-          <Title level={3} style={{ margin: 0 }}>
-            <Link to="/admin/kbs">← </Link>
-            {kb.name}
-          </Title>
-          <Text type="secondary">{kb.visibility === 'public' ? '公开' : '私密'}</Text>
-        </div>
+      <AdminPageHeader
+        backTo="/admin/kbs"
+        backLabel="知识库"
+        title={kb.name}
+        accentColor={kb.accent_color}
+        meta={
+          <Space split={<span style={{ opacity: 0.4 }}>·</span>} size={4}>
+            <Tag color={kb.visibility === 'public' ? 'green' : 'default'}>
+              {kb.visibility === 'public' ? '公开' : '私密'}
+            </Tag>
+            <Text type="secondary">{kb.document_count} 篇</Text>
+          </Space>
+        }
+        actions={
         <Space wrap>
           <Dropdown
             menu={{
@@ -455,7 +465,8 @@ export default function KBWorkspace() {
             </Button>
           </Tooltip>
         </Space>
-      </div>
+        }
+      />
 
       {batchMode && (
         <div
@@ -552,13 +563,12 @@ export default function KBWorkspace() {
       </div>
 
       <div
-        style={{
-          border: '1px solid var(--jz-border)',
-          borderRadius: 8,
-          padding: 12,
-          background: 'var(--jz-surface)',
-          minHeight: 360,
-        }}
+        className={'jz-kb-tree-panel' + (kb.accent_color ? ' has-kb-accent' : '')}
+        style={
+          kb.accent_color
+            ? ({ ['--jz-kb-accent' as string]: kb.accent_color } as CSSProperties)
+            : undefined
+        }
       >
         {tree.folders.length === 0 && tree.documents.length === 0 ? (
           <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="空知识库，先建一个文档或上传文件" />
@@ -614,9 +624,19 @@ export default function KBWorkspace() {
         okText="创建"
         cancelText="取消"
       >
-        <Form form={docForm} layout="vertical" initialValues={{ folder: null }}>
+        <Form
+          form={docForm}
+          layout="vertical"
+          initialValues={{ folder: null, content_kind: 'markdown' }}
+        >
           <Form.Item label="标题" name="title" rules={[{ required: true }]}>
             <Input autoFocus />
+          </Form.Item>
+          <Form.Item label="文档类型" name="content_kind">
+            <Radio.Group>
+              <Radio value="markdown">Markdown</Radio>
+              <Radio value="html">HTML</Radio>
+            </Radio.Group>
           </Form.Item>
           <Form.Item label="所属文件夹" name="folder">
             <Select allowClear placeholder="（根目录）" options={folderOptions} />

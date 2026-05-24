@@ -2,63 +2,40 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" shape-rendering="geometricPrecision">
   <title>简斋 / JianZhai</title>
   <defs>
-    <!-- 朱砂渐变：印泥中心略亮、边缘渗深 -->
-    <radialGradient id="seal" cx="50%" cy="42%" r="62%">
-      <stop offset="0%" stop-color="#d8553f"/>
-      <stop offset="55%" stop-color="#b94a3b"/>
-      <stop offset="100%" stop-color="#8d3023"/>
-    </radialGradient>
-    <!-- 顶部高光：纸面反光 -->
+  <!-- 翡翠渐变：对齐 AdminLayout .jz-admin-brand-seal -->
+    <linearGradient id="seal" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#06d6a0"/>
+    </linearGradient>
+    <!-- 顶部高光：玻璃面反光 -->
     <linearGradient id="highlight" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.18"/>
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="45%" stop-color="#ffffff" stop-opacity="0.06"/>
       <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
     </linearGradient>
-    <!-- 颗粒滤镜：模拟印章压在纸上的不均匀肌理 -->
-    <filter id="grain" x="-5%" y="-5%" width="110%" height="110%">
-      <feTurbulence type="fractalNoise" baseFrequency="2.4" numOctaves="2" seed="7"/>
-      <feColorMatrix values="0 0 0 0 0
-                             0 0 0 0 0
-                             0 0 0 0 0
-                             0 0 0 0.16 0"/>
-      <feComposite in2="SourceGraphic" operator="in"/>
-      <feComposite in="SourceGraphic" operator="over"/>
-    </filter>
-    <!-- "簡" 字的轻压痕：模拟刻印时下沉 -->
-    <filter id="press" x="-10%" y="-10%" width="120%" height="120%">
-      <feGaussianBlur in="SourceAlpha" stdDeviation="0.35"/>
-      <feOffset dx="0" dy="0.5"/>
-      <feFlood flood-color="#5a1a10" flood-opacity="0.55"/>
-      <feComposite in2="SourceAlpha" operator="in"/>
-      <feMerge>
-        <feMergeNode/>
-        <feMergeNode in="SourceGraphic"/>
-      </feMerge>
+    <!-- 外发光：深色标签栏下提升对比 -->
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#059669" flood-opacity="0.45"/>
     </filter>
   </defs>
 
-  <!-- 朱砂方印底 + 颗粒肌理 -->
-  <g filter="url(#grain)">
-    <rect x="4" y="4" width="56" height="56" rx="9" fill="url(#seal)"/>
-    <!-- 四角磨痕，让印章像真盖出来的 -->
-    <path d="M 5 14 Q 7 8 14 6"  stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
-    <path d="M 50 5 Q 56 7 58 14" stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
-    <path d="M 58 50 Q 56 56 50 58" stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
-    <path d="M 14 58 Q 7 56 5 50"  stroke="#8d3023" stroke-width="0.6" fill="none" opacity="0.5"/>
+  <!-- 翡翠方印底 + 外发光 -->
+  <g filter="url(#glow)">
+    <rect x="5" y="5" width="54" height="54" rx="14" fill="url(#seal)"/>
+    <!-- 细白描边：深浅标签栏均清晰 -->
+    <rect x="5.5" y="5.5" width="53" height="53" rx="13.5" fill="none"
+          stroke="#ffffff" stroke-width="1" opacity="0.22"/>
+    <!-- 内描边：玻璃 inset -->
+    <rect x="8" y="8" width="48" height="48" rx="11" fill="none"
+          stroke="#ffffff" stroke-width="0.6" opacity="0.14"/>
   </g>
 
-  <!-- 顶部高光（在印底之上、字之下） -->
-  <rect x="4" y="4" width="56" height="22" rx="9" fill="url(#highlight)"/>
+  <!-- 顶部高光 -->
+  <rect x="5" y="5" width="54" height="24" rx="14" fill="url(#highlight)"/>
 
-  <!-- 双线印框 -->
-  <rect x="6.5" y="6.5" width="51" height="51" rx="7" fill="none"
-        stroke="#5a1a10" stroke-width="1.4" opacity="0.55"/>
-  <rect x="9.5" y="9.5" width="45" height="45" rx="5" fill="none"
-        stroke="#f7e6c4" stroke-width="0.5" opacity="0.42"/>
-
-  <!-- "簡" 字：宋体，米白印面色，带压痕 -->
-  <text x="32" y="44" text-anchor="middle"
-        font-family="'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', serif"
-        font-size="38" font-weight="700"
-        fill="#f7e6c4"
-        filter="url(#press)">簡</text>
+  <!-- "簡" 字：深绿印面色，对齐 admin seal 字色 -->
+  <text x="32" y="44.5" text-anchor="middle"
+        font-family="'PingFang SC', 'Noto Serif SC', 'Songti SC', 'STSong', serif"
+        font-size="36" font-weight="800"
+        fill="#0a1f1a">簡</text>
 </svg>
