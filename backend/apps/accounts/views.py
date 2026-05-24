@@ -11,11 +11,25 @@ from django.db.models import Sum
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
 
+from .avatar import avatar_storage_name, process_avatar_image
+from .models import UserProfile
+
 User = get_user_model()
+
+
+def _avatar_url_for(user) -> str | None:
+    try:
+        profile = user.profile
+    except UserProfile.DoesNotExist:
+        return None
+    if profile.avatar:
+        return profile.avatar.url
+    return None
 
 
 def _serialize_user(user) -> dict:
@@ -24,7 +38,13 @@ def _serialize_user(user) -> dict:
         "username": user.username,
         "is_staff": user.is_staff,
         "is_superuser": user.is_superuser,
+        "avatar_url": _avatar_url_for(user),
     }
+
+
+def _get_or_create_profile(user) -> UserProfile:
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    return profile
 
 
 @api_view(["GET"])
@@ -67,6 +87,45 @@ def login_view(request):
 def logout_view(request):
     logout(request)
     return Response({"authenticated": False})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def me(request):
+    user = request.user
+    return Response(
+        {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "avatar_url": _avatar_url_for(user),
+        }
+    )
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser])
+def avatar_me(request):
+    if request.method == "DELETE":
+        profile = _get_or_create_profile(request.user)
+        if profile.avatar:
+            profile.avatar.delete(save=True)
+        return Response({"avatar_url": None})
+
+    uploaded = request.FILES.get("file")
+    if not uploaded:
+        return Response({"detail": "缺少 file 字段"}, status=status.HTTP_400_BAD_REQUEST)
+    try:
+        content = process_avatar_image(uploaded)
+    except ValueError as exc:
+        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+
+    profile = _get_or_create_profile(request.user)
+    if profile.avatar:
+        profile.avatar.delete(save=False)
+    profile.avatar.save(avatar_storage_name(request.user.id), content, save=True)
+    return Response({"avatar_url": profile.avatar.url})
 
 
 # ─── User management ────────────────────────────────────────────────────────

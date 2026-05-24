@@ -13,10 +13,19 @@ from django.http import HttpResponse
 from django.utils.feedgenerator import Rss201rev2Feed
 from xml.sax.saxutils import escape as xml_escape
 
-from apps.knowledge.models import Document, Folder, KnowledgeBase
+from apps.knowledge.models import Document, Folder, KnowledgeBase, KnowledgeBaseCategory
+from apps.knowledge.serializers import _favorite_doc_ids_for_user, sort_documents
 from apps.linking.models import DocumentLink
 
 from .serializers import PublicKBSerializer, PublicPostDetailSerializer, PublicPostListSerializer
+
+
+def _kb_can_manage(kb: KnowledgeBase, user) -> bool:
+    if not user or not getattr(user, "is_authenticated", False):
+        return False
+    if getattr(user, "is_superuser", False):
+        return True
+    return kb.owner_id == user.id
 
 
 def _published_qs():
@@ -97,10 +106,73 @@ class PublicKBViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return KnowledgeBase.objects.filter(visibility="public").order_by("order", "id")
+        return (
+            KnowledgeBase.objects.filter(visibility="public")
+            .select_related("category")
+            .prefetch_related("tags")
+            .order_by("order", "id")
+        )
 
 
-def _build_public_folder_tree(kb: KnowledgeBase, docs: list[Document]) -> dict:
+class PublicKBCategoriesView(APIView):
+    """Public KBs grouped by category for the blog home page."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        from .serializers import PublicKBSerializer
+
+        categories = list(
+            KnowledgeBaseCategory.objects.filter(
+                knowledge_bases__visibility="public",
+                knowledge_bases__is_deleted=False,
+            )
+            .distinct()
+            .order_by("order", "id")
+        )
+        uncategorized = list(
+            KnowledgeBase.objects.filter(visibility="public", is_deleted=False, category__isnull=True)
+            .prefetch_related("tags")
+            .order_by("order", "id")
+        )
+        groups = []
+        for cat in categories:
+            kbs = list(
+                KnowledgeBase.objects.filter(
+                    visibility="public", is_deleted=False, category=cat
+                )
+                .prefetch_related("tags")
+                .order_by("order", "id")
+            )
+            if kbs:
+                groups.append(
+                    {
+                        "category": {
+                            "id": cat.id,
+                            "name": cat.name,
+                            "slug": cat.slug,
+                            "description": cat.description,
+                            "accent_color": cat.accent_color,
+                            "order": cat.order,
+                        },
+                        "knowledge_bases": PublicKBSerializer(kbs, many=True).data,
+                    }
+                )
+        if uncategorized:
+            groups.append(
+                {
+                    "category": None,
+                    "knowledge_bases": PublicKBSerializer(uncategorized, many=True).data,
+                }
+            )
+        return Response(groups)
+
+
+def _build_public_folder_tree(
+    kb: KnowledgeBase,
+    docs: list[Document],
+    user=None,
+) -> dict:
     """Return a folder-aware tree for the public KB endpoint.
 
     Folders that contain (or transitively contain) no published+public docs are
@@ -108,6 +180,10 @@ def _build_public_folder_tree(kb: KnowledgeBase, docs: list[Document]) -> dict:
     something to read. Documents at the KB root (folder is null) bubble up to
     the top-level ``documents`` list.
     """
+    favorite_ids = _favorite_doc_ids_for_user(kb, user)
+    sort_mode = kb.doc_sort_mode or "custom"
+    ser_ctx = {"favorite_doc_ids": favorite_ids}
+
     folders = list(
         Folder.objects.filter(knowledge_base=kb)
         .prefetch_related("tags")
@@ -144,11 +220,17 @@ def _build_public_folder_tree(kb: KnowledgeBase, docs: list[Document]) -> dict:
         else:
             root_docs.append(d)
 
+    for node in folder_map.values():
+        node["documents"] = sort_documents(node["documents"], sort_mode, favorite_ids)
+    root_docs = sort_documents(root_docs, sort_mode, favorite_ids)
+
     # Serialise documents lazily so we don't pay the cost for pruned subtrees.
     def serialize_folder(node: dict) -> dict:
         children = [serialize_folder(c) for c in node["children"]]
         children = [c for c in children if c]  # prune empty subtrees
-        documents = PublicPostListSerializer(node["documents"], many=True).data
+        documents = PublicPostListSerializer(
+            node["documents"], many=True, context=ser_ctx
+        ).data
         if not children and not documents:
             return None  # type: ignore[return-value]
         return {
@@ -164,9 +246,15 @@ def _build_public_folder_tree(kb: KnowledgeBase, docs: list[Document]) -> dict:
     pruned_folders = [serialize_folder(f) for f in root_folders]
     pruned_folders = [f for f in pruned_folders if f]
 
+    sorted_flat = sort_documents(list(docs), sort_mode, favorite_ids)
     return {
         "folders": pruned_folders,
-        "documents": PublicPostListSerializer(root_docs, many=True).data,
+        "documents": PublicPostListSerializer(
+            root_docs, many=True, context=ser_ctx
+        ).data,
+        "flat_documents": PublicPostListSerializer(
+            sorted_flat, many=True, context=ser_ctx
+        ).data,
     }
 
 
@@ -178,26 +266,28 @@ class PublicKBTreeView(APIView):
         docs = list(
             _published_qs().filter(knowledge_base=kb)
         )
-        folder_tree = _build_public_folder_tree(kb, docs)
-        return Response(
-            {
-                "id": kb.id,
-                "name": kb.name,
-                "slug": kb.slug,
-                "accent_color": kb.accent_color,
-                "description": kb.description,
-                "tags": [
-                    {"id": t.id, "name": t.name, "slug": t.slug, "color": t.color}
-                    for t in kb.tags.all()
-                ],
-                # Flat document list — kept for backward compatibility with the
-                # rendering of card-grid views that don't care about folders.
-                "documents": PublicPostListSerializer(docs, many=True).data,
-                # Folder-aware nested view.
-                "folders": folder_tree["folders"],
-                "root_documents": folder_tree["documents"],
-            }
-        )
+        user = request.user
+        folder_tree = _build_public_folder_tree(kb, docs, user=user)
+        can_manage = _kb_can_manage(kb, user)
+        payload = {
+            "id": kb.id,
+            "name": kb.name,
+            "slug": kb.slug,
+            "accent_color": kb.accent_color,
+            "description": kb.description,
+            "doc_sort_mode": kb.doc_sort_mode or "custom",
+            "can_manage": can_manage,
+            "tags": [
+                {"id": t.id, "name": t.name, "slug": t.slug, "color": t.color}
+                for t in kb.tags.all()
+            ],
+            "documents": folder_tree["flat_documents"],
+            "folders": folder_tree["folders"],
+            "root_documents": folder_tree["documents"],
+        }
+        if can_manage:
+            payload["owner_id"] = kb.owner_id
+        return Response(payload)
 
 
 class PublicPostByIdView(APIView):

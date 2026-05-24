@@ -11,12 +11,13 @@ from rest_framework.response import Response
 from apps.accounts.scoping import scope_queryset
 from apps.editor.models import Attachment
 
-from .models import Document, Folder, KnowledgeBase
+from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
 from .serializers import (
     DocumentListSerializer,
     DocumentPublishedContentSerializer,
     DocumentSerializer,
     FolderSerializer,
+    KnowledgeBaseCategorySerializer,
     KnowledgeBaseSerializer,
     ReorderRequestSerializer,
     build_tree,
@@ -60,7 +61,17 @@ class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
     @action(detail=True, methods=["get"], url_path="tree")
     def tree(self, request, pk=None):
         kb = self.get_object()
-        return Response(build_tree(kb))
+        return Response(build_tree(kb, user=request.user))
+
+
+class KnowledgeBaseCategoryViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
+    queryset = KnowledgeBaseCategory.objects.all()
+    serializer_class = KnowledgeBaseCategorySerializer
+    permission_classes = [IsAuthenticated]
+    lookup_field = "pk"
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class FolderViewSet(viewsets.ModelViewSet):
@@ -256,6 +267,20 @@ class DocumentViewSet(viewsets.ModelViewSet):
                 "published_at": doc.published_at.isoformat() if doc.published_at else None,
             }
         )
+
+    @action(detail=True, methods=["post"], url_path="favorite")
+    def favorite(self, request, pk=None):
+        """Toggle per-user favorite for this document."""
+        doc = self.get_object()
+        fav, created = DocumentFavorite.objects.get_or_create(
+            user=request.user, document=doc
+        )
+        if not created:
+            fav.delete()
+            favorited = False
+        else:
+            favorited = True
+        return Response({"is_favorited": favorited})
 
     @action(detail=False, methods=["get"], url_path="mentions")
     def mentions(self, request):

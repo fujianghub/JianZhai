@@ -6,7 +6,7 @@
 
 > 详细架构与开发指南见 [CLAUDE.md](./CLAUDE.md)。  
 > 超级管理员登录后台后，可在 **[架构总览](http://localhost:3001/admin/overview)** 查看实时统计、技术栈与系统架构图（简单版 Mermaid + 详细 SVG）。  
-> 仓库内可一键种子公开 KB「简斋·开发指南」：`python manage.py seed_architecture_kb` → http://localhost:3001/kb/dev-guide
+> 仓库内可一键种子公开 KB「简斋·开发指南」：正文源文件在 [`docs/dev-guide/`](docs/dev-guide/)，执行 `python manage.py seed_architecture_kb` 后访问 http://localhost:3001/kb/dev-guide
 
 ## 主要能力
 

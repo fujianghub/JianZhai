@@ -14,6 +14,8 @@ import {
 } from '@ant-design/icons';
 import MermaidDiagram from '@/components/common/MermaidDiagram';
 import ArchitectureSVG from '@/components/admin/ArchitectureSVG';
+import simpleArchDiagram from '@dev-guide/diagrams/simple-arch.mmd?raw';
+import saveFlowDiagram from '@dev-guide/diagrams/save-flow.mmd?raw';
 import {
   JzAiIcon,
   JzArchitectureIcon,
@@ -180,55 +182,8 @@ const FEATURE_MODULES: FeatureModule[] = [
   },
 ];
 
-const SAVE_FLOW_DIAGRAM = `
-sequenceDiagram
-  autonumber
-  participant U as 用户
-  participant E as Tiptap 编辑器
-  participant FE as React 父组件
-  participant API as Django + DRF
-  participant DB as PostgreSQL
-  participant Q as Celery 队列
-  participant W as Celery Worker
-
-  U->>E: 敲键盘
-  Note over E: onUpdate 200ms 防抖
-  E->>FE: 推送 Markdown
-  Note over FE: 自动保存 5s 防抖
-  FE->>API: PATCH 带 expected_version
-  alt 版本冲突
-    API-->>FE: 409 当前文档
-    FE-->>U: 提示并拉取最新
-  else 写入成功
-    API->>DB: UPDATE document
-    Note over API,DB: transaction.on_commit
-    API->>Q: 入队 刷新搜索向量
-    API->>Q: 入队 重建双向链接
-    API-->>FE: 200 OK 约 50ms
-    FE-->>U: 已保存
-    W->>Q: 拉取任务
-    W->>DB: jieba 分词 写入 tsvector
-    W->>DB: 解析 mention 写入 DocumentLink
-  end
-`.trim();
-
-const SIMPLE_ARCH_DIAGRAM = `flowchart LR
-  user([用户])
-  fe[React SPA<br/>localhost:3001]
-  be[Django + DRF<br/>localhost:8002]
-  db[(PostgreSQL)]
-  ai[Anthropic Claude API]
-
-  user -->|浏览/编辑| fe
-  fe -->|REST + SSE| be
-  be -->|ORM| db
-  be -.->|AI 代理| ai
-
-  note1[公开文章 slug 可按 KB 消歧 ?kb=]
-  fe -.-> note1
-
-  classDef ext stroke:#999,stroke-dasharray:4 4
-  class ai,note1 ext`;
+const SAVE_FLOW_DIAGRAM = saveFlowDiagram.trim();
+const SIMPLE_ARCH_DIAGRAM = simpleArchDiagram.trim();
 
 export default function SystemOverviewPage() {
   const { user } = useAuthStore();

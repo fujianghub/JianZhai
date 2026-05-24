@@ -1,5 +1,14 @@
 import { apiClient, ensureCsrf } from './client';
-import type { KBTree, KnowledgeBase, Paginated, PublicKB, PublicKBTree } from '@/types';
+import type {
+  DocSortMode,
+  KBCategory,
+  KBTree,
+  KnowledgeBase,
+  Paginated,
+  PublicKB,
+  PublicKBCategoryGroup,
+  PublicKBTree,
+} from '@/types';
 import type { Tag as ApiTag } from './tags';
 
 export async function listKBs(): Promise<KnowledgeBase[]> {
@@ -50,9 +59,45 @@ export async function setKBTags(id: number, tagIds: number[]): Promise<ApiTag[]>
 
 // ---- public ----
 
+export async function listKBCategories(): Promise<KBCategory[]> {
+  const { data } = await apiClient.get<Paginated<KBCategory>>('/kb-categories/');
+  return data.results;
+}
+
+export async function createKBCategory(
+  payload: Partial<KBCategory>,
+): Promise<KBCategory> {
+  await ensureCsrf();
+  const { data } = await apiClient.post<KBCategory>('/kb-categories/', payload);
+  return data;
+}
+
+export async function updateKBCategory(
+  id: number,
+  payload: Partial<KBCategory>,
+): Promise<KBCategory> {
+  await ensureCsrf();
+  const { data } = await apiClient.patch<KBCategory>(`/kb-categories/${id}/`, payload);
+  return data;
+}
+
+export async function deleteKBCategory(id: number): Promise<void> {
+  await ensureCsrf();
+  await apiClient.delete(`/kb-categories/${id}/`);
+}
+
 export async function listPublicKBs(): Promise<PublicKB[]> {
   const { data } = await apiClient.get<Paginated<PublicKB>>('/public/kbs/');
   return data.results;
+}
+
+export async function listPublicKBCategories(): Promise<PublicKBCategoryGroup[]> {
+  const { data } = await apiClient.get<PublicKBCategoryGroup[]>('/public/kb-categories/');
+  return data;
+}
+
+export async function updateKBSortMode(id: number, doc_sort_mode: DocSortMode): Promise<KnowledgeBase> {
+  return updateKB(id, { doc_sort_mode });
 }
 
 export async function getPublicKBTree(slug: string): Promise<PublicKBTree> {

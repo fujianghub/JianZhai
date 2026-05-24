@@ -15,6 +15,7 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import * as blogApi from '@/api/blog';
+import * as kbsApi from '@/api/kbs';
 import type { PublicPostDetail } from '@/types';
 import { readingMinutes, renderMarkdownWithToc, wordCount } from '@/utils/markdown';
 import { previewKind } from '@/api/attachments';
@@ -111,7 +112,17 @@ export default function PostDetail() {
   useEffect(() => {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
-  const canEdit = !!authUser?.is_superuser;
+  const [canEdit, setCanEdit] = useState(false);
+  useEffect(() => {
+    if (!post || !authUser) {
+      setCanEdit(false);
+      return;
+    }
+    void kbsApi
+      .getPublicKBTree(post.knowledge_base.slug)
+      .then((t) => setCanEdit(!!t.can_manage))
+      .catch(() => setCanEdit(false));
+  }, [post, authUser]);
   /** TOC visibility — persisted per browser, defaults to shown. */
   const [tocOpen, setTocOpen] = useState<boolean>(() => {
     try {

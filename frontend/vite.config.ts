@@ -22,6 +22,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, 'src'),
+        '@dev-guide': path.resolve(__dirname, '../docs/dev-guide'),
       },
     },
     server: {

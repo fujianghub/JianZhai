@@ -1,0 +1,17 @@
+flowchart LR
+  user([用户])
+  fe[React SPA<br/>localhost:3001]
+  be[Django + DRF<br/>localhost:8002]
+  db[(PostgreSQL)]
+  ai[Anthropic Claude API]
+
+  user -->|浏览/编辑| fe
+  fe -->|REST + SSE| be
+  be -->|ORM| db
+  be -.->|AI 代理| ai
+
+  note1[公开文章 slug 可按 KB 消歧 ?kb=]
+  fe -.-> note1
+
+  classDef ext stroke:#999,stroke-dasharray:4 4
+  class ai,note1 ext

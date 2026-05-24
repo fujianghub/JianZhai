@@ -37,8 +37,53 @@ def _unique_slug(model: type[models.Model], base: str, scope: dict) -> str:
     return candidate
 
 
+class KnowledgeBaseCategory(models.Model):
+    """Top-level grouping for knowledge bases (e.g. AI, Ops)."""
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="kb_categories",
+    )
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=120, allow_unicode=True)
+    description = models.TextField(blank=True)
+    accent_color = models.CharField(max_length=20, blank=True)
+    order = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["owner", "slug"],
+                name="unique_owner_kb_category_slug",
+            ),
+        ]
+        ordering = ["order", "id"]
+
+    def __str__(self) -> str:
+        return self.name
+
+    def save(self, *args, **kwargs) -> None:
+        if not self.slug:
+            self.slug = _unique_slug(
+                KnowledgeBaseCategory,
+                self.name,
+                {"owner": self.owner},
+            )
+        super().save(*args, **kwargs)
+
+
 class KnowledgeBase(models.Model):
     VISIBILITY_CHOICES = [("private", "Private"), ("public", "Public")]
+    DOC_SORT_CHOICES = [
+        ("custom", "Custom order"),
+        ("title", "Title"),
+        ("created_at", "Created at"),
+        ("updated_at", "Updated at"),
+        ("doc_format", "Document format"),
+    ]
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -51,6 +96,16 @@ class KnowledgeBase(models.Model):
     cover_image = models.CharField(max_length=500, blank=True)
     accent_color = models.CharField(max_length=20, blank=True)  # "#1677ff" etc.
     visibility = models.CharField(max_length=10, choices=VISIBILITY_CHOICES, default="private")
+    category = models.ForeignKey(
+        KnowledgeBaseCategory,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="knowledge_bases",
+    )
+    doc_sort_mode = models.CharField(
+        max_length=20, choices=DOC_SORT_CHOICES, default="custom"
+    )
     order = models.IntegerField(default=0)
 
     is_deleted = models.BooleanField(default=False)
@@ -150,6 +205,8 @@ class Document(models.Model):
     search_vector = SearchVectorField(null=True, blank=True)
 
     order = models.IntegerField(default=0)
+    is_pinned = models.BooleanField(default=False)
+    pinned_at = models.DateTimeField(null=True, blank=True)
     # Optimistic-concurrency token. Increments on every save where content
     # actually changed; the API uses it to detect "you and another tab edited
     # the same doc" and refuse a stale overwrite.
@@ -241,3 +298,25 @@ class Document(models.Model):
     def unpublish(self) -> None:
         self.status = "draft"
         self.save(update_fields=["status", "updated_at"])
+
+
+class DocumentFavorite(models.Model):
+    """Per-user starred documents within a knowledge base."""
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="document_favorites",
+    )
+    document = models.ForeignKey(
+        Document, on_delete=models.CASCADE, related_name="favorites"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "document"],
+                name="unique_user_document_favorite",
+            ),
+        ]

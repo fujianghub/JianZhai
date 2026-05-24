@@ -72,6 +72,21 @@ export async function deleteDocument(id: number): Promise<void> {
   await apiClient.delete(`/documents/${id}/`);
 }
 
+export async function toggleDocumentPin(
+  id: number,
+  is_pinned: boolean,
+): Promise<DocumentDetail> {
+  return updateDocument(id, { is_pinned } as Partial<DocumentDetail>);
+}
+
+export async function toggleDocumentFavorite(id: number): Promise<{ is_favorited: boolean }> {
+  await ensureCsrf();
+  const { data } = await apiClient.post<{ is_favorited: boolean }>(
+    `/documents/${id}/favorite/`,
+  );
+  return data;
+}
+
 export async function publishDocument(id: number): Promise<DocumentDetail> {
   await ensureCsrf();
   const { data } = await apiClient.post<DocumentDetail>(`/documents/${id}/publish/`);

@@ -39,7 +39,7 @@ import { formatApiError } from '@/api/client';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import KBTreeNav, { type CheckedSelection } from '@/components/tree/KBTreeNav';
 import ExportDialog from '@/components/common/ExportDialog';
-import type { KBTree, KnowledgeBase, TreeFolder } from '@/types';
+import type { DocSortMode, KBTree, KnowledgeBase, TreeDocument, TreeFolder } from '@/types';
 import type { Tag as ApiTag } from '@/api/tags';
 import {
   NEW_HTML_DOCUMENT_TEMPLATE,
@@ -310,6 +310,43 @@ export default function KBWorkspace() {
     }
   }
 
+  const SORT_OPTIONS: { value: DocSortMode; label: string }[] = [
+    { value: 'custom', label: '自定义' },
+    { value: 'title', label: '名称' },
+    { value: 'created_at', label: '新建时间' },
+    { value: 'updated_at', label: '更新时间' },
+    { value: 'doc_format', label: '文件类型' },
+  ];
+
+  async function handleSortChange(mode: DocSortMode) {
+    try {
+      const updated = await kbsApi.updateKBSortMode(kbId, mode);
+      setKb(updated);
+      await refreshTree();
+      message.success('排序方式已更新');
+    } catch (err) {
+      message.error(formatApiError(err, '更新排序失败'));
+    }
+  }
+
+  async function handleTogglePin(doc: TreeDocument) {
+    try {
+      await docsApi.toggleDocumentPin(doc.id, !doc.is_pinned);
+      await refreshTree();
+    } catch (err) {
+      message.error(formatApiError(err, '置顶操作失败'));
+    }
+  }
+
+  async function handleToggleFavorite(doc: TreeDocument) {
+    try {
+      await docsApi.toggleDocumentFavorite(doc.id);
+      await refreshTree();
+    } catch (err) {
+      message.error(formatApiError(err, '收藏操作失败'));
+    }
+  }
+
   async function handleBatchAddTags() {
     if (batchTagIds.length === 0 || checked.docIds.length === 0) {
       setTagModal(false);
@@ -560,6 +597,16 @@ export default function KBWorkspace() {
             { label: '草稿', value: 'draft' },
           ]}
         />
+        {kb && (
+          <Select
+            value={kb.doc_sort_mode ?? 'custom'}
+            onChange={handleSortChange}
+            options={SORT_OPTIONS}
+            style={{ minWidth: 120 }}
+            disabled={batchMode}
+            aria-label="文档排序"
+          />
+        )}
       </div>
 
       <div
@@ -595,6 +642,8 @@ export default function KBWorkspace() {
             onEditFolderTags={openFolderTagsModal}
             filterQuery={filterQuery}
             filterStatus={filterStatus}
+            onTogglePin={batchMode ? undefined : handleTogglePin}
+            onToggleFavorite={batchMode ? undefined : handleToggleFavorite}
           />
         )}
       </div>

@@ -1,4 +1,5 @@
 import { apiClient, ensureCsrf } from './client';
+import type { PublicPost } from '@/types';
 
 export interface Tag {
   id: number;
@@ -66,5 +67,17 @@ export async function setFolderTags(folderId: number, tagIds: number[]): Promise
 
 export async function publicTagCloud(): Promise<PublicTag[]> {
   const { data } = await apiClient.get<PublicTag[]>('/public/tags/');
+  return data;
+}
+
+export interface PublicTagEntries {
+  tag: Pick<PublicTag, 'id' | 'name' | 'slug' | 'color'>;
+  posts: PublicPost[];
+}
+
+export async function getPublicTagEntries(tagId: number): Promise<PublicTagEntries> {
+  const { data } = await apiClient.get<PublicTagEntries>(
+    `/public/tags/${tagId}/entries/`,
+  );
   return data;
 }

@@ -1,9 +1,16 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
-from .views import DocumentViewSet, FolderViewSet, KnowledgeBaseViewSet, reorder_tree
+from .views import (
+    DocumentViewSet,
+    FolderViewSet,
+    KnowledgeBaseCategoryViewSet,
+    KnowledgeBaseViewSet,
+    reorder_tree,
+)
 
 router = DefaultRouter()
+router.register(r"kb-categories", KnowledgeBaseCategoryViewSet, basename="kb-category")
 router.register(r"kbs", KnowledgeBaseViewSet, basename="kb")
 router.register(r"folders", FolderViewSet, basename="folder")
 router.register(r"documents", DocumentViewSet, basename="document")

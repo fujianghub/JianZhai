@@ -1,6 +1,30 @@
 export type Visibility = 'private' | 'public';
 export type DocumentStatus = 'draft' | 'published';
 export type DocFormat = 'markdown' | 'html' | 'pdf' | 'docx' | 'image';
+export type DocSortMode = 'custom' | 'title' | 'created_at' | 'updated_at' | 'doc_format';
+
+export interface KBCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description: string;
+  accent_color: string;
+  order: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PublicKBCategoryGroup {
+  category: {
+    id: number;
+    name: string;
+    slug: string;
+    description: string;
+    accent_color: string;
+    order: number;
+  } | null;
+  knowledge_bases: PublicKB[];
+}
 
 export interface PublicTagSummary {
   id: number;
@@ -17,6 +41,8 @@ export interface KnowledgeBase {
   cover_image: string;
   accent_color: string;
   visibility: Visibility;
+  category: KBCategory | null;
+  doc_sort_mode: DocSortMode;
   order: number;
   document_count: number;
   tags: PublicTagSummary[];
@@ -31,6 +57,7 @@ export interface PublicKB {
   description: string;
   cover_image: string;
   accent_color: string;
+  category: Pick<KBCategory, 'id' | 'name' | 'slug' | 'order' | 'accent_color'> | null;
   tags: PublicTagSummary[];
   post_count: number;
   updated_at: string;
@@ -52,6 +79,9 @@ export interface PublicKBTree {
   slug: string;
   accent_color: string;
   description: string;
+  doc_sort_mode?: DocSortMode;
+  can_manage?: boolean;
+  owner_id?: number;
   tags: PublicTagSummary[];
   /** Flat list of all published+public docs (kept for legacy callers). */
   documents: PublicPost[];
@@ -91,6 +121,7 @@ export interface DocumentDetail extends DocumentListItem {
   published_content: string;
   paper_style: string;
   version: number;
+  is_pinned?: boolean;
   primary_attachment: PublicAttachment | null;
 }
 
@@ -103,7 +134,9 @@ export interface TreeDocument {
   visibility: Visibility;
   order: number;
   folder: number | null;
+  is_pinned: boolean;
   doc_format: DocFormat;
+  is_favorited: boolean;
 }
 
 export interface TreeFolder {
@@ -120,6 +153,7 @@ export interface TreeFolder {
 export interface KBTree {
   id: number;
   name: string;
+  doc_sort_mode?: DocSortMode;
   folders: TreeFolder[];
   documents: TreeDocument[];
 }
@@ -129,6 +163,7 @@ export interface SessionUser {
   username: string;
   is_staff: boolean;
   is_superuser: boolean;
+  avatar_url?: string | null;
 }
 
 export interface User {
@@ -163,6 +198,8 @@ export interface PublicPost {
   knowledge_base: { id: number; name: string; slug: string };
   tags: PublicTagSummary[];
   doc_format: DocFormat;
+  is_pinned?: boolean;
+  is_favorited?: boolean;
 }
 
 export interface PublicAttachment {

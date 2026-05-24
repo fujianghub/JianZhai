@@ -125,3 +125,32 @@
   border-radius: 8px;
   font-size: 11px;
 }
+
+/* Blog home: KB groups by category */
+.jz-kb-category-section {
+  margin-bottom: 40px;
+}
+.jz-kb-category-head {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid
+    color-mix(in srgb, var(--jz-category-accent, var(--jz-accent)) 45%, var(--jz-border));
+}
+.jz-kb-category-title {
+  margin: 0;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  font-weight: 700;
+  letter-spacing: 3px;
+  color: var(--jz-category-accent, var(--jz-accent));
+}
+.jz-kb-category-desc {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+}
+.jz-kb-category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 24px;
+}

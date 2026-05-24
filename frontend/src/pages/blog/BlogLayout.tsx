@@ -1,16 +1,18 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button, Layout, Space, Tooltip } from 'antd';
 import { Link, NavLink, Outlet } from 'react-router-dom';
+import { UserOutlined } from '@ant-design/icons';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
+import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
   JzArchiveIcon,
   JzTagsIcon,
   JzRssIcon,
-  JzAdminIcon,
   JzSearchIcon,
 } from '@/components/common/JzIcon';
+import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
 
@@ -51,6 +53,13 @@ function BlogNavItem({
 
 export default function BlogLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const authUser = useAuthStore((s) => s.user);
+  const authLoaded = useAuthStore((s) => s.loaded);
+  const loadSession = useAuthStore((s) => s.loadSession);
+
+  useEffect(() => {
+    if (!authLoaded) void loadSession();
+  }, [authLoaded, loadSession]);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -96,11 +105,6 @@ export default function BlogLayout() {
             icon={<JzRssIcon size={NAV_ICON_SIZE} />}
             external
           />
-          <BlogNavItem
-            to="/admin"
-            label="后台"
-            icon={<JzAdminIcon size={NAV_ICON_SIZE} />}
-          />
           <Tooltip title="搜索 (Ctrl+K)">
             <Button
               type="text"
@@ -114,6 +118,14 @@ export default function BlogLayout() {
               aria-label="搜索 (Ctrl+K)"
             />
           </Tooltip>
+          {authUser ? (
+            <UserAccountMenu user={authUser} avatarSize={34} />
+          ) : (
+            <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
+              <UserOutlined />
+              <span className="jz-nav-link-label">登录</span>
+            </Link>
+          )}
           <LiveClock compact />
           <ThemeSwitcher />
         </Space>

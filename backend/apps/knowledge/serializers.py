@@ -2,9 +2,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django.utils import timezone
 from rest_framework import serializers
 
-from .models import Document, Folder, KnowledgeBase
+from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
+
+DOC_FORMAT_ORDER = {
+    "markdown": 0,
+    "html": 1,
+    "pdf": 2,
+    "docx": 3,
+    "image": 4,
+}
 
 
 def _primary_attachment(doc: Document):
@@ -55,9 +64,33 @@ def detect_doc_format(doc: Document) -> str:
     return "markdown"
 
 
+class KnowledgeBaseCategorySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KnowledgeBaseCategory
+        fields = [
+            "id",
+            "name",
+            "slug",
+            "description",
+            "accent_color",
+            "order",
+            "created_at",
+            "updated_at",
+        ]
+        read_only_fields = ["id", "slug", "created_at", "updated_at"]
+
+
 class KnowledgeBaseSerializer(serializers.ModelSerializer):
     document_count = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
+    category = KnowledgeBaseCategorySerializer(read_only=True)
+    category_id = serializers.PrimaryKeyRelatedField(
+        source="category",
+        queryset=KnowledgeBaseCategory.objects.all(),
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
 
     class Meta:
         model = KnowledgeBase
@@ -69,6 +102,9 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             "cover_image",
             "accent_color",
             "visibility",
+            "category",
+            "category_id",
+            "doc_sort_mode",
             "order",
             "document_count",
             "tags",
@@ -76,6 +112,16 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             "updated_at",
         ]
         read_only_fields = ["id", "slug", "document_count", "tags", "created_at", "updated_at"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            from apps.accounts.scoping import scope_queryset
+
+            self.fields["category_id"].queryset = scope_queryset(
+                KnowledgeBaseCategory.objects.all(), request.user, field="owner"
+            )
 
     def get_document_count(self, obj: KnowledgeBase) -> int:
         return obj.documents(manager="objects").count()
@@ -156,6 +202,8 @@ class DocumentSerializer(serializers.ModelSerializer):
             "visibility",
             "paper_style",
             "order",
+            "is_pinned",
+            "pinned_at",
             "version",
             "doc_format",
             "primary_attachment",
@@ -168,6 +216,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "slug",
             "status",
             "published_at",
+            "pinned_at",
             "doc_format",
             "primary_attachment",
             "created_at",
@@ -178,6 +227,11 @@ class DocumentSerializer(serializers.ModelSerializer):
         return detect_doc_format(obj)
 
     def update(self, instance: Document, validated_data: dict) -> Document:
+        if "is_pinned" in validated_data:
+            if validated_data["is_pinned"]:
+                validated_data["pinned_at"] = timezone.now()
+            else:
+                validated_data["pinned_at"] = None
         """When auto-saving a doc that's already published, propagate the new
         ``raw_content`` to ``published_content`` so readers see the change
         immediately.
@@ -252,6 +306,7 @@ class DocumentPublishedContentSerializer(serializers.ModelSerializer):
 class _TreeDocumentSerializer(serializers.ModelSerializer):
     type = serializers.SerializerMethodField()
     doc_format = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -264,7 +319,9 @@ class _TreeDocumentSerializer(serializers.ModelSerializer):
             "visibility",
             "order",
             "folder",
+            "is_pinned",
             "doc_format",
+            "is_favorited",
         ]
 
     def get_type(self, _obj: Document) -> str:
@@ -272,6 +329,10 @@ class _TreeDocumentSerializer(serializers.ModelSerializer):
 
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
+
+    def get_is_favorited(self, obj: Document) -> bool:
+        fav_ids = self.context.get("favorite_doc_ids") or set()
+        return obj.id in fav_ids
 
 
 class _TreeFolderSerializer(serializers.Serializer):
@@ -291,17 +352,64 @@ class _TreeFolderSerializer(serializers.Serializer):
         return _TreeFolderSerializer(obj["children"], many=True).data
 
     def get_documents(self, obj):
-        return _TreeDocumentSerializer(obj["documents"], many=True).data
+        return _TreeDocumentSerializer(
+            obj["documents"], many=True, context=self.context
+        ).data
 
     def get_tags(self, obj):
         return obj.get("tags", [])
 
 
-def build_tree(kb: KnowledgeBase) -> dict:
+def _favorite_doc_ids_for_user(kb: KnowledgeBase, user) -> set[int]:
+    if not user or not getattr(user, "is_authenticated", False):
+        return set()
+    return set(
+        DocumentFavorite.objects.filter(
+            user=user,
+            document__knowledge_base=kb,
+        ).values_list("document_id", flat=True)
+    )
+
+
+def sort_documents(
+    docs: list[Document],
+    mode: str,
+    favorite_ids: set[int] | None = None,
+) -> list[Document]:
+    """Sort documents within a folder: pinned first, then favorites, then mode."""
+    favorite_ids = favorite_ids or set()
+    mode = mode or "custom"
+
+    def sort_key(d: Document):
+        pinned_tier = 0 if d.is_pinned else 1
+        pinned_ts = 0.0
+        if d.pinned_at:
+            pinned_ts = -d.pinned_at.timestamp()
+        fav_tier = 0 if (d.id in favorite_ids and not d.is_pinned) else 1
+
+        if mode == "title":
+            mode_key: object = d.title.lower()
+        elif mode == "created_at":
+            mode_key = -d.created_at.timestamp() if d.created_at else 0
+        elif mode == "updated_at":
+            mode_key = -d.updated_at.timestamp() if d.updated_at else 0
+        elif mode == "doc_format":
+            mode_key = DOC_FORMAT_ORDER.get(detect_doc_format(d), 99)
+        else:
+            mode_key = (d.order, d.id)
+        return (pinned_tier, pinned_ts, fav_tier, mode_key)
+
+    return sorted(docs, key=sort_key)
+
+
+def build_tree(kb: KnowledgeBase, user=None) -> dict:
     """Return a nested tree of folders + documents for one knowledge base."""
     from django.db.models import Prefetch
 
     from apps.editor.models import Attachment
+
+    favorite_ids = _favorite_doc_ids_for_user(kb, user)
+    sort_mode = kb.doc_sort_mode or "custom"
 
     folders = list(
         Folder.objects.filter(knowledge_base=kb)
@@ -317,9 +425,7 @@ def build_tree(kb: KnowledgeBase) -> dict:
                 to_attr="ordered_attachments",
             )
         )
-        .order_by("order", "id")
     )
-
     folder_map: dict[int, dict] = {
         f.id: {
             "id": f.id,
@@ -350,11 +456,21 @@ def build_tree(kb: KnowledgeBase) -> dict:
         else:
             root_docs.append(d)
 
+    for node in folder_map.values():
+        node["documents"] = sort_documents(node["documents"], sort_mode, favorite_ids)
+    root_docs = sort_documents(root_docs, sort_mode, favorite_ids)
+    tree_ctx = {"favorite_doc_ids": favorite_ids}
+
     return {
         "id": kb.id,
         "name": kb.name,
-        "folders": _TreeFolderSerializer(root_folders, many=True).data,
-        "documents": _TreeDocumentSerializer(root_docs, many=True).data,
+        "doc_sort_mode": kb.doc_sort_mode,
+        "folders": _TreeFolderSerializer(
+            root_folders, many=True, context=tree_ctx
+        ).data,
+        "documents": _TreeDocumentSerializer(
+            root_docs, many=True, context=tree_ctx
+        ).data,
     }
 
 

@@ -1,0 +1,45 @@
+flowchart TB
+  subgraph client [1. 客户端 SPA]
+    spa[React 18 + Vite :3001]
+    editors[Tiptap 3 · Rich / MD / HTML]
+    blogfe[博客前台 · HtmlPostReader]
+    spa --> editors
+    spa --> blogfe
+  end
+
+  subgraph edge [2. 边缘代理]
+    vite[Vite Dev 代理 /api /media]
+    sec[Session · CSRF · CORS · 节流]
+  end
+
+  subgraph app [3. 应用层]
+    django[Django 5.2 + DRF :8002]
+    apps11[11 apps: accounts knowledge editor versioning linking search tags comments exporter blog ai]
+    celery[Celery Worker]
+    tasks[search_vector · document_links · export]
+    django --> apps11
+    django -->|on_commit .delay| celery
+    celery --> tasks
+  end
+
+  subgraph persist [4. 持久层]
+    pg[(PostgreSQL · tsvector GIN)]
+    redis[(Redis DB0 缓存 DB1 broker DB2 result)]
+    media[MEDIA_ROOT 附件与导出]
+  end
+
+  extai[Anthropic Claude API]
+
+  client -->|HTTP REST SSE| edge
+  edge --> django
+  django -->|ORM| pg
+  django --> redis
+  django --> media
+  celery --> pg
+  celery --> redis
+  celery --> media
+  django -.->|apps.ai 仅后端| extai
+  blogfe -.->|匿名读者| edge
+
+  classDef external stroke:#999,stroke-dasharray:4 4
+  class extai external

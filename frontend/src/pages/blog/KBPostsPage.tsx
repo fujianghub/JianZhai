@@ -67,13 +67,12 @@ export default function KBPostsPage() {
 
   /** The blog frontend lazy-loads auth so anonymous readers stay anonymous;
    * but once known, super-admins get inline create/upload affordances. */
-  const authUser = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
   const loadSession = useAuthStore((s) => s.loadSession);
   useEffect(() => {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
-  const canManage = !!authUser?.is_superuser;
+  const canManage = !!tree?.can_manage;
 
   useEffect(() => {
     if (!slug) return;
@@ -273,7 +272,7 @@ export default function KBPostsPage() {
               </Button>
             </Dropdown>
             <Link to={`/admin/kbs/${tree.id}`}>
-              <Button>在后台管理</Button>
+              <Button>个人空间</Button>
             </Link>
             <input
               ref={singleInputRef}
@@ -343,7 +342,7 @@ export default function KBPostsPage() {
         </Form>
       </Modal>
 
-      <KbBody tree={tree} />
+      <KbBody tree={tree} onTreeChange={setTree} />
     </div>
   );
 }
@@ -360,7 +359,13 @@ const SIDEBAR_DEFAULT = 240;
  * cards on the right. When the KB has no folders at all we fall back to a
  * simple flat list so newer KBs don't get a half-empty sidebar.
  */
-function KbBody({ tree }: { tree: PublicKBTree }) {
+function KbBody({
+  tree,
+  onTreeChange,
+}: {
+  tree: PublicKBTree;
+  onTreeChange: (t: PublicKBTree) => void;
+}) {
   /** Card-grouping mode toggle, persisted per-browser:
    * - ``folders``: each folder is its own section with the docs it contains
    * - ``flat``: one stream of all docs, regardless of folder
@@ -463,7 +468,7 @@ function KbBody({ tree }: { tree: PublicKBTree }) {
         }}
       >
         <aside className="jz-kb-side">
-          <BlogKbNavPanel kbSlug={tree.slug} />
+          <BlogKbNavPanel kbSlug={tree.slug} tree={tree} onTreeChange={onTreeChange} />
         </aside>
         <div
           role="separator"
@@ -503,7 +508,7 @@ function KbBody({ tree }: { tree: PublicKBTree }) {
       }}
     >
       <aside className="jz-kb-side">
-        <BlogKbNavPanel kbSlug={tree.slug} />
+        <BlogKbNavPanel kbSlug={tree.slug} tree={tree} onTreeChange={onTreeChange} />
       </aside>
       <div
         role="separator"

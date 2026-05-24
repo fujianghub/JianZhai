@@ -42,6 +42,8 @@ class PublicPostListSerializer(serializers.ModelSerializer):
     knowledge_base = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
     doc_format = serializers.SerializerMethodField()
+    is_pinned = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -54,7 +56,16 @@ class PublicPostListSerializer(serializers.ModelSerializer):
             "knowledge_base",
             "tags",
             "doc_format",
+            "is_pinned",
+            "is_favorited",
         ]
+
+    def get_is_pinned(self, obj: Document) -> bool:
+        return bool(obj.is_pinned)
+
+    def get_is_favorited(self, obj: Document) -> bool:
+        fav_ids = self.context.get("favorite_doc_ids") or set()
+        return obj.id in fav_ids
 
     def get_excerpt(self, obj: Document) -> str:
         content = (obj.published_content or "").strip()
@@ -119,9 +130,19 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
         return obj.published_content or ""
 
 
+class PublicKBCategorySerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+    description = serializers.CharField()
+    accent_color = serializers.CharField()
+    order = serializers.IntegerField()
+
+
 class PublicKBSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
     post_count = serializers.SerializerMethodField()
+    category = serializers.SerializerMethodField()
 
     class Meta:
         model = KnowledgeBase
@@ -132,10 +153,23 @@ class PublicKBSerializer(serializers.ModelSerializer):
             "description",
             "cover_image",
             "accent_color",
+            "category",
             "tags",
             "post_count",
             "updated_at",
         ]
+
+    def get_category(self, obj: KnowledgeBase) -> dict | None:
+        cat = obj.category
+        if not cat:
+            return None
+        return {
+            "id": cat.id,
+            "name": cat.name,
+            "slug": cat.slug,
+            "order": cat.order,
+            "accent_color": cat.accent_color,
+        }
 
     def get_tags(self, obj: KnowledgeBase) -> list[dict]:
         return _tags_summary(obj)

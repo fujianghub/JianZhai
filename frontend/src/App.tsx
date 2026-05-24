@@ -17,6 +17,7 @@ import UsersPage from '@/pages/admin/UsersPage';
 import SystemOverviewPage from '@/pages/admin/SystemOverviewPage';
 import AIManagementPage from '@/pages/admin/AIManagementPage';
 import KnowledgeGraphPage from '@/pages/admin/KnowledgeGraphPage';
+import ProfilePage from '@/pages/admin/ProfilePage';
 import DocLinkResolver from '@/pages/DocLinkResolver';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="overview" element={<SystemOverviewPage />} />
         <Route path="ai" element={<AIManagementPage />} />
         <Route path="graph" element={<KnowledgeGraphPage />} />
+        <Route path="profile" element={<ProfilePage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

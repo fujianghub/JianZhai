@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-import { LogoutOutlined } from '@ant-design/icons';
 import {
   JzKbIcon,
   JzGraphIcon,
@@ -11,12 +10,13 @@ import {
   JzBlogIcon,
   JzSearchIcon,
 } from '@/components/common/JzIcon';
-import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
 import { AIModelBadge } from '@/components/common/AIModelBadge';
+import UserAccountMenu from '@/components/common/UserAccountMenu';
 
 const { Header, Sider, Content } = Layout;
 
@@ -27,9 +27,8 @@ function menuIcon(node: ReactNode) {
 }
 
 export default function AdminLayout() {
-  const navigate = useNavigate();
   const location = useLocation();
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -44,12 +43,8 @@ export default function AdminLayout() {
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
-  async function handleLogout() {
-    await logout();
-    navigate('/admin/login', { replace: true });
-  }
-
   const selectedKey = useMemo(() => {
+    if (location.pathname.startsWith('/admin/profile')) return 'profile';
     if (location.pathname.startsWith('/admin/exports')) return 'exports';
     if (location.pathname.startsWith('/admin/ai')) return 'ai';
     if (location.pathname.startsWith('/admin/users')) return 'users';
@@ -71,7 +66,7 @@ export default function AdminLayout() {
           <div className="jz-admin-brand-seal" aria-hidden>簡</div>
           <div className="jz-admin-brand-text">
             <div className="jz-admin-brand-name">简斋</div>
-            <div className="jz-admin-brand-sub">后台</div>
+            <div className="jz-admin-brand-sub">个人空间</div>
           </div>
         </div>
         <Menu
@@ -116,6 +111,11 @@ export default function AdminLayout() {
                 ]
               : []),
             {
+              key: 'profile',
+              icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
+              label: <Link to="/admin/profile">个人资料</Link>,
+            },
+            {
               key: 'blog',
               icon: menuIcon(<JzBlogIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/">查看博客</Link>,
@@ -140,10 +140,7 @@ export default function AdminLayout() {
             <AIModelBadge />
             <LiveClock />
             <ThemeSwitcher />
-            <span style={{ color: 'var(--jz-text-muted)' }}>{user?.username}</span>
-            <Button shape="round" icon={<LogoutOutlined />} onClick={handleLogout}>
-              退出
-            </Button>
+            {user ? <UserAccountMenu user={user} avatarSize={32} /> : null}
           </Space>
         </Header>
         <Content className="jz-fade-in jz-admin-content">

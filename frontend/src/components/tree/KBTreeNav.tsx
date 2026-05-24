@@ -1,6 +1,14 @@
 import { useMemo } from 'react';
 import { Button, Tag, Tooltip, Tree } from 'antd';
-import { FileTextOutlined, FolderOutlined, TagsOutlined } from '@ant-design/icons';
+import {
+  FileTextOutlined,
+  FolderOutlined,
+  PushpinFilled,
+  PushpinOutlined,
+  StarFilled,
+  StarOutlined,
+  TagsOutlined,
+} from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 import type { KBTree, TreeDocument, TreeFolder } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
@@ -26,6 +34,8 @@ interface Props {
   filterQuery?: string;
   /** Filter documents by status. */
   filterStatus?: 'all' | 'published' | 'draft';
+  onTogglePin?: (doc: TreeDocument) => void;
+  onToggleFavorite?: (doc: TreeDocument) => void;
 }
 
 function docMatches(d: TreeDocument, q: string, status: 'all' | 'published' | 'draft'): boolean {
@@ -81,10 +91,68 @@ function renderHighlight(text: string, q: string): React.ReactNode {
   );
 }
 
+function docNode(
+  d: TreeDocument,
+  q: string,
+  onTogglePin?: (doc: TreeDocument) => void,
+  onToggleFavorite?: (doc: TreeDocument) => void,
+): DataNode {
+  return {
+    key: `doc-${d.id}`,
+    title: (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
+        {onTogglePin && (
+          <Tooltip title={d.is_pinned ? '取消置顶' : '置顶'}>
+            <Button
+              type="text"
+              size="small"
+              icon={d.is_pinned ? <PushpinFilled style={{ color: 'var(--jz-accent)' }} /> : <PushpinOutlined />}
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin(d);
+              }}
+              style={{ width: 22, height: 22, minWidth: 22, padding: 0 }}
+            />
+          </Tooltip>
+        )}
+        {onToggleFavorite && (
+          <Tooltip title={d.is_favorited ? '取消收藏' : '收藏'}>
+            <Button
+              type="text"
+              size="small"
+              icon={
+                d.is_favorited ? (
+                  <StarFilled style={{ color: '#faad14' }} />
+                ) : (
+                  <StarOutlined />
+                )
+              }
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleFavorite(d);
+              }}
+              style={{ width: 22, height: 22, minWidth: 22, padding: 0 }}
+            />
+          </Tooltip>
+        )}
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
+          {renderHighlight(d.title, q)}
+          {d.status === 'published' ? ' ✓' : ''}
+        </span>
+        <DocFormatTag format={d.doc_format} />
+      </span>
+    ),
+    icon: <FileTextOutlined />,
+    isLeaf: true,
+  };
+}
+
 function folderNode(
   f: TreeFolder,
   q: string,
-  onEditFolderTags?: (folder: TreeFolder) => void
+  onEditFolderTags?: (folder: TreeFolder) => void,
+  onTogglePin?: (doc: TreeDocument) => void,
+  onToggleFavorite?: (doc: TreeDocument) => void,
 ): DataNode {
   return {
     key: `folder-${f.id}`,
@@ -120,26 +188,9 @@ function folderNode(
     icon: <FolderOutlined />,
     selectable: false,
     children: [
-      ...f.children.map((c) => folderNode(c, q, onEditFolderTags)),
-      ...f.documents.map((d) => docNode(d, q)),
+      ...f.children.map((c) => folderNode(c, q, onEditFolderTags, onTogglePin, onToggleFavorite)),
+      ...f.documents.map((d) => docNode(d, q, onTogglePin, onToggleFavorite)),
     ],
-  };
-}
-
-function docNode(d: TreeDocument, q: string): DataNode {
-  return {
-    key: `doc-${d.id}`,
-    title: (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>
-          {renderHighlight(d.title, q)}
-          {d.status === 'published' ? ' ✓' : ''}
-        </span>
-        <DocFormatTag format={d.doc_format} />
-      </span>
-    ),
-    icon: <FileTextOutlined />,
-    isLeaf: true,
   };
 }
 
@@ -171,6 +222,8 @@ export default function KBTreeNav({
   onEditFolderTags,
   filterQuery,
   filterStatus,
+  onTogglePin,
+  onToggleFavorite,
 }: Props) {
   const filteredTree = useMemo(() => {
     if (!filterQuery && (filterStatus === 'all' || filterStatus === undefined)) return tree;
@@ -193,10 +246,10 @@ export default function KBTreeNav({
   const data = useMemo<DataNode[]>(() => {
     const q = filterQuery ?? '';
     return [
-      ...filteredTree.folders.map((f) => folderNode(f, q, onEditFolderTags)),
-      ...filteredTree.documents.map((d) => docNode(d, q)),
+      ...filteredTree.folders.map((f) => folderNode(f, q, onEditFolderTags, onTogglePin, onToggleFavorite)),
+      ...filteredTree.documents.map((d) => docNode(d, q, onTogglePin, onToggleFavorite)),
     ];
-  }, [filteredTree, filterQuery, onEditFolderTags]);
+  }, [filteredTree, filterQuery, onEditFolderTags, onTogglePin, onToggleFavorite]);
 
   return (
     <Tree

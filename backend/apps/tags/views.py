@@ -8,10 +8,31 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
 from apps.accounts.scoping import scope_queryset
+from apps.blog.serializers import PublicPostListSerializer
 from apps.knowledge.models import Document, Folder, KnowledgeBase
 
 from .models import Tag
 from .serializers import TagSerializer, TargetTagsSerializer
+
+
+_PUBLIC_DOC_FILTER = Q(
+    status="published",
+    visibility="public",
+    knowledge_base__visibility="public",
+    is_deleted=False,
+)
+
+# Tag queryset / annotated counts: fields via the documents M2M relation.
+_PUBLIC_TAG_DOC_Q = Q(
+    documents__status="published",
+    documents__visibility="public",
+    documents__knowledge_base__visibility="public",
+    documents__is_deleted=False,
+)
+
+
+def _published_posts_qs():
+    return Document.objects.filter(_PUBLIC_DOC_FILTER).select_related("knowledge_base")
 
 
 class TagViewSet(viewsets.ModelViewSet):
@@ -67,31 +88,21 @@ def folder_tags(request, folder_id: int):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def public_tag_cloud(request):
-    """Tags attached to either a published+public document OR a public KB."""
+    """Tags with at least one published, public document on a public knowledge base."""
     qs = (
-        Tag.objects.filter(
-            Q(
-                documents__status="published",
-                documents__visibility="public",
-                documents__knowledge_base__visibility="public",
-                documents__is_deleted=False,
-            )
-            | Q(
-                knowledge_bases__visibility="public",
-                knowledge_bases__is_deleted=False,
-            )
-            | Q(
-                folders__knowledge_base__visibility="public",
-                folders__is_deleted=False,
-            )
-        )
+        Tag.objects.filter(_PUBLIC_TAG_DOC_Q)
         .annotate(
-            doc_count=Count("documents", distinct=True),
+            doc_count=Count(
+                "documents",
+                filter=_PUBLIC_TAG_DOC_Q,
+                distinct=True,
+            ),
             kb_count=Count("knowledge_bases", distinct=True),
             folder_count=Count("folders", distinct=True),
         )
+        .filter(doc_count__gt=0)
         .distinct()
-        .order_by("-doc_count", "-kb_count", "-folder_count", "name")
+        .order_by("-doc_count", "name")
     )
     return Response(
         [
@@ -107,4 +118,25 @@ def public_tag_cloud(request):
             }
             for t in qs
         ]
+    )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def public_tag_entries(request, tag_id: int):
+    """Published public posts tagged with this tag (by tag primary key)."""
+    tag = get_object_or_404(Tag, pk=tag_id)
+    posts = _published_posts_qs().filter(tags__id=tag.id).distinct().order_by(
+        "-published_at", "-id"
+    )
+    return Response(
+        {
+            "tag": {
+                "id": tag.id,
+                "name": tag.name,
+                "slug": tag.slug,
+                "color": tag.color,
+            },
+            "posts": PublicPostListSerializer(posts, many=True).data,
+        }
     )

@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.blog.views import rss_feed
-from apps.tags.views import public_tag_cloud
+from apps.tags.views import public_tag_cloud, public_tag_entries
 
 api_v1_patterns = [
     path("auth/", include("apps.accounts.urls")),
@@ -18,6 +18,7 @@ api_v1_patterns = [
     path("", include("apps.comments.urls")),
     path("", include("apps.ai.urls")),
     path("public/tags/", public_tag_cloud, name="public-tag-cloud"),
+    path("public/tags/<int:tag_id>/entries/", public_tag_entries, name="public-tag-entries"),
     path("public/", include("apps.blog.urls")),
 ]
 

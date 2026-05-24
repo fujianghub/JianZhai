@@ -1,60 +1,124 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Empty, Spin, Tooltip, Typography } from 'antd';
+import { Button, Empty, Select, Spin, Tooltip, Typography } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
+import { message } from '@/utils/notify';
 import * as kbsApi from '@/api/kbs';
-import type { PublicKB, PublicKBTree } from '@/types';
+import * as docsApi from '@/api/docs';
+import { formatApiError } from '@/api/client';
+import type { DocSortMode, PublicKB, PublicKBTree, PublicPost } from '@/types';
 import PublicKbFolderTree from './PublicKbFolderTree';
 
 const { Text } = Typography;
 
+const SORT_OPTIONS: { value: DocSortMode; label: string }[] = [
+  { value: 'custom', label: '自定义' },
+  { value: 'title', label: '名称' },
+  { value: 'created_at', label: '新建时间' },
+  { value: 'updated_at', label: '更新时间' },
+  { value: 'doc_format', label: '文件类型' },
+];
+
 interface Props {
   kbSlug: string;
-  /** Slug of the currently-open post; highlighted in the tree. */
   currentSlug?: string;
-  /** Optional collapse handler; when provided, a close button is shown. */
   onClose?: () => void;
+  /** When set, tree is controlled by parent (e.g. KB landing page). */
+  tree?: PublicKBTree | null;
+  onTreeChange?: (tree: PublicKBTree) => void;
 }
 
 function sortKbs(kbs: PublicKB[]): PublicKB[] {
   return [...kbs].sort((a, b) => a.name.localeCompare(b.name, 'zh'));
 }
 
-/**
- * Three-level blog KB navigation: public KB list → current KB → folder/doc tree.
- * Shared by post reader rail and KB landing page sidebar.
- */
-export default function BlogKbNavPanel({ kbSlug, currentSlug, onClose }: Props) {
+export default function BlogKbNavPanel({
+  kbSlug,
+  currentSlug,
+  onClose,
+  tree: controlledTree,
+  onTreeChange,
+}: Props) {
   const [kbs, setKbs] = useState<PublicKB[] | null>(null);
-  const [tree, setTree] = useState<PublicKBTree | null>(null);
+  const [localTree, setLocalTree] = useState<PublicKBTree | null>(null);
+
+  const tree = controlledTree !== undefined ? controlledTree : localTree;
+  const setTree = onTreeChange ?? setLocalTree;
+
+  const reloadTree = useCallback(async () => {
+    const t = await kbsApi.getPublicKBTree(kbSlug);
+    setTree(t);
+    return t;
+  }, [kbSlug, setTree]);
 
   useEffect(() => {
     let cancelled = false;
+    if (controlledTree !== undefined) {
+      void kbsApi.listPublicKBs().then((list) => {
+        if (!cancelled) setKbs(sortKbs(list));
+      });
+      return () => {
+        cancelled = true;
+      };
+    }
     setKbs(null);
-    setTree(null);
+    setLocalTree(null);
     Promise.all([kbsApi.listPublicKBs(), kbsApi.getPublicKBTree(kbSlug)])
       .then(([list, t]) => {
         if (!cancelled) {
           setKbs(sortKbs(list));
-          setTree(t);
+          setLocalTree(t);
         }
       })
       .catch(() => {
         if (!cancelled) {
           setKbs([]);
-          setTree(null);
+          setLocalTree(null);
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [kbSlug]);
+  }, [kbSlug, controlledTree]);
 
   const loading = kbs === null || tree === null;
+  const canManage = !!tree?.can_manage;
 
   const docCount = tree?.documents.length ?? 0;
   const folders = tree?.folders ?? [];
   const rootDocuments = tree?.root_documents ?? tree?.documents ?? [];
+
+  async function handleSortChange(mode: DocSortMode) {
+    if (!tree) return;
+    try {
+      await kbsApi.updateKBSortMode(tree.id, mode);
+      await reloadTree();
+      message.success('排序方式已更新');
+    } catch (err) {
+      message.error(formatApiError(err, '更新排序失败'));
+    }
+  }
+
+  async function handleTogglePin(doc: PublicPost) {
+    try {
+      await docsApi.toggleDocumentPin(doc.id, !doc.is_pinned);
+      await reloadTree();
+    } catch (err) {
+      message.error(formatApiError(err, '置顶操作失败'));
+    }
+  }
+
+  async function handleToggleFavorite(doc: PublicPost) {
+    try {
+      await docsApi.toggleDocumentFavorite(doc.id);
+      await reloadTree();
+    } catch (err) {
+      message.error(formatApiError(err, '收藏操作失败'));
+    }
+  }
+
+  const pinHandler = canManage ? handleTogglePin : undefined;
+  const favHandler = canManage ? handleToggleFavorite : undefined;
 
   const treeSection = useMemo(() => {
     if (!tree) return null;
@@ -73,6 +137,9 @@ export default function BlogKbNavPanel({ kbSlug, currentSlug, onClose }: Props) 
             rootDocuments={rootDocuments}
             currentSlug={currentSlug}
             density="sidebar"
+            canManage={canManage}
+            onTogglePin={pinHandler}
+            onToggleFavorite={favHandler}
           />
         </>
       );
@@ -84,9 +151,12 @@ export default function BlogKbNavPanel({ kbSlug, currentSlug, onClose }: Props) 
         currentSlug={currentSlug}
         density="sidebar"
         showCounts
+        canManage={canManage}
+        onTogglePin={pinHandler}
+        onToggleFavorite={favHandler}
       />
     );
-  }, [tree, docCount, folders, rootDocuments, currentSlug]);
+  }, [tree, docCount, folders, rootDocuments, currentSlug, canManage, pinHandler, favHandler]);
 
   return (
     <nav className="jz-kb-nav" aria-label="博客知识库导航">
@@ -151,6 +221,21 @@ export default function BlogKbNavPanel({ kbSlug, currentSlug, onClose }: Props) 
                     {docCount} 篇文档
                   </Text>
                 </Link>
+                {canManage && (
+                  <div className="jz-kb-nav-sort" style={{ marginTop: 10 }}>
+                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                      文档排序
+                    </Text>
+                    <Select
+                      size="small"
+                      value={tree.doc_sort_mode ?? 'custom'}
+                      onChange={handleSortChange}
+                      options={SORT_OPTIONS}
+                      style={{ width: '100%' }}
+                      aria-label="文档排序"
+                    />
+                  </div>
+                )}
               </section>
 
               <div className="jz-kb-nav-divider" role="separator" />

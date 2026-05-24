@@ -4,6 +4,7 @@ import { Tag } from 'antd';
 import { CaretDownOutlined, CaretRightOutlined, FolderOpenOutlined, FolderOutlined } from '@ant-design/icons';
 import type { PublicFolder, PublicPost } from '@/types';
 import DocFormatTag from './DocFormatTag';
+import DocPinFavoriteButtons from './DocPinFavoriteButtons';
 import { resolveTagColor } from '@/utils/tagColor';
 
 interface Props {
@@ -18,6 +19,9 @@ interface Props {
   density?: 'sidebar' | 'page';
   /** ``page`` mode shows a small post-count after each folder name. */
   showCounts?: boolean;
+  canManage?: boolean;
+  onTogglePin?: (doc: PublicPost) => void;
+  onToggleFavorite?: (doc: PublicPost) => void;
 }
 
 /** Counts published docs in a subtree (used by the folder header badge). */
@@ -41,7 +45,11 @@ export default function PublicKbFolderTree({
   currentSlug,
   density = 'sidebar',
   showCounts = false,
+  canManage = false,
+  onTogglePin,
+  onToggleFavorite,
 }: Props) {
+  const showActions = canManage && (onTogglePin || onToggleFavorite);
   /** When the active post lives inside a folder, force-expand its ancestors so
    * the reader can see where they are in the tree. */
   const initialExpanded = useMemo(() => {
@@ -85,43 +93,61 @@ export default function PublicKbFolderTree({
     const active = d.slug === currentSlug;
     return (
       <li key={d.id} style={{ listStyle: 'none' }}>
-        <Link
-          to={`/posts/${encodeURIComponent(d.slug)}`}
-          className={'jz-kb-nav-link' + (active ? ' is-active' : '')}
+        <div
+          className={'jz-kb-nav-link-row' + (active ? ' is-active' : '')}
           style={{
             display: 'flex',
-            gap: 6,
+            gap: 4,
             alignItems: 'center',
-            padding: isCompact ? '5px 10px' : '7px 12px',
-            fontSize: isCompact ? 13 : 14,
-            lineHeight: 1.4,
+            padding: isCompact ? '4px 8px' : '6px 10px',
             borderRadius: 6,
-            color: active ? 'var(--jz-accent)' : 'var(--jz-text)',
             background: active
               ? 'color-mix(in srgb, var(--jz-accent) 10%, transparent)'
               : 'transparent',
-            fontWeight: active ? 600 : 400,
-            textDecoration: 'none',
             borderLeft: `2px solid ${active ? 'var(--jz-accent)' : 'transparent'}`,
-            transition: 'background-color 120ms ease, color 120ms ease',
           }}
-          title={d.title}
         >
-          <span
+          {showActions && (
+            <DocPinFavoriteButtons
+              doc={d}
+              compact
+              onTogglePin={onTogglePin ? () => onTogglePin(d) : undefined}
+              onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(d) : undefined}
+            />
+          )}
+          <Link
+            to={`/posts/${encodeURIComponent(d.slug)}`}
+            className={'jz-kb-nav-link' + (active ? ' is-active' : '')}
             style={{
+              display: 'flex',
+              gap: 6,
+              alignItems: 'center',
               flex: 1,
               minWidth: 0,
-              display: '-webkit-box',
-              WebkitLineClamp: 2,
-              WebkitBoxOrient: 'vertical',
-              overflow: 'hidden',
-              wordBreak: 'break-all',
+              fontSize: isCompact ? 13 : 14,
+              lineHeight: 1.4,
+              color: active ? 'var(--jz-accent)' : 'var(--jz-text)',
+              fontWeight: active ? 600 : 400,
+              textDecoration: 'none',
             }}
+            title={d.title}
           >
-            {d.title}
-          </span>
-          <DocFormatTag format={d.doc_format} size="default" />
-        </Link>
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: '-webkit-box',
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: 'vertical',
+                overflow: 'hidden',
+                wordBreak: 'break-all',
+              }}
+            >
+              {d.title}
+            </span>
+            <DocFormatTag format={d.doc_format} size="default" />
+          </Link>
+        </div>
       </li>
     );
   }

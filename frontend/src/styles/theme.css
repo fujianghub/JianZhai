@@ -225,7 +225,7 @@ body {
 .jz-nav-link.active:hover { background: color-mix(in srgb, var(--jz-accent) 10%, transparent); }
 
 /* 搜索按钮、主题切换、时钟在顶栏的容器 —— 给它们也加胶囊 hover */
-.blog-header .ant-btn-text,
+.blog-header .ant-btn-text:not(.jz-nav-search-btn),
 .blog-header .jz-clock {
   border-radius: var(--jz-radius-pill, 999px) !important;
   padding: 4px 10px !important;
@@ -2060,9 +2060,23 @@ h4.jz-post-card-title.ant-typography {
   color: var(--jz-icon-stroke-active);
   box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-accent) 20%, transparent);
 }
+.jz-blog-glass .jz-blog-header-nav {
+  display: flex;
+  align-items: center;
+}
+.jz-blog-glass .jz-blog-header-nav .ant-space-item {
+  display: inline-flex;
+  align-items: center;
+}
 .jz-blog-glass .jz-nav-search-btn {
-  height: auto !important;
-  padding: 5px 6px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  padding: 0 !important;
+  line-height: 1 !important;
   border-radius: 11px !important;
 }
 .jz-blog-glass .jz-nav-search-btn .jz-nav-link-icon {
@@ -2071,6 +2085,13 @@ h4.jz-post-card-title.ant-typography {
 .jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon {
   border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
   color: var(--jz-icon-stroke-active);
+}
+.jz-blog-glass .jz-user-menu-trigger {
+  width: 34px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* 主内容区 — 宽屏尽量铺满，仅保留适度左右边距 */
@@ -2090,7 +2111,90 @@ h4.jz-post-card-title.ant-typography {
   }
 }
 
-/* 博客页脚 — 压缩垂直占位 */
+/* 博客首页 — 登录用户工具条 */
+.jz-blog-home-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+
+/* 账户菜单（博客 / 后台顶栏） */
+.jz-user-menu-trigger {
+  display: inline-flex;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: 50%;
+  line-height: 0;
+  transition: box-shadow 160ms ease, transform 160ms ease;
+}
+.jz-user-menu-trigger:hover {
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--jz-accent, #10b981) 35%, transparent);
+  transform: translateY(-1px);
+}
+.jz-user-menu-panel {
+  min-width: 200px;
+  padding: 12px;
+  border-radius: 14px;
+  background: var(--glass-surface, var(--jz-surface));
+  border: 1px solid color-mix(in srgb, var(--jz-accent, #10b981) 22%, var(--glass-border, var(--jz-border)));
+  box-shadow: var(--glass-shadow-soft, 0 8px 28px rgba(0, 0, 0, 0.12));
+  backdrop-filter: blur(20px);
+}
+.jz-user-menu-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--jz-border);
+}
+.jz-user-menu-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--jz-text);
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-user-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.jz-user-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--jz-text);
+  font: inherit;
+  font-size: 13px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 140ms ease, color 140ms ease;
+}
+.jz-user-menu-item:hover {
+  background: color-mix(in srgb, var(--jz-accent, #10b981) 10%, transparent);
+  color: var(--jz-accent, #10b981);
+}
+.jz-profile-card {
+  max-width: 520px;
+}
+
+.jz-nav-link--login {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .jz-blog-glass .jz-blog-footer.ant-layout-footer {
   min-height: 0 !important;
   padding: 6px var(--jz-blog-content-pad-x, 24px) 8px !important;

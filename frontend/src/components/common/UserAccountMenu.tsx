@@ -1,0 +1,67 @@
+import { useNavigate } from 'react-router-dom';
+import { Dropdown } from 'antd';
+import { Link } from 'react-router-dom';
+import {
+  LogoutOutlined,
+  SettingOutlined,
+  UserOutlined,
+} from '@ant-design/icons';
+import { useAuthStore } from '@/stores/auth';
+import type { SessionUser } from '@/types';
+import UserAvatar from './UserAvatar';
+
+interface Props {
+  user: SessionUser;
+  /** 顶栏触发器头像尺寸，默认 32 */
+  avatarSize?: number;
+}
+
+export default function UserAccountMenu({ user, avatarSize = 32 }: Props) {
+  const navigate = useNavigate();
+  const logout = useAuthStore((s) => s.logout);
+
+  async function handleLogout() {
+    await logout();
+    navigate('/admin/login', { replace: true });
+  }
+
+  const panel = (
+    <div className="jz-user-menu-panel">
+      <div className="jz-user-menu-header">
+        <UserAvatar user={user} size={48} />
+        <span className="jz-user-menu-name">{user.username}</span>
+      </div>
+      <div className="jz-user-menu-actions">
+        <Link to="/admin" className="jz-user-menu-item">
+          <UserOutlined />
+          <span>个人空间</span>
+        </Link>
+        <Link to="/admin/profile" className="jz-user-menu-item">
+          <SettingOutlined />
+          <span>编辑头像</span>
+        </Link>
+        <button type="button" className="jz-user-menu-item" onClick={() => void handleLogout()}>
+          <LogoutOutlined />
+          <span>退出登录</span>
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <Dropdown
+      dropdownRender={() => panel}
+      trigger={['click']}
+      placement="bottomRight"
+      arrow={{ pointAtCenter: true }}
+    >
+      <button
+        type="button"
+        className="jz-user-menu-trigger"
+        aria-label={`账户菜单 · ${user.username}`}
+      >
+        <UserAvatar user={user} size={avatarSize} />
+      </button>
+    </Dropdown>
+  );
+}

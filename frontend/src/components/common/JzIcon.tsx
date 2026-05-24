@@ -228,6 +228,24 @@ export function JzAdminIcon(p: IconProps) {
   );
 }
 
+/** 个人空间（人形 + 册页） */
+export function JzSpaceIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M12 12c2.2 0 4-1.6 4-3.6S14.2 4.8 12 4.8 8 6.4 8 8.4s1.8 3.6 4 3.6z"
+        fill={ICON_FILL}
+      />
+      <path d="M12 12c2.2 0 4-1.6 4-3.6S14.2 4.8 12 4.8 8 6.4 8 8.4s1.8 3.6 4 3.6z" />
+      <path d="M6.5 19.2c.8-2.6 3-4.4 5.5-4.4s4.7 1.8 5.5 4.4" fill="none" />
+      <rect x="15" y="6" width="6" height="8" rx="1" fill={ICON_FILL} />
+      <rect x="15" y="6" width="6" height="8" rx="1" />
+      <path d="M16.5 8.5h3M16.5 11h2.2" strokeWidth={1.2} />
+      <circle cx="17.5" cy="13.5" r="0.8" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
 /** 搜索 */
 export function JzSearchIcon(p: IconProps) {
   return (
@@ -344,6 +362,7 @@ export const JZ_ICONS = {
   tags: JzTagsIcon,
   rss: JzRssIcon,
   admin: JzAdminIcon,
+  space: JzSpaceIcon,
   search: JzSearchIcon,
   overview: JzOverviewIcon,
   model: JzModelIcon,
