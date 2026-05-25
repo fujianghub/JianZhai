@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import {
   LogoutOutlined,
   SettingOutlined,
+  StarOutlined,
   UserOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/stores/auth';
@@ -14,9 +15,15 @@ interface Props {
   user: SessionUser;
   /** 顶栏触发器头像尺寸，默认 32 */
   avatarSize?: number;
+  /** 「我的收藏」链接，博客 / 后台各用不同路径 */
+  favoritesTo?: string;
 }
 
-export default function UserAccountMenu({ user, avatarSize = 32 }: Props) {
+export default function UserAccountMenu({
+  user,
+  avatarSize = 32,
+  favoritesTo = '/favorites',
+}: Props) {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
 
@@ -35,6 +42,10 @@ export default function UserAccountMenu({ user, avatarSize = 32 }: Props) {
         <Link to="/admin" className="jz-user-menu-item">
           <UserOutlined />
           <span>个人空间</span>
+        </Link>
+        <Link to={favoritesTo} className="jz-user-menu-item">
+          <StarOutlined />
+          <span>我的收藏</span>
         </Link>
         <Link to="/admin/profile" className="jz-user-menu-item">
           <SettingOutlined />

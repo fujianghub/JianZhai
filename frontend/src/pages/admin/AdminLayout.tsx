@@ -44,6 +44,7 @@ export default function AdminLayout() {
   }, []);
 
   const selectedKey = useMemo(() => {
+    if (location.pathname.startsWith('/admin/favorites')) return 'favorites';
     if (location.pathname.startsWith('/admin/profile')) return 'profile';
     if (location.pathname.startsWith('/admin/exports')) return 'exports';
     if (location.pathname.startsWith('/admin/ai')) return 'ai';
@@ -140,7 +141,13 @@ export default function AdminLayout() {
             <AIModelBadge />
             <LiveClock />
             <ThemeSwitcher />
-            {user ? <UserAccountMenu user={user} avatarSize={32} /> : null}
+            {user ? (
+              <UserAccountMenu
+                user={user}
+                avatarSize={32}
+                favoritesTo="/admin/favorites"
+              />
+            ) : null}
           </Space>
         </Header>
         <Content className="jz-fade-in jz-admin-content">

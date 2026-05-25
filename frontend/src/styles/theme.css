@@ -2118,6 +2118,96 @@ h4.jz-post-card-title.ant-typography {
   margin-bottom: 16px;
 }
 
+/* 我的收藏 */
+.jz-favorites {
+  max-width: 880px;
+  margin: 0 auto;
+}
+.jz-favorites--loading {
+  display: grid;
+  place-items: center;
+  min-height: 300px;
+}
+.jz-favorites-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.jz-favorites-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  border-radius: 14px;
+  background: var(--glass-surface, color-mix(in srgb, var(--jz-surface) 88%, transparent));
+  border: 1px solid color-mix(in srgb, var(--jz-accent, #10b981) 18%, var(--glass-border, var(--jz-border)));
+  box-shadow: var(--glass-shadow-soft, 0 4px 16px rgba(0, 0, 0, 0.05));
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+}
+.jz-favorites-item:hover {
+  border-color: color-mix(in srgb, var(--jz-accent, #10b981) 32%, var(--glass-border, var(--jz-border)));
+  box-shadow: 0 6px 22px color-mix(in srgb, var(--jz-accent, #10b981) 12%, transparent);
+}
+.jz-favorites-item-main {
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+.jz-favorites-item-main:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--jz-accent, #10b981) 45%, transparent);
+  outline-offset: 2px;
+  border-radius: 8px;
+}
+.jz-favorites-title {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--jz-text);
+  display: block;
+  margin-bottom: 8px;
+}
+.jz-favorites-item-main:hover .jz-favorites-title {
+  color: var(--jz-accent);
+}
+.jz-favorites-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.jz-favorites-edit {
+  font-size: 12px;
+  color: var(--jz-text-muted);
+  white-space: nowrap;
+}
+.jz-favorites-edit:hover {
+  color: var(--jz-accent);
+}
+.jz-favorites-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.jz-favorites-kb {
+  font-size: 13px;
+  font-weight: 500;
+}
+.jz-favorites-dates {
+  font-size: 12px !important;
+}
+.jz-admin-content .jz-favorites {
+  max-width: 960px;
+}
+
 /* 账户菜单（博客 / 后台顶栏） */
 .jz-user-menu-trigger {
   display: inline-flex;

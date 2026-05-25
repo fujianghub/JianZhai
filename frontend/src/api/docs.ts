@@ -79,6 +79,28 @@ export async function toggleDocumentPin(
   return updateDocument(id, { is_pinned } as Partial<DocumentDetail>);
 }
 
+export interface FavoriteDocument {
+  id: number;
+  title: string;
+  slug: string;
+  status: 'draft' | 'published';
+  visibility: 'private' | 'public';
+  doc_format: string;
+  knowledge_base: {
+    id: number;
+    name: string;
+    slug: string;
+    accent_color: string;
+  };
+  favorited_at: string;
+  updated_at: string;
+}
+
+export async function listFavoriteDocuments(): Promise<FavoriteDocument[]> {
+  const { data } = await apiClient.get<FavoriteDocument[]>('/documents/favorites/');
+  return data;
+}
+
 export async function toggleDocumentFavorite(id: number): Promise<{ is_favorited: boolean }> {
   await ensureCsrf();
   const { data } = await apiClient.post<{ is_favorited: boolean }>(

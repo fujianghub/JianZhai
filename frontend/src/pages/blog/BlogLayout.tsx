@@ -119,7 +119,7 @@ export default function BlogLayout() {
             />
           </Tooltip>
           {authUser ? (
-            <UserAccountMenu user={authUser} avatarSize={34} />
+            <UserAccountMenu user={authUser} avatarSize={34} favoritesTo="/favorites" />
           ) : (
             <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
               <UserOutlined />

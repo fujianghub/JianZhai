@@ -18,6 +18,7 @@ import SystemOverviewPage from '@/pages/admin/SystemOverviewPage';
 import AIManagementPage from '@/pages/admin/AIManagementPage';
 import KnowledgeGraphPage from '@/pages/admin/KnowledgeGraphPage';
 import ProfilePage from '@/pages/admin/ProfilePage';
+import FavoritesPage from '@/pages/FavoritesPage';
 import DocLinkResolver from '@/pages/DocLinkResolver';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
@@ -47,6 +48,14 @@ export default function App() {
         <Route path="/posts/:slug/edit" element={<PostEditRoute />} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/tags" element={<TagCloudPage />} />
+        <Route
+          path="/favorites"
+          element={
+            <RequireAuth>
+              <FavoritesPage />
+            </RequireAuth>
+          }
+        />
       </Route>
 
       <Route path="/d/:id" element={<DocLinkResolver />} />
@@ -70,6 +79,7 @@ export default function App() {
         <Route path="ai" element={<AIManagementPage />} />
         <Route path="graph" element={<KnowledgeGraphPage />} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="favorites" element={<FavoritesPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -157,6 +157,30 @@ class FolderSerializer(serializers.ModelSerializer):
         ]
 
 
+class _KnowledgeBaseMiniSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = KnowledgeBase
+        fields = ["id", "name", "slug", "accent_color"]
+        read_only_fields = fields
+
+
+class FavoriteDocumentSerializer(serializers.Serializer):
+    """One favorited document for GET /documents/favorites/."""
+
+    id = serializers.IntegerField(source="document.id")
+    title = serializers.CharField(source="document.title")
+    slug = serializers.CharField(source="document.slug")
+    status = serializers.CharField(source="document.status")
+    visibility = serializers.CharField(source="document.visibility")
+    doc_format = serializers.SerializerMethodField()
+    knowledge_base = _KnowledgeBaseMiniSerializer(source="document.knowledge_base")
+    favorited_at = serializers.DateTimeField(source="created_at")
+    updated_at = serializers.DateTimeField(source="document.updated_at")
+
+    def get_doc_format(self, obj: DocumentFavorite) -> str:
+        return detect_doc_format(obj.document)
+
+
 class DocumentListSerializer(serializers.ModelSerializer):
     """Light-weight serializer used in list endpoints (omits content)."""
 

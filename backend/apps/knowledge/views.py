@@ -16,6 +16,7 @@ from .serializers import (
     DocumentListSerializer,
     DocumentPublishedContentSerializer,
     DocumentSerializer,
+    FavoriteDocumentSerializer,
     FolderSerializer,
     KnowledgeBaseCategorySerializer,
     KnowledgeBaseSerializer,
@@ -281,6 +282,28 @@ class DocumentViewSet(viewsets.ModelViewSet):
         else:
             favorited = True
         return Response({"is_favorited": favorited})
+
+    @action(detail=False, methods=["get"], url_path="favorites")
+    def favorites(self, request):
+        """List documents the current user has favorited (scoped by KB ownership)."""
+        favs = (
+            DocumentFavorite.objects.filter(user=request.user)
+            .select_related("document", "document__knowledge_base")
+            .filter(document__is_deleted=False)
+            .order_by("-created_at")
+        )
+        doc_ids = [f.document_id for f in favs]
+        if not doc_ids:
+            return Response([])
+        allowed_ids = set(
+            scope_queryset(
+                Document.objects.filter(id__in=doc_ids, is_deleted=False),
+                request.user,
+                field="knowledge_base__owner",
+            ).values_list("id", flat=True)
+        )
+        visible = [f for f in favs if f.document_id in allowed_ids]
+        return Response(FavoriteDocumentSerializer(visible, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="mentions")
     def mentions(self, request):
