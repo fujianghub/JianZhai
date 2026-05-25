@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
+import { DeleteOutlined } from '@ant-design/icons';
 import {
   JzKbIcon,
   JzGraphIcon,
@@ -44,6 +45,7 @@ export default function AdminLayout() {
   }, []);
 
   const selectedKey = useMemo(() => {
+    if (location.pathname.startsWith('/admin/trash')) return 'trash';
     if (location.pathname.startsWith('/admin/favorites')) return 'favorites';
     if (location.pathname.startsWith('/admin/profile')) return 'profile';
     if (location.pathname.startsWith('/admin/exports')) return 'exports';
@@ -89,6 +91,11 @@ export default function AdminLayout() {
               key: 'exports',
               icon: menuIcon(<JzExportIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/exports">导出</Link>,
+            },
+            {
+              key: 'trash',
+              icon: menuIcon(<DeleteOutlined style={{ fontSize: MENU_ICON_SIZE }} />),
+              label: <Link to="/admin/trash">回收站</Link>,
             },
             {
               key: 'ai',
@@ -137,18 +144,21 @@ export default function AdminLayout() {
               <kbd className="jz-admin-search-kbd">⌘K</kbd>
             </Button>
           </Tooltip>
-          <Space size={12}>
-            <AIModelBadge />
-            <LiveClock />
-            <ThemeSwitcher />
-            {user ? (
-              <UserAccountMenu
-                user={user}
-                avatarSize={32}
-                favoritesTo="/admin/favorites"
-              />
-            ) : null}
-          </Space>
+          <div className="jz-admin-header-nav">
+            <Space size={12}>
+              <AIModelBadge />
+              <LiveClock />
+              <ThemeSwitcher />
+              {user ? (
+                <UserAccountMenu
+                  user={user}
+                  avatarSize={34}
+                  favoritesTo="/admin/favorites"
+                  trashTo="/admin/trash"
+                />
+              ) : null}
+            </Space>
+          </div>
         </Header>
         <Content className="jz-fade-in jz-admin-content">
           <Outlet />

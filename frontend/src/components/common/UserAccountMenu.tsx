@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { Link } from 'react-router-dom';
 import {
+  DeleteOutlined,
   LogoutOutlined,
   SettingOutlined,
   StarOutlined,
@@ -17,12 +18,15 @@ interface Props {
   avatarSize?: number;
   /** 「我的收藏」链接，博客 / 后台各用不同路径 */
   favoritesTo?: string;
+  /** 「回收站」链接，默认后台回收站页 */
+  trashTo?: string;
 }
 
 export default function UserAccountMenu({
   user,
   avatarSize = 32,
   favoritesTo = '/favorites',
+  trashTo = '/admin/trash',
 }: Props) {
   const navigate = useNavigate();
   const logout = useAuthStore((s) => s.logout);
@@ -46,6 +50,10 @@ export default function UserAccountMenu({
         <Link to={favoritesTo} className="jz-user-menu-item">
           <StarOutlined />
           <span>我的收藏</span>
+        </Link>
+        <Link to={trashTo} className="jz-user-menu-item">
+          <DeleteOutlined />
+          <span>回收站</span>
         </Link>
         <Link to="/admin/profile" className="jz-user-menu-item">
           <SettingOutlined />

@@ -279,7 +279,7 @@ export default function ArchitectureSVG() {
             ORM 全部 select_related / prefetch_related 优化
           </text>
           <text x={577} y={462} fontSize={11.5} fill="var(--jz-text-muted)">
-            软删除 + 30 天回收站
+            软删除 · 回收站永久保留
           </text>
         </Box>
 

@@ -46,6 +46,10 @@ import TagPicker from '@/components/common/TagPicker';
 import CommentsPanel from '@/components/common/CommentsPanel';
 import AttachmentPanel from '@/components/common/AttachmentPanel';
 import VersionsDrawer from './VersionsDrawer';
+import PublishCheckModal, {
+  buildPublishChecks,
+  hasPublishBlockers,
+} from '@/components/admin/PublishCheckModal';
 import ExportDialog from '@/components/common/ExportDialog';
 import { AdminBackButton } from '@/components/admin/AdminPageHeader';
 import { SelectionAI } from '@/components/common/SelectionAI';
@@ -125,6 +129,8 @@ export default function DocEditorPage({
   const [modeTouched, setModeTouched] = useState(false);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  const [publishCheckOpen, setPublishCheckOpen] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [uploadingPrimary, setUploadingPrimary] = useState(false);
   // 大纲面板（右侧）。editor / textarea 由编辑器组件通过 onReady 回调上抬。
   const [outlineOpen, setOutlineOpen] = useState<boolean>(() => {
@@ -275,15 +281,33 @@ export default function DocEditorPage({
 
   async function handlePublishToggle() {
     if (!doc) return;
+    if (doc.status === 'published') {
+      try {
+        const next = await docsApi.unpublishDocument(doc.id);
+        setDoc(next);
+        message.success('已撤回发布');
+      } catch (err) {
+        message.error(formatApiError(err, '操作失败'));
+      }
+      return;
+    }
+    setPublishCheckOpen(true);
+  }
+
+  async function confirmPublish() {
+    if (!doc) return;
+    const checks = buildPublishChecks(doc, kb);
+    if (hasPublishBlockers(checks)) return;
+    setPublishing(true);
     try {
-      const next =
-        doc.status === 'published'
-          ? await docsApi.unpublishDocument(doc.id)
-          : await docsApi.publishDocument(doc.id);
+      const next = await docsApi.publishDocument(doc.id);
       setDoc(next);
-      message.success(doc.status === 'published' ? '已撤回发布' : '已发布');
+      message.success('已发布');
+      setPublishCheckOpen(false);
     } catch (err) {
       message.error(formatApiError(err, '操作失败'));
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -535,7 +559,7 @@ export default function DocEditorPage({
                   onClick: () => {
                     Modal.confirm({
                       title: '确认删除该文档？',
-                      content: '文档将进入回收站，暂时无法恢复。',
+                      content: '文档将进入回收站，可在回收站中恢复。',
                       okType: 'danger',
                       okText: '删除',
                       cancelText: '取消',
@@ -671,6 +695,14 @@ export default function DocEditorPage({
             ? (next) => setDoc((prev) => (prev ? { ...prev, raw_content: next } : prev))
             : undefined
         }
+      />
+
+      <PublishCheckModal
+        open={publishCheckOpen}
+        items={buildPublishChecks(doc, kb)}
+        loading={publishing}
+        onConfirm={() => void confirmPublish()}
+        onCancel={() => setPublishCheckOpen(false)}
       />
 
       <VersionsDrawer

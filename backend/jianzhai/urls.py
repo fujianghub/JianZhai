@@ -3,7 +3,7 @@ from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
-from apps.blog.views import rss_feed
+from apps.blog.views import rss_feed, sitemap_xml
 from apps.tags.views import public_tag_cloud, public_tag_entries
 
 api_v1_patterns = [
@@ -26,6 +26,7 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/v1/", include((api_v1_patterns, "api_v1"))),
     path("feed.xml", rss_feed, name="feed"),
+    path("sitemap.xml", sitemap_xml, name="sitemap"),
 ]
 
 if settings.DEBUG:

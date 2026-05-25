@@ -19,6 +19,7 @@ import AIManagementPage from '@/pages/admin/AIManagementPage';
 import KnowledgeGraphPage from '@/pages/admin/KnowledgeGraphPage';
 import ProfilePage from '@/pages/admin/ProfilePage';
 import FavoritesPage from '@/pages/FavoritesPage';
+import TrashPage from '@/pages/admin/TrashPage';
 import DocLinkResolver from '@/pages/DocLinkResolver';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
@@ -80,6 +81,7 @@ export default function App() {
         <Route path="graph" element={<KnowledgeGraphPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="favorites" element={<FavoritesPage />} />
+        <Route path="trash" element={<TrashPage />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import type { AdjacentPosts } from '@/api/blog';
+import type { AdjacentPosts, RelatedPost } from '@/api/blog';
 import { Alert, Breadcrumb, Button, Result, Spin, Tooltip, Typography } from 'antd';
 import { isAxiosError } from 'axios';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -34,6 +34,8 @@ import { loadArticleFont, saveArticleFont, stackFor } from '@/utils/articleFont'
 import { SelectionAI } from '@/components/common/SelectionAI';
 import { DocAIPanel } from '@/components/common/DocAIPanel';
 import ReadingProgressBar from '@/components/common/ReadingProgressBar';
+import RelatedPostsSection from '@/components/blog/RelatedPostsSection';
+import { applyPageMeta, resetPageMeta } from '@/utils/pageMeta';
 import ColumnResizer from '@/components/common/ColumnResizer';
 import { useColumnResize } from '@/hooks/useColumnResize';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
@@ -71,6 +73,7 @@ export default function PostDetail() {
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [adjacent, setAdjacent] = useState<AdjacentPosts | null>(null);
+  const [related, setRelated] = useState<RelatedPost[]>([]);
   /** Reader-side override; falls back to the doc's authored paper_style. */
   const [readerPaper, setReaderPaperState] = useState<string | null>(getReaderOverride());
   /** Reader-controlled article body font (default: Verdana). Persisted via
@@ -160,6 +163,7 @@ export default function PostDetail() {
     setNotFound(false);
     setLoadError(null);
     setAdjacent(null);
+    setRelated([]);
     setHtmlMeta(null);
     if (!slug) return;
     const kbParams = kbSlug ? { kb: kbSlug } : undefined;
@@ -174,7 +178,25 @@ export default function PostDetail() {
         }
       });
     blogApi.getAdjacentPosts(slug, kbParams).then(setAdjacent).catch(() => {/* ignore */});
+    blogApi.getRelatedPosts(slug, kbParams).then(setRelated).catch(() => {/* ignore */});
   }, [slug, kbSlug]);
+
+  useEffect(() => {
+    if (!post) return;
+    const path = postHref(post.slug, kbSlug ?? post.knowledge_base.slug);
+    const excerpt = (post.published_content || '')
+      .replace(/[#>*_`\[\]()!]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 160);
+    applyPageMeta({
+      title: `${post.title} · 简斋`,
+      description: excerpt || post.title,
+      canonicalPath: path,
+      ogType: 'article',
+    });
+    return () => resetPageMeta();
+  }, [post, kbSlug]);
 
   const rendered = useMemo(
     () => (post ? renderMarkdownWithToc(post.published_content) : { html: '', toc: [] }),
@@ -497,6 +519,11 @@ export default function PostDetail() {
               </div>
             </div>
           )}
+
+          <RelatedPostsSection
+            posts={related}
+            kbSlug={kbSlug ?? post.knowledge_base.slug}
+          />
 
           {adjacent && (adjacent.prev || adjacent.next) && (
             <nav className="jz-post-nav" aria-label="前后文章导航" style={{ marginTop: 48 }}>

@@ -347,6 +347,105 @@ def rss_feed(request):
     return HttpResponse(feed.writeString("utf-8"), content_type="application/rss+xml; charset=utf-8")
 
 
+class PublicPostRelatedView(APIView):
+    """Related published posts by shared tags and backlinks (public sources only)."""
+
+    permission_classes = [AllowAny]
+
+    def get(self, request, slug: str):
+        kb_slug = request.query_params.get("kb")
+        post = resolve_public_post_by_slug(_published_qs(), slug, kb_slug)
+        base_qs = _published_qs().exclude(pk=post.pk)
+        if kb_slug:
+            base_qs = base_qs.filter(knowledge_base__slug=kb_slug)
+
+        seen: set[int] = set()
+        items: list[dict] = []
+
+        def add_doc(d: Document, reason: str) -> None:
+            if d.id in seen:
+                return
+            seen.add(d.id)
+            items.append(
+                {
+                    "id": d.id,
+                    "slug": d.slug,
+                    "title": d.title,
+                    "reason": reason,
+                    "knowledge_base": {
+                        "id": d.knowledge_base_id,
+                        "name": d.knowledge_base.name,
+                        "slug": d.knowledge_base.slug,
+                        "accent_color": d.knowledge_base.accent_color,
+                    },
+                    "published_at": d.published_at.isoformat() if d.published_at else None,
+                }
+            )
+
+        tag_ids = list(post.tags.values_list("id", flat=True))
+        if tag_ids:
+            for d in (
+                base_qs.filter(tags__id__in=tag_ids)
+                .distinct()
+                .order_by("-published_at")[:5]
+            ):
+                add_doc(d, "tag")
+
+        for link in (
+            DocumentLink.objects.filter(target=post)
+            .select_related("source", "source__knowledge_base")
+            .filter(
+                source__status="published",
+                source__visibility="public",
+                source__knowledge_base__visibility="public",
+                source__is_deleted=False,
+            )
+            .order_by("-created_at")[:5]
+        ):
+            if link.source_id not in seen:
+                add_doc(link.source, "backlink")
+
+        for link in (
+            DocumentLink.objects.filter(source=post)
+            .select_related("target", "target__knowledge_base")
+            .filter(
+                target__status="published",
+                target__visibility="public",
+                target__knowledge_base__visibility="public",
+                target__is_deleted=False,
+            )
+            .order_by("-created_at")[:5]
+        ):
+            if link.target_id not in seen and len(items) < 8:
+                add_doc(link.target, "mention")
+
+        return Response(items[:8])
+
+
+def sitemap_xml(request):
+    """Top-level sitemap for published public posts and static blog pages."""
+    site = request.build_absolute_uri("/").rstrip("/")
+    urls = [
+        f"  <url><loc>{xml_escape(site + '/')}</loc><changefreq>daily</changefreq></url>",
+        f"  <url><loc>{xml_escape(site + '/archive')}</loc><changefreq>weekly</changefreq></url>",
+        f"  <url><loc>{xml_escape(site + '/tags')}</loc><changefreq>weekly</changefreq></url>",
+    ]
+    for d in _published_qs()[:500]:
+        path = f"/posts/{d.slug}"
+        if d.knowledge_base.slug:
+            path += f"?kb={d.knowledge_base.slug}"
+        loc = xml_escape(site + path)
+        lastmod = (d.published_at or d.updated_at).strftime("%Y-%m-%d")
+        urls.append(f"  <url><loc>{loc}</loc><lastmod>{lastmod}</lastmod></url>")
+    body = (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(urls)
+        + "\n</urlset>"
+    )
+    return HttpResponse(body, content_type="application/xml; charset=utf-8")
+
+
 class PublicPostAdjacentView(APIView):
     """Return the immediately older and newer published posts relative to `slug`."""
     permission_classes = [AllowAny]

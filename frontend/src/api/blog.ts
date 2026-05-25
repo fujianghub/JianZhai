@@ -38,3 +38,28 @@ export async function getPublicPost(
   );
   return data;
 }
+
+export interface RelatedPost {
+  id: number;
+  slug: string;
+  title: string;
+  reason: 'tag' | 'backlink' | 'mention';
+  knowledge_base: {
+    id: number;
+    name: string;
+    slug: string;
+    accent_color: string;
+  };
+  published_at: string | null;
+}
+
+export async function getRelatedPosts(
+  slug: string,
+  params?: { kb?: string },
+): Promise<RelatedPost[]> {
+  const { data } = await apiClient.get<RelatedPost[]>(
+    `/public/posts/${encodeURIComponent(slug)}/related/`,
+    { params },
+  );
+  return data;
+}
