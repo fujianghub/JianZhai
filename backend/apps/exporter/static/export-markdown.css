@@ -135,6 +135,38 @@
   padding: 0;
 }
 
+/* Syntax highlighting — one-dark-pro (offline export default) */
+.jz-markdown.export-markdown .hljs .hljs-comment,
+.jz-markdown.export-markdown .hljs .hljs-quote { color: #5c6370; font-style: italic; }
+.jz-markdown.export-markdown .hljs .hljs-keyword,
+.jz-markdown.export-markdown .hljs .hljs-selector-tag,
+.jz-markdown.export-markdown .hljs .hljs-doctag { color: #c678dd; }
+.jz-markdown.export-markdown .hljs .hljs-string,
+.jz-markdown.export-markdown .hljs .hljs-attr,
+.jz-markdown.export-markdown .hljs .hljs-attribute,
+.jz-markdown.export-markdown .hljs .hljs-symbol { color: #98c379; }
+.jz-markdown.export-markdown .hljs .hljs-number,
+.jz-markdown.export-markdown .hljs .hljs-literal,
+.jz-markdown.export-markdown .hljs .hljs-meta,
+.jz-markdown.export-markdown .hljs .hljs-deletion { color: #d19a66; }
+.jz-markdown.export-markdown .hljs .hljs-built_in,
+.jz-markdown.export-markdown .hljs .hljs-class .hljs-title,
+.jz-markdown.export-markdown .hljs .hljs-title.class_,
+.jz-markdown.export-markdown .hljs .hljs-type { color: #e5c07b; }
+.jz-markdown.export-markdown .hljs .hljs-function .hljs-title,
+.jz-markdown.export-markdown .hljs .hljs-title.function_,
+.jz-markdown.export-markdown .hljs .hljs-section { color: #61afef; }
+.jz-markdown.export-markdown .hljs .hljs-name,
+.jz-markdown.export-markdown .hljs .hljs-tag { color: #e06c75; }
+.jz-markdown.export-markdown .hljs .hljs-variable,
+.jz-markdown.export-markdown .hljs .hljs-template-variable,
+.jz-markdown.export-markdown .hljs .hljs-regexp { color: #d19a66; }
+.jz-markdown.export-markdown .hljs .hljs-link,
+.jz-markdown.export-markdown .hljs .hljs-emphasis { color: #56b6c2; font-style: italic; }
+.jz-markdown.export-markdown .hljs .hljs-strong { font-weight: 600; }
+.jz-markdown.export-markdown .hljs .hljs-addition { color: #98c379; }
+.jz-markdown.export-markdown .hljs .hljs-subst { color: #abb2bf; }
+
 /* Callouts */
 .jz-markdown.export-markdown .jz-callout {
   --c: #6366f1;

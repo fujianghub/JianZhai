@@ -16,10 +16,11 @@ body.export-anthology {
   position: sticky;
   top: 0;
   align-self: start;
+  display: flex;
+  flex-direction: column;
   height: 100vh;
-  overflow: auto;
-  padding: 24px 18px;
-  padding-right: 24px;
+  overflow: hidden;
+  padding: 0;
   background: #fafbfc;
   border-right: 1px solid #e8e8e8;
   font-size: 13px;
@@ -28,20 +29,40 @@ body.export-anthology {
   z-index: 5;
 }
 .export-toc-title {
+  flex-shrink: 0;
   font-weight: 600;
-  margin-bottom: 12px;
+  margin: 0;
+  padding: 24px 18px 12px;
   color: #333;
   font-size: 12px;
   letter-spacing: 1px;
   text-transform: uppercase;
 }
-.export-toc ol { padding-left: 1.2em; margin: 0; }
+.export-toc-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 0 18px 24px;
+  padding-right: 24px;
+}
+.export-toc ol { padding-left: 0; margin: 0; list-style: none; }
 .export-toc li { margin: 2px 0; }
+.export-toc-folder {
+  font-weight: 600;
+  color: #444;
+  padding: 6px 6px 4px;
+  padding-left: calc(6px + var(--toc-depth, 0) * 14px);
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+.export-toc-doc {
+  padding-left: calc(var(--toc-depth, 0) * 14px);
+}
 .export-toc a {
   color: #555;
   text-decoration: none;
   display: block;
-  padding: 3px 6px;
+  padding: 3px 12px 3px 6px;
   border-radius: 6px;
 }
 .export-toc a:hover { background: #eef1f4; color: #1677ff; }
@@ -51,11 +72,13 @@ body.export-anthology {
   position: absolute;
   top: 0;
   right: 0;
-  width: 6px;
+  width: 8px;
   height: 100%;
   cursor: col-resize;
   touch-action: none;
   user-select: none;
+  z-index: 10;
+  pointer-events: auto;
 }
 .export-toc-resizer:hover,
 .export-toc-resizer.is-dragging {
@@ -72,8 +95,14 @@ body.export-anthology {
 }
 .export-doc-header h1 { margin-top: 0; }
 
-/* HTML-format documents: style-isolated iframe, sized by the TOC JS. */
-.export-html-frame { width: 100%; border: 0; display: block; background: #fff; }
+/* HTML-format documents: style-isolated iframe, sized by anthology JS. */
+.export-html-frame {
+  width: 100%;
+  min-height: 120px;
+  border: 0;
+  display: block;
+  background: #fff;
+}
 
 @media (max-width: 900px) {
   body.export-anthology {

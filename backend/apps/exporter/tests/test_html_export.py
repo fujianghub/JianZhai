@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import re
+
 import pytest
 
+from apps.exporter.anthology_tree import iter_tree_documents
 from apps.exporter.scope import collect_for_scope
 from apps.exporter.services import html_export
 from apps.exporter.tests.conftest import make_doc
+from apps.knowledge.models import Folder
 
 HTML_DOC = (
     "<!doctype html><html><head><style>.x{color:red}</style></head>"
@@ -39,7 +43,12 @@ def test_anthology_layout_grid_and_resizable_toc(owner, kb):
     assert "--export-toc-width" in css
     assert "jz-export-toc-width" in html
     assert "setTocWidth" in html
+    assert "measureFrame" in html
+    assert "data-srcdoc" in html
+    assert "max-width: 760px" not in css.replace(" ", "")
     assert "max-width: 860px" not in css
+    assert "z-index:10" in css.replace(" ", "")
+    assert "export-toc-body" in html
 
 
 @pytest.mark.django_db
@@ -59,20 +68,99 @@ def test_kb_markdown_renders_headings_and_callout(owner, kb):
 
 
 @pytest.mark.django_db
-def test_mixed_kb_markdown_in_iframe(owner, kb):
-    make_doc(kb, "md-one", published="# Markdown doc\n\nParagraph.")
-    make_doc(kb, "html-one", published=HTML_DOC)
+def test_mixed_kb_tree_toc_folders_and_panel_order(owner, kb):
+    root_folder = Folder.objects.create(knowledge_base=kb, name="Chapter A", order=0)
+    sub_folder = Folder.objects.create(
+        knowledge_base=kb, parent=root_folder, name="Section 1", order=0
+    )
+    root_doc = make_doc(kb, "root-md", published="# Root", folder=None, order=0)
+    chapter_doc = make_doc(
+        kb, "in-chapter", published="# In chapter", folder=root_folder, order=0
+    )
+    sub_doc = make_doc(
+        kb, "html-in-sub", published=HTML_DOC, folder=sub_folder, order=0
+    )
     scope = collect_for_scope(owner=owner, scope="kb", target_id=kb.id)
     html = html_export.render_html(scope)
-    # Markdown panel rendered through markdown_render.
+
+    assert "export-toc-folder" in html
+    assert "Chapter A" in html
+    assert "Section 1" in html
+
+    ordered = iter_tree_documents(kb, scope.documents)
+    assert [d.id for d in ordered] == [root_doc.id, chapter_doc.id, sub_doc.id]
+
+    panel_ids = re.findall(
+        r'<section class="export-doc-panel" id="doc-(\d+)"', html
+    )
+    assert panel_ids == [str(root_doc.id), str(chapter_doc.id), str(sub_doc.id)]
+
+
+@pytest.mark.django_db
+def test_markdown_code_fence_syntax_highlight(owner, kb):
+    make_doc(
+        kb,
+        "code-sample",
+        published="```python\ndef hello():\n    return 42\n```\n",
+    )
+    make_doc(kb, "code-sample-2", published="# second")
+    scope = collect_for_scope(owner=owner, scope="kb", target_id=kb.id)
+    html = html_export.render_html(scope)
+    assert "hljs-keyword" in html
+    assert "hljs-number" in html
+    assert 'data-code-theme="one-dark-pro"' in html
+    assert "hljs-keyword\">def</span>" in html
+    assert "hello" in html
+
+
+@pytest.mark.django_db
+def test_mixed_kb_markdown_and_html_deferred_iframe(owner, kb):
+    make_doc(kb, "md-one", published="# Markdown doc\n\nParagraph.")
+    html_doc = make_doc(kb, "html-one", published=HTML_DOC)
+    scope = collect_for_scope(owner=owner, scope="kb", target_id=kb.id)
+    html = html_export.render_html(scope)
     assert "jz-markdown export-markdown" in html
     assert "Paragraph." in html
-    # HTML panel embedded as a style-isolated iframe carrying its own <style>.
     assert '<iframe class="export-html-frame"' in html
-    assert "srcdoc=" in html
-    # srcdoc attribute values don't escape <>, so author styles survive intact.
-    assert "<style>.x{color:red}</style>" in html
-    assert "class='x'" in html
+    assert "data-srcdoc=" in html
+    assert 'class="export-html-embed"' not in html
+    html_panel = re.search(
+        rf'<section class="export-doc-panel" id="doc-{html_doc.id}"[^>]*>(.*?)</section>',
+        html,
+        re.S,
+    )
+    assert html_panel
+    assert "export-doc-header" not in html_panel.group(1)
+    assert "HTML body" in html_panel.group(1)
+
+
+@pytest.mark.django_db
+def test_html_export_body_from_attachment(settings, tmp_path, owner, kb):
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    from apps.editor.models import Attachment
+    from apps.exporter.services import common
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    body = (
+        "<!doctype html><html><head><title>T</title></head>"
+        "<body><p>From attachment file</p></body></html>"
+    )
+    doc = make_doc(kb, "html-att", published="", raw="")
+    Attachment.objects.create(
+        document=doc,
+        uploaded_by=owner,
+        file=SimpleUploadedFile("page.html", body.encode(), content_type="text/html"),
+        original_filename="page.html",
+        kind="document",
+        mime_type="text/html",
+    )
+    assert "From attachment file" in common.doc_export_body(doc)
+    make_doc(kb, "md-pad", published="# pad")
+    scope = collect_for_scope(owner=owner, scope="kb", target_id=kb.id)
+    html = html_export.render_html(scope)
+    assert "From attachment file" in html
+    assert "data-srcdoc=" in html
 
 
 @pytest.mark.django_db

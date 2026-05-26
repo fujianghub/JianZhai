@@ -1,9 +1,8 @@
 """Single-file HTML export.
 
 Multi-document scopes render as an *anthology*: a fixed left TOC plus one
-``.export-doc-panel`` shown at a time. HTML-format documents embed in a
-style-isolated ``iframe[srcdoc]`` (interactive) or flatten to inline styles +
-body (print); Markdown documents render through ``markdown_render``.
+``.export-doc-panel`` shown at a time. HTML-format documents use deferred
+``iframe[srcdoc]`` (style-isolated); Markdown through ``markdown_render``.
 """
 from __future__ import annotations
 
@@ -11,6 +10,7 @@ from pathlib import Path
 
 from apps.knowledge.serializers import detect_doc_format
 
+from ..anthology_tree import render_toc_list_html
 from ..scope import ExportScope
 from . import common
 
@@ -52,7 +52,7 @@ def _render_anthology(scope: ExportScope, *, mode: str) -> str:
     script = "" if is_print else f"<script>{ANTHOLOGY_JS}</script>"
     return ANTHOLOGY_SHELL.format(
         title=common._escape(scope.label),
-        css=common.export_stylesheet() + common.load_export_anthology_css(),
+        css=common.export_anthology_stylesheet(),
         print_class=" is-print" if is_print else "",
         toc=toc,
         panels=panels,
@@ -61,14 +61,13 @@ def _render_anthology(scope: ExportScope, *, mode: str) -> str:
 
 
 def _build_toc(scope: ExportScope) -> str:
-    items = "\n".join(
-        f'<li><a href="#doc-{doc.id}">{common._escape(doc.title)}</a></li>'
-        for doc in scope.documents
-    )
+    items = render_toc_list_html(scope.kb, scope.documents)
     return (
         '<nav class="export-toc" aria-label="目录">'
         '<div class="export-toc-title">目录</div>'
+        '<div class="export-toc-body">'
         f"<ol>{items}</ol>"
+        "</div>"
         '<div class="export-toc-resizer" role="separator" '
         'aria-label="调整目录宽度" tabindex="0"></div>'
         "</nav>"
@@ -93,9 +92,8 @@ ANTHOLOGY_SHELL = """\
 </html>
 """
 
-# Inlined into the interactive anthology: TOC click switches the visible panel,
-# intra-doc ``#doc-N`` links do the same, visible HTML iframes are sized to
-# their content height, and the TOC column is drag-resizable (localStorage).
+# Inlined into the interactive anthology: TOC click switches panels, HTML iframes
+# load srcdoc on first show, and the TOC column is drag-resizable (localStorage).
 # Kept ES5-ish so it runs even in old offline viewers.
 ANTHOLOGY_JS = """
 (function(){
@@ -106,16 +104,33 @@ ANTHOLOGY_JS = """
   var toc = document.querySelector('.export-toc');
   var resizer = document.querySelector('.export-toc-resizer');
   var panels = document.querySelectorAll('.export-doc-panel');
-  function sizeFrames(panel){
+  function measureFrame(frame){
+    try{
+      var d = frame.contentDocument;
+      if(d && d.documentElement){
+        var bodyH = d.body ? d.body.scrollHeight : 0;
+        var h = Math.max(d.documentElement.scrollHeight, bodyH) + 8;
+        if(h > 0){ frame.style.height = h + 'px'; }
+      }
+    }catch(e){}
+  }
+  function ensureIframeLoaded(frame){
+    if(!frame || frame.getAttribute('data-srcdoc-loaded')) return;
+    var raw = frame.getAttribute('data-srcdoc');
+    if(raw && !frame.getAttribute('srcdoc')){
+      frame.setAttribute('srcdoc', raw);
+      frame.setAttribute('data-srcdoc-loaded', '1');
+    }
+  }
+  function sizeFrames(panel, retries){
     if(!panel) return;
     var frames = panel.querySelectorAll('iframe.export-html-frame');
     for(var i=0;i<frames.length;i++){
-      try{
-        var d = frames[i].contentDocument;
-        if(d && d.documentElement){
-          frames[i].style.height = (d.documentElement.scrollHeight + 8) + 'px';
-        }
-      }catch(e){}
+      ensureIframeLoaded(frames[i]);
+      measureFrame(frames[i]);
+    }
+    if(retries > 0){
+      setTimeout(function(){ sizeFrames(panel, retries - 1); }, 150);
     }
   }
   function visiblePanel(){
@@ -133,7 +148,7 @@ ANTHOLOGY_JS = """
     if(persist){
       try{ localStorage.setItem(TOC_KEY, String(width)); }catch(e){}
     }
-    sizeFrames(visiblePanel());
+    sizeFrames(visiblePanel(), 2);
     return width;
   }
   function readStoredTocWidth(){
@@ -144,15 +159,21 @@ ANTHOLOGY_JS = """
     return TOC_DEFAULT;
   }
   function showPanel(id){
-    for(var i=0;i<panels.length;i++){ panels[i].hidden = (panels[i].id !== id); }
+    for(var i=0;i<panels.length;i++){
+      var on = panels[i].id === id;
+      panels[i].hidden = !on;
+      if(on){ panels[i].classList.add('is-active'); }
+      else { panels[i].classList.remove('is-active'); }
+    }
     if(toc){
       var links = toc.querySelectorAll('a');
       for(var j=0;j<links.length;j++){
-        var on = links[j].getAttribute('href') === '#' + id;
-        if(on){ links[j].classList.add('active'); } else { links[j].classList.remove('active'); }
+        var onLink = links[j].getAttribute('href') === '#' + id;
+        if(onLink){ links[j].classList.add('active'); }
+        else { links[j].classList.remove('active'); }
       }
     }
-    sizeFrames(document.getElementById(id));
+    sizeFrames(document.getElementById(id), 3);
     window.scrollTo(0,0);
   }
   if(resizer){
@@ -228,8 +249,9 @@ ANTHOLOGY_JS = """
   var frames = document.querySelectorAll('iframe.export-html-frame');
   for(var i=0;i<frames.length;i++){
     frames[i].addEventListener('load', function(){
+      measureFrame(this);
       var p = this.closest ? this.closest('.export-doc-panel') : null;
-      if(p && !p.hidden) sizeFrames(p);
+      if(p && !p.hidden) sizeFrames(p, 2);
     });
   }
   var initial = (location.hash || '').slice(1);

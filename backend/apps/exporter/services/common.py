@@ -100,29 +100,44 @@ def _inject_srcdoc_base(html: str) -> str:
     return _SRCDOC_BASE + html
 
 
-def render_html_document_interactive(content: str) -> str:
-    """Embed a full HTML document in a sandboxed ``iframe[srcdoc]`` (style-isolated)."""
-    full = prepare_full_html_document(content)
-    full = rewrite_html_media(full, embed=True)
-    full = _inject_srcdoc_base(full)
-    full = _inject_vh_override(full)
-    return (
-        '<iframe class="export-html-frame" '
-        'sandbox="allow-same-origin allow-scripts" '
-        f'srcdoc="{escape_srcdoc(full)}"></iframe>'
-    )
+def render_html_document_inline(content: str) -> str:
+    """Flatten HTML: inline head ``<style>`` + body (no iframe).
 
-
-def render_html_document_print(content: str) -> str:
-    """Flatten an HTML document for print: inline head ``<style>`` + body markup.
-
-    Avoids iframes, which headless Chromium prints as blank/unmeasured boxes.
+    Shared by anthology interactive embed and print/PDF export.
     """
     full = prepare_full_html_document(content)
     full = rewrite_html_media(full, embed=True)
     styles = extract_head_styles(full)
     body = html_body_or_self(full)
-    return f'<div class="export-html-print">{styles}{body}</div>'
+    return f"{styles}{body}"
+
+
+def _prepare_iframe_srcdoc_html(content: str) -> str:
+    """Full HTML page prepared for ``iframe[srcdoc]`` (media, base, vh override)."""
+    full = prepare_full_html_document(content)
+    full = rewrite_html_media(full, embed=True)
+    full = _inject_srcdoc_base(full)
+    return _inject_vh_override(full)
+
+
+def render_html_document_iframe_deferred(content: str) -> str:
+    """Defer ``srcdoc`` until the panel is shown — avoids hidden-panel load issues."""
+    full = _prepare_iframe_srcdoc_html(content)
+    return (
+        '<iframe class="export-html-frame" '
+        'sandbox="allow-same-origin allow-scripts" '
+        f'data-srcdoc="{escape_srcdoc(full)}"></iframe>'
+    )
+
+
+def render_html_document_embed(content: str) -> str:
+    """Inline HTML body for anthology panel switching (reliable offline viewing)."""
+    return f'<div class="export-html-embed">{render_html_document_inline(content)}</div>'
+
+
+def render_html_document_print(content: str) -> str:
+    """Inline HTML for print/PDF pagination (same flattening as embed)."""
+    return f'<div class="export-html-print">{render_html_document_inline(content)}</div>'
 
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -175,14 +190,43 @@ def export_stylesheet() -> str:
     return BASE_CSS + load_export_markdown_css()
 
 
+ANTHOLOGY_SHELL_CSS = """
+:root { color-scheme: light; }
+body.export-anthology {
+  font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "PingFang SC",
+               "Hiragino Sans GB", sans-serif;
+  line-height: 1.7;
+  color: #1f1f1f;
+  background: #fff;
+  margin: 0;
+  max-width: none;
+}
+.export-main,
+.export-doc-panel[data-format="markdown"] {
+  background: #fff;
+}
+.export-doc-header h1 {
+  margin-top: 0;
+  font-size: 1.9em;
+  font-weight: 600;
+  line-height: 1.3;
+}
+.post-meta { color: #999; font-size: 13px; margin-bottom: 24px; }
+"""
+
+
+def export_anthology_stylesheet() -> str:
+    """Anthology shell CSS — no global BASE_CSS (keeps MD panels on default white)."""
+    return ANTHOLOGY_SHELL_CSS + load_export_markdown_css() + load_export_anthology_css()
+
+
 def render_document_body_html(
     doc, *, embed_media: bool = True, export_mode: str = "interactive"
 ) -> str:
     """Render one document body to an HTML fragment for export shells.
 
-    ``export_mode`` only affects HTML-format documents: ``interactive`` embeds
-    the source in a style-isolated ``iframe[srcdoc]``; ``print`` flattens it
-    (inline head styles + body) so headless Chromium can paginate it.
+    Interactive anthology HTML uses a deferred ``iframe[srcdoc]`` (style-isolated);
+    print/PDF flattens HTML inline for Chromium pagination.
     """
     from apps.knowledge.serializers import detect_doc_format
 
@@ -190,7 +234,7 @@ def render_document_body_html(
     if detect_doc_format(doc) == "html":
         if export_mode == "print":
             return render_html_document_print(content)
-        return render_html_document_interactive(content)
+        return render_html_document_iframe_deferred(content)
 
     md = content
     if not embed_media:
@@ -272,7 +316,12 @@ img { max-width: 100%; height: auto; }
 
 
 def doc_export_body(doc) -> str:
-    """Prefer published body; fall back to raw draft when nothing was published."""
+    """Document body for export — matches blog HTML resolution when format is html."""
+    from apps.knowledge.html_content import resolve_html_body
+    from apps.knowledge.serializers import detect_doc_format
+
+    if detect_doc_format(doc) == "html":
+        return resolve_html_body(doc) or ""
     published = (doc.published_content or "").strip()
     if published:
         return doc.published_content or ""
@@ -380,18 +429,26 @@ def doc_panels_html(scope: ExportScope, *, export_mode: str = "interactive") -> 
     In ``interactive`` mode all panels but the first carry ``hidden`` (the TOC
     JS toggles them); in ``print`` mode every panel stays visible for pagination.
     """
+    from apps.exporter.anthology_tree import iter_tree_documents
     from apps.knowledge.serializers import detect_doc_format
 
     parts: list[str] = []
-    for idx, doc in enumerate(scope.documents):
+    docs_ordered = iter_tree_documents(scope.kb, scope.documents)
+    for idx, doc in enumerate(docs_ordered):
         fmt = "html" if detect_doc_format(doc) == "html" else "markdown"
         body = render_document_body_html(doc, embed_media=True, export_mode=export_mode)
         hidden = " hidden" if export_mode == "interactive" and idx > 0 else ""
+        if fmt == "html":
+            header = ""
+        else:
+            header = (
+                f'<header class="export-doc-header"><h1>{_escape(doc.title)}</h1>'
+                f"{_doc_meta_html(doc)}</header>\n"
+            )
         parts.append(
             f'<section class="export-doc-panel" id="doc-{doc.id}" '
             f'data-format="{fmt}"{hidden}>\n'
-            f'<header class="export-doc-header"><h1>{_escape(doc.title)}</h1>'
-            f"{_doc_meta_html(doc)}</header>\n{body}\n</section>"
+            f"{header}{body}\n</section>"
         )
     return "\n".join(parts)
 

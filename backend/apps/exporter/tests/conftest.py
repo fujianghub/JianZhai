@@ -23,7 +23,16 @@ def folder(kb):
     return Folder.objects.create(knowledge_base=kb, name="Notes")
 
 
-def make_doc(kb, slug: str, *, raw: str = "", published: str = "", status: str = "draft", folder=None):
+def make_doc(
+    kb,
+    slug: str,
+    *,
+    raw: str = "",
+    published: str = "",
+    status: str = "draft",
+    folder=None,
+    order: int = 0,
+):
     return Document.objects.create(
         knowledge_base=kb,
         folder=folder,
@@ -32,4 +41,5 @@ def make_doc(kb, slug: str, *, raw: str = "", published: str = "", status: str =
         raw_content=raw,
         published_content=published,
         status=status,
+        order=order,
     )
