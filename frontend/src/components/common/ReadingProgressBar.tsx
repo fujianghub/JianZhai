@@ -27,6 +27,7 @@ export default function ReadingProgressBar() {
   }, []);
   return (
     <div
+      className="jz-reading-progress"
       aria-hidden
       style={{
         position: 'fixed',

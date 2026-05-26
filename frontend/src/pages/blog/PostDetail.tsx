@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { AdjacentPosts, RelatedPost } from '@/api/blog';
-import { Alert, Breadcrumb, Button, Result, Spin, Tooltip, Typography } from 'antd';
+import { Alert, Breadcrumb, Button, Result, Spin, Tag, Tooltip, Typography } from 'antd';
 import { isAxiosError } from 'axios';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -9,14 +9,22 @@ import {
   ClockCircleOutlined,
   EditOutlined,
   ExportOutlined,
+  FormOutlined,
   FolderOpenOutlined,
   HomeOutlined,
   TagOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import * as blogApi from '@/api/blog';
+import * as docsApi from '@/api/docs';
 import * as kbsApi from '@/api/kbs';
-import type { PublicPostDetail } from '@/types';
+import { message } from '@/utils/notify';
+import type { DocumentDetail, PublicPostDetail } from '@/types';
+import { patchDocumentTitle } from '@/utils/documentSave';
+import PostInlineEditor, {
+  resolvePostPrimaryUrl,
+} from '@/components/blog/PostInlineEditor';
+import type { EditorSaveHandle } from '@/components/editor/editorSaveLifecycle';
 import { readingMinutes, renderMarkdownWithToc, wordCount } from '@/utils/markdown';
 import { previewKind } from '@/api/attachments';
 import { useAuthStore } from '@/stores/auth';
@@ -44,6 +52,8 @@ const { Title, Text } = Typography;
 
 const POST_KB_W = { min: 200, max: 480, default: 240, key: 'jz-post-kb-w' };
 const POST_TOC_W = { min: 160, max: 400, default: 200, key: 'jz-post-toc-w' };
+
+type PostPageMode = 'read' | 'edit';
 
 function postHref(postSlug: string, kb?: string) {
   const path = `/posts/${encodeURIComponent(postSlug)}`;
@@ -116,6 +126,12 @@ export default function PostDetail() {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
   const [canEdit, setCanEdit] = useState(false);
+  const [pageMode, setPageMode] = useState<PostPageMode>('read');
+  const [editDoc, setEditDoc] = useState<DocumentDetail | null>(null);
+  const [editLoading, setEditLoading] = useState(false);
+  const [conflictSyncRevision, setConflictSyncRevision] = useState(0);
+  const editorSaveRef = useRef<EditorSaveHandle | null>(null);
+
   useEffect(() => {
     if (!post || !authUser) {
       setCanEdit(false);
@@ -126,6 +142,88 @@ export default function PostDetail() {
       .then((t) => setCanEdit(!!t.can_manage))
       .catch(() => setCanEdit(false));
   }, [post, authUser]);
+
+  const registerEditorSave = useCallback((handle: EditorSaveHandle | null) => {
+    editorSaveRef.current = handle;
+  }, []);
+
+  const enterEditMode = useCallback(async () => {
+    if (!post || !canEdit) return;
+    setEditLoading(true);
+    try {
+      const d = await docsApi.getDocument(post.id);
+      setEditDoc(d);
+      setPageMode('edit');
+    } catch {
+      message.error('无法加载编辑内容');
+    } finally {
+      setEditLoading(false);
+    }
+  }, [post, canEdit]);
+
+  const exitEditMode = useCallback(async () => {
+    if (!post) return;
+    try {
+      await editorSaveRef.current?.saveNow();
+    } catch {
+      /* saveNow surfaces errors; still return to read */
+    }
+    const kbParams = kbSlug ? { kb: kbSlug } : undefined;
+    try {
+      const fresh = await blogApi.getPublicPost(post.slug, kbParams);
+      setPost(fresh);
+    } catch {
+      /* keep previous post snapshot */
+    }
+    setPageMode('read');
+    setEditDoc(null);
+  }, [post, kbSlug]);
+
+  useEffect(() => {
+    setPageMode('read');
+    setEditDoc(null);
+  }, [slug, kbSlug]);
+
+  useEffect(() => {
+    if (pageMode === 'edit') {
+      document.body.classList.add('jz-post-inline-edit');
+    } else {
+      document.body.classList.remove('jz-post-inline-edit');
+    }
+    return () => document.body.classList.remove('jz-post-inline-edit');
+  }, [pageMode]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      const inField =
+        !!target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
+      if (pageMode === 'edit' && e.key === 'Escape') {
+        e.preventDefault();
+        void exitEditMode();
+        return;
+      }
+
+      if (pageMode !== 'read' || !canEdit) return;
+
+      const isE = e.key === 'e' || e.key === 'E';
+      if (isE && !e.metaKey && !e.ctrlKey && !e.altKey && !inField) {
+        e.preventDefault();
+        void enterEditMode();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && isE) {
+        e.preventDefault();
+        void enterEditMode();
+      }
+    }
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [pageMode, canEdit, enterEditMode, exitEditMode]);
   /** TOC visibility — persisted per browser, defaults to shown. */
   const [tocOpen, setTocOpen] = useState<boolean>(() => {
     try {
@@ -256,7 +354,7 @@ export default function PostDetail() {
   const canShowToc = isHtmlDoc
     ? false
     : !hasInlineFile && rendered.toc.length > 0;
-  const showToc = canShowToc && tocOpen;
+  const showToc = canShowToc && tocOpen && pageMode === 'read';
   // Word-count / reading-time: MD reads from the persisted markdown source;
   // HTML reads the plain-text body the iframe reader extracts (same-origin
   // direct DOM read for src-mode, or postMessage for srcDoc fallback).
@@ -276,6 +374,23 @@ export default function PostDetail() {
   );
 
   const editHref = `/posts/${encodeURIComponent(post.slug)}/edit`;
+  const primaryUrl = resolvePostPrimaryUrl(post);
+
+  const handleTitleChange = async (title: string) => {
+    if (!editDoc || title === editDoc.title) return;
+    try {
+      const updated = await patchDocumentTitle(editDoc, title, (live) => {
+        if (live) {
+          setEditDoc(live);
+          setConflictSyncRevision((n) => n + 1);
+        }
+      });
+      setEditDoc((prev) => (prev ? { ...prev, ...updated } : updated));
+      setPost((prev) => (prev ? { ...prev, title } : prev));
+    } catch {
+      /* conflict or error already messaged */
+    }
+  };
 
   return (
     <div
@@ -339,6 +454,14 @@ export default function PostDetail() {
             <Title
               level={1}
               className="jz-post-title"
+              editable={
+                pageMode === 'edit' && editDoc
+                  ? {
+                      onChange: (v) => void handleTitleChange(v),
+                      triggerType: ['text', 'icon'],
+                    }
+                  : false
+              }
               style={{
                 marginTop: 0,
                 marginBottom: 6,
@@ -346,7 +469,7 @@ export default function PostDetail() {
                 color: 'var(--jz-text)',
               }}
             >
-              {post.title}
+              {pageMode === 'edit' && editDoc ? editDoc.title : post.title}
             </Title>
             <div
               className="jz-post-meta"
@@ -451,24 +574,81 @@ export default function PostDetail() {
                   </Tooltip>
                 )}
                 {canEdit && (
-                  <Tooltip title="在博客中编辑（保存后可返回阅读页）">
-                    <Link to={editHref} style={{ textDecoration: 'none' }}>
-                      <Button
-                        size="small"
-                        type="primary"
-                        ghost
-                        icon={<EditOutlined />}
-                        className="jz-edit-btn jz-meta-edit-btn"
+                  <span className="jz-meta-edit-actions">
+                    {pageMode === 'read' ? (
+                      <Tooltip
+                        placement="bottom"
+                        mouseEnterDelay={0.3}
+                        title="在当前页原地编辑正文，无需跳转；快捷键 E 或 Ctrl+E"
                       >
-                        编辑
-                      </Button>
-                    </Link>
-                  </Tooltip>
+                        <Button
+                          size="small"
+                          type="primary"
+                          ghost
+                          icon={<EditOutlined />}
+                          className="jz-edit-btn jz-meta-edit-btn"
+                          onClick={() => void enterEditMode()}
+                        >
+                          编辑
+                        </Button>
+                      </Tooltip>
+                    ) : (
+                      <>
+                        <Tag color="processing" className="jz-meta-editing-tag">
+                          编辑中
+                        </Tag>
+                        <Tooltip
+                          placement="bottom"
+                          mouseEnterDelay={0.3}
+                          title="保存修改并返回阅读模式；快捷键 Esc"
+                        >
+                          <Button
+                            size="small"
+                            type="primary"
+                            className="jz-meta-done-btn"
+                            onClick={() => void exitEditMode()}
+                          >
+                            完成
+                          </Button>
+                        </Tooltip>
+                      </>
+                    )}
+                    <Tooltip
+                      placement="bottom"
+                      mouseEnterDelay={0.3}
+                      title="打开完整编辑页：切换 MD/富文本/HTML、发布、版本历史、导出与附件管理等"
+                    >
+                      <span className="jz-tooltip-trigger-wrap">
+                        <Link to={editHref} className="jz-meta-full-edit-btn">
+                          <FormOutlined aria-hidden />
+                          <span>完整编辑</span>
+                        </Link>
+                      </span>
+                    </Tooltip>
+                  </span>
                 )}
               </span>
             </div>
           </header>
 
+          {pageMode === 'edit' ? (
+            editLoading ? (
+              <div style={{ display: 'grid', placeItems: 'center', minHeight: 200 }}>
+                <Spin tip="加载编辑器…" />
+              </div>
+            ) : editDoc ? (
+              <PostInlineEditor
+                doc={editDoc}
+                post={post}
+                primaryUrl={primaryUrl}
+                fullEditHref={editHref}
+                onDocChange={setEditDoc}
+                onSaveReady={registerEditorSave}
+                forceSyncRevision={conflictSyncRevision}
+              />
+            ) : null
+          ) : (
+            <>
           {isHtmlDoc && htmlHasBuiltInNav && (
             <Alert
               type="info"
@@ -508,6 +688,8 @@ export default function PostDetail() {
             />
           )}
           <CodeBlockEnhancer selector=".jz-post-article" bindKey={rendered.html} />
+            </>
+          )}
 
           {/* Expose binary originals (PDF / DOCX / image) at the bottom. Text imports
               are already inlined in the body, so we skip them to avoid duplication. */}
@@ -605,7 +787,7 @@ export default function PostDetail() {
         </aside>
       )}
 
-      {canShowToc && !tocOpen && (
+      {canShowToc && pageMode === 'read' && !tocOpen && (
         <Tooltip title="显示目录" placement="left">
           <Button
             type="default"
@@ -639,9 +821,20 @@ export default function PostDetail() {
         <>
           <SelectionAI
             scopeRef={articleRef}
-            contextProvider={() => post?.published_content || ''}
+            contextProvider={() =>
+              pageMode === 'edit' && editDoc
+                ? editDoc.raw_content
+                : post?.published_content || ''
+            }
           />
-          <DocAIPanel content={post?.published_content || ''} title={post?.title} />
+          <DocAIPanel
+            content={
+              pageMode === 'edit' && editDoc
+                ? editDoc.raw_content
+                : post?.published_content || ''
+            }
+            title={pageMode === 'edit' && editDoc ? editDoc.title : post?.title}
+          />
         </>
       )}
     </div>

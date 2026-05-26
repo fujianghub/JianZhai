@@ -1,7 +1,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import type { Editor, Range } from '@tiptap/core';
-import type { SlashCommandItem } from './slashCommand';
-import { getRecentSlashTitles } from './slashCommand';
+import type { SlashCommandItem } from './slashCommandRegistry';
+import { formatSlashDescription, getRecentSlashTitles } from './slashCommandRegistry';
 
 interface Props {
   items: SlashCommandItem[];
@@ -108,7 +108,12 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
             itemRefs.current[idx] = el;
           }}
           type="button"
-          className={'slash-menu-item' + (idx === selectedIndex ? ' is-active' : '')}
+          className={
+            'slash-menu-item' +
+            (idx === selectedIndex ? ' is-active' : '') +
+            (item.richTextOnly ? ' is-rich-only' : '')
+          }
+          disabled={false}
           onMouseEnter={() => setSelectedIndex(idx)}
           onClick={() => selectItem(idx)}
         >
@@ -117,9 +122,10 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
           </span>
           <span className="slash-menu-item-body">
             <span className="slash-menu-item-title">{item.title}</span>
-            {item.description && (
-              <span className="slash-menu-item-desc">{item.description}</span>
-            )}
+            <span className="slash-menu-item-desc">
+              {formatSlashDescription(item)}
+              {item.richTextOnly ? ' · 仅富文本' : ''}
+            </span>
           </span>
         </button>
       );

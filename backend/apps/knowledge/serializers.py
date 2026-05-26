@@ -256,19 +256,9 @@ class DocumentSerializer(serializers.ModelSerializer):
                 validated_data["pinned_at"] = timezone.now()
             else:
                 validated_data["pinned_at"] = None
-        """When auto-saving a doc that's already published, propagate the new
-        ``raw_content`` to ``published_content`` so readers see the change
-        immediately.
-
-        Prior behaviour was Git-like: changes always staged in raw, user had
-        to click ``发布`` again to ship them. That's confusing for a personal
-        blog where readers expect saves to land live. The dual-content model
-        is preserved for explicit drafts (``status='draft'``) — in that case
-        published_content stays untouched.
-        """
+        # Dual-content: raw autosave does not overwrite published_content.
+        # Use publish() or an explicit published_content PATCH to ship to readers.
         new_raw = validated_data.get("raw_content")
-        was_published = instance.status == "published"
-        # Bump the optimistic-concurrency version whenever content changed.
         content_changed = (
             (new_raw is not None and new_raw != instance.raw_content)
             or (
@@ -279,11 +269,12 @@ class DocumentSerializer(serializers.ModelSerializer):
         if content_changed:
             validated_data["version"] = instance.version + 1
         raw_changed = new_raw is not None and new_raw != instance.raw_content
+        published_changed = (
+            "published_content" in validated_data
+            and validated_data["published_content"] != instance.published_content
+        )
         result = super().update(instance, validated_data)
-        if was_published and new_raw is not None and new_raw != result.published_content:
-            result.published_content = new_raw
-            result.save(update_fields=["published_content"])
-        if raw_changed:
+        if raw_changed or published_changed:
             request = self.context.get("request")
             uploaded_by = getattr(request, "user", None) if request else None
             fmt = detect_doc_format(result)
@@ -318,11 +309,15 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 
 class DocumentPublishedContentSerializer(serializers.ModelSerializer):
-    """Used by PATCH /documents/{id}/published/ — only published_content is editable."""
+    """PATCH /documents/{id}/published/ — only ``published_content`` is writable."""
 
     class Meta:
         model = Document
         fields = ["published_content"]
+
+    def update(self, instance: Document, validated_data: dict) -> Document:
+        # Reuse version bump + asset mirroring from DocumentSerializer.
+        return DocumentSerializer(context=self.context).update(instance, validated_data)
 
 
 # -------- tree representation --------

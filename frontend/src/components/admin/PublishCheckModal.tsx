@@ -12,10 +12,11 @@ export interface PublishCheckItem {
 export function buildPublishChecks(
   doc: DocumentDetail,
   kb?: { name: string; visibility: string } | null,
+  opts?: { body?: string },
 ): PublishCheckItem[] {
   const items: PublishCheckItem[] = [];
   const title = doc.title?.trim();
-  const body = (doc.raw_content || doc.published_content || '').trim();
+  const body = (opts?.body ?? doc.raw_content ?? doc.published_content ?? '').trim();
 
   if (!title) {
     items.push({ level: 'error', message: '标题为空，请先填写标题' });

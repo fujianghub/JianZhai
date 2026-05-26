@@ -69,6 +69,7 @@ export default function KBWorkspace() {
   }>();
   const [folderForm] = Form.useForm<{ name: string; parent?: number | null }>();
   const [exportOpen, setExportOpen] = useState(false);
+  const [folderExport, setFolderExport] = useState<TreeFolder | null>(null);
 
   // -------- batch selection --------
   const [batchMode, setBatchMode] = useState(false);
@@ -640,6 +641,7 @@ export default function KBWorkspace() {
             checked={checked}
             onCheckedChange={setChecked}
             onEditFolderTags={openFolderTagsModal}
+            onExportFolder={batchMode ? undefined : (f) => setFolderExport(f)}
             filterQuery={filterQuery}
             filterStatus={filterStatus}
             onTogglePin={batchMode ? undefined : handleTogglePin}
@@ -663,7 +665,19 @@ export default function KBWorkspace() {
         scope="kb"
         targetId={kbId}
         targetLabel={kb.name}
+        onSubmitted={() => navigate('/admin/exports')}
       />
+      {folderExport && (
+        <ExportDialog
+          open
+          onClose={() => setFolderExport(null)}
+          scope="folder"
+          targetId={folderExport.id}
+          targetLabel={folderExport.name}
+          allowSiteFormat={false}
+          onSubmitted={() => navigate('/admin/exports')}
+        />
+      )}
 
       <Modal
         open={newDocModal}

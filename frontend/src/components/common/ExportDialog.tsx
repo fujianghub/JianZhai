@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, Modal, Radio, Space, Typography } from 'antd';
 import { message } from '@/utils/notify';
+import { formatApiError } from '@/api/client';
 import * as exportsApi from '@/api/exports';
 import type { ExportFormat, ExportScope } from '@/api/exports';
 
@@ -18,11 +19,11 @@ interface Props {
 }
 
 const FORMAT_OPTIONS: { value: ExportFormat; label: string; hint: string }[] = [
-  { value: 'md', label: 'Markdown', hint: '原始 Markdown，单文件或 zip 打包' },
-  { value: 'html', label: 'HTML', hint: '单页 HTML，含内联 CSS，无外部依赖' },
+  { value: 'md', label: 'Markdown', hint: '发布版 Markdown，单文件或 zip 打包' },
+  { value: 'html', label: 'HTML', hint: '单页 HTML，内联样式与图片' },
   { value: 'pdf', label: 'PDF', hint: 'Playwright 渲染 Chromium，需后端已安装' },
   { value: 'docx', label: 'Word (.docx)', hint: '基础结构（标题/段落/列表/代码块）' },
-  { value: 'site', label: '整站 zip', hint: '多页 HTML + 目录 + 搜索索引 + RSS' },
+  { value: 'site', label: '整站 zip', hint: '多页 HTML + 目录 + 搜索索引 + RSS（仅已发布）' },
 ];
 
 export default function ExportDialog({
@@ -37,18 +38,19 @@ export default function ExportDialog({
   const [format, setFormat] = useState<ExportFormat>('md');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (open) setFormat('md');
+  }, [open]);
+
   async function handleSubmit() {
     setSubmitting(true);
     try {
       await exportsApi.createExport({ scope, target_id: targetId, format });
-      message.success('已创建导出任务，请到「导出历史」查看');
+      message.success('已创建导出任务，正在前往导出历史…');
       onSubmitted?.();
       onClose();
     } catch (err: unknown) {
-      const detail =
-        (err as { response?: { data?: { detail?: string } } }).response?.data?.detail ??
-        '导出失败';
-      message.error(detail);
+      message.error(formatApiError(err, '导出失败'));
     } finally {
       setSubmitting(false);
     }
@@ -71,6 +73,9 @@ export default function ExportDialog({
       <Paragraph type="secondary" style={{ marginTop: 0 }}>
         范围：{scope === 'doc' ? '单文档' : scope === 'folder' ? '文件夹（含子级）' : '整知识库'}
       </Paragraph>
+      <Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 12 }}>
+        默认导出发布版正文；若尚未发布则使用草稿内容。
+      </Paragraph>
       <Radio.Group
         value={format}
         onChange={(e) => setFormat(e.target.value)}
@@ -92,7 +97,7 @@ export default function ExportDialog({
           style={{ marginTop: 12 }}
           type="info"
           showIcon
-          message="PDF 依赖 Playwright + Chromium，首次失败请在服务器跑 `playwright install chromium`"
+          message="PDF 依赖 Playwright + Chromium；生产环境需运行 Celery worker，并执行 playwright install chromium"
         />
       )}
     </Modal>

@@ -130,6 +130,7 @@ function toggleMermaidSource(block: HTMLElement, btn: HTMLButtonElement) {
   if (pre) pre.hidden = !showingSource;
   if (canvas) canvas.style.display = showingSource ? 'none' : '';
   btn.textContent = showingSource ? '图表' : '源码';
+  btn.title = showingSource ? '返回图表预览' : '查看 Mermaid 源码';
 }
 
 function copyBlockToClipboard(block: HTMLElement, btn: HTMLButtonElement) {

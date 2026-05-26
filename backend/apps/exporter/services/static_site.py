@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import json
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 from xml.sax.saxutils import escape as xml_escape
 
@@ -138,7 +138,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         nav=nav_html,
         intro="",
         recent=recent_html or "<li>（暂无文档）</li>",
-        generated=datetime.utcnow().strftime("%Y-%m-%d %H:%M UTC"),
+        generated=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
     )
 
     entries: list[tuple[str, bytes]] = [
@@ -148,14 +148,22 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     ]
 
     search_index = []
+    asset_names: set[str] = set()
     for doc in docs:
-        body_md = doc.published_content or doc.raw_content or ""
+        body_md = common.doc_export_body(doc)
         fname = _doc_filename(doc)
         # HTML-format docs are shipped verbatim — wrapping them in PAGE_TEMPLATE
         # would inject a second <html>/<head> and clobber the author's styling.
         # Site navigation remains reachable via index.html.
         if detect_doc_format(doc) == "html" and body_md.strip():
-            entries.append((fname, body_md.encode("utf-8")))
+            html_out = common.rewrite_html_media(
+                body_md, embed=False, asset_prefix="assets/"
+            )
+            entries.append((fname, html_out.encode("utf-8")))
+            for asset_name, asset_data in common.collect_html_media(body_md):
+                if asset_name not in asset_names:
+                    asset_names.add(asset_name)
+                    entries.append((asset_name, asset_data))
             search_index.append(
                 {
                     "id": doc.id,
@@ -166,7 +174,16 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             )
             continue
 
-        body_html = common.render_markdown(body_md)
+        body_md_zip = common.rewrite_markdown_media_paths(body_md)
+        body_html = common.rewrite_html_media(
+            common.render_markdown(body_md_zip),
+            embed=False,
+            asset_prefix="assets/",
+        )
+        for asset_name, asset_data in common.collect_markdown_media(body_md):
+            if asset_name not in asset_names:
+                asset_names.add(asset_name)
+                entries.append((asset_name, asset_data))
         meta = doc.knowledge_base.name + (
             f" · {doc.published_at:%Y-%m-%d}" if doc.published_at else ""
         )
@@ -241,7 +258,7 @@ def _render_rss(scope: ExportScope, docs: list[Document]) -> str:
     items_xml = []
     for d in sorted(docs, key=lambda x: x.published_at or x.updated_at, reverse=True)[:50]:
         pub = (d.published_at or d.updated_at).strftime("%a, %d %b %Y %H:%M:%S GMT")
-        body = xml_escape((d.published_content or d.raw_content or "")[:1000])
+        body = xml_escape(common.doc_export_body(d)[:1000])
         items_xml.append(
             f"<item><title>{xml_escape(d.title)}</title>"
             f"<link>{_doc_filename(d)}</link>"

@@ -13,6 +13,8 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.shared import Pt
 from markdown_it import MarkdownIt
 
+from apps.knowledge.serializers import detect_doc_format
+
 from ..scope import ExportScope
 from . import common
 
@@ -38,8 +40,14 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         meta_run.italic = True
         meta_run.font.size = Pt(10)
 
-        tokens = _md.parse(doc.raw_content or "")
-        _render_tokens(docx, tokens)
+        body = common.doc_export_body(doc)
+        if detect_doc_format(doc) == "html":
+            plain = common.html_to_plain_text(body)
+            for line in plain.splitlines():
+                docx.add_paragraph(line or "")
+        else:
+            tokens = _md.parse(body)
+            _render_tokens(docx, tokens)
 
     path = common.reserve_export_path(".docx")
     docx.save(path)

@@ -27,6 +27,7 @@ import 'tippy.js/dist/tippy.css';
 import './styles/theme.css';
 import './styles/markdown.css';
 import './styles/tiptap.css';
+import './styles/editor-ui.css';
 import './styles/diff.css';
 import './styles/paper.css';
 import './styles/book-card.css';

@@ -34,6 +34,19 @@ import {
 import { message } from '@/utils/notify';
 import { renderMermaid } from '@/utils/mermaid';
 import { fetchPlantumlSvg } from '@/utils/plantuml';
+import {
+  cycleDiagramViewMode,
+  DIAGRAM_ZOOM_STEPS,
+  loadMermaidDiagramPrefs,
+  saveMermaidDiagramPrefs,
+  type DiagramViewMode,
+} from '@/utils/mermaidDiagramPrefs';
+import {
+  detectMermaidKeyFromSource,
+  MERMAID_TEMPLATES,
+  MERMAID_TYPE_LABELS,
+  type MermaidTemplateKey,
+} from './slashCommandRegistry';
 import CodeBlockMoreMenu from './CodeBlockMoreMenu';
 import CodeBlockThemeSelect from './CodeBlockThemeSelect';
 
@@ -50,16 +63,26 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   const isMermaid = lang === 'mermaid';
   const isPlantuml = lang === 'plantuml';
   const isDiagram = isMermaid || isPlantuml;
-  const [showPreview, setShowPreview] = useState<boolean>(isDiagram);
+  const diagramPrefs = loadMermaidDiagramPrefs();
+  const [diagramViewMode, setDiagramViewMode] = useState<DiagramViewMode>(
+    () => (isDiagram ? diagramPrefs.defaultViewMode : 'split'),
+  );
+  const [diagramZoom, setDiagramZoom] = useState(diagramPrefs.defaultZoom);
   const [previewHtml, setPreviewHtml] = useState<string>('');
   const [previewError, setPreviewError] = useState<string>('');
   const previewSourceRef = useRef<string>('');
+  const showDiagramPreview = isDiagram && diagramViewMode !== 'source';
+  const showDiagramSource = !isDiagram || diagramViewMode !== 'preview';
 
   const langLabel = languageLabel(lang);
   const displayTitle = title.trim() || `${langLabel} · 代码块`;
 
   useEffect(() => {
-    setShowPreview(isDiagram);
+    if (isDiagram) {
+      const p = loadMermaidDiagramPrefs();
+      setDiagramViewMode(p.defaultViewMode);
+      setDiagramZoom(p.defaultZoom);
+    }
     previewSourceRef.current = '';
     setPreviewHtml('');
     setPreviewError('');
@@ -68,7 +91,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   const diagramSource = isDiagram ? (node.textContent ?? '') : '';
   const debouncedSource = useDebouncedValue(diagramSource, isPlantuml ? 600 : 300);
   useEffect(() => {
-    if (!isDiagram || !showPreview || collapsed) return;
+    if (!isDiagram || !showDiagramPreview || collapsed) return;
     if (!debouncedSource.trim()) {
       setPreviewHtml('');
       setPreviewError('');
@@ -93,7 +116,50 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
     return () => {
       cancelled = true;
     };
-  }, [debouncedSource, isDiagram, isMermaid, showPreview, collapsed]);
+  }, [debouncedSource, isDiagram, isMermaid, showDiagramPreview, collapsed]);
+
+  const replaceDiagramSource = useCallback(
+    (template: string) => {
+      const pos = getPos();
+      if (typeof pos !== 'number') return;
+      const from = pos + 1;
+      const to = pos + node.nodeSize - 1;
+      editor.chain().focus().insertContentAt({ from, to }, template).run();
+    },
+    [editor, getPos, node.nodeSize],
+  );
+
+  const handleMermaidTypeChange = (key: MermaidTemplateKey) => {
+    replaceDiagramSource(MERMAID_TEMPLATES[key]);
+  };
+
+  const cycleViewMode = useCallback(() => {
+    setDiagramViewMode((m) => {
+      const next = cycleDiagramViewMode(m);
+      saveMermaidDiagramPrefs({ defaultViewMode: next });
+      return next;
+    });
+  }, []);
+
+  const copySvg = async () => {
+    if (!previewHtml) return;
+    try {
+      await navigator.clipboard.writeText(previewHtml);
+      message.success('已复制 SVG');
+    } catch {
+      message.error('复制失败');
+    }
+  };
+
+  const adjustZoom = (delta: number) => {
+    setDiagramZoom((z) => {
+      const idx = DIAGRAM_ZOOM_STEPS.findIndex((s) => s >= z);
+      const nextIdx = Math.max(0, Math.min(DIAGRAM_ZOOM_STEPS.length - 1, idx + delta));
+      const next = DIAGRAM_ZOOM_STEPS[nextIdx] ?? 1;
+      saveMermaidDiagramPrefs({ defaultZoom: next });
+      return next;
+    });
+  };
 
   useEffect(() => {
     const refreshPrefs = () => setPrefs(loadCodeBlockPrefs());
@@ -144,10 +210,14 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
         e.preventDefault();
         handleAutoIndent();
       }
+      if (e.ctrlKey && e.shiftKey && (e.key === 'p' || e.key === 'P') && isDiagram) {
+        e.preventDefault();
+        cycleViewMode();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [editor, handleAutoIndent]);
+  }, [editor, handleAutoIndent, isDiagram, cycleViewMode]);
 
   const handleSyncStyle = () => {
     syncCodeBlockStyleToDocument(editor, prefs);
@@ -161,8 +231,12 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
     setMoreOpen(false);
   };
 
+  const mermaidTypeKey = isMermaid ? detectMermaidKeyFromSource(diagramSource) : null;
+
   const blockClass =
     'jz-code-block jz-code-block-editable' +
+    (isMermaid ? ' jz-code-mermaid' : isPlantuml ? ' jz-code-plantuml' : '') +
+    (isDiagram ? ` jz-diagram-view-${diagramViewMode}` : '') +
     (prefs.wrap ? ' is-wrapped' : '') +
     (collapsed ? ' is-collapsed' : '');
 
@@ -196,6 +270,45 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
         </div>
 
         <span className="jz-code-toolbar-spacer" />
+
+        {isDiagram && (
+          <>
+            <Button size="small" type="text" onClick={cycleViewMode}>
+              {diagramViewMode === 'source'
+                ? '图表'
+                : diagramViewMode === 'preview'
+                  ? '源码'
+                  : '分栏'}
+            </Button>
+            {isMermaid && (
+              <Select
+                size="small"
+                value={mermaidTypeKey ?? 'flowchart'}
+                onChange={(v) => handleMermaidTypeChange(v as MermaidTemplateKey)}
+                onClick={(e) => e.stopPropagation()}
+                options={(Object.keys(MERMAID_TEMPLATES) as MermaidTemplateKey[]).map((k) => ({
+                  value: k,
+                  label: MERMAID_TYPE_LABELS[k],
+                }))}
+                className="jz-mermaid-type-select"
+                disabled={!editor.isEditable}
+              />
+            )}
+            <Button size="small" type="text" onClick={() => adjustZoom(-1)} aria-label="缩小">
+              −
+            </Button>
+            <span className="jz-diagram-zoom-label">{Math.round(diagramZoom * 100)}%</span>
+            <Button size="small" type="text" onClick={() => adjustZoom(1)} aria-label="放大">
+              +
+            </Button>
+            {previewHtml && (
+              <Button size="small" type="text" onClick={() => void copySvg()}>
+                复制 SVG
+              </Button>
+            )}
+            <span className="jz-code-toolbar-divider" aria-hidden />
+          </>
+        )}
 
         <Select
           size="small"
@@ -246,8 +359,10 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 onSyncStyle={handleSyncStyle}
                 onSyncStyleAndLang={handleSyncStyleAndLang}
                 isDiagram={isDiagram}
-                showPreview={showPreview}
-                onTogglePreview={() => setShowPreview((v) => !v)}
+                showPreview={showDiagramPreview}
+                onTogglePreview={() =>
+                  setDiagramViewMode((m) => (m === 'preview' ? 'source' : 'preview'))
+                }
               />
             )}
           >
@@ -263,8 +378,10 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
       </div>
 
       {!collapsed && (
-        <>
-          <div className={`jz-code-body-wrap${prefs.lineNumbers ? ' has-line-numbers' : ''}`}>
+        <div className={isDiagram ? 'jz-diagram-editor-body' : undefined}>
+          <div
+            className={`jz-code-body-wrap${prefs.lineNumbers ? ' has-line-numbers' : ''}${!showDiagramSource ? ' jz-diagram-source-hidden' : ''}`}
+          >
             {prefs.lineNumbers && (
               <div
                 className="jz-line-numbers"
@@ -296,7 +413,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
             </pre>
           </div>
 
-          {isDiagram && showPreview && (
+          {showDiagramPreview && (
             <div className="jz-codeblock-mermaid-preview" contentEditable={false}>
               {previewError ? (
                 <div className="jz-mermaid-error">
@@ -304,7 +421,8 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 </div>
               ) : previewHtml ? (
                 <div
-                  className="jz-mermaid-canvas"
+                  className="jz-mermaid-canvas jz-mermaid-canvas-zoom"
+                  style={{ transform: `scale(${diagramZoom})`, transformOrigin: 'top center' }}
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />
               ) : (
@@ -314,7 +432,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
               )}
             </div>
           )}
-        </>
+        </div>
       )}
     </NodeViewWrapper>
   );

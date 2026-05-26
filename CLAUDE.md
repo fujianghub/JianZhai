@@ -347,7 +347,12 @@ class AIUsageLog(models.Model):
 
 ### 模块 8：导出 ✅
 
-粒度：单文档 / 文件夹 / 整 KB；格式：md / html / pdf（Playwright）/ docx / site (zip)。`apps/exporter/services/` 按格式拆分。Celery 异步 + 前端轮询。
+- 粒度：单文档 / 文件夹（树节点「导出」）/ 整 KB；格式：md / html / pdf（Playwright）/ docx / site (zip)
+- `apps/exporter/services/` 按格式拆分；产物在 `exports/`（`export_root()` 随 `MEDIA_ROOT` 解析）
+- **正文策略**：除整站 zip 仅 scope 内 `status=published` 外，各格式均 `doc_export_body()` — 优先 `published_content`，空则 `raw_content`
+- **离线资源**：HTML/PDF 单文件内嵌本地 `/media/` 为 base64；zip 类导出复制到 `assets/` 并重写路径
+- Celery `exporter.run_export` 异步；broker 不可达时 create 内联 fallback；前端 `/admin/exports` 轮询 + `downloadExport()`（fetch + blob，避免跨域 cookie 问题）
+- 测试：`backend/apps/exporter/tests/`（25+ pytest）；PDF 用例在无 Playwright 时 skip
 
 ### 模块 9：博客前台 ✅
 

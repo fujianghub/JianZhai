@@ -1422,7 +1422,8 @@
 /* ──────────────────────────────────────────────────────────────────────
    Tiptap editor toolbar + bubble menu — Yuque-inspired chrome.
    ─────────────────────────────────────────────────────────────────────── */
-.jz-editor-toolbar {
+/* Layout: editor-ui.css; chrome below for legacy editors without admin-glass */
+.jz-editor-toolbar:not(:has(.jz-editor-toolbar-main)) {
   display: flex;
   align-items: center;
   flex-wrap: wrap;

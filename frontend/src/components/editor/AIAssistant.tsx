@@ -1,70 +1,92 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Modal, Select, Spin, Tooltip, message } from 'antd';
-import { JzAiIcon } from '@/components/common/JzIcon';
+import { createElement, useCallback, useEffect, useRef, useState } from 'react';
+import { Dropdown, Tooltip, message } from 'antd';
+import { JzAiSparkIcon } from '@/components/common/JzIcon';
 import type { Editor } from '@tiptap/core';
-import { getCapabilities, streamAI, type AIModelOption, type AIOperation } from '@/api/ai';
-
-const AI_MODEL_KEY = 'jz-ai-model';
-
-interface OpDef {
-  key: AIOperation;
-  label: string;
-  hint: string;
-  /** When true, replace the selection with the result. When false, insert after. */
-  replace: boolean;
-}
-
-const OPS: OpDef[] = [
-  { key: 'continue', label: '续写', hint: '基于当前段落延展', replace: false },
-  { key: 'polish', label: '润色', hint: '让文字更流畅', replace: true },
-  { key: 'expand', label: '扩写', hint: '补充细节与例子', replace: true },
-  { key: 'fix', label: '纠错', hint: '修正错别字 / 语法', replace: true },
-  { key: 'summarize', label: '总结', hint: '提炼 3-5 句要点', replace: false },
-  { key: 'outline', label: '生成大纲', hint: '基于片段生成 H2/H3 结构', replace: false },
-  { key: 'translate_en', label: '翻译为英文', hint: 'EN', replace: false },
-  { key: 'translate_zh', label: '翻译为中文', hint: 'ZH', replace: false },
-];
+import { getCapabilities, runAI, streamAI } from '@/api/ai';
+import { getResolvedAIModelId, resolveAIModel } from '@/utils/aiModel';
+import type { AIOpDef } from './ai/aiOps';
+import AIMenuList from './ai/AIMenuList';
+import AIAssistantPanel from './ai/AIAssistantPanel';
+import AIPromptInline from './ai/AIPromptInline';
 
 interface Props {
   editor: Editor | null;
-  /** Triggered when no text is selected. Falls back to whole document. */
   fallbackContent?: () => string;
+}
+
+/** Shared AI generate flow (toolbar + quick-insert menu + slash `/ai`). */
+export async function triggerAIGenerateFromEditor(
+  editor: Editor,
+  prompt: string,
+): Promise<void> {
+  if (!prompt.trim()) return;
+  try {
+    const model = await getResolvedAIModelId();
+    const text = await runAI('outline', prompt, {
+      extra: '直接生成正文，而非大纲',
+      model,
+    });
+    editor.chain().focus().insertContent(text).run();
+  } catch (err) {
+    message.error(err instanceof Error ? err.message : 'AI 调用失败');
+  }
+}
+
+export function runAIOp(
+  _editor: Editor,
+  op: AIOpDef,
+  content: string,
+  modelId: string,
+  callbacks: {
+    onStart: () => void;
+    onDelta: (text: string) => void;
+    onDone: () => void;
+    onError: (msg: string) => void;
+  },
+  signal?: AbortSignal,
+): Promise<void> {
+  return streamAI(op.key, content, {
+    model: modelId || undefined,
+    signal,
+    onDelta: (d) => callbacks.onDelta(d),
+    onError: callbacks.onError,
+    onDone: callbacks.onDone,
+  });
 }
 
 export function AIAssistantMenu({ editor, fallbackContent }: Props) {
   const [configured, setConfigured] = useState<boolean | null>(null);
-  const [models, setModels] = useState<AIModelOption[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>(
-    () => localStorage.getItem(AI_MODEL_KEY) || ''
-  );
-  const [active, setActive] = useState<OpDef | null>(null);
+  const [modelId, setModelId] = useState('');
+  const [modelLabel, setModelLabel] = useState('');
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [promptOpen, setPromptOpen] = useState(false);
+  const [active, setActive] = useState<AIOpDef | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [text, setText] = useState('');
   const abortRef = useRef<AbortController | null>(null);
 
-  useEffect(() => {
-    getCapabilities()
-      .then((c) => {
-        setConfigured(c.configured);
-        setModels(c.models || []);
-        // If the persisted choice is no longer available (renamed/removed),
-        // fall back to the server's default.
-        const allowed = new Set((c.models || []).map((m) => m.id));
-        setSelectedModel((prev) =>
-          prev && allowed.has(prev) ? prev : c.default_model
-        );
-      })
-      .catch(() => setConfigured(false));
+  const refreshModel = useCallback(async () => {
+    try {
+      const c = await getCapabilities();
+      const id = resolveAIModel(c);
+      setModelId(id);
+      setModelLabel(c.models.find((m) => m.id === id)?.label || id);
+      setConfigured(c.configured);
+    } catch {
+      setConfigured(false);
+    }
   }, []);
 
   useEffect(() => {
-    if (selectedModel) {
-      localStorage.setItem(AI_MODEL_KEY, selectedModel);
-      // Notify the header badge (and any other listener) so the UI tag
-      // updates without a page refresh.
-      window.dispatchEvent(new CustomEvent('jz-ai-model-changed'));
-    }
-  }, [selectedModel]);
+    void refreshModel();
+    const onChange = () => void refreshModel();
+    window.addEventListener('storage', onChange);
+    window.addEventListener('jz-ai-model-changed', onChange);
+    return () => {
+      window.removeEventListener('storage', onChange);
+      window.removeEventListener('jz-ai-model-changed', onChange);
+    };
+  }, [refreshModel]);
 
   const collectSelection = useCallback(() => {
     if (!editor) return '';
@@ -75,35 +97,48 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     return fallbackContent ? fallbackContent() : editor.getText();
   }, [editor, fallbackContent]);
 
+  const hasSelection = useCallback(() => {
+    if (!editor) return false;
+    const { from, to } = editor.state.selection;
+    return from !== to;
+  }, [editor]);
+
   const run = useCallback(
-    async (op: OpDef) => {
+    async (op: AIOpDef) => {
       if (!editor) return;
       const content = collectSelection();
       if (!content.trim()) {
         message.warning('请先选中要处理的文本，或在文档中输入内容');
         return;
       }
+      setMenuOpen(false);
       setActive(op);
       setText('');
       setStreaming(true);
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        await streamAI(op.key, content, {
-          model: selectedModel || undefined,
-          signal: ctrl.signal,
-          onDelta: (d) => setText((prev) => prev + d),
-          onError: (msg) => {
-            message.error(msg);
-            setStreaming(false);
+        await runAIOp(
+          editor,
+          op,
+          content,
+          modelId,
+          {
+            onStart: () => {},
+            onDelta: (d) => setText((prev) => prev + d),
+            onDone: () => setStreaming(false),
+            onError: (msg) => {
+              message.error(msg);
+              setStreaming(false);
+            },
           },
-          onDone: () => setStreaming(false),
-        });
+          ctrl.signal,
+        );
       } catch {
         setStreaming(false);
       }
     },
-    [editor, collectSelection, selectedModel]
+    [editor, collectSelection, modelId],
   );
 
   function applyResult(mode: 'replace' | 'after' | 'before') {
@@ -121,147 +156,113 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     setText('');
   }
 
-  const items = useMemo(
-    () =>
-      OPS.map((op) => ({
-        key: op.key,
-        label: (
-          <span style={{ display: 'inline-flex', flexDirection: 'column', minWidth: 140 }}>
-            <span style={{ fontSize: 13 }}>{op.label}</span>
-            <span style={{ fontSize: 11, color: 'var(--jz-text-muted)' }}>{op.hint}</span>
-          </span>
-        ),
-        onClick: () => run(op),
-      })),
-    [run]
-  );
+  function closePanel() {
+    abortRef.current?.abort();
+    setActive(null);
+    setStreaming(false);
+    setText('');
+  }
 
-  // IMPORTANT: keep all hooks above any early return — otherwise React errors
-  // with "Rendered fewer hooks than expected" when `configured` flips.
-  const modelLabel = useMemo(
-    () => models.find((m) => m.id === selectedModel)?.label || selectedModel,
-    [models, selectedModel]
-  );
+  const aiAriaLabel = modelLabel ? `AI，${modelLabel}` : 'AI';
 
   if (configured === false) {
     return (
-      <Tooltip title="未配置 ANTHROPIC_API_KEY，AI 助手暂不可用">
-        <Button size="small" icon={<JzAiIcon size={14} />} disabled>
-          AI
-        </Button>
+      <Tooltip title="未配置 API Key" overlayClassName="jz-toolbar-ai-tooltip" mouseEnterDelay={0.3}>
+        <button type="button" className="jz-toolbar-ai-btn" disabled aria-label="AI，未配置">
+          <span className="jz-toolbar-ai-mark" aria-hidden>
+            AI
+          </span>
+        </button>
       </Tooltip>
     );
   }
 
   return (
     <>
-      <Dropdown menu={{ items }} disabled={configured === null}>
-        <Tooltip title={`AI 写作助手 · 当前模型：${modelLabel || '加载中…'}`}>
-          <Button size="small" icon={<JzAiIcon size={14} />}>AI ▾</Button>
+      <Dropdown
+        open={menuOpen}
+        onOpenChange={setMenuOpen}
+        disabled={configured === null}
+        trigger={['click']}
+        placement="bottomLeft"
+        overlayClassName="jz-editor-dropdown jz-ai-dropdown"
+        dropdownRender={() => (
+          <AIMenuList
+            onSelect={(op) => void run(op)}
+            extraItems={[
+              {
+                key: 'generate',
+                label: 'AI 生成段落',
+                hint: '描述你想写什么',
+                icon: createElement(JzAiSparkIcon, { size: 18 }),
+                onClick: () => {
+                  setMenuOpen(false);
+                  setPromptOpen(true);
+                },
+              },
+            ]}
+          />
+        )}
+      >
+        <Tooltip
+          title={modelLabel || undefined}
+          overlayClassName="jz-toolbar-ai-tooltip"
+          mouseEnterDelay={0.3}
+        >
+          <button
+            type="button"
+            className="jz-toolbar-ai-btn"
+            aria-label={aiAriaLabel}
+            aria-expanded={menuOpen}
+            disabled={configured === null}
+          >
+            <span className="jz-toolbar-ai-mark" aria-hidden>
+              AI
+            </span>
+          </button>
         </Tooltip>
       </Dropdown>
-      {models.length > 1 && (
-        <Tooltip title="切换 AI 模型（每次调用都用此模型）">
-          <Select
-            size="small"
-            value={selectedModel || undefined}
-            onChange={setSelectedModel}
-            style={{ minWidth: 150 }}
-            options={models.map((m) => ({
-              value: m.id,
-              label: (
-                <span>
-                  <span>{m.label}</span>
-                  <span style={{ fontSize: 11, color: 'var(--jz-text-muted)', marginLeft: 6 }}>
-                    {m.hint}
-                  </span>
-                </span>
-              ),
-            }))}
-          />
-        </Tooltip>
+
+      {promptOpen && (
+        <div className="jz-ai-panel-overlay" onClick={() => setPromptOpen(false)}>
+          <div className="jz-ai-panel" style={{ width: 'min(400px, 100%)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="jz-ai-panel-header">
+              <span className="jz-ai-panel-title">AI 生成段落</span>
+              <button type="button" className="jz-ai-panel-close" onClick={() => setPromptOpen(false)}>
+                ×
+              </button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <AIPromptInline
+                open
+                onClose={() => setPromptOpen(false)}
+                onSubmit={(p) => {
+                  if (editor) void triggerAIGenerateFromEditor(editor, p);
+                  setPromptOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
       )}
 
-      <Modal
+      <AIAssistantPanel
         open={!!active}
-        title={
-          active
-            ? `AI · ${active.label}（${modelLabel}）`
-            : ''
-        }
-        width={640}
-        onCancel={() => {
-          abortRef.current?.abort();
-          setActive(null);
-          setStreaming(false);
+        title={active ? `AI · ${active.label}` : 'AI 助手'}
+        modelLabel={modelLabel}
+        streaming={streaming}
+        text={text}
+        canReplace={hasSelection()}
+        onAbort={closePanel}
+        onClose={closePanel}
+        onCopy={() => {
+          void navigator.clipboard.writeText(text);
+          message.success('已复制');
         }}
-        footer={[
-          <Button
-            key="cancel"
-            onClick={() => {
-              abortRef.current?.abort();
-              setActive(null);
-              setStreaming(false);
-            }}
-          >
-            {streaming ? '中止' : '关闭'}
-          </Button>,
-          <Button
-            key="copy"
-            disabled={streaming || !text.trim()}
-            onClick={() => {
-              void navigator.clipboard.writeText(text);
-              message.success('已复制');
-            }}
-          >
-            复制
-          </Button>,
-          <Button
-            key="before"
-            disabled={streaming || !text.trim()}
-            onClick={() => applyResult('before')}
-          >
-            插入到上方
-          </Button>,
-          <Button
-            key="after"
-            disabled={streaming || !text.trim()}
-            onClick={() => applyResult('after')}
-          >
-            插入到下方
-          </Button>,
-          <Button
-            key="replace"
-            type="primary"
-            disabled={streaming || !text.trim()}
-            onClick={() => applyResult('replace')}
-          >
-            替换选中
-          </Button>,
-        ]}
-      >
-        <div style={{ minHeight: 160, maxHeight: 360, overflow: 'auto' }}>
-          {streaming && !text && (
-            <div style={{ textAlign: 'center', padding: 32 }}>
-              <Spin /> <span style={{ marginLeft: 8 }}>正在生成…</span>
-            </div>
-          )}
-          {text && (
-            <pre
-              style={{
-                whiteSpace: 'pre-wrap',
-                fontFamily: 'inherit',
-                margin: 0,
-                fontSize: 14,
-                lineHeight: 1.7,
-              }}
-            >
-              {text}
-              {streaming && <span style={{ opacity: 0.6 }}>▍</span>}
-            </pre>
-          )}
-        </div>
-      </Modal>
+        onInsertBefore={() => applyResult('before')}
+        onInsertAfter={() => applyResult('after')}
+        onReplace={() => applyResult('replace')}
+      />
     </>
   );
 }

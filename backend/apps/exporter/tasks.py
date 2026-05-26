@@ -2,9 +2,9 @@
 from __future__ import annotations
 
 import logging
-import traceback
 
 from celery import shared_task
+from django.conf import settings
 from django.utils import timezone
 
 from .models import ExportTask
@@ -22,9 +22,27 @@ FORMAT_DISPATCH = {
 }
 
 
+def _format_task_error(exc: BaseException) -> str:
+    msg = f"{type(exc).__name__}: {exc}"
+    if settings.DEBUG:
+        import traceback
+
+        tail = traceback.format_exc()[-500:]
+        return f"{msg}\n\n{tail}"
+    return msg[:500]
+
+
 @shared_task(name="exporter.run_export")
 def run_export(task_id: int) -> None:
-    task = ExportTask.objects.select_related("owner").get(pk=task_id)
+    try:
+        task = ExportTask.objects.select_related("owner").get(pk=task_id)
+    except ExportTask.DoesNotExist:
+        log.warning("export task %s not found (deleted?)", task_id)
+        return
+
+    if task.status in (ExportTask.STATUS_DONE, ExportTask.STATUS_FAILED):
+        return
+
     task.status = ExportTask.STATUS_RUNNING
     task.started_at = timezone.now()
     task.save(update_fields=["status", "started_at"])
@@ -54,6 +72,6 @@ def run_export(task_id: int) -> None:
     except Exception as exc:  # noqa: BLE001
         log.exception("export task %s failed", task_id)
         task.status = ExportTask.STATUS_FAILED
-        task.error = f"{type(exc).__name__}: {exc}\n\n{traceback.format_exc()[-2000:]}"
+        task.error = _format_task_error(exc)
         task.completed_at = timezone.now()
         task.save(update_fields=["status", "error", "completed_at"])

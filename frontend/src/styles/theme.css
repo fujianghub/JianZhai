@@ -761,7 +761,25 @@ h4.jz-post-card-title.ant-typography {
   color: color-mix(in srgb, var(--jz-tag-c, var(--jz-text)) 75%, #fff);
 }
 
-/* Post meta "编辑" pill — outline style; must win over .blog-content .ant-btn-primary. */
+/* Post meta edit actions — inline edit + full editor entry */
+.jz-meta-edit-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.jz-meta-edit-actions .jz-tooltip-trigger-wrap {
+  display: inline-flex;
+  line-height: 0;
+}
+.jz-meta-edit-actions .jz-meta-editing-tag {
+  margin-inline-end: 0 !important;
+  height: 24px;
+  line-height: 22px;
+  border-radius: 12px;
+}
+
+/* Primary: inline edit (ghost pill, KB accent) */
 .ant-btn.jz-edit-btn.ant-btn-background-ghost {
   height: 28px !important;
   min-height: 28px !important;
@@ -770,22 +788,88 @@ h4.jz-post-card-title.ant-typography {
   line-height: 1 !important;
   border-radius: 14px !important;
   padding: 0 12px !important;
-  color: var(--jz-accent) !important;
-  border: 1px solid color-mix(in srgb, var(--jz-accent) 45%, var(--glass-border, var(--jz-border))) !important;
-  background: color-mix(in srgb, var(--jz-accent) 10%, var(--glass-surface, var(--jz-surface))) !important;
+  color: var(--jz-doc-accent, var(--jz-accent)) !important;
+  border: 1px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 45%, var(--glass-border, var(--jz-border))) !important;
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 10%, var(--glass-surface, var(--jz-surface))) !important;
   box-shadow: var(--glass-shadow-soft, 0 2px 8px rgba(0, 0, 0, 0.06)) !important;
 }
 .ant-btn.jz-edit-btn.ant-btn-background-ghost .anticon {
-  color: var(--jz-accent) !important;
+  color: var(--jz-doc-accent, var(--jz-accent)) !important;
 }
 .ant-btn.jz-edit-btn.ant-btn-background-ghost:hover {
-  color: var(--jz-accent) !important;
-  border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--glass-border, var(--jz-border))) !important;
-  background: color-mix(in srgb, var(--jz-accent) 18%, var(--glass-surface, var(--jz-surface))) !important;
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--jz-accent) 22%, transparent) !important;
+  color: var(--jz-doc-accent, var(--jz-accent)) !important;
+  border-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 55%, var(--glass-border, var(--jz-border))) !important;
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 18%, var(--glass-surface, var(--jz-surface))) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 22%, transparent) !important;
 }
 .ant-btn.jz-edit-btn.ant-btn-background-ghost:hover .anticon {
-  color: var(--jz-accent) !important;
+  color: var(--jz-doc-accent, var(--jz-accent)) !important;
+}
+
+/* Done — solid pill while inline editing */
+.ant-btn.jz-meta-done-btn {
+  height: 28px !important;
+  min-height: 28px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  line-height: 1 !important;
+  border-radius: 14px !important;
+  padding: 0 14px !important;
+  border: none !important;
+  color: #fff !important;
+  background: var(--jz-doc-accent, var(--jz-accent)) !important;
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 35%, transparent) !important;
+}
+.ant-btn.jz-meta-done-btn:hover {
+  color: #fff !important;
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 88%, #000) !important;
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 40%, transparent) !important;
+}
+
+/* Secondary: full editor page link pill */
+a.jz-meta-full-edit-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 14px;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  color: var(--jz-text-secondary, var(--jz-text-muted));
+  border: 1px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 28%, var(--glass-border, var(--jz-border)));
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 6%, var(--glass-surface, var(--jz-surface)));
+  box-shadow: var(--glass-shadow-soft, 0 1px 4px rgba(0, 0, 0, 0.04));
+  transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+}
+a.jz-meta-full-edit-btn .anticon {
+  font-size: 13px;
+  color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 70%, var(--jz-text-muted));
+}
+a.jz-meta-full-edit-btn:hover {
+  color: var(--jz-doc-accent, var(--jz-accent));
+  border-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 42%, var(--glass-border, var(--jz-border)));
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 14%, var(--glass-surface, var(--jz-surface)));
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 18%, transparent);
+  text-decoration: none;
+}
+a.jz-meta-full-edit-btn:hover .anticon {
+  color: var(--jz-doc-accent, var(--jz-accent));
+}
+[data-theme='dark'] a.jz-meta-full-edit-btn,
+[data-theme='starry'] a.jz-meta-full-edit-btn,
+[data-theme='deepsea'] a.jz-meta-full-edit-btn {
+  color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 65%, var(--jz-text-muted));
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 14%, var(--jz-surface-2));
+  border-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 38%, transparent);
+}
+[data-theme='dark'] a.jz-meta-full-edit-btn:hover,
+[data-theme='starry'] a.jz-meta-full-edit-btn:hover,
+[data-theme='deepsea'] a.jz-meta-full-edit-btn:hover {
+  color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 85%, #fff);
 }
 
 /* Card list still uses the legacy ``.jz-post-tag`` class on antd Tag.

@@ -125,37 +125,43 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance: Document):
         instance.soft_delete()
 
-    def update(self, request, *args, **kwargs):
-        """Optimistic-concurrency check on PATCH/PUT.
-
-        The client may include ``expected_version`` in the payload — when
-        present and not matching the current row, we return 409 with the live
-        document so the client can show a diff / merge UI instead of clobbering.
-        """
+    def _expected_version_conflict(self, request, instance: Document) -> Response | None:
+        """Return 409/400 response when ``expected_version`` does not match."""
         expected = request.data.get("expected_version") if isinstance(request.data, dict) else None
-        if expected is not None:
-            instance = self.get_object()
-            try:
-                expected_int = int(expected)
-            except (TypeError, ValueError):
-                return Response(
-                    {"detail": "expected_version 必须是整数"},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            if expected_int != instance.version:
-                return Response(
-                    {
-                        "detail": "文档已被其他端修改",
-                        "code": "version_conflict",
-                        "current_version": instance.version,
-                        "document": DocumentSerializer(instance).data,
-                    },
-                    status=status.HTTP_409_CONFLICT,
-                )
-            # Strip the field so it doesn't end up in validated_data
-            mutable = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
-            mutable.pop("expected_version", None)
-            request._full_data = mutable
+        if expected is None:
+            return None
+        try:
+            expected_int = int(expected)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "expected_version 必须是整数"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if expected_int != instance.version:
+            return Response(
+                {
+                    "detail": "文档已被其他端修改",
+                    "code": "version_conflict",
+                    "current_version": instance.version,
+                    "document": DocumentSerializer(instance).data,
+                },
+                status=status.HTTP_409_CONFLICT,
+            )
+        return None
+
+    def _strip_expected_version(self, request) -> None:
+        mutable = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        mutable.pop("expected_version", None)
+        request._full_data = mutable
+
+    def update(self, request, *args, **kwargs):
+        """Optimistic-concurrency check on PATCH/PUT."""
+        instance = self.get_object()
+        conflict = self._expected_version_conflict(request, instance)
+        if conflict is not None:
+            return conflict
+        if isinstance(request.data, dict) and "expected_version" in request.data:
+            self._strip_expected_version(request)
         return super().update(request, *args, **kwargs)
 
     @action(detail=True, methods=["post"], url_path="publish")
@@ -173,9 +179,20 @@ class DocumentViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["patch"], url_path="published")
     def update_published(self, request, pk=None):
         doc = self.get_object()
-        serializer = DocumentPublishedContentSerializer(doc, data=request.data, partial=True)
+        conflict = self._expected_version_conflict(request, doc)
+        if conflict is not None:
+            return conflict
+        data = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
+        data.pop("expected_version", None)
+        serializer = DocumentPublishedContentSerializer(
+            doc,
+            data=data,
+            partial=True,
+            context=self.get_serializer_context(),
+        )
         serializer.is_valid(raise_exception=True)
-        serializer.save()
+        self.perform_update(serializer)
+        doc.refresh_from_db()
         return Response(DocumentSerializer(doc).data)
 
     @action(detail=True, methods=["get"], url_path="stats")

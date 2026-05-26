@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Tag, Tooltip } from 'antd';
 import { JzAiIcon } from '@/components/common/JzIcon';
 import { getCapabilities } from '@/api/ai';
+import { resolveAIModel } from '@/utils/aiModel';
 
 /**
  * Tiny status pill: "AI: Claude Opus 4.7". Lives in the AdminLayout header so
@@ -22,8 +23,7 @@ export function AIModelBadge() {
         if (cancelled) return;
         setConfigured(cap.configured);
         setEnabled(cap.enabled ?? true);
-        const userPick = localStorage.getItem('jz-ai-model') || '';
-        const id = userPick && cap.models.some((m) => m.id === userPick) ? userPick : cap.default_model;
+        const id = resolveAIModel(cap);
         const found = cap.models.find((m) => m.id === id);
         setLabel(found?.label || id);
       } catch {
@@ -32,12 +32,9 @@ export function AIModelBadge() {
     }
 
     void refresh();
-    // Refresh whenever any tab writes to `jz-ai-model`. Storage event only
-    // fires for OTHER tabs, so we also poll on focus to catch self-changes.
     const onStorage = () => void refresh();
     window.addEventListener('storage', onStorage);
     window.addEventListener('focus', onStorage);
-    // Custom event: AIAssistant fires this when the user picks a model
     window.addEventListener('jz-ai-model-changed', onStorage);
     return () => {
       cancelled = true;
@@ -67,7 +64,7 @@ export function AIModelBadge() {
     );
   }
   return (
-    <Tooltip title="当前使用的 AI 模型（在文档工具栏可切换）">
+    <Tooltip title="当前使用的 AI 模型（在 AI 助手页设置）">
       <Tag icon={<JzAiIcon size={12} />} color="blue" style={{ marginRight: 0 }}>
         {label || 'AI'}
       </Tag>

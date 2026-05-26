@@ -43,6 +43,7 @@ import {
   type AIModelOption,
 } from '@/api/ai';
 import { apiClient, formatApiError } from '@/api/client';
+import { resolveAIModel, writeAIModel, readAIModelFromStorage } from '@/utils/aiModel';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -210,14 +211,22 @@ export default function AIManagementPage() {
         </Row>
       </Card>
 
-      {tab === 'overview' && <OverviewSection cap={cap} settings={settings} usage={usage} />}
+      {tab === 'overview' && (
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <MyModelPreferenceSection cap={cap} />
+          <OverviewSection cap={cap} settings={settings} usage={usage} />
+        </Space>
+      )}
       {tab === 'models' && (
-        <ModelsSection
-          cap={cap}
-          settings={settings}
-          saving={saving}
-          onPatch={patchSettings}
-        />
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <MyModelPreferenceSection cap={cap} />
+          <ModelsSection
+            cap={cap}
+            settings={settings}
+            saving={saving}
+            onPatch={patchSettings}
+          />
+        </Space>
       )}
       {tab === 'usage' && (
         <UsageSection
@@ -235,6 +244,71 @@ export default function AIManagementPage() {
         />
       )}
     </Space>
+  );
+}
+
+/* ─── My model preference (localStorage, global for editor / selection AI) ─ */
+function MyModelPreferenceSection({ cap }: { cap: AICapabilities }) {
+  const [preferredId, setPreferredId] = useState(() => resolveAIModel(cap, readAIModelFromStorage()));
+
+  useEffect(() => {
+    const sync = () => setPreferredId(resolveAIModel(cap, readAIModelFromStorage()));
+    window.addEventListener('jz-ai-model-changed', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('jz-ai-model-changed', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, [cap]);
+
+  return (
+    <Card title="我的 AI 模型" size="small">
+      <Paragraph type="secondary" style={{ marginBottom: 12 }}>
+        此选择对编辑器工具栏、选区 AI、文档 AI 面板全局生效，保存在本浏览器。
+      </Paragraph>
+      <Row gutter={[16, 16]}>
+        {cap.models.map((m) => {
+          const active = preferredId === m.id;
+          return (
+            <Col xs={24} md={8} key={m.id}>
+              <Card
+                size="small"
+                hoverable
+                onClick={() => {
+                  writeAIModel(m.id);
+                  setPreferredId(m.id);
+                  message.success(`已切换为 ${m.label}`);
+                }}
+                className={'jz-model-card' + (active ? ' is-active' : '')}
+                style={{
+                  cursor: 'pointer',
+                  borderColor: active ? 'var(--jz-accent)' : undefined,
+                  background: active
+                    ? 'color-mix(in srgb, var(--jz-accent) 8%, var(--jz-surface))'
+                    : undefined,
+                }}
+              >
+                <Space direction="vertical" style={{ width: '100%' }} size={4}>
+                  <Space size={6}>
+                    <JzAiIcon
+                      size={16}
+                      style={{ color: active ? 'var(--jz-accent)' : 'var(--jz-text-muted)' }}
+                    />
+                    <Text strong style={{ fontSize: 15 }}>
+                      {m.label}
+                    </Text>
+                    {active && <Tag color="success">当前</Tag>}
+                  </Space>
+                  <Text type="secondary" style={{ fontSize: 12 }}>
+                    {m.hint}
+                  </Text>
+                </Space>
+              </Card>
+            </Col>
+          );
+        })}
+      </Row>
+    </Card>
   );
 }
 
@@ -349,7 +423,7 @@ function ModelsSection({
   return (
     <Card title="模型切换" size="small">
       <Paragraph type="secondary">
-        点击任意模型设为全局默认。普通用户仍可在编辑器工具栏临时切换并存储在 localStorage。
+        点击任意模型设为站点全局默认（后端配置）。个人偏好请在上方「我的 AI 模型」中选择。
       </Paragraph>
       <Row gutter={[16, 16]}>
         {cap.models.map((m) => {

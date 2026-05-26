@@ -10,7 +10,7 @@ from . import common
 
 
 def render_html(scope: ExportScope) -> str:
-    body = common.doc_html_body(scope)
+    body = common.rewrite_html_media(common.doc_html_body(scope))
     toc = _build_toc(scope) if len(scope.documents) > 1 else ""
     return common.HTML_SHELL.format(
         title=common._escape(scope.label),
@@ -53,9 +53,10 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     # and lose the author's original styling.
     if len(scope.documents) == 1:
         doc = scope.documents[0]
-        if detect_doc_format(doc) == "html" and (doc.raw_content or "").strip():
+        body = common.doc_export_body(doc)
+        if detect_doc_format(doc) == "html" and body.strip():
             path = common.reserve_export_path(".html")
-            common.write_text(path, doc.raw_content)
+            common.write_text(path, common.rewrite_html_media(body))
             return (
                 path,
                 f"{common.safe_slug(doc.title)}.html",

@@ -4,21 +4,17 @@ import { Result, Spin } from 'antd';
 import * as blogApi from '@/api/blog';
 import type { PublicPostDetail } from '@/types';
 import DocEditorPage from '@/pages/admin/DocEditorPage';
-import RequireSuperuser from '@/components/common/RequireSuperuser';
+import { RequireAuthKbManage } from '@/components/common/RequireKbManage';
 
-/** Route entry: auth gate + slug resolution + editor. */
+/** Route entry: auth + KB manage gate + slug resolution + editor. */
 export function PostEditRoute() {
   const { slug } = useParams<{ slug: string }>();
   const fallback = slug ? `/posts/${encodeURIComponent(slug)}` : '/';
-  return (
-    <RequireSuperuser fallback={fallback}>
-      <PostEditPage />
-    </RequireSuperuser>
-  );
+  return <PostEditPage fallback={fallback} />;
 }
 
 /** Resolves a public post slug and mounts the shared doc editor in blog shell. */
-function PostEditPage() {
+function PostEditPage({ fallback }: { fallback: string }) {
   const { slug } = useParams<{ slug: string }>();
   const [post, setPost] = useState<PublicPostDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
@@ -54,12 +50,14 @@ function PostEditPage() {
   const returnTo = `/posts/${encodeURIComponent(post.slug)}`;
 
   return (
-    <DocEditorPage
-      kbIdOverride={post.knowledge_base.id}
-      docIdOverride={post.id}
-      returnToOverride={returnTo}
-      shell="blog"
-    />
+    <RequireAuthKbManage kbSlug={post.knowledge_base.slug} fallback={fallback}>
+      <DocEditorPage
+        kbIdOverride={post.knowledge_base.id}
+        docIdOverride={post.id}
+        returnToOverride={returnTo}
+        shell="blog"
+      />
+    </RequireAuthKbManage>
   );
 }
 

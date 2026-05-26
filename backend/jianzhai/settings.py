@@ -175,6 +175,9 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "media/"
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media")).resolve()
 
+# Public blog URL for static-site export RSS (and similar absolute links).
+SITE_PUBLIC_URL = os.environ.get("SITE_PUBLIC_URL", "http://localhost:3001")
+
 # Upload limits (matches non-functional requirements: 50MB)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
 FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024

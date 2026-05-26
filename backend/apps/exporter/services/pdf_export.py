@@ -36,7 +36,7 @@ def _render_pdf(html: str) -> bytes:
         browser = pw.chromium.launch(args=["--no-sandbox"])
         try:
             page = browser.new_page()
-            page.set_content(html, wait_until="networkidle")
+            page.set_content(html, wait_until="load")
             return page.pdf(
                 format="A4",
                 margin={"top": "20mm", "bottom": "20mm", "left": "16mm", "right": "16mm"},

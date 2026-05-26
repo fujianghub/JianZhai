@@ -43,7 +43,20 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     """Return (path, filename, mime_type)."""
     if len(scope.documents) == 1:
         doc = scope.documents[0]
-        text = f"# {doc.title}\n\n{doc.raw_content or ''}\n"
+        body = common.doc_export_body(doc)
+        text = f"# {doc.title}\n\n{body}\n"
+        media = common.collect_markdown_media(text)
+        if media:
+            data = common.make_zip(
+                [("content.md", text.encode("utf-8")), *media]
+            )
+            path = common.reserve_export_path(".zip")
+            common.write_bytes(path, data)
+            return (
+                path,
+                f"{common.safe_slug(doc.title)}-markdown.zip",
+                "application/zip",
+            )
         path = common.reserve_export_path(".md")
         common.write_text(path, text)
         return path, f"{common.safe_slug(doc.title)}.md", "text/markdown; charset=utf-8"
@@ -51,6 +64,8 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     entries: list[tuple[str, bytes]] = []
     used_names: set[str] = set()
     folder_cache: dict[int, list[str]] = {}
+    asset_entries: list[tuple[str, bytes]] = []
+    asset_names: set[str] = set()
     for doc in scope.documents:
         rel = _doc_relative_path(doc, folder_cache)
         name = rel
@@ -60,13 +75,21 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
                 stem = name[:-3]
                 name = f"{stem}-{i}.md"
             else:
-                name = f"{rel}-{i}"
+                name = f"{rel}-{i}.md"
             i += 1
         used_names.add(name)
-        text = f"# {doc.title}\n\n{doc.raw_content or ''}\n"
+        body = common.doc_export_body(doc)
+        text = f"# {doc.title}\n\n{body}\n"
+        text = common.rewrite_markdown_media_paths(text)
         entries.append((name, text.encode("utf-8")))
+        for asset_name, asset_data in common.collect_markdown_media(
+            common.doc_export_body(doc)
+        ):
+            if asset_name not in asset_names:
+                asset_names.add(asset_name)
+                asset_entries.append((asset_name, asset_data))
 
-    data = common.make_zip(entries)
+    data = common.make_zip([*entries, *asset_entries])
     path = common.reserve_export_path(".zip")
     common.write_bytes(path, data)
     return path, f"{common.safe_slug(scope.label)}-markdown.zip", "application/zip"

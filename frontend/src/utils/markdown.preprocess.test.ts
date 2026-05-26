@@ -222,6 +222,29 @@ describe('fence awareness', () => {
   });
 });
 
+describe('editor markdown gold samples', () => {
+  it('preserves callout container syntax', () => {
+    const src = ':::info\nNote body\n:::';
+    const out = preprocessMarkdown(src);
+    expect(out).toContain(':::info');
+    expect(out).toContain('Note body');
+  });
+
+  it('preserves details block syntax', () => {
+    const src = ':::details Summary\n\nInner\n:::';
+    const out = preprocessMarkdown(src);
+    expect(out).toContain(':::details');
+    expect(out).toContain('Summary');
+  });
+
+  it('preserves GFM task list markers', () => {
+    const src = '- [ ] todo\n- [x] done';
+    const out = preprocessMarkdown(src);
+    expect(out).toContain('[ ]');
+    expect(out).toContain('[x]');
+  });
+});
+
 describe('convertGfmPipeTables short-circuit', () => {
   it('returns input unchanged when no pipe lines present', () => {
     const src = 'plain text with no tables\nstill plain';

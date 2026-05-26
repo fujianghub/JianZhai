@@ -3,6 +3,7 @@ import { Alert, Button, Input, Space, Tag, Tooltip, Typography } from 'antd';
 import { ReloadOutlined, SaveOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import { uploadFile } from '@/api/attachments';
+import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -24,6 +25,9 @@ interface Props {
   legacyAttachmentUrl?: string | null;
   /** Lift the textarea up so host can scroll/seek it (find / outline). */
   onTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  onSaveReady?: (handle: EditorSaveHandle | null) => void;
+  /** When false, only the source textarea is shown (page-level preview). */
+  showPreviewPane?: boolean;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
@@ -66,6 +70,8 @@ export default function HtmlEditor({
   documentId,
   legacyAttachmentUrl,
   onTextareaReady,
+  onSaveReady,
+  showPreviewPane = true,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [encoding, setEncoding] = useState<'utf-8' | 'gbk' | null>(null);
@@ -78,6 +84,14 @@ export default function HtmlEditor({
   /** Save sequence guard to keep stale completions from overwriting state. */
   const saveSeqRef = useRef(0);
   const timerRef = useRef<number | null>(null);
+  const onAutoSaveRef = useRef(onAutoSave);
+  const onChangeRef = useRef(onChangeProp);
+  useEffect(() => {
+    onAutoSaveRef.current = onAutoSave;
+  }, [onAutoSave]);
+  useEffect(() => {
+    onChangeRef.current = onChangeProp;
+  }, [onChangeProp]);
 
   // Wrap onChange so local edits update lastLocalRef. External value updates
   // (legacy hydration completes after user typed) are then distinguishable.
@@ -187,6 +201,32 @@ export default function HtmlEditor({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [saveNow, readOnly, onAutoSave]);
+
+  useEffect(() => {
+    onSaveReady?.({ saveNow });
+    return () => onSaveReady?.(null);
+  }, [saveNow, onSaveReady]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      flushOnUnmount({
+        getLiveContent: () => lastLocalRef.current,
+        lastSaved: lastSavedRef.current,
+        onChange: (next) => {
+          lastLocalRef.current = next;
+          onChangeRef.current(next);
+        },
+        onAutoSave: onAutoSaveRef.current,
+        saveSeqRef,
+        lastSavedRef,
+        lastEmittedRef: lastLocalRef,
+      });
+    };
+  }, []);
 
   /** Re-fetch the legacy attachment with the OTHER encoding so the user can
    *  recover if our heuristic guessed wrong. */
@@ -328,6 +368,11 @@ export default function HtmlEditor({
             保存
           </Button>
         </Tooltip>
+        {status === 'error' && onAutoSave && !readOnly && (
+          <Button size="small" onClick={() => void saveNow()}>
+            重试
+          </Button>
+        )}
         {legacyAttachmentUrl && (
           <>
             <Tooltip title="按 UTF-8 重新读取原 HTML">
@@ -367,7 +412,7 @@ export default function HtmlEditor({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
+          gridTemplateColumns: showPreviewPane ? '1fr 1fr' : '1fr',
           gap: 12,
           flex: 1,
           minHeight: 0,
@@ -396,22 +441,20 @@ export default function HtmlEditor({
           placeholder="<!DOCTYPE html>&#10;<html>&#10;<head><meta charset='utf-8'></head>&#10;<body>&#10;  ...&#10;</body>&#10;</html>"
           spellCheck={false}
         />
-        {/* sandbox=allow-scripts lets the iframe's own <script> run for true
-            preview fidelity; we deliberately omit allow-same-origin so scripts
-            can't touch our cookie/DOM. allow-popups + allow-forms preserve
-            common interactive HTML behavior. */}
-        <iframe
-          title="HTML 预览"
-          srcDoc={previewSrcdoc}
-          sandbox="allow-scripts allow-popups allow-forms"
-          style={{
-            width: '100%',
-            height: '100%',
-            border: '1px solid var(--jz-border)',
-            borderRadius: 6,
-            background: '#fff',
-          }}
-        />
+        {showPreviewPane && (
+          <iframe
+            title="HTML 预览"
+            srcDoc={previewSrcdoc}
+            sandbox="allow-scripts allow-popups allow-forms"
+            style={{
+              width: '100%',
+              height: '100%',
+              border: '1px solid var(--jz-border)',
+              borderRadius: 6,
+              background: '#fff',
+            }}
+          />
+        )}
       </div>
     </div>
   );

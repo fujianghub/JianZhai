@@ -16,8 +16,9 @@ import { TextStyle } from '@tiptap/extension-text-style';
 import { Color } from '@tiptap/extension-color';
 import { Superscript } from '@tiptap/extension-superscript';
 import { Subscript } from '@tiptap/extension-subscript';
+import Highlight from '@tiptap/extension-highlight';
 import { FontFamily } from '@tiptap/extension-font-family';
-import { FontSize, FONT_SIZE_PRESETS, FONT_FAMILY_PRESETS } from './FontSize';
+import { FontSize, FONT_FAMILY_PRESETS } from './FontSize';
 import { Indent } from './Indent';
 import TextAlign from '@tiptap/extension-text-align';
 import CodeBlockLowlight from '@tiptap/extension-code-block-lowlight';
@@ -50,15 +51,14 @@ import {
   CheckSquareOutlined,
   CodeOutlined,
   CommentOutlined,
+  ClearOutlined,
   FormatPainterOutlined,
-  HighlightOutlined,
   ExpandOutlined,
   CompressOutlined,
   ItalicOutlined,
   LineOutlined,
   LinkOutlined,
   OrderedListOutlined,
-  PictureOutlined,
   RedoOutlined,
   SaveOutlined,
   StrikethroughOutlined,
@@ -66,22 +66,31 @@ import {
   UnderlineOutlined,
   UndoOutlined,
   UnorderedListOutlined,
-  VideoCameraOutlined,
 } from '@ant-design/icons';
 import { SlashCommand } from './slashCommand';
 import { FindReplace } from './findReplace';
 import MentionPicker from './MentionPicker';
+import type { Editor } from '@tiptap/core';
 import type { MentionSuggestion } from '@/api/linking';
 import { wordCount, preprocessMarkdown } from '@/utils/markdown';
+import { flushOnUnmount } from './editorSaveLifecycle';
 import { escapeFenceAttr, parseCodeFenceInfo, serializeCodeFenceInfo } from '@/utils/codeFenceMeta';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
 import { useDocLinkHoverCards, DocHoverCard } from '@/components/common/DocHoverCard';
 import { BlockHoverMenu } from './BlockHoverMenu';
-import { AIAssistantMenu } from './AIAssistant';
+import { AIAssistantMenu, triggerAIGenerateFromEditor } from './AIAssistant';
+import AIPromptInline from './ai/AIPromptInline';
+import { setInsertMenuActions, type InsertMenuActions } from './insertMenuActions';
+import QuickInsertButton from './toolbar/QuickInsertButton';
 import { paperClassName } from '@/utils/paper';
 import DocumentOutline from './DocumentOutline';
 import { CloseOutlined } from '@ant-design/icons';
+import HeadingBlockDropdown from './toolbar/HeadingBlockDropdown';
+import MoreMarksDropdown from './toolbar/MoreMarksDropdown';
+import FontSizeDropdown from './toolbar/FontSizeDropdown';
+import HighlightColorDropdown from './toolbar/HighlightColorDropdown';
+import { applyHeadingBlock, type HeadingLevel } from './toolbar/headingBlock';
 
 const { Text } = Typography;
 
@@ -141,6 +150,7 @@ interface Props {
   /** Debounced autosave; called only when changes stabilize. */
   onAutoSave?: (next: string) => Promise<void> | void;
   autosaveMs?: number;
+  readOnly?: boolean;
   /** Document this editor is editing. Used to attach pasted/dropped images
    *  to the right document on upload. */
   documentId?: number;
@@ -150,6 +160,9 @@ interface Props {
   /** Paper-background preset key (see utils/paper.ts). Applied to the editor
    *  shell so the writer sees what the reader will see. */
   paperStyle?: string;
+  /** Bump to force external value sync (e.g. 409 conflict) even when focused. */
+  forceSyncRevision?: number;
+  onSaveReady?: (handle: import('./editorSaveLifecycle').EditorSaveHandle | null) => void;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
@@ -159,9 +172,12 @@ export default function RichTextEditor({
   onChange,
   onAutoSave,
   autosaveMs = 5000,
+  readOnly = false,
   documentId,
   onEditorReady,
   paperStyle,
+  forceSyncRevision = 0,
+  onSaveReady,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [mentionOpen, setMentionOpen] = useState(false);
@@ -169,8 +185,9 @@ export default function RichTextEditor({
   useEffect(() => {
     setMentionOpenRef.current = setMentionOpen;
   }, []);
-  const [uploading, setUploading] = useState(false);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
+  const attachmentFileInputRef = useRef<HTMLInputElement | null>(null);
+  const [, setUploading] = useState(false);
   const lastSavedRef = useRef(value);
   /** Last markdown emitted via onChange (live editor view). Used to detect
    *  whether prop `value` is a server echo or an out-of-band external update. */
@@ -199,12 +216,20 @@ export default function RichTextEditor({
     onAutoSaveRef.current = onAutoSave;
   }, [onAutoSave]);
 
+  const editorInstanceRef = useRef<Editor | null>(null);
+
   const editor = useEditor({
+    editable: !readOnly,
     extensions: [
       // Link / Underline are bundled into StarterKit ≥ 3.x — disable the
       // bundled versions so our standalone Link/Underline imports don't
       // collide ("Duplicate extension names" warning).
-      StarterKit.configure({ codeBlock: false, link: false, underline: false }),
+      StarterKit.configure({
+        codeBlock: false,
+        link: false,
+        underline: false,
+        heading: { levels: [1, 2, 3, 4, 5, 6] },
+      }),
       CodeBlockLowlight.extend({
         addAttributes() {
           return {
@@ -301,6 +326,7 @@ export default function RichTextEditor({
       Underline,
       TextStyle,
       ExtendedColor,
+      Highlight.configure({ multicolor: true }),
       Superscript,
       Subscript,
       FontFamily.configure({ types: ['textStyle'] }),
@@ -352,12 +378,39 @@ export default function RichTextEditor({
           setMentionOpenRef.current(true);
           return true;
         }
+        const ed = editorInstanceRef.current;
+        if (!ed) return false;
+        const mod = event.metaKey || event.ctrlKey;
+        if (mod && !event.shiftKey && (event.key === 'e' || event.key === 'E')) {
+          event.preventDefault();
+          ed.chain().focus().toggleCode().run();
+          return true;
+        }
+        if (mod && !event.shiftKey && event.key === '/') {
+          event.preventDefault();
+          ed.chain().focus().insertContent('/').run();
+          return true;
+        }
+        const alt = event.altKey;
+        if (alt && mod) {
+          const digit = event.key;
+          if (digit >= '0' && digit <= '6') {
+            event.preventDefault();
+            if (digit === '0') applyHeadingBlock(ed, 'paragraph');
+            else applyHeadingBlock(ed, Number(digit) as HeadingLevel);
+            return true;
+          }
+        }
         return false;
       },
     },
     // tiptap-markdown registers a parser that recognizes Markdown when `content` is a string.
     content: preprocessMarkdown(value || ''),
+    onCreate: ({ editor: ed }) => {
+      editorInstanceRef.current = ed;
+    },
     onUpdate: ({ editor }) => {
+      editorInstanceRef.current = editor;
       if (onChangeTimerRef.current) window.clearTimeout(onChangeTimerRef.current);
       onChangeTimerRef.current = window.setTimeout(() => {
         const md: string = editor.storage.markdown?.getMarkdown?.() ?? '';
@@ -374,42 +427,33 @@ export default function RichTextEditor({
     editorRef.current = editor;
   }, [editor]);
 
-  // Flush pending onChange debounce + fire-and-forget autosave on unmount
-  // (mode switch, doc nav). Without this, recent edits or pending autosave
-  // can be silently dropped.
+  // Flush pending onChange debounce + fire-and-forget autosave on unmount.
   useEffect(() => {
     return () => {
-      const ed = editorRef.current;
-      let liveMd = '';
-
       if (onChangeTimerRef.current) {
         window.clearTimeout(onChangeTimerRef.current);
         onChangeTimerRef.current = null;
       }
-      if (ed) {
-        liveMd = ed.storage.markdown?.getMarkdown?.() ?? '';
-        if (liveMd !== lastEmittedRef.current) {
-          lastEmittedRef.current = liveMd;
-          onChangeRef.current(liveMd);
-        }
-      }
-
       if (timerRef.current) {
         window.clearTimeout(timerRef.current);
         timerRef.current = null;
       }
-
-      const autoSave = onAutoSaveRef.current;
-      if (autoSave && ed && liveMd !== lastSavedRef.current) {
-        const mySeq = ++saveSeqRef.current;
-        void Promise.resolve(autoSave(liveMd)).catch(() => {
-          /* unmount — swallow */
-        }).finally(() => {
-          if (mySeq === saveSeqRef.current) {
-            lastSavedRef.current = liveMd;
-          }
-        });
-      }
+      flushOnUnmount({
+        getLiveContent: () => {
+          const e = editorRef.current;
+          return e?.storage.markdown?.getMarkdown?.() ?? lastEmittedRef.current;
+        },
+        lastSaved: lastSavedRef.current,
+        lastEmitted: lastEmittedRef.current,
+        onChange: (md) => {
+          lastEmittedRef.current = md;
+          onChangeRef.current(md);
+        },
+        onAutoSave: onAutoSaveRef.current,
+        saveSeqRef,
+        lastSavedRef,
+        lastEmittedRef,
+      });
     };
   }, []);
 
@@ -419,6 +463,11 @@ export default function RichTextEditor({
     onEditorReady(editor ?? null);
     return () => onEditorReady(null);
   }, [editor, onEditorReady]);
+
+  useEffect(() => {
+    if (!editor) return;
+    editor.setEditable(!readOnly);
+  }, [editor, readOnly]);
 
   // Sync external value (409 conflict reload, version restore). Guarded so
   // we never overwrite local edits that are still inside the 200ms debounce.
@@ -431,17 +480,19 @@ export default function RichTextEditor({
       lastEmittedRef.current = value;
       return;
     }
-    if (editor.isFocused) return;
-    // If a debounce timer is still scheduled, local edits are pending —
-    // don't clobber them with the older `value` from props.
-    if (onChangeTimerRef.current) return;
-    // If the editor's content is newer than the prop, treat as local dirty.
-    if (current !== lastEmittedRef.current) return;
+    if (forceSyncRevision === 0) {
+      if (editor.isFocused) return;
+      if (onChangeTimerRef.current) return;
+      if (current !== lastEmittedRef.current) return;
+    } else if (onChangeTimerRef.current) {
+      window.clearTimeout(onChangeTimerRef.current);
+      onChangeTimerRef.current = null;
+    }
     editor.commands.setContent(preprocessMarkdown(value), { emitUpdate: false });
     lastSavedRef.current = value;
     lastEmittedRef.current = value;
     setStatus('idle');
-  }, [editor, value]);
+  }, [editor, value, forceSyncRevision]);
 
   // Autosave — read LIVE markdown from the editor so saves don't lag the
   // 200ms onChange debounce.
@@ -516,6 +567,11 @@ export default function RichTextEditor({
     return () => window.removeEventListener('keydown', onKey);
   }, [saveNow, onAutoSave]);
 
+  useEffect(() => {
+    onSaveReady?.({ saveNow });
+    return () => onSaveReady?.(null);
+  }, [saveNow, onSaveReady]);
+
   const openLinkPopover = useCallback(() => {
     if (!editor) return;
     const attrs = editor.getAttributes('link');
@@ -552,15 +608,12 @@ export default function RichTextEditor({
   // ── 图片上传按钮 ──────────────────────────────────────────────────
   async function handleImageFile(file: File) {
     if (!editor) return;
-    setUploading(true);
     try {
       const att = await uploadFile(file, documentId);
       // setImage is provided by the Image extension; ResizableImage inherits it
       editor.chain().focus().setImage({ src: att.url, alt: att.original_filename }).run();
     } catch (err) {
       message.error(err instanceof Error ? err.message : '图片上传失败');
-    } finally {
-      setUploading(false);
     }
   }
   function handleImageInputChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -569,7 +622,48 @@ export default function RichTextEditor({
     if (file) void handleImageFile(file);
   }
 
+  async function handleAttachmentFile(file: File) {
+    if (!editor) return;
+    try {
+      const att = await uploadFile(file, documentId);
+      const label = att.original_filename || '附件';
+      editor
+        .chain()
+        .focus()
+        .insertContent(`[${label}](${att.url})`)
+        .run();
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : '附件上传失败');
+    }
+  }
+
+  function handleAttachmentInputChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (file) void handleAttachmentFile(file);
+  }
+
+  const insertMenuActions: InsertMenuActions = useMemo(
+    () => ({
+      pickImage: () => imageFileInputRef.current?.click(),
+      pickAttachment: () => attachmentFileInputRef.current?.click(),
+      openMention: () => setMentionOpen(true),
+      openEmoji: () => {
+        editor?.chain().focus().insertContent(':').run();
+      },
+      openAI: () => setAiPromptOpen(true),
+    }),
+    [editor, value]
+  );
+
+  useEffect(() => {
+    setInsertMenuActions(insertMenuActions);
+    return () => setInsertMenuActions(null);
+  }, [insertMenuActions]);
+
   // ── 行内批注 ──────────────────────────────────────────────────────
+  const [aiPromptOpen, setAiPromptOpen] = useState(false);
+
   const [annotationModalOpen, setAnnotationModalOpen] = useState(false);
   const [annotationInput, setAnnotationInput] = useState('');
   const [annotationEditMode, setAnnotationEditMode] = useState(false);
@@ -606,15 +700,6 @@ export default function RichTextEditor({
     if (!editor) return;
     editor.chain().focus().unsetMark('annotation').run();
     setAnnotationModalOpen(false);
-  }
-
-  // ── 视频嵌入 ──────────────────────────────────────────────────────
-  function insertVideoEmbed() {
-    if (!editor) return;
-    editor.chain().focus().insertContent({
-      type: 'videoEmbed',
-      attrs: { src: '', platform: 'other', videoId: '', title: '' },
-    }).run();
   }
 
   // ── 格式刷 ────────────────────────────────────────────────────────
@@ -811,78 +896,100 @@ export default function RichTextEditor({
         </>
       )}
       <div className="jz-editor-toolbar" role="toolbar" aria-label="编辑器工具栏">
-        {/* status + word count + manual save */}
-        <Tag color={statusLabel[status].color} style={{ margin: 0 }}>
-          {statusLabel[status].text}
-        </Tag>
-        <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
-        <Tooltip title="立即保存 (Ctrl/⌘+S)">
-          <Button
-            size="small"
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={status === 'saving'}
-            disabled={!onAutoSave || (status === 'saved' && liveMd === lastSavedRef.current)}
-            onClick={() => void saveNow()}
-          >
-            保存
-          </Button>
-        </Tooltip>
+        <div className="jz-editor-toolbar-meta">
+          <Tag color={statusLabel[status].color} style={{ margin: 0 }}>
+            {statusLabel[status].text}
+          </Tag>
+          <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
+          <Tooltip title="立即保存 (Ctrl/⌘+S)">
+            <Button
+              size="small"
+              className="jz-toolbar-save-btn"
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={status === 'saving'}
+              disabled={
+                readOnly ||
+                !onAutoSave ||
+                (status === 'saved' && liveMd === lastSavedRef.current)
+              }
+              onClick={() => void saveNow()}
+            >
+              保存
+            </Button>
+          </Tooltip>
+          {status === 'error' && onAutoSave && !readOnly && (
+            <Button size="small" className="jz-toolbar-save-btn" onClick={() => void saveNow()}>
+              重试
+            </Button>
+          )}
+        </div>
+
+        <div className="jz-editor-toolbar-main">
+        <QuickInsertButton editor={editor} actions={insertMenuActions} disabled={readOnly} />
         <span className="jz-editor-toolbar-divider" aria-hidden />
 
-        {/* History */}
+        <span className="jz-toolbar-group">
         <Space.Compact>
           <Tooltip title="撤销 (Ctrl+Z)">
-            <Button size="small" icon={<UndoOutlined />} onClick={() => editor.chain().focus().undo().run()} />
+            <Button size="small" className="jz-toolbar-icon-btn" icon={<UndoOutlined />} onClick={() => editor.chain().focus().undo().run()} />
           </Tooltip>
           <Tooltip title="重做 (Ctrl+Shift+Z)">
-            <Button size="small" icon={<RedoOutlined />} onClick={() => editor.chain().focus().redo().run()} />
+            <Button size="small" className="jz-toolbar-icon-btn" icon={<RedoOutlined />} onClick={() => editor.chain().focus().redo().run()} />
+          </Tooltip>
+          <Tooltip
+            title={
+              painterPersist
+                ? '持续模式（点击取消）'
+                : painterArmed
+                  ? '已就绪：双击进入持续模式；再次点击取消'
+                  : '单击一次性套用；双击持续套用'
+            }
+          >
+            <Button
+              size="small"
+              className="jz-toolbar-icon-btn"
+              type={painterArmed ? 'primary' : 'default'}
+              style={
+                painterPersist
+                  ? { background: '#d46b08', borderColor: '#d46b08', color: '#fff' }
+                  : undefined
+              }
+              icon={<FormatPainterOutlined />}
+              onClick={togglePainter}
+              aria-pressed={painterArmed}
+            />
+          </Tooltip>
+          <Tooltip title="清除格式">
+            <Button
+              size="small"
+              className="jz-toolbar-icon-btn"
+              icon={<ClearOutlined />}
+              onClick={() => editor.chain().focus().unsetAllMarks().clearNodes().run()}
+            />
           </Tooltip>
         </Space.Compact>
+        </span>
+        <AIAssistantMenu
+          editor={editor}
+          fallbackContent={() => editor?.storage.markdown?.getMarkdown?.() ?? value}
+        />
         <span className="jz-editor-toolbar-divider" aria-hidden />
 
-        {/* Heading levels */}
-        <Space.Compact>
-          {([1, 2, 3] as const).map((level) => (
-            <Tooltip key={level} title={`${level} 级标题`}>
-              <Button
-                size="small"
-                type={editor.isActive('heading', { level }) ? 'primary' : 'default'}
-                onClick={() => editor.chain().focus().toggleHeading({ level }).run()}
-              >
-                H{level}
-              </Button>
-            </Tooltip>
-          ))}
-        </Space.Compact>
+        <HeadingBlockDropdown editor={editor} />
+        <FontSizeDropdown editor={editor} />
         <span className="jz-editor-toolbar-divider" aria-hidden />
 
-        {/* Inline marks */}
+        <span className="jz-toolbar-group">
         <Space.Compact>
           <ToolbarBtn editor={editor} mark="bold" icon={<BoldOutlined />} title="加粗 (Ctrl+B)" />
           <ToolbarBtn editor={editor} mark="italic" icon={<ItalicOutlined />} title="斜体 (Ctrl+I)" />
           <ToolbarBtn editor={editor} mark="underline" icon={<UnderlineOutlined />} title="下划线 (Ctrl+U)" />
           <ToolbarBtn editor={editor} mark="strike" icon={<StrikethroughOutlined />} title="删除线" />
-          <ToolbarBtn editor={editor} mark="code" icon={<CodeOutlined />} title="行内代码" />
-          <Tooltip title="上标 (Ctrl+.)">
-            <Button
-              size="small"
-              type={editor.isActive('superscript') ? 'primary' : 'default'}
-              onClick={() => editor.chain().focus().toggleSuperscript().run()}
-            >
-              X²
-            </Button>
-          </Tooltip>
-          <Tooltip title="下标 (Ctrl+,)">
-            <Button
-              size="small"
-              type={editor.isActive('subscript') ? 'primary' : 'default'}
-              onClick={() => editor.chain().focus().toggleSubscript().run()}
-            >
-              X₂
-            </Button>
-          </Tooltip>
         </Space.Compact>
+        </span>
+        <MoreMarksDropdown editor={editor} />
+        <span className="jz-editor-toolbar-divider" aria-hidden />
 
         {/* Text colour picker */}
         <Dropdown
@@ -912,12 +1019,13 @@ export default function RichTextEditor({
           }}
         >
           <Tooltip title="文字颜色">
-            <Button size="small" icon={<BgColorsOutlined />} />
+            <Button size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} />
           </Tooltip>
         </Dropdown>
+        <HighlightColorDropdown editor={editor} />
         <span className="jz-editor-toolbar-divider" aria-hidden />
 
-        {/* Lists + quote */}
+        <span className="jz-toolbar-group">
         <Space.Compact>
           <ToolbarBtn
             editor={editor}
@@ -943,16 +1051,15 @@ export default function RichTextEditor({
           <Tooltip title="引用">
             <Button
               size="small"
-              type={editor.isActive('blockquote') ? 'primary' : 'default'}
+              className={'jz-toolbar-icon-btn' + (editor.isActive('blockquote') ? ' is-active' : '')}
               icon={<span style={{ fontSize: 13 }}>❝</span>}
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
             />
           </Tooltip>
         </Space.Compact>
+        </span>
         <span className="jz-editor-toolbar-divider" aria-hidden />
 
-
-        {/* Insert group */}
         <Popover
           open={linkPopoverOpen}
           onOpenChange={(v) => { if (!v) setLinkPopoverOpen(false); }}
@@ -990,8 +1097,8 @@ export default function RichTextEditor({
           <Tooltip title="链接 (Ctrl+K)">
             <Button
               size="small"
+              className={'jz-toolbar-icon-btn' + (editor.isActive('link') ? ' is-active' : '')}
               icon={<LinkOutlined />}
-              type={editor.isActive('link') ? 'primary' : 'default'}
               onClick={openLinkPopover}
             />
           </Tooltip>
@@ -999,7 +1106,7 @@ export default function RichTextEditor({
         <Tooltip title="代码块">
           <Button
             size="small"
-            type={editor.isActive('codeBlock') ? 'primary' : 'default'}
+            className={'jz-toolbar-icon-btn' + (editor.isActive('codeBlock') ? ' is-active' : '')}
             icon={<CodeOutlined />}
             onClick={() => editor.chain().focus().toggleCodeBlock().run()}
           />
@@ -1007,55 +1114,20 @@ export default function RichTextEditor({
         <Tooltip title="表格 3×3">
           <Button
             size="small"
+            className="jz-toolbar-icon-btn"
             icon={<TableOutlined />}
             onClick={() =>
               editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
             }
           />
         </Tooltip>
-        <Tooltip title="分割线（梅花纹）">
+        <Tooltip title="分割线">
           <Button
             size="small"
+            className="jz-toolbar-icon-btn"
             icon={<LineOutlined />}
             onClick={() => editor.chain().focus().setHorizontalRule().run()}
           />
-        </Tooltip>
-        <Dropdown
-          menu={{
-            items: CALLOUT_TEMPLATES.map((c) => ({
-              key: c.slug,
-              label: (
-                <span>
-                  <span style={{ display: 'inline-block', minWidth: 100 }}>{c.label}</span>
-                  <span style={{ fontSize: 12, opacity: 0.55, marginLeft: 8 }}>{c.hint}</span>
-                </span>
-              ),
-              onClick: () => editor.chain().focus().setCallout({ kind: c.slug }).run(),
-            })),
-          }}
-        >
-          <Tooltip title="插入色块">
-            <Button size="small" icon={<CommentOutlined />}>
-              色块 ▾
-            </Button>
-          </Tooltip>
-        </Dropdown>
-        <Tooltip title="插入文档引用 (键入 @ 也可触发)">
-          <Button size="small" icon={<LinkOutlined />} onClick={() => setMentionOpen(true)}>
-            @ 引用
-          </Button>
-        </Tooltip>
-
-        {/* 图片：点击选文件；也可直接 Ctrl+V 粘贴 / 拖入 */}
-        <Tooltip title="插入图片（也可直接粘贴 / 拖拽）">
-          <Button
-            size="small"
-            icon={<PictureOutlined />}
-            loading={uploading}
-            onClick={() => imageFileInputRef.current?.click()}
-          >
-            图片
-          </Button>
         </Tooltip>
         <input
           ref={imageFileInputRef}
@@ -1064,20 +1136,18 @@ export default function RichTextEditor({
           style={{ display: 'none' }}
           onChange={handleImageInputChange}
         />
-        <Tooltip title="嵌入视频（Bilibili / YouTube）">
-          <Button size="small" icon={<VideoCameraOutlined />} onClick={insertVideoEmbed}>
-            视频
-          </Button>
-        </Tooltip>
-
-        <span style={{ marginLeft: 'auto' }} />
-        <AIAssistantMenu
-          editor={editor}
-          fallbackContent={() => editor?.storage.markdown?.getMarkdown?.() ?? value}
+        <input
+          ref={attachmentFileInputRef}
+          type="file"
+          style={{ display: 'none' }}
+          onChange={handleAttachmentInputChange}
         />
+
+        <span className="jz-editor-toolbar-divider" aria-hidden />
         <Tooltip title={fullscreen ? '退出全屏 (Esc)' : '全屏 / 沉浸模式'}>
           <Button
             size="small"
+            className="jz-toolbar-icon-btn"
             icon={fullscreen ? <CompressOutlined /> : <ExpandOutlined />}
             onClick={() => setFullscreen((v) => !v)}
           />
@@ -1087,22 +1157,6 @@ export default function RichTextEditor({
           trigger="click"
           content={
             <div style={{ minWidth: 200 }}>
-              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>字号</div>
-              <div style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {FONT_SIZE_PRESETS.map((s) => (
-                  <Button
-                    key={s.value}
-                    size="small"
-                    type={editor.isActive('textStyle', { fontSize: s.value }) ? 'primary' : 'default'}
-                    onClick={() => editor.chain().focus().setFontSize(s.value).run()}
-                  >
-                    {s.label}
-                  </Button>
-                ))}
-                <Button size="small" onClick={() => editor.chain().focus().unsetFontSize().run()}>
-                  默认
-                </Button>
-              </div>
               <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>字体</div>
               <div style={{ marginBottom: 12 }}>
                 <Dropdown
@@ -1156,30 +1210,39 @@ export default function RichTextEditor({
                   <Button size="small" onClick={() => editor.commands.indent()}>增加 →</Button>
                 </Tooltip>
               </Space.Compact>
-              <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>格式刷</div>
-              <div style={{ marginBottom: 12 }}>
-                <Tooltip title={painterPersist ? '持续模式（点击取消）' : painterArmed ? '已就绪：双击进入持续模式；再次点击取消' : '单击一次性套用；双击持续套用'}>
-                  <Button
-                    size="small"
-                    type={painterArmed ? 'primary' : 'default'}
-                    style={painterPersist ? { background: '#d46b08', borderColor: '#d46b08', color: '#fff' } : undefined}
-                    icon={<FormatPainterOutlined />}
-                    onClick={togglePainter}
-                    aria-pressed={painterArmed}
-                  >
-                    格式刷
-                  </Button>
-                </Tooltip>
-              </div>
               <div style={{ borderTop: '1px solid var(--jz-border)', paddingTop: 8 }}>
                 <MarkdownShortcutsHelp />
               </div>
             </div>
           }
         >
-          <Button size="small">更多 ▾</Button>
+          <Button size="small" className="jz-toolbar-icon-btn">更多 ▾</Button>
         </Popover>
+        </div>
       </div>
+
+      {aiPromptOpen && editor && (
+        <div className="jz-ai-panel-overlay" onClick={() => setAiPromptOpen(false)}>
+          <div className="jz-ai-panel" style={{ width: 'min(400px, 100%)' }} onClick={(e) => e.stopPropagation()}>
+            <div className="jz-ai-panel-header">
+              <span className="jz-ai-panel-title">AI 生成段落</span>
+              <button type="button" className="jz-ai-panel-close" onClick={() => setAiPromptOpen(false)}>
+                ×
+              </button>
+            </div>
+            <div style={{ padding: 16 }}>
+              <AIPromptInline
+                open
+                onClose={() => setAiPromptOpen(false)}
+                onSubmit={(p) => {
+                  void triggerAIGenerateFromEditor(editor, p);
+                  setAiPromptOpen(false);
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
       <div
         ref={editorShellRef}
         className={`tiptap-shell paper ${paperClassName(paperStyle)}`}
@@ -1427,24 +1490,9 @@ export default function RichTextEditor({
             >
               <LinkOutlined />
             </button>
-            <button
-              type="button"
-              className={'jz-bubble-btn' + (editor.isActive('heading', { level: 2 }) ? ' is-active' : '')}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
-              title="二级标题"
-              aria-label="二级标题"
-            >
-              H2
-            </button>
-            <button
-              type="button"
-              className={'jz-bubble-btn' + (editor.isActive('heading', { level: 3 }) ? ' is-active' : '')}
-              onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
-              title="三级标题"
-              aria-label="三级标题"
-            >
-              H3
-            </button>
+            <span className="jz-bubble-heading-wrap">
+              <HeadingBlockDropdown editor={editor} compact />
+            </span>
             <button
               type="button"
               className={'jz-bubble-btn' + (editor.isActive('blockquote') ? ' is-active' : '')}
@@ -1461,7 +1509,7 @@ export default function RichTextEditor({
               title={editor.isActive('annotation') ? '编辑批注' : '添加批注'}
               aria-label="批注"
             >
-              <HighlightOutlined />
+              <CommentOutlined />
             </button>
             <span className="jz-bubble-divider" aria-hidden />
             <Dropdown
@@ -1573,7 +1621,12 @@ function ToolbarBtn({
     });
   return (
     <Tooltip title={title}>
-      <Button size="small" type={active ? 'primary' : 'default'} icon={icon} onClick={onClick} />
+      <Button
+        size="small"
+        className={'jz-toolbar-icon-btn' + (active ? ' is-active' : '')}
+        icon={icon}
+        onClick={onClick}
+      />
     </Tooltip>
   );
 }
@@ -1592,6 +1645,11 @@ function MarkdownShortcutsHelp() {
         ['# 空格', '一级标题'],
         ['## 空格', '二级标题'],
         ['### 空格', '三级标题'],
+        ['#### 空格', '四级标题'],
+        ['##### 空格', '五级标题'],
+        ['###### 空格', '六级标题'],
+        ['Alt+Ctrl+0', '正文'],
+        ['Alt+Ctrl+1 … 6', '标题1–6'],
         ['> 空格', '引用块'],
         ['--- 回车', '分割线'],
       ],
@@ -1603,6 +1661,7 @@ function MarkdownShortcutsHelp() {
         ['*斜体* 或 _斜体_', '斜体'],
         ['~~删除线~~', '删除线'],
         ['`行内代码`', '行内代码'],
+        ['==高亮==', '字体背景色'],
       ],
     },
     {
@@ -1623,10 +1682,13 @@ function MarkdownShortcutsHelp() {
     {
       title: '块级菜单',
       rows: [
-        ['/', '唤起 slash 菜单'],
+        ['/', '唤起 slash 菜单（dmk、yy、glk、mermaid 等拼音）'],
+        ['Ctrl/⌘ + /', '任意位置唤起 slash 菜单'],
         ['@', '引用其他文档'],
         ['Ctrl/⌘ + S', '立即保存'],
+        ['Ctrl/⌘ + E', '行内代码'],
         ['Ctrl/⌘ + K', '插入 / 编辑链接'],
+        ['Ctrl + Shift + P', 'Mermaid 块：切换 图表/源码/分栏'],
         ['Ctrl + Shift + L/E/R', '左/中/右 对齐'],
       ],
     },

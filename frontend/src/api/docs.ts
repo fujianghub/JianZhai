@@ -109,6 +109,18 @@ export async function toggleDocumentFavorite(id: number): Promise<{ is_favorited
   return data;
 }
 
+export async function updatePublishedContent(
+  id: number,
+  payload: { published_content: string; expected_version?: number },
+): Promise<DocumentDetail> {
+  await ensureCsrf();
+  const { data } = await apiClient.patch<DocumentDetail>(
+    `/documents/${id}/published/`,
+    payload,
+  );
+  return data;
+}
+
 export async function publishDocument(id: number): Promise<DocumentDetail> {
   await ensureCsrf();
   const { data } = await apiClient.post<DocumentDetail>(`/documents/${id}/publish/`);

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, viewsets
@@ -25,6 +26,7 @@ class ExportTaskViewSet(
 ):
     permission_classes = [IsAuthenticated]
     serializer_class = ExportTaskSerializer
+    pagination_class = None
 
     def get_queryset(self):
         return scope_queryset(ExportTask.objects.all(), self.request.user, field="owner")
@@ -49,8 +51,10 @@ class ExportTaskViewSet(
         # Validate that the user actually owns the target before queuing work.
         try:
             scope_info = collect_for_scope(owner=request.user, scope=scope, target_id=target_id)
-        except Exception as exc:
-            return Response({"detail": f"invalid target: {exc}"}, status=400)
+        except ObjectDoesNotExist:
+            return Response({"detail": "export target not found"}, status=404)
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=400)
 
         task = ExportTask.objects.create(
             owner=request.user,

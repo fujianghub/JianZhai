@@ -452,6 +452,52 @@
   height: auto;
 }
 
+/* Mermaid / PlantUML diagram editor — Yuque-style split source + preview */
+.jz-diagram-editor-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.jz-code-block.jz-diagram-view-split .jz-diagram-editor-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: stretch;
+}
+@media (max-width: 720px) {
+  .jz-code-block.jz-diagram-view-split .jz-diagram-editor-body {
+    grid-template-columns: 1fr;
+  }
+}
+.jz-code-block.jz-diagram-view-preview .jz-code-body-wrap.jz-diagram-source-hidden,
+.jz-code-block.jz-diagram-view-preview .jz-diagram-source-hidden {
+  display: none !important;
+}
+.jz-code-block.jz-diagram-view-source .jz-codeblock-mermaid-preview {
+  display: none !important;
+}
+.jz-diagram-source-hidden {
+  display: none !important;
+}
+.jz-mermaid-canvas-zoom {
+  transition: transform 0.15s ease;
+}
+.jz-diagram-zoom-label {
+  font-size: 11px;
+  color: var(--jz-text-muted);
+  min-width: 36px;
+  text-align: center;
+}
+.jz-mermaid-type-select {
+  min-width: 88px;
+}
+.slash-menu-item.is-rich-only {
+  opacity: 0.45;
+}
+.slash-menu-item.is-rich-only.is-active {
+  opacity: 0.55;
+}
+
 /* P0-2: Outline active heading highlight */
 .jz-outline-item--active {
   background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 18%, transparent);
@@ -527,11 +573,118 @@
   font-style: italic;
 }
 
-/* P3-9: Toolbar responsive */
-.jz-editor-toolbar {
-  flex-wrap: wrap;
-  row-gap: 4px;
+/* P3-9: Toolbar — layout owned by editor-ui.css (meta + main nowrap) */
+
+/* Yuque-style toolbar dropdowns */
+.jz-toolbar-dropdown-btn {
+  display: inline-flex;
+  align-items: center;
+  min-width: 52px;
+  padding-inline: 8px 6px !important;
 }
+.jz-toolbar-menu-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  min-width: 200px;
+}
+.jz-toolbar-menu-check {
+  color: var(--jz-accent);
+  font-size: 12px;
+  text-align: center;
+}
+.jz-toolbar-menu-kbd {
+  font-size: 11px;
+  color: var(--jz-text-muted);
+  white-space: nowrap;
+}
+.jz-toolbar-heading-item {
+  line-height: 1.3;
+}
+.jz-bubble-heading-wrap .jz-toolbar-dropdown-btn {
+  min-width: auto;
+  height: 28px;
+  padding: 0 8px !important;
+  font-size: 12px;
+}
+.tiptap mark {
+  border-radius: 2px;
+  padding: 0 0.12em;
+}
+
+/* More marks — horizontal popover (Yuque-style) */
+.jz-more-marks-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+}
+.jz-more-marks-btn {
+  min-width: 28px !important;
+  padding-inline: 6px !important;
+}
+.jz-more-marks-glyph {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  font-family: ui-serif, Georgia, serif;
+}
+
+/* Highlight color grid */
+.jz-highlight-panel {
+  width: 200px;
+  padding: 8px;
+}
+.jz-highlight-swatches {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.jz-highlight-swatch {
+  width: 24px;
+  height: 24px;
+  border: 1px solid var(--jz-border);
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  transition: box-shadow 0.15s, transform 0.1s;
+}
+.jz-highlight-swatch:hover {
+  box-shadow: 0 0 0 2px var(--jz-accent);
+  transform: scale(1.05);
+}
+.jz-highlight-reset {
+  font-size: 12px;
+}
+
+/* Yuque-style green + quick insert */
+.jz-quick-insert-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-right: 4px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: var(--jz-accent, #10b981);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter 0.15s, transform 0.1s;
+}
+.jz-quick-insert-btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.jz-quick-insert-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+/* Quick insert panel: editor-ui.css */
 
 /* Tabbed editor sidebar (大纲 | 反链 | 评论 | 附件) */
 .jz-editor-sidebar {
@@ -746,11 +899,14 @@
 
 /* ── Mobile / 触屏适配 ──────────────────────────────────────────────── */
 @media (max-width: 768px) {
-  .jz-editor-toolbar {
+  .jz-editor-toolbar:not(:has(.jz-editor-toolbar-main)) {
     flex-wrap: wrap;
     padding: 6px;
     gap: 4px;
     font-size: 12px;
+  }
+  .jz-editor-toolbar-main {
+    gap: 4px;
   }
   .jz-editor-toolbar .ant-btn-sm { padding: 0 6px; }
   .jz-editor-toolbar-divider { display: none; }
@@ -1999,6 +2155,83 @@ sup.jz-footnote-ref:hover,
   flex: 1;
 }
 
+/* 语雀式并排 / 全屏预览布局 */
+.jz-doc-body.is-split {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 42%);
+  gap: 16px;
+  align-items: stretch;
+  min-height: calc(100vh - 200px);
+}
+.jz-doc-body.is-split .jz-doc-editor-col {
+  max-width: none;
+  margin: 0;
+  min-height: 0;
+}
+.jz-doc-body.is-preview-only {
+  display: block !important;
+  min-height: calc(100vh - 200px);
+}
+.jz-doc-body.is-preview-only .jz-doc-editor-col {
+  display: none;
+}
+.jz-doc-preview-col {
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid var(--glass-border, var(--jz-border));
+  border-radius: 10px;
+  background: var(--jz-surface, #fff);
+}
+.jz-doc-preview-html {
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+.jz-doc-preview-iframe {
+  flex: 1;
+  width: 100%;
+  min-height: min(78vh, 900px);
+  border: none;
+  border-radius: 10px;
+  background: #fff;
+}
+.jz-doc-live-preview-scroll {
+  padding: 20px 24px 32px;
+}
+.jz-doc-live-preview-scroll .jz-doc-live-preview {
+  border: none;
+  padding: 0;
+}
+.jz-doc-preview-toc {
+  margin-bottom: 12px;
+}
+.jz-doc-preview-toc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 13px;
+}
+.jz-doc-preview-toc-item {
+  display: block;
+  color: var(--jz-text-muted);
+  text-decoration: none;
+  line-height: 1.5;
+  border-radius: 4px;
+}
+.jz-doc-preview-toc-item:hover {
+  color: var(--jz-accent);
+  background: var(--jz-surface-2);
+}
+
+@media (max-width: 900px) {
+  .jz-doc-body.is-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(240px, 45vh) minmax(280px, 1fr);
+  }
+}
+
 /* 博客内编辑（/posts/:slug/edit）— 铺满 content 区，后台仍 960px */
 .jz-blog-glass.jz-doc-shell-blog {
   --jz-doc-editor-max: min(100%, 1400px);
@@ -2009,6 +2242,10 @@ sup.jz-footnote-ref:hover,
   margin-left: 0;
   margin-right: 0;
   width: 100%;
+}
+.jz-blog-glass.jz-doc-shell-blog .jz-doc-body.is-split .jz-doc-editor-col,
+.jz-blog-glass.jz-doc-shell-blog .jz-doc-body.is-split .jz-doc-preview-col {
+  max-width: none;
 }
 .jz-blog-glass.jz-doc-shell-blog .jz-doc-header-bar {
   margin: 0 calc(-1 * var(--jz-blog-content-pad-x, 24px)) 16px;
@@ -2127,8 +2364,8 @@ sup.jz-footnote-ref:hover,
   background: rgba(255, 255, 255, 0.78) !important;
   border-radius: 8px !important;
   padding: 8px 10px !important;
-  gap: 6px !important;
-  row-gap: 6px !important;
+  gap: 8px !important;
+  flex-wrap: nowrap !important;
   align-items: center;
   margin-bottom: 8px;
 }
@@ -2284,7 +2521,7 @@ sup.jz-footnote-ref:hover,
   border-color: var(--jz-accent) !important;
   color: var(--jz-accent) !important;
 }
-.jz-admin-glass .jz-editor-toolbar .ant-btn-primary {
+.jz-admin-glass .jz-editor-toolbar .ant-btn-primary.jz-toolbar-save-btn {
   background: var(--jz-accent) !important;
   border-color: var(--jz-accent) !important;
   color: #ffffff !important;

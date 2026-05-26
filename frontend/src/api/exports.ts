@@ -28,8 +28,26 @@ export interface Paginated<T> {
 }
 
 export async function listExports(): Promise<ExportTask[]> {
-  const { data } = await apiClient.get<Paginated<ExportTask>>('/exports/');
-  return data.results;
+  const all: ExportTask[] = [];
+  let path = '/exports/';
+  for (;;) {
+    const { data } = await apiClient.get<Paginated<ExportTask> | ExportTask[]>(path);
+    if (Array.isArray(data)) {
+      return data;
+    }
+    all.push(...data.results);
+    const next = data.next;
+    if (!next) break;
+    if (next.startsWith('http')) {
+      const u = new URL(next);
+      path = u.pathname.startsWith('/api/v1')
+        ? u.pathname.slice('/api/v1'.length) + u.search
+        : u.pathname + u.search;
+    } else {
+      path = next.startsWith('/api/v1') ? next.slice('/api/v1'.length) : next;
+    }
+  }
+  return all;
 }
 
 export async function getExport(id: number): Promise<ExportTask> {
@@ -50,6 +68,25 @@ export async function createExport(payload: {
 export function downloadUrl(id: number): string {
   const base = apiClient.defaults.baseURL ?? '/api/v1';
   return `${base}/exports/${id}/download/`;
+}
+
+/** Fetch artifact with session cookies and trigger a browser download. */
+export async function downloadExport(task: ExportTask): Promise<void> {
+  const url = downloadUrl(task.id);
+  const res = await fetch(url, { credentials: 'include' });
+  if (!res.ok) {
+    throw new Error(`下载失败 (${res.status})`);
+  }
+  const blob = await res.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = objectUrl;
+  a.download = task.filename || `export-${task.id}`;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
 }
 
 export async function deleteExport(id: number): Promise<void> {

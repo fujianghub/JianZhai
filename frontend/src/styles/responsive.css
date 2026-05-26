@@ -23,6 +23,10 @@
   .jz-post-meta .jz-meta-controls {
     gap: 6px;
   }
+  .jz-meta-edit-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
   .markdown-preview h1 { font-size: 1.6em !important; }
   .markdown-preview h2 { font-size: 1.35em !important; }
   .markdown-preview pre {

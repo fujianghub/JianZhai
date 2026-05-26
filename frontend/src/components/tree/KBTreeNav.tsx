@@ -8,6 +8,7 @@ import {
   StarFilled,
   StarOutlined,
   TagsOutlined,
+  ExportOutlined,
 } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 import type { KBTree, TreeDocument, TreeFolder } from '@/types';
@@ -30,6 +31,8 @@ interface Props {
   /** Triggered when the user clicks a folder's "标签" button. Optional —
    * if omitted, the button is hidden. */
   onEditFolderTags?: (folder: TreeFolder) => void;
+  /** Export this folder (including subfolders). */
+  onExportFolder?: (folder: TreeFolder) => void;
   /** Filter documents whose titles match this substring (case-insensitive). */
   filterQuery?: string;
   /** Filter documents by status. */
@@ -151,6 +154,7 @@ function folderNode(
   f: TreeFolder,
   q: string,
   onEditFolderTags?: (folder: TreeFolder) => void,
+  onExportFolder?: (folder: TreeFolder) => void,
   onTogglePin?: (doc: TreeDocument) => void,
   onToggleFavorite?: (doc: TreeDocument) => void,
 ): DataNode {
@@ -168,6 +172,21 @@ function folderNode(
             {t.name}
           </Tag>
         ))}
+        {onExportFolder && (
+          <Tooltip title="导出文件夹">
+            <Button
+              size="small"
+              type="text"
+              icon={<ExportOutlined />}
+              aria-label="导出文件夹"
+              onClick={(e) => {
+                e.stopPropagation();
+                onExportFolder(f);
+              }}
+              style={{ fontSize: 11, padding: '0 4px', height: 18, lineHeight: '18px' }}
+            />
+          </Tooltip>
+        )}
         {onEditFolderTags && (
           <Tooltip title="编辑文件夹标签">
             <Button
@@ -188,7 +207,9 @@ function folderNode(
     icon: <FolderOutlined />,
     selectable: false,
     children: [
-      ...f.children.map((c) => folderNode(c, q, onEditFolderTags, onTogglePin, onToggleFavorite)),
+      ...f.children.map((c) =>
+        folderNode(c, q, onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite)
+      ),
       ...f.documents.map((d) => docNode(d, q, onTogglePin, onToggleFavorite)),
     ],
   };
@@ -220,6 +241,7 @@ export default function KBTreeNav({
   checked,
   onCheckedChange,
   onEditFolderTags,
+  onExportFolder,
   filterQuery,
   filterStatus,
   onTogglePin,
@@ -246,10 +268,12 @@ export default function KBTreeNav({
   const data = useMemo<DataNode[]>(() => {
     const q = filterQuery ?? '';
     return [
-      ...filteredTree.folders.map((f) => folderNode(f, q, onEditFolderTags, onTogglePin, onToggleFavorite)),
+      ...filteredTree.folders.map((f) =>
+        folderNode(f, q, onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite)
+      ),
       ...filteredTree.documents.map((d) => docNode(d, q, onTogglePin, onToggleFavorite)),
     ];
-  }, [filteredTree, filterQuery, onEditFolderTags, onTogglePin, onToggleFavorite]);
+  }, [filteredTree, filterQuery, onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite]);
 
   return (
     <Tree

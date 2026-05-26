@@ -16,6 +16,14 @@ import type { MentionSuggestion } from '@/api/linking';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
 import { paperClassName } from '@/utils/paper';
+import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
+import MarkdownSlashMenu, { useMarkdownSlashDisplayItems } from './MarkdownSlashMenu';
+import {
+  applyMarkdownSlashCommand,
+  findSlashTrigger,
+} from './markdownSlashActions';
+import { trackRecentSlashCommand } from './slashCommandRegistry';
+import type { SlashCommandItem } from './slashCommandRegistry';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -33,6 +41,10 @@ interface Props {
   onTextareaReady?: (el: HTMLTextAreaElement | null) => void;
   /** Paper-style preset key applied to the preview pane. */
   paperStyle?: string;
+  /** Register saveNow for parent flush-before-publish / mode switch. */
+  onSaveReady?: (handle: EditorSaveHandle | null) => void;
+  /** When true, hide internal preview/split controls (page-level LivePreviewPane). */
+  hideInternalPreview?: boolean;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
@@ -48,6 +60,8 @@ export default function MarkdownEditor({
   documentId,
   onTextareaReady,
   paperStyle,
+  onSaveReady,
+  hideInternalPreview = false,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [layoutMode, setLayoutMode] = useState<MdLayoutMode>(() => {
@@ -67,6 +81,12 @@ export default function MarkdownEditor({
     }
   }, [layoutMode]);
   const [mentionOpen, setMentionOpen] = useState(false);
+  const [slashOpen, setSlashOpen] = useState(false);
+  const [slashQuery, setSlashQuery] = useState('');
+  const [slashAnchor, setSlashAnchor] = useState<DOMRect | null>(null);
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
+  const slashTriggerRef = useRef<{ from: number; to: number } | null>(null);
+  const slashDisplayItems = useMarkdownSlashDisplayItems(slashQuery);
   /** Cursor offset captured when @ trigger or button fired; insertion replaces text from here. */
   const triggerRangeRef = useRef<{ from: number; to: number } | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -79,6 +99,14 @@ export default function MarkdownEditor({
   /** Monotonic save seq so old async completions don't overwrite newer state. */
   const saveSeqRef = useRef(0);
   const timerRef = useRef<number | null>(null);
+  const onAutoSaveRef = useRef(onAutoSave);
+  const onChangeRef = useRef(onChangeProp);
+  useEffect(() => {
+    onAutoSaveRef.current = onAutoSave;
+  }, [onAutoSave]);
+  useEffect(() => {
+    onChangeRef.current = onChangeProp;
+  }, [onChangeProp]);
 
   // Wrap onChange so we can record local edits and distinguish them from
   // external updates (409 reload, version restore).
@@ -168,6 +196,32 @@ export default function MarkdownEditor({
     return () => window.removeEventListener('keydown', onKey);
   }, [saveNow, readOnly, onAutoSave]);
 
+  useEffect(() => {
+    onSaveReady?.({ saveNow });
+    return () => onSaveReady?.(null);
+  }, [saveNow, onSaveReady]);
+
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        window.clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
+      flushOnUnmount({
+        getLiveContent: () => lastLocalRef.current,
+        lastSaved: lastSavedRef.current,
+        onChange: (next) => {
+          lastLocalRef.current = next;
+          onChangeRef.current(next);
+        },
+        onAutoSave: onAutoSaveRef.current,
+        saveSeqRef,
+        lastSavedRef,
+        lastEmittedRef: lastLocalRef,
+      });
+    };
+  }, []);
+
   // Debounce the preview render so each keystroke doesn't reparse Markdown
   // + run DOMPurify on long documents (10k+ chars chokes on every char).
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -185,7 +239,66 @@ export default function MarkdownEditor({
     setMentionOpen(true);
   }
 
+  function updateSlashMenuFromCursor(ta: HTMLTextAreaElement, source: string) {
+    const cursor = ta.selectionStart ?? 0;
+    const trig = findSlashTrigger(source, cursor);
+    if (trig) {
+      slashTriggerRef.current = { from: trig.from, to: trig.to };
+      setSlashQuery(trig.query);
+      setSlashOpen(true);
+      setSlashSelectedIndex(0);
+      const rect = ta.getBoundingClientRect();
+      setSlashAnchor(new DOMRect(rect.left + 12, rect.top + 28, 280, 0));
+    } else {
+      setSlashOpen(false);
+      slashTriggerRef.current = null;
+    }
+  }
+
+  function selectSlashItem(item: SlashCommandItem) {
+    if (item.richTextOnly || !slashTriggerRef.current) return;
+    const next = applyMarkdownSlashCommand(
+      value,
+      slashTriggerRef.current.from,
+      slashTriggerRef.current.to,
+      item,
+    );
+    if (next !== null) {
+      trackRecentSlashCommand(item.title);
+      onChange(next);
+    }
+    setSlashOpen(false);
+    slashTriggerRef.current = null;
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (slashOpen && slashDisplayItems.length > 0) {
+      const n = slashDisplayItems.length;
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setSlashOpen(false);
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashSelectedIndex((i) => (i + 1) % n);
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashSelectedIndex((i) => (i + n - 1) % n);
+        return;
+      }
+      if (e.key === 'Enter' || e.key === 'Tab') {
+        const item = slashDisplayItems[slashSelectedIndex];
+        if (item && !item.richTextOnly) {
+          e.preventDefault();
+          selectSlashItem(item);
+        }
+        return;
+      }
+    }
+
     // Open mention picker on standalone "@" keystroke and consume the keystroke.
     if (e.key === '@' && !e.metaKey && !e.ctrlKey && !e.altKey) {
       e.preventDefault();
@@ -398,6 +511,11 @@ export default function MarkdownEditor({
             保存
           </Button>
         </Tooltip>
+        {status === 'error' && onAutoSave && !readOnly && (
+          <Button size="small" onClick={() => void saveNow()}>
+            重试
+          </Button>
+        )}
         <Tooltip title="下划线 (Ctrl+U)">
           <Button
             size="small"
@@ -475,23 +593,25 @@ export default function MarkdownEditor({
             </Button>
           </Tooltip>
         </Dropdown>
-        <Segmented
-          size="small"
-          value={layoutMode}
-          onChange={(v) => setLayoutMode(v as MdLayoutMode)}
-          options={[
-            { label: '编辑', value: 'edit' },
-            { label: '预览', value: 'preview' },
-            { label: '并排', value: 'split' },
-          ]}
-        />
+        {!hideInternalPreview && (
+          <Segmented
+            size="small"
+            value={layoutMode}
+            onChange={(v) => setLayoutMode(v as MdLayoutMode)}
+            options={[
+              { label: '编辑', value: 'edit' },
+              { label: '预览', value: 'preview' },
+              { label: '并排', value: 'split' },
+            ]}
+          />
+        )}
       </Space>
       <div
         className="jz-md-editor-split"
         style={{
           display: 'grid',
           gridTemplateColumns:
-            layoutMode === 'edit'
+            hideInternalPreview || layoutMode === 'edit'
               ? '1fr'
               : layoutMode === 'preview'
                 ? '1fr'
@@ -501,7 +621,7 @@ export default function MarkdownEditor({
           minHeight: 0,
         }}
       >
-        {layoutMode !== 'preview' && (
+        {(hideInternalPreview || layoutMode !== 'preview') && (
         <TextArea
           ref={(el) => {
             const ta = el?.resizableTextArea?.textArea ?? null;
@@ -509,12 +629,17 @@ export default function MarkdownEditor({
             onTextareaReady?.(ta);
           }}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={(e) => {
+            const next = e.target.value;
+            onChange(next);
+            if (!readOnly) updateSlashMenuFromCursor(e.target, next);
+          }}
           onKeyDown={handleKeyDown}
+          onClick={(e) => updateSlashMenuFromCursor(e.currentTarget, value)}
           onPaste={handlePaste}
           onDrop={handleDrop}
           onDragOver={handleDragOver}
-          onScroll={onTextareaScroll}
+          onScroll={hideInternalPreview ? undefined : onTextareaScroll}
           readOnly={readOnly}
           autoSize={false}
           style={{
@@ -526,7 +651,7 @@ export default function MarkdownEditor({
           placeholder="使用 Markdown 书写；键入 @ 引用其他文档"
         />
         )}
-        {layoutMode !== 'edit' && (
+        {!hideInternalPreview && layoutMode !== 'edit' && (
         <div
           ref={previewRef}
           className={`markdown-preview jz-md-editor-preview paper ${paperClassName(paperStyle)}`}
@@ -541,12 +666,22 @@ export default function MarkdownEditor({
           dangerouslySetInnerHTML={{ __html: html }}
         />
         )}
-        <CodeBlockEnhancer selector=".jz-md-editor-preview" bindKey={html} />
+        {!hideInternalPreview && (
+          <CodeBlockEnhancer selector=".jz-md-editor-preview" bindKey={html} />
+        )}
       </div>
       <MentionPicker
         open={mentionOpen}
         onCancel={() => setMentionOpen(false)}
         onSelect={handleMentionSelect}
+      />
+      <MarkdownSlashMenu
+        open={slashOpen}
+        query={slashQuery}
+        anchorRect={slashAnchor}
+        selectedIndex={slashSelectedIndex}
+        onSelect={selectSlashItem}
+        onHoverIndex={setSlashSelectedIndex}
       />
     </div>
   );

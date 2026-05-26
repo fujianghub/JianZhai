@@ -1,29 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
-import { Button, Drawer, Input, Spin, Tag, Tooltip } from 'antd';
+import { Drawer, Input, Spin } from 'antd';
 import { JzAiIcon } from '@/components/common/JzIcon';
 import { streamAI, getCapabilities, type AIOperation } from '@/api/ai';
+import { getResolvedAIModelId, resolveAIModel } from '@/utils/aiModel';
+import AIAssistantPanel from '@/components/editor/ai/AIAssistantPanel';
+import { AI_PRESETS_DOC } from '@/components/editor/ai/aiOps';
 
 interface Props {
-  /** The whole document content (Markdown) — AI sees this as context. */
   content: string;
-  /** Document title — for nicer prompt framing. */
   title?: string;
-  /** Auto-fetch the configured AI model on mount. */
   modelOverride?: string;
 }
 
-const PRESETS: Array<{ key: AIOperation; label: string; hint: string }> = [
-  { key: 'summarize', label: '总结全文', hint: '提炼 3-5 句要点' },
-  { key: 'outline', label: '生成大纲', hint: 'H2/H3 树状结构' },
-  { key: 'translate_en', label: '翻译为英文', hint: '保留 Markdown' },
-];
-
-/**
- * Per-document AI assistant — a floating button at the top-right of the
- * reader that opens a drawer for whole-document operations (summarize,
- * outline, translate) or free-form Q&A. Different from `SelectionAI` which
- * triggers from a text selection.
- */
 export function DocAIPanel({ content, title, modelOverride }: Props) {
   const [open, setOpen] = useState(false);
   const [answer, setAnswer] = useState('');
@@ -36,11 +24,22 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
   useEffect(() => {
     getCapabilities()
       .then((c) => {
-        const id = modelOverride || c.default_model;
+        const id = modelOverride || resolveAIModel(c);
         const found = c.models.find((m) => m.id === id);
         setModelLabel(found?.label || id);
       })
       .catch(() => setModelLabel(''));
+    const onChange = () => {
+      getCapabilities()
+        .then((c) => {
+          const id = modelOverride || resolveAIModel(c);
+          const found = c.models.find((m) => m.id === id);
+          setModelLabel(found?.label || id);
+        })
+        .catch(() => {});
+    };
+    window.addEventListener('jz-ai-model-changed', onChange);
+    return () => window.removeEventListener('jz-ai-model-changed', onChange);
   }, [modelOverride]);
 
   async function run(op: AIOperation, custom?: string, label = '') {
@@ -54,7 +53,7 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
       : `文档「${title ?? ''}」：\n${content}`;
     try {
       await streamAI(op, body, {
-        model: modelOverride || localStorage.getItem('jz-ai-model') || undefined,
+        model: modelOverride || (await getResolvedAIModelId()),
         signal: ctrl.signal,
         onDelta: (d) => setAnswer((prev) => prev + d),
         onError: (msg) => {
@@ -68,115 +67,96 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
     }
   }
 
+  function closeDrawer() {
+    abortRef.current?.abort();
+    setOpen(false);
+    setStreaming(false);
+  }
+
   return (
     <>
-      <Tooltip title={modelLabel ? `AI 助手 (${modelLabel})` : 'AI 助手'} placement="left">
-        <Button
-          type="primary"
-          shape="circle"
-          icon={<JzAiIcon size={18} />}
-          className="jz-doc-ai-fab"
-          onClick={() => setOpen(true)}
-          aria-label="AI 助手"
-        />
-      </Tooltip>
+      <button
+        type="button"
+        className="jz-doc-ai-fab ant-btn ant-btn-primary ant-btn-circle"
+        onClick={() => setOpen(true)}
+        aria-label="AI 助手"
+        title={modelLabel ? `AI 助手 (${modelLabel})` : 'AI 助手'}
+      >
+        <JzAiIcon size={18} />
+      </button>
       <Drawer
         title={
-          <span>
-            <JzAiIcon size={16} style={{ marginRight: 6, verticalAlign: -2 }} />
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <JzAiIcon size={16} style={{ color: '#6366f1' }} />
             AI 助手
-            {modelLabel && <Tag style={{ marginLeft: 8, fontSize: 11 }}>{modelLabel}</Tag>}
+            {modelLabel && <span className="jz-ai-panel-chip">{modelLabel}</span>}
           </span>
         }
+        className="jz-ai-drawer"
         open={open}
-        onClose={() => {
-          abortRef.current?.abort();
-          setOpen(false);
-          setStreaming(false);
-        }}
+        onClose={closeDrawer}
         width={420}
-        destroyOnClose={false}
+        destroyOnHidden={false}
       >
-        <div style={{ marginBottom: 12, fontSize: 12, color: 'var(--jz-text-muted)' }}>
-          快捷操作（基于当前文档）
+        <div className="jz-ai-drawer-hero">
+          基于当前文档内容。模型在「个人空间 → AI 助手」中设置，对全文 AI、选区 AI 与编辑器工具栏全局生效。
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 16 }}>
-          {PRESETS.map((p) => (
-            <Button
+        <div className="jz-ai-preset-grid">
+          {AI_PRESETS_DOC.map((p) => (
+            <button
               key={p.key}
-              block
-              style={{ textAlign: 'left' }}
+              type="button"
+              className="jz-ai-preset-card"
               disabled={streaming}
-              onClick={() => run(p.key, undefined, p.label)}
+              onClick={() => void run(p.key, undefined, p.label)}
             >
-              <span style={{ fontWeight: 500 }}>{p.label}</span>
-              <span style={{ fontSize: 11, color: 'var(--jz-text-muted)', marginLeft: 8 }}>
-                {p.hint}
-              </span>
-            </Button>
+              <span className="jz-ai-preset-card-title">{p.label}</span>
+              <span className="jz-ai-preset-card-hint">{p.hint}</span>
+            </button>
           ))}
         </div>
-        <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--jz-text-muted)' }}>
-          问问 AI（基于这篇文档）
+        <div className="jz-ai-ask-row">
+          <div style={{ marginBottom: 6, fontSize: 12, color: 'var(--jz-text-muted)' }}>
+            问问 AI（基于这篇文档）
+          </div>
+          <Input.Search
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            placeholder="比如：里面说的 X 是什么意思？"
+            enterButton="询问"
+            loading={streaming}
+            onSearch={(v) => {
+              if (!v.trim()) return;
+              void run('continue', v.trim(), '问答');
+            }}
+          />
         </div>
-        <Input.Search
-          value={question}
-          onChange={(e) => setQuestion(e.target.value)}
-          placeholder="比如：里面说的 X 是什么意思？为什么作者认为 Y？"
-          enterButton="询问"
-          loading={streaming}
-          onSearch={(v) => {
-            if (!v.trim()) return;
-            void run('continue', v.trim(), '问答');
-          }}
-        />
-        <div
-          style={{
-            marginTop: 16,
-            minHeight: 100,
-            padding: 12,
-            border: '1px solid var(--jz-border)',
-            borderRadius: 6,
-            background: 'var(--jz-surface-2, rgba(0,0,0,0.02))',
-          }}
-        >
-          {activeLabel && (
-            <div
-              style={{
-                marginBottom: 8,
-                fontSize: 11,
-                color: 'var(--jz-text-muted)',
-                fontWeight: 600,
-              }}
-            >
-              {activeLabel}
-            </div>
-          )}
-          {streaming && !answer && (
-            <div style={{ textAlign: 'center', padding: 16 }}>
-              <Spin /> <span style={{ marginLeft: 8 }}>正在思考…</span>
-            </div>
-          )}
-          {!streaming && !answer && (
-            <div style={{ color: 'var(--jz-text-muted)', fontSize: 13 }}>
-              点击上方按钮或输入问题开始。
-            </div>
-          )}
-          {answer && (
-            <pre
-              style={{
-                whiteSpace: 'pre-wrap',
-                fontFamily: 'inherit',
-                margin: 0,
-                fontSize: 14,
-                lineHeight: 1.7,
-              }}
-            >
-              {answer}
-              {streaming && <span style={{ opacity: 0.6 }}>▍</span>}
-            </pre>
-          )}
-        </div>
+        {(streaming || answer || activeLabel) && (
+          <AIAssistantPanel
+            open
+            title={activeLabel ? `AI · ${activeLabel}` : 'AI 结果'}
+            modelLabel={modelLabel}
+            streaming={streaming}
+            text={answer}
+            embedded
+            canReplace={false}
+            onAbort={() => {
+              abortRef.current?.abort();
+              setStreaming(false);
+            }}
+            onClose={() => {
+              setAnswer('');
+              setActiveLabel('');
+              setStreaming(false);
+            }}
+            onCopy={() => void navigator.clipboard.writeText(answer)}
+          />
+        )}
+        {streaming && !answer && (
+          <div style={{ textAlign: 'center', padding: 16, marginTop: 8 }}>
+            <Spin size="small" /> <span style={{ marginLeft: 8, fontSize: 13, color: 'var(--jz-text-muted)' }}>正在思考…</span>
+          </div>
+        )}
       </Drawer>
     </>
   );

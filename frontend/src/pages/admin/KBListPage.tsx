@@ -23,7 +23,7 @@ import {
   FolderOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import * as kbsApi from '@/api/kbs';
 import { formatApiError } from '@/api/client';
 import type { KBCategory, KnowledgeBase, Visibility } from '@/types';
@@ -43,6 +43,7 @@ type KBFormValues = {
 };
 
 export default function KBListPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<KnowledgeBase[]>([]);
   const [categories, setCategories] = useState<KBCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -321,6 +322,7 @@ export default function KBListPage() {
           scope="kb"
           targetId={exportTarget.id}
           targetLabel={exportTarget.name}
+          onSubmitted={() => navigate('/admin/exports')}
         />
       )}
 

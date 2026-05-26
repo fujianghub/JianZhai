@@ -17,7 +17,7 @@ import * as exportsApi from '@/api/exports';
 import { formatApiError } from '@/api/client';
 import type { ExportFormat, ExportStatus, ExportTask } from '@/api/exports';
 
-const { Title } = Typography;
+const { Title, Paragraph } = Typography;
 
 const STATUS_COLORS: Record<ExportStatus, string> = {
   pending: 'default',
@@ -34,18 +34,41 @@ const FORMAT_LABELS: Record<ExportFormat, string> = {
   site: '整站 zip',
 };
 
+function errorSummary(err: string, max = 200): string {
+  const line = (err || '').split('\n')[0]?.trim();
+  return line.length > max ? `${line.slice(0, max)}…` : line;
+}
+
 export default function ExportsPage() {
   const [tasks, setTasks] = useState<ExportTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number[]>([]);
+  const [downloadingId, setDownloadingId] = useState<number | null>(null);
   const pollRef = useRef<number | null>(null);
 
   const refresh = useCallback(async () => {
-    const data = await exportsApi.listExports();
-    setTasks(data);
-    setLoading(false);
-    return data;
+    try {
+      const data = await exportsApi.listExports();
+      setTasks(data);
+      return data;
+    } catch (err) {
+      message.error(formatApiError(err, '加载导出历史失败'));
+      return [];
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  async function handleDownload(task: ExportTask) {
+    setDownloadingId(task.id);
+    try {
+      await exportsApi.downloadExport(task);
+    } catch (err) {
+      message.error(formatApiError(err, '下载失败'));
+    } finally {
+      setDownloadingId(null);
+    }
+  }
 
   async function handleDelete(id: number) {
     try {
@@ -60,21 +83,28 @@ export default function ExportsPage() {
 
   async function handleBulkDelete() {
     if (selected.length === 0) return;
-    try {
-      await Promise.all(selected.map((id) => exportsApi.deleteExport(id)));
-      message.success(`已删除 ${selected.length} 项`);
-      setSelected([]);
-      await refresh();
-    } catch (err) {
-      message.error(formatApiError(err, '批量删除失败'));
+    const ids = [...selected];
+    let failed = 0;
+    for (const id of ids) {
+      try {
+        await exportsApi.deleteExport(id);
+      } catch {
+        failed += 1;
+      }
     }
+    if (failed === 0) {
+      message.success(`已删除 ${ids.length} 项`);
+    } else {
+      message.warning(`已删除 ${ids.length - failed} 项，${failed} 项失败`);
+    }
+    setSelected([]);
+    await refresh();
   }
 
   useEffect(() => {
     void refresh();
   }, [refresh]);
 
-  // Poll every 2s while anything is pending/running.
   useEffect(() => {
     const hasInflight = tasks.some((t) => t.status === 'pending' || t.status === 'running');
     if (!hasInflight) {
@@ -120,7 +150,7 @@ export default function ExportsPage() {
           rowKey="id"
           loading={loading}
           dataSource={tasks}
-          pagination={{ pageSize: 20 }}
+          pagination={{ pageSize: 20, showSizeChanger: true }}
           rowSelection={{
             selectedRowKeys: selected,
             onChange: (keys) => setSelected(keys.map((k) => Number(k))),
@@ -174,15 +204,14 @@ export default function ExportsPage() {
             {
               title: '操作',
               render: (_, t) => (
-                <Space size={4}>
+                <Space size={4} direction="vertical" style={{ width: '100%' }}>
                   {t.status === 'done' ? (
                     <Button
                       size="small"
                       type="primary"
                       icon={<DownloadOutlined />}
-                      href={exportsApi.downloadUrl(t.id)}
-                      target="_blank"
-                      rel="noreferrer"
+                      loading={downloadingId === t.id}
+                      onClick={() => void handleDownload(t)}
                     >
                       下载
                     </Button>
@@ -190,8 +219,18 @@ export default function ExportsPage() {
                     <Alert
                       type="error"
                       message="失败"
-                      style={{ padding: '0 8px' }}
-                      showIcon={false}
+                      description={
+                        t.error ? (
+                          <Paragraph
+                            type="danger"
+                            style={{ margin: 0, fontSize: 12 }}
+                            ellipsis={{ rows: 2, expandable: true, symbol: '更多' }}
+                          >
+                            {errorSummary(t.error)}
+                          </Paragraph>
+                        ) : undefined
+                      }
+                      style={{ padding: '4px 8px' }}
                     />
                   ) : (
                     <span>—</span>

@@ -1,6 +1,8 @@
 """Shared helpers for export services."""
 from __future__ import annotations
 
+import base64
+import mimetypes
 import re
 import uuid
 import zipfile
@@ -11,6 +13,15 @@ from django.conf import settings
 from markdown_it import MarkdownIt
 
 from ..scope import ExportScope
+
+# Cap per-file embed size for standalone HTML/PDF (avoids multi-hundred-MB exports).
+MAX_EMBED_BYTES = 10 * 1024 * 1024
+
+_MEDIA_URL_RE = re.compile(
+    r"""(?P<attr>src|href)\s*=\s*["'](?P<url>/media/[^"']+)["']""",
+    re.I,
+)
+_MD_IMAGE_RE = re.compile(r"!\[[^\]]*\]\((?P<url>/media/[^)]+)\)")
 
 _HTML_BODY_RE = re.compile(r"<body[^>]*>(.*?)</body>", re.S | re.I)
 
@@ -37,8 +48,11 @@ def html_to_plain_text(html: str) -> str:
     return re.sub(r"\s+", " ", text).strip()
 
 
-EXPORT_ROOT = Path(settings.MEDIA_ROOT).parent / "exports"
-EXPORT_ROOT.mkdir(parents=True, exist_ok=True)
+def export_root() -> Path:
+    """Lazy ``exports/`` dir beside ``MEDIA_ROOT`` (respects runtime settings)."""
+    root = Path(settings.MEDIA_ROOT).parent / "exports"
+    root.mkdir(parents=True, exist_ok=True)
+    return root
 
 _md_renderer = MarkdownIt("commonmark", {"breaks": True, "linkify": True}).enable("table")
 
@@ -56,7 +70,7 @@ def safe_slug(name: str) -> str:
 def reserve_export_path(suffix: str) -> Path:
     """Allocate a unique file path under exports/ with the given suffix."""
     fname = f"{uuid.uuid4().hex}{suffix}"
-    return EXPORT_ROOT / fname
+    return export_root() / fname
 
 
 def write_text(path: Path, content: str) -> int:
@@ -114,6 +128,102 @@ img { max-width: 100%; height: auto; }
 """
 
 
+def doc_export_body(doc) -> str:
+    """Prefer published body; fall back to raw draft when nothing was published."""
+    published = (doc.published_content or "").strip()
+    if published:
+        return doc.published_content or ""
+    return doc.raw_content or ""
+
+
+def _resolve_media_path(url: str) -> Path | None:
+    """Map ``/media/uploads/...`` to a path under ``MEDIA_ROOT``."""
+    if not url or not url.startswith("/media/"):
+        return None
+    rel = url[len("/media/") :].lstrip("/")
+    path = (Path(settings.MEDIA_ROOT) / rel).resolve()
+    root = Path(settings.MEDIA_ROOT).resolve()
+    if not str(path).startswith(str(root)):
+        return None
+    return path if path.is_file() else None
+
+
+def _embed_file_as_data_uri(path: Path) -> str | None:
+    size = path.stat().st_size
+    if size > MAX_EMBED_BYTES:
+        return None
+    mime, _ = mimetypes.guess_type(path.name)
+    mime = mime or "application/octet-stream"
+    data = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{data}"
+
+
+def rewrite_html_media(html: str, *, embed: bool = True, asset_prefix: str = "") -> str:
+    """Rewrite ``/media/...`` in HTML to data URIs or zip-relative ``assets/`` paths."""
+
+    def repl(match: re.Match) -> str:
+        attr = match.group("attr")
+        url = match.group("url")
+        path = _resolve_media_path(url)
+        if not path:
+            return match.group(0)
+        if embed:
+            data_uri = _embed_file_as_data_uri(path)
+            if data_uri:
+                return f'{attr}="{data_uri}"'
+        elif asset_prefix:
+            rel = url[len("/media/") :].lstrip("/")
+            return f'{attr}="{asset_prefix}{rel}"'
+        return match.group(0)
+
+    return _MEDIA_URL_RE.sub(repl, html or "")
+
+
+def collect_html_media(html: str) -> list[tuple[str, bytes]]:
+    """Return ``(zip_path, bytes)`` for local files referenced in HTML attributes."""
+    entries: list[tuple[str, bytes]] = []
+    seen: set[str] = set()
+    for match in _MEDIA_URL_RE.finditer(html or ""):
+        url = match.group("url")
+        path = _resolve_media_path(url)
+        if not path or url in seen:
+            continue
+        seen.add(url)
+        rel = url[len("/media/") :].lstrip("/")
+        entries.append((f"assets/{rel}", path.read_bytes()))
+    return entries
+
+
+def collect_markdown_media(markdown: str) -> list[tuple[str, bytes]]:
+    """Return ``(zip_path, bytes)`` for local images referenced in markdown."""
+    entries: list[tuple[str, bytes]] = []
+    seen: set[str] = set()
+    for match in _MD_IMAGE_RE.finditer(markdown or ""):
+        url = match.group("url")
+        path = _resolve_media_path(url)
+        if not path or url in seen:
+            continue
+        seen.add(url)
+        rel = url[len("/media/") :].lstrip("/")
+        zip_name = f"assets/{rel}"
+        entries.append((zip_name, path.read_bytes()))
+    return entries
+
+
+def rewrite_markdown_media_paths(markdown: str, prefix: str = "assets/") -> str:
+    """Point ``![](/media/...)`` at zip-relative ``assets/...`` paths."""
+
+    def repl(match: re.Match) -> str:
+        url = match.group("url")
+        path = _resolve_media_path(url)
+        if not path:
+            return match.group(0)
+        rel = url[len("/media/") :].lstrip("/")
+        return match.group(0).replace(url, f"{prefix}{rel}")
+
+    return _MD_IMAGE_RE.sub(repl, markdown or "")
+
+
 def doc_html_body(scope: ExportScope, render: bool = True) -> str:
     """Concatenate every document in scope into a single HTML body.
 
@@ -131,10 +241,11 @@ def doc_html_body(scope: ExportScope, render: bool = True) -> str:
         if doc.published_at:
             meta += f" · {doc.published_at.strftime('%Y-%m-%d')}"
         meta += "</div>"
+        content = doc_export_body(doc)
         if detect_doc_format(doc) == "html":
-            body = html_body_or_self(doc.raw_content or "")
+            body = html_body_or_self(content)
         else:
-            body = render_markdown(doc.raw_content) if render else (doc.raw_content or "")
+            body = render_markdown(content) if render else content
         parts.append(
             f'<section class="post" id="doc-{doc.id}">\n'
             f"<h1>{title}</h1>\n{meta}\n{body}\n</section>"

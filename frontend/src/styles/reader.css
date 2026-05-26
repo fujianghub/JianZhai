@@ -64,6 +64,46 @@
   width: 100%;
 }
 
+/* Inline edit on reader page (Yuque-style read default + E to edit) */
+body.jz-post-inline-edit .jz-reading-progress {
+  display: none;
+}
+.jz-post-inline-edit .jz-post-main .paper.jz-post-inline-editor {
+  border: 1px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 35%, var(--jz-border));
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 8%, transparent);
+}
+.jz-post-inline-editor {
+  min-height: min(75vh, 720px);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Inline editor toolbar — align with admin editor-ui tokens */
+.jz-post-inline-editor .jz-editor-toolbar {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--jz-border);
+  background: color-mix(in srgb, var(--jz-surface) 92%, transparent);
+  border-radius: 6px 6px 0 0;
+}
+.jz-post-inline-editor .tiptap-shell {
+  flex: 1;
+  min-height: min(68vh, 640px);
+  font-size: 16px;
+  line-height: 1.85;
+  padding: 20px 24px 28px;
+}
+.jz-post-inline-editor .tiptap-shell .ProseMirror {
+  font-size: 16px;
+  line-height: 1.85;
+}
+.jz-post-inline-html {
+  padding: 0;
+  overflow: hidden;
+}
+.jz-post-inline-html > div {
+  min-height: min(75vh, 720px);
+}
 .jz-toc-link:hover {
   color: var(--jz-doc-accent, var(--jz-accent)) !important;
   border-left-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 50%, transparent) !important;

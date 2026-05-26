@@ -63,9 +63,24 @@ import {
 } from '@/components/common/JzIcon';
 import { PAPER_STYLES } from '@/utils/paper';
 import type { DocFormat, DocumentDetail, KnowledgeBase, Visibility } from '@/types';
+import type { EditorSaveHandle } from '@/components/editor/editorSaveLifecycle';
 
 type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf';
-const EDITOR_MODE_KEY = 'jianzhai:editorMode';
+type ContentSource = 'raw' | 'published';
+
+function editorModeStorageKey(docId: number, source: ContentSource): string {
+  return `jianzhai:editorMode:${docId}:${source}`;
+}
+
+function loadStoredEditorMode(docId: number, source: ContentSource): EditorMode | null {
+  try {
+    const v = localStorage.getItem(editorModeStorageKey(docId, source));
+    if (v === 'markdown' || v === 'rich' || v === 'html' || v === 'pdf') return v;
+  } catch {
+    /* noop */
+  }
+  return null;
+}
 
 function defaultModeFor(
   format: DocFormat | undefined,
@@ -122,11 +137,13 @@ export default function DocEditorPage({
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [mode, setMode] = useState<EditorMode>(() => {
-    const saved = localStorage.getItem(EDITOR_MODE_KEY);
-    return saved === 'rich' ? 'rich' : 'markdown';
-  });
+  const [mode, setMode] = useState<EditorMode>('markdown');
   const [modeTouched, setModeTouched] = useState(false);
+  const [contentSource, setContentSource] = useState<ContentSource>('raw');
+  const contentSourceRef = useRef<ContentSource>('raw');
+  const [conflictSyncRevision, setConflictSyncRevision] = useState(0);
+  const editorSaveRef = useRef<EditorSaveHandle | null>(null);
+  const saveInFlightRef = useRef<Promise<void> | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [publishCheckOpen, setPublishCheckOpen] = useState(false);
@@ -158,6 +175,23 @@ export default function DocEditorPage({
   }, [sidebarTab]);
 
   const hasPendingChangesRef = useRef(false);
+
+  useEffect(() => {
+    contentSourceRef.current = contentSource;
+  }, [contentSource]);
+
+  const flushPendingEdits = useCallback(async () => {
+    if (mode !== 'pdf' && editorSaveRef.current) {
+      await editorSaveRef.current.saveNow();
+    }
+    if (saveInFlightRef.current) {
+      await saveInFlightRef.current;
+    }
+  }, [mode]);
+
+  const registerEditorSave = useCallback((handle: EditorSaveHandle | null) => {
+    editorSaveRef.current = handle;
+  }, []);
 
   const [richEditor, setRichEditor] = useState<TiptapEditor | null>(null);
   const [mdTextarea, setMdTextarea] = useState<HTMLTextAreaElement | null>(null);
@@ -204,16 +238,15 @@ export default function DocEditorPage({
       .getDocument(documentId)
       .then((d) => {
         setDoc(d);
+        setContentSource('raw');
+        contentSourceRef.current = 'raw';
         if (!modeTouched) {
+          const stored = loadStoredEditorMode(d.id, 'raw');
           if (modeFromUrl === 'html') {
             setMode('html');
           } else {
             setMode(
-              defaultModeFor(
-                d.doc_format,
-                (localStorage.getItem(EDITOR_MODE_KEY) as EditorMode) || 'markdown',
-                d.raw_content,
-              ),
+              defaultModeFor(d.doc_format, stored || 'markdown', d.raw_content),
             );
           }
         }
@@ -225,10 +258,11 @@ export default function DocEditorPage({
   }, [documentId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (mode === 'markdown' || mode === 'rich') {
-      localStorage.setItem(EDITOR_MODE_KEY, mode);
+    if (!doc) return;
+    if (mode === 'markdown' || mode === 'rich' || mode === 'html') {
+      localStorage.setItem(editorModeStorageKey(doc.id, contentSource), mode);
     }
-  }, [mode]);
+  }, [mode, doc, contentSource]);
 
   // Warn before navigating away if there are unsaved changes.
   useEffect(() => {
@@ -243,29 +277,58 @@ export default function DocEditorPage({
 
   const saveGenRef = useRef(0);
 
+  const applyVersionConflict = useCallback((live: DocumentDetail | undefined) => {
+    message.warning('文档已被其他端修改，已加载最新版本');
+    if (live) {
+      richEditor?.commands.blur();
+      setConflictSyncRevision((n) => n + 1);
+      setDoc(live);
+    }
+  }, [richEditor]);
+
   const handleAutoSave = useCallback(
     async (content: string) => {
       if (!doc) return;
       const gen = ++saveGenRef.current;
-      try {
-        const updated = await docsApi.updateDocument(doc.id, {
-          raw_content: content,
-          expected_version: doc.version,
-        });
-        if (gen !== saveGenRef.current) return;
-        setDoc((prev) => (prev ? { ...prev, ...updated } : updated));
-      } catch (err: unknown) {
-        const e = err as { response?: { status?: number; data?: { code?: string; document?: DocumentDetail; current_version?: number } } };
-        if (e?.response?.status === 409 && e.response.data?.code === 'version_conflict') {
-          const live = e.response.data.document;
-          message.warning('文档已被其他端修改，已加载最新版本');
-          if (live) setDoc(live);
-          throw new Error('version_conflict');
+      const source = contentSourceRef.current;
+      const run = async () => {
+        try {
+          const updated =
+            source === 'published'
+              ? await docsApi.updatePublishedContent(doc.id, {
+                  published_content: content,
+                  expected_version: doc.version,
+                })
+              : await docsApi.updateDocument(doc.id, {
+                  raw_content: content,
+                  expected_version: doc.version,
+                });
+          if (gen !== saveGenRef.current) return;
+          setDoc((prev) => (prev ? { ...prev, ...updated } : updated));
+        } catch (err: unknown) {
+          const e = err as {
+            response?: {
+              status?: number;
+              data?: { code?: string; document?: DocumentDetail };
+            };
+          };
+          if (e?.response?.status === 409 && e.response.data?.code === 'version_conflict') {
+            applyVersionConflict(e.response.data.document);
+            throw new Error('version_conflict');
+          }
+          message.error(formatApiError(err, '保存失败'));
+          throw err;
         }
-        throw err;
+      };
+      const p = run();
+      saveInFlightRef.current = p;
+      try {
+        await p;
+      } finally {
+        if (saveInFlightRef.current === p) saveInFlightRef.current = null;
       }
     },
-    [doc]
+    [doc, applyVersionConflict],
   );
 
   async function handleDelete() {
@@ -279,28 +342,35 @@ export default function DocEditorPage({
     }
   }
 
-  async function handlePublishToggle() {
+  async function handleUnpublish() {
     if (!doc) return;
-    if (doc.status === 'published') {
-      try {
-        const next = await docsApi.unpublishDocument(doc.id);
-        setDoc(next);
-        message.success('已撤回发布');
-      } catch (err) {
-        message.error(formatApiError(err, '操作失败'));
-      }
-      return;
+    await flushPendingEdits();
+    try {
+      const next = await docsApi.unpublishDocument(doc.id);
+      setDoc(next);
+      setContentSource('raw');
+      message.success('已撤回发布');
+    } catch (err) {
+      message.error(formatApiError(err, '操作失败'));
     }
+  }
+
+  function handlePublishClick() {
+    if (!doc) return;
     setPublishCheckOpen(true);
   }
 
   async function confirmPublish() {
     if (!doc) return;
-    const checks = buildPublishChecks(doc, kb);
+    await flushPendingEdits();
+    const fresh = await docsApi.getDocument(doc.id).catch(() => doc);
+    const checks = buildPublishChecks(fresh, kb, {
+      body: (fresh.raw_content || '').trim(),
+    });
     if (hasPublishBlockers(checks)) return;
     setPublishing(true);
     try {
-      const next = await docsApi.publishDocument(doc.id);
+      const next = await docsApi.publishDocument(fresh.id);
       setDoc(next);
       message.success('已发布');
       setPublishCheckOpen(false);
@@ -309,6 +379,42 @@ export default function DocEditorPage({
     } finally {
       setPublishing(false);
     }
+  }
+
+  async function handleSyncPublished() {
+    if (!doc) return;
+    await flushPendingEdits();
+    setPublishing(true);
+    try {
+      const fresh = await docsApi.getDocument(doc.id);
+      const updated = await docsApi.updateDocument(fresh.id, {
+        published_content: fresh.raw_content,
+        expected_version: fresh.version,
+      });
+      setDoc(updated);
+      message.success('发布版已更新');
+    } catch (err) {
+      message.error(formatApiError(err, '更新发布失败'));
+    } finally {
+      setPublishing(false);
+    }
+  }
+
+  async function changeEditorMode(next: EditorMode) {
+    if (next === mode) return;
+    await flushPendingEdits();
+    setMode(next);
+    setModeTouched(true);
+  }
+
+  async function changeContentSource(next: ContentSource) {
+    if (next === contentSource || !doc) return;
+    await flushPendingEdits();
+    setContentSource(next);
+    contentSourceRef.current = next;
+    const stored = loadStoredEditorMode(doc.id, next);
+    const body = next === 'published' ? doc.published_content : doc.raw_content;
+    setMode(defaultModeFor(doc.doc_format, stored || mode, body));
   }
 
   async function handleVisibilityChange(visibility: Visibility) {
@@ -386,6 +492,12 @@ export default function DocEditorPage({
       : kb
         ? `/admin/kbs/${kb.id}`
         : '#';
+
+  const editorBody =
+    contentSource === 'published' ? doc.published_content : doc.raw_content;
+  const publishOutOfSync =
+    doc.status === 'published' && doc.raw_content !== doc.published_content;
+  const aiContext = editorBody;
 
   return (
     <div
@@ -477,6 +589,16 @@ export default function DocEditorPage({
             <Tag color={doc.status === 'published' ? 'green' : 'default'} style={{ marginInlineEnd: 0 }}>
               {doc.status === 'published' ? '已发布' : '草稿'}
             </Tag>
+            {publishOutOfSync && (
+              <Tag color="orange" style={{ marginInlineEnd: 0 }}>
+                发布版未同步
+              </Tag>
+            )}
+            {contentSource === 'published' && (
+              <Tag color="blue" style={{ marginInlineEnd: 0 }}>
+                编辑发布版
+              </Tag>
+            )}
             <span className="jz-doc-header-meta-divider" aria-hidden>·</span>
             <Space size={4}>
               <Text type="secondary" style={{ fontSize: 12 }}>公开</Text>
@@ -501,13 +623,21 @@ export default function DocEditorPage({
         </div>
 
         <Space wrap size={8}>
+          {doc.status === 'published' && (
+            <Segmented
+              size="small"
+              value={contentSource}
+              onChange={(v) => void changeContentSource(v as ContentSource)}
+              options={[
+                { label: '私人笔记', value: 'raw' },
+                { label: '发布版', value: 'published' },
+              ]}
+            />
+          )}
           <Segmented
             size="small"
             value={mode}
-            onChange={(v) => {
-              setMode(v as EditorMode);
-              setModeTouched(true);
-            }}
+            onChange={(v) => void changeEditorMode(v as EditorMode)}
             options={[
               { label: 'MD', value: 'markdown' },
               { label: '富文本', value: 'rich' },
@@ -527,13 +657,33 @@ export default function DocEditorPage({
           <Tooltip title="专注写作模式 (F9)">
             <Button icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
           </Tooltip>
-          <Button
-            type={doc.status === 'published' ? 'default' : 'primary'}
-            icon={doc.status === 'published' ? <StopOutlined /> : <RocketOutlined />}
-            onClick={handlePublishToggle}
-          >
-            {doc.status === 'published' ? '撤回发布' : '发布'}
-          </Button>
+          {doc.status === 'published' ? (
+            <>
+              <Button
+                type="primary"
+                icon={<RocketOutlined />}
+                loading={publishing}
+                disabled={!publishOutOfSync}
+                onClick={() => void handleSyncPublished()}
+              >
+                更新发布
+              </Button>
+              <Button
+                icon={<StopOutlined />}
+                onClick={() => void handleUnpublish()}
+              >
+                撤回发布
+              </Button>
+            </>
+          ) : (
+            <Button
+              type="primary"
+              icon={<RocketOutlined />}
+              onClick={handlePublishClick}
+            >
+              发布
+            </Button>
+          )}
           <Dropdown
             placement="bottomRight"
             menu={{
@@ -616,24 +766,31 @@ export default function DocEditorPage({
           <EditorSurface
             mode={mode}
             doc={doc}
+            editorValue={editorBody}
+            contentSource={contentSource}
+            forceSyncRevision={conflictSyncRevision}
             primaryUrl={primaryUrl}
             onChange={(next) => {
               hasPendingChangesRef.current = true;
-              setDoc((prev) => (prev ? { ...prev, raw_content: next } : prev));
+              setDoc((prev) =>
+                prev
+                  ? contentSource === 'published'
+                    ? { ...prev, published_content: next }
+                    : { ...prev, raw_content: next }
+                  : prev,
+              );
             }}
             onAutoSave={async (content) => {
               await handleAutoSave(content);
               hasPendingChangesRef.current = false;
             }}
-            onSwitchToMarkdown={() => {
-              setMode('markdown');
-              setModeTouched(true);
-            }}
+            onSwitchToMarkdown={() => void changeEditorMode('markdown')}
             onUploadPrimary={handlePrimaryUpload}
             uploadingPrimary={uploadingPrimary}
             onRichEditorReady={setRichEditor}
             onMarkdownTextareaReady={setMdTextarea}
             onHtmlTextareaReady={setHtmlTextarea}
+            onSaveReady={registerEditorSave}
           />
         </div>
         {outlineOpen && mode !== 'pdf' && !focusMode && (
@@ -661,13 +818,13 @@ export default function DocEditorPage({
               {sidebarTab === 'outline' && (
                 <DocumentOutline
                   editor={mode === 'rich' ? richEditor : null}
-                  source={mode === 'markdown' || mode === 'html' ? doc.raw_content : undefined}
+                  source={mode === 'markdown' || mode === 'html' ? editorBody : undefined}
                   sourceKind={mode === 'html' ? 'html' : 'markdown'}
                   onSeek={(pos) => {
                     if (mode === 'html' && htmlTextarea) {
-                      seekTextarea(htmlTextarea, pos, doc.raw_content);
+                      seekTextarea(htmlTextarea, pos, editorBody);
                     } else if (mode === 'markdown' && mdTextarea) {
-                      seekTextarea(mdTextarea, pos, doc.raw_content);
+                      seekTextarea(mdTextarea, pos, editorBody);
                     }
                   }}
                 />
@@ -687,12 +844,19 @@ export default function DocEditorPage({
         textarea={
           mode === 'markdown' ? mdTextarea : mode === 'html' ? htmlTextarea : null
         }
-        source={
-          mode === 'markdown' || mode === 'html' ? doc.raw_content : undefined
-        }
+        source={mode === 'markdown' || mode === 'html' ? editorBody : undefined}
         onSourceChange={
           mode === 'markdown' || mode === 'html'
-            ? (next) => setDoc((prev) => (prev ? { ...prev, raw_content: next } : prev))
+            ? (next) => {
+                hasPendingChangesRef.current = true;
+                setDoc((prev) =>
+                  prev
+                    ? contentSource === 'published'
+                      ? { ...prev, published_content: next }
+                      : { ...prev, raw_content: next }
+                    : prev,
+                );
+              }
             : undefined
         }
       />
@@ -724,9 +888,9 @@ export default function DocEditorPage({
       />
 
       {/* AI 助手 — 选区 ✨ + 右下角浮窗，覆盖所有编辑模式 (md/rich/html) */}
-      <SelectionAI contextProvider={() => doc.raw_content} />
+      <SelectionAI contextProvider={() => aiContext} />
       {(mode === 'markdown' || mode === 'rich' || mode === 'html') && (
-        <DocAIPanel content={doc.raw_content} title={doc.title} />
+        <DocAIPanel content={aiContext} title={doc.title} />
       )}
     </div>
   );
@@ -735,21 +899,27 @@ export default function DocEditorPage({
 interface SurfaceProps {
   mode: EditorMode;
   doc: DocumentDetail;
+  editorValue: string;
+  contentSource: ContentSource;
+  forceSyncRevision: number;
   primaryUrl: string | null;
   onChange: (next: string) => void;
   onAutoSave: (next: string) => Promise<void>;
   onSwitchToMarkdown: () => void;
   onUploadPrimary: (file: File) => Promise<void> | void;
   uploadingPrimary: boolean;
-  /** Outline / find-replace want the live editor instance — lift it. */
   onRichEditorReady?: (editor: TiptapEditor | null) => void;
   onMarkdownTextareaReady?: (el: HTMLTextAreaElement | null) => void;
   onHtmlTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  onSaveReady?: (handle: EditorSaveHandle | null) => void;
 }
 
 function EditorSurface({
   mode,
   doc,
+  editorValue,
+  contentSource,
+  forceSyncRevision,
   primaryUrl,
   onChange,
   onAutoSave,
@@ -759,7 +929,9 @@ function EditorSurface({
   onRichEditorReady,
   onMarkdownTextareaReady,
   onHtmlTextareaReady,
+  onSaveReady,
 }: SurfaceProps) {
+  const surfaceKey = `${contentSource}-${doc.id}-${mode}`;
   if (mode === 'pdf') {
     if (!primaryUrl) {
       return (
@@ -790,41 +962,50 @@ function EditorSurface({
     // 为空但有 .html 附件，把附件 URL 传给 HtmlEditor，由它自动 fetch + 解码
     // 后写回 raw_content。
     const legacyUrl =
-      !doc.raw_content && primaryUrl && doc.doc_format === 'html' ? primaryUrl : null;
+      contentSource === 'raw' &&
+      !editorValue &&
+      primaryUrl &&
+      doc.doc_format === 'html'
+        ? primaryUrl
+        : null;
     return (
       <HtmlEditor
-        key={`html-${doc.id}`}
-        value={doc.raw_content}
+        key={`html-${surfaceKey}`}
+        value={editorValue}
         onChange={onChange}
         onAutoSave={onAutoSave}
         documentId={doc.id}
         legacyAttachmentUrl={legacyUrl}
         onTextareaReady={onHtmlTextareaReady}
+        onSaveReady={onSaveReady}
       />
     );
   }
   if (mode === 'rich') {
     return (
       <RichTextEditor
-        key={`rich-${doc.id}`}
-        value={doc.raw_content}
+        key={`rich-${surfaceKey}`}
+        value={editorValue}
         onChange={onChange}
         onAutoSave={onAutoSave}
         documentId={doc.id}
         onEditorReady={onRichEditorReady}
         paperStyle={doc.paper_style}
+        forceSyncRevision={forceSyncRevision}
+        onSaveReady={onSaveReady}
       />
     );
   }
   return (
     <MarkdownEditor
-      key={`md-${doc.id}`}
-      value={doc.raw_content}
+      key={`md-${surfaceKey}`}
+      value={editorValue}
       onChange={onChange}
       onAutoSave={onAutoSave}
       documentId={doc.id}
       onTextareaReady={onMarkdownTextareaReady}
       paperStyle={doc.paper_style}
+      onSaveReady={onSaveReady}
     />
   );
 }
