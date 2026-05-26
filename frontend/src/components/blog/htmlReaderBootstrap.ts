@@ -1,3 +1,5 @@
+import { withSrcdocBase } from '@/utils/htmlPreview';
+
 /** ES5 bootstrap injected into srcDoc HTML (raw_content-only fallback).
  *  Kept in a plain ``.ts`` file so ``</script>`` never appears inside ``.tsx``
  *  — some Vite/esbuild dev transforms treat that sequence as a tag terminator
@@ -56,12 +58,14 @@ export const HTML_READER_BOOTSTRAP = [
   '</scr', 'ipt>',
 ].join('');
 
-/** Insert bootstrap right before ``</body>``; if absent, append at end. */
+/** Insert bootstrap right before ``</body>``; if absent, append at end. Also
+ *  injects a srcdoc `<base>` so in-document anchors don't escape the frame. */
 export function injectHtmlReaderBootstrap(html: string): string {
-  if (!html) return HTML_READER_BOOTSTRAP;
-  const m = /<\/body\s*>/i.exec(html);
+  if (!html) return withSrcdocBase('') + HTML_READER_BOOTSTRAP;
+  const based = withSrcdocBase(html);
+  const m = /<\/body\s*>/i.exec(based);
   if (m) {
-    return html.slice(0, m.index) + HTML_READER_BOOTSTRAP + html.slice(m.index);
+    return based.slice(0, m.index) + HTML_READER_BOOTSTRAP + based.slice(m.index);
   }
-  return html + HTML_READER_BOOTSTRAP;
+  return based + HTML_READER_BOOTSTRAP;
 }

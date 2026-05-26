@@ -74,7 +74,7 @@ export const VideoEmbed = Node.create({
   renderHTML({ node }) {
     const { src, platform, videoId, title } = node.attrs as VideoAttrs;
     const parsed = parseVideoUrl(src);
-    const iframeSrc = parsed?.iframeSrc ?? src;
+    const iframeSrc = parsed?.iframeSrc ?? src ?? '';
 
     return [
       'div',
@@ -89,7 +89,7 @@ export const VideoEmbed = Node.create({
       [
         'iframe',
         {
-          src: iframeSrc,
+          src: iframeSrc || 'about:blank',
           title: title || 'Video',
           frameborder: '0',
           allowfullscreen: 'true',

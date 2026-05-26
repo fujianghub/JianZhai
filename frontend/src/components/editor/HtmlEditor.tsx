@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Input, Space, Tag, Tooltip, Typography } from 'antd';
 import { ReloadOutlined, SaveOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
+import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
 import { uploadFile } from '@/api/attachments';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 
@@ -338,7 +339,7 @@ export default function HtmlEditor({
     return () => window.clearTimeout(t);
   }, [value]);
 
-  const previewSrcdoc = useMemo(() => debouncedValue, [debouncedValue]);
+  const previewSrcdoc = useMemo(() => buildHtmlPreviewSrcdoc(debouncedValue), [debouncedValue]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>

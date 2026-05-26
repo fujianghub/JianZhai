@@ -36,6 +36,13 @@ export default function FullscreenableIframe({
 }: Props) {
   const [fs, setFs] = useState(false);
 
+  // An empty/undefined src resolves to the parent page URL (the SPA root). With
+  // a sandbox that lacks `allow-same-origin` the frame's origin is opaque, so
+  // loading the app origin trips Chromium's "Unsafe attempt to load URL
+  // http://localhost:3001/ from frame with URL chrome-error://chromewebdata/"
+  // guard. Fall back to about:blank until a real URL arrives.
+  const frameSrc = src || 'about:blank';
+
   useEffect(() => {
     if (!fs) return;
     const onKey = (e: KeyboardEvent) => {
@@ -88,7 +95,7 @@ export default function FullscreenableIframe({
         {controls}
         <iframe
           title={title}
-          src={src}
+          src={frameSrc}
           sandbox={sandbox}
           referrerPolicy={referrerPolicy}
           style={{ width: '100%', height: '100%', border: 'none' }}
@@ -103,7 +110,7 @@ export default function FullscreenableIframe({
       {controls}
       <iframe
         title={title}
-        src={src}
+        src={frameSrc}
         sandbox={sandbox}
         referrerPolicy={referrerPolicy}
         style={inlineStyle}

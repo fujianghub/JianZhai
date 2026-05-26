@@ -9,7 +9,9 @@ import type { VideoAttrs } from './VideoEmbed';
 export default function VideoEmbedView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
   const { src, platform, videoId, title } = node.attrs as VideoAttrs;
   const parsed = parseVideoUrl(src);
-  const iframeSrc = parsed?.iframeSrc ?? src;
+  // Never let an empty value reach the iframe — `src=""` resolves to the app
+  // root and recursively loads the SPA into the frame.
+  const iframeSrc = parsed?.iframeSrc ?? src ?? '';
 
   const [editing, setEditing] = useState(!src);
   const [inputUrl, setInputUrl] = useState(src || '');
@@ -89,7 +91,7 @@ export default function VideoEmbedView({ node, updateAttributes, deleteNode, sel
         </div>
         <div className="jz-video-frame-wrap">
           <iframe
-            src={iframeSrc}
+            src={iframeSrc || 'about:blank'}
             title={title || 'Video'}
             frameBorder="0"
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
