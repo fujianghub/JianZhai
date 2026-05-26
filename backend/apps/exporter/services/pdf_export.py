@@ -16,7 +16,9 @@ class PlaywrightUnavailable(RuntimeError):
 
 
 def export(scope: ExportScope) -> tuple[Path, str, str]:
-    html = html_export.render_html(scope)
+    # Print mode flattens HTML-format docs (no iframes, which Chromium prints
+    # blank) and reveals every panel with page breaks between documents.
+    html = html_export.render_html(scope, mode="print")
     pdf_bytes = _render_pdf(html)
     path = common.reserve_export_path(".pdf")
     common.write_bytes(path, pdf_bytes)
@@ -36,6 +38,9 @@ def _render_pdf(html: str) -> bytes:
         browser = pw.chromium.launch(args=["--no-sandbox"])
         try:
             page = browser.new_page()
+            # Keep screen styling in the PDF — our print layout is driven by the
+            # ``.is-print`` class (always-on page breaks), not @media print.
+            page.emulate_media(media="screen")
             page.set_content(html, wait_until="load")
             return page.pdf(
                 format="A4",

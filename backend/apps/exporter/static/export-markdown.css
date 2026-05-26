@@ -1,0 +1,189 @@
+/* Offline export styles — static colours (no CSS variables). Scoped to .jz-markdown.export-markdown */
+
+.jz-markdown.export-markdown {
+  color: #1f1f1f;
+  word-wrap: break-word;
+}
+
+.jz-markdown.export-markdown h1,
+.jz-markdown.export-markdown h2,
+.jz-markdown.export-markdown h3,
+.jz-markdown.export-markdown h4 {
+  margin-top: 1.4em;
+  margin-bottom: 0.6em;
+  font-weight: 600;
+  line-height: 1.35;
+  color: #1f1f1f;
+}
+
+.jz-markdown.export-markdown h1 {
+  font-size: 1.9em;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.3em;
+}
+
+.jz-markdown.export-markdown h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid #f0f0f0;
+  padding-bottom: 0.25em;
+}
+
+.jz-markdown.export-markdown h3 { font-size: 1.25em; }
+
+.jz-markdown.export-markdown p { margin: 0.8em 0; }
+
+.jz-markdown.export-markdown ul,
+.jz-markdown.export-markdown ol {
+  padding-left: 1.6em;
+  margin: 0.6em 0;
+}
+
+.jz-markdown.export-markdown blockquote {
+  margin: 0.8em 0;
+  padding: 0.4em 1em;
+  border-left: 4px solid #d9d9d9;
+  background: #f6f8fa;
+  color: #555;
+}
+
+.jz-markdown.export-markdown code {
+  background: #f0f0f0;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #b94a3b;
+}
+
+.jz-markdown.export-markdown table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+}
+
+.jz-markdown.export-markdown th,
+.jz-markdown.export-markdown td {
+  border: 1px solid #e5e5e5;
+  padding: 6px 10px;
+}
+
+.jz-markdown.export-markdown th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+.jz-markdown.export-markdown img {
+  max-width: 100%;
+  height: auto;
+}
+
+.jz-markdown.export-markdown a {
+  color: #1677ff;
+  text-decoration: none;
+}
+
+.jz-markdown.export-markdown a:hover {
+  text-decoration: underline;
+}
+
+/* Task lists */
+.jz-markdown.export-markdown .task-list-item {
+  list-style: none;
+}
+
+.jz-markdown.export-markdown .task-list-item input {
+  margin-right: 0.4em;
+}
+
+/* Code blocks */
+.jz-markdown.export-markdown .jz-code-block {
+  margin: 1em 0;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #3e4451;
+  background: #282c34;
+}
+
+.jz-markdown.export-markdown .jz-code-toolbar {
+  display: flex;
+  align-items: center;
+  padding: 6px 12px;
+  background: #21252b;
+  color: #9da5b4;
+  font-size: 12px;
+  border-bottom: 1px solid #3e4451;
+}
+
+.jz-markdown.export-markdown .jz-code-lang {
+  font-family: ui-monospace, Menlo, monospace;
+  text-transform: lowercase;
+}
+
+.jz-markdown.export-markdown .jz-code-pre {
+  margin: 0;
+  padding: 12px 16px;
+  overflow: auto;
+  background: #282c34;
+  color: #eaeaea;
+  font-size: 0.9em;
+  line-height: 1.5;
+}
+
+.jz-markdown.export-markdown .jz-code-pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+}
+
+/* Callouts */
+.jz-markdown.export-markdown .jz-callout {
+  --c: #6366f1;
+  --c-icon: "★";
+  position: relative;
+  margin: 1.1em 0;
+  padding: 16px 18px 14px 52px;
+  border-radius: 10px;
+  background: #f5f6ff;
+  font-size: 0.96em;
+  line-height: 1.75;
+  box-shadow: inset 4px 0 0 var(--c), 0 1px 0 rgba(99, 102, 241, 0.12);
+}
+
+.jz-markdown.export-markdown .jz-callout::before {
+  content: var(--c-icon);
+  position: absolute;
+  top: 14px;
+  left: 16px;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  background: var(--c);
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.jz-markdown.export-markdown .jz-callout-title {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: var(--c);
+}
+
+.jz-markdown.export-markdown .jz-callout-body > :first-child { margin-top: 0; }
+.jz-markdown.export-markdown .jz-callout-body > :last-child { margin-bottom: 0; }
+
+.jz-markdown.export-markdown .jz-callout-tips { --c: #3b82f6; --c-icon: "💡"; background: #eff6ff; }
+.jz-markdown.export-markdown .jz-callout-info { --c: #6366f1; --c-icon: "i"; }
+.jz-markdown.export-markdown .jz-callout-warning { --c: #f59e0b; --c-icon: "!"; background: #fffbeb; }
+.jz-markdown.export-markdown .jz-callout-danger { --c: #ef4444; --c-icon: "✕"; background: #fef2f2; }
+.jz-markdown.export-markdown .jz-callout-success { --c: #10b981; --c-icon: "✓"; background: #ecfdf5; }
+.jz-markdown.export-markdown .jz-callout-color1 { --c: #2f8ef4; --c-icon: "①"; }
+.jz-markdown.export-markdown .jz-callout-color2 { --c: #a78bfa; --c-icon: "②"; }
+
+/* HTML-format embed wrapper */
+.export-html-embed {
+  margin: 0.5em 0;
+}

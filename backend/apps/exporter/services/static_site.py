@@ -16,7 +16,7 @@ from ..scope import ExportScope
 from . import common
 
 SITE_CSS = (
-    common.BASE_CSS
+    common.export_stylesheet()
     + """
 .site-layout { display: grid; grid-template-columns: 240px 1fr; gap: 32px; max-width: 1100px;
                margin: 24px auto; padding: 0 24px; }
@@ -174,12 +174,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             )
             continue
 
-        body_md_zip = common.rewrite_markdown_media_paths(body_md)
-        body_html = common.rewrite_html_media(
-            common.render_markdown(body_md_zip),
-            embed=False,
-            asset_prefix="assets/",
-        )
+        body_html = common.render_document_body_html(doc, embed_media=False)
         for asset_name, asset_data in common.collect_markdown_media(body_md):
             if asset_name not in asset_names:
                 asset_names.add(asset_name)

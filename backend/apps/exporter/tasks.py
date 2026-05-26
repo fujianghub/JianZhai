@@ -5,6 +5,7 @@ import logging
 
 from celery import shared_task
 from django.conf import settings
+from django.db import transaction
 from django.utils import timezone
 
 from .models import ExportTask
@@ -34,18 +35,26 @@ def _format_task_error(exc: BaseException) -> str:
 
 @shared_task(name="exporter.run_export")
 def run_export(task_id: int) -> None:
-    try:
-        task = ExportTask.objects.select_related("owner").get(pk=task_id)
-    except ExportTask.DoesNotExist:
-        log.warning("export task %s not found (deleted?)", task_id)
-        return
+    with transaction.atomic():
+        try:
+            task = (
+                ExportTask.objects.select_for_update()
+                .select_related("owner")
+                .get(pk=task_id)
+            )
+        except ExportTask.DoesNotExist:
+            log.warning("export task %s not found (deleted?)", task_id)
+            return
 
-    if task.status in (ExportTask.STATUS_DONE, ExportTask.STATUS_FAILED):
-        return
+        if task.status in (ExportTask.STATUS_DONE, ExportTask.STATUS_FAILED):
+            return
+        if task.status == ExportTask.STATUS_RUNNING:
+            log.info("export task %s already running — skip duplicate worker", task_id)
+            return
 
-    task.status = ExportTask.STATUS_RUNNING
-    task.started_at = timezone.now()
-    task.save(update_fields=["status", "started_at"])
+        task.status = ExportTask.STATUS_RUNNING
+        task.started_at = timezone.now()
+        task.save(update_fields=["status", "started_at"])
 
     try:
         scope = collect_for_scope(

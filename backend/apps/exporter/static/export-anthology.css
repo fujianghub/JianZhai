@@ -1,0 +1,114 @@
+/* Anthology shell — resizable left TOC + one document panel shown at a time.
+   Loaded only by html_export (kept out of export_stylesheet so the static-site
+   export keeps its own layout). */
+
+body.export-anthology {
+  display: grid;
+  grid-template-columns: var(--export-toc-width, 248px) minmax(0, 1fr);
+  min-height: 100vh;
+  margin: 0;
+  max-width: none;
+  padding: 0;
+}
+
+/* position:sticky also establishes the containing block for .export-toc-resizer */
+.export-toc {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  height: 100vh;
+  overflow: auto;
+  padding: 24px 18px;
+  padding-right: 24px;
+  background: #fafbfc;
+  border-right: 1px solid #e8e8e8;
+  font-size: 13px;
+  line-height: 1.7;
+  box-sizing: border-box;
+  z-index: 5;
+}
+.export-toc-title {
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: #333;
+  font-size: 12px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+.export-toc ol { padding-left: 1.2em; margin: 0; }
+.export-toc li { margin: 2px 0; }
+.export-toc a {
+  color: #555;
+  text-decoration: none;
+  display: block;
+  padding: 3px 6px;
+  border-radius: 6px;
+}
+.export-toc a:hover { background: #eef1f4; color: #1677ff; }
+.export-toc a.active { background: #e6f0ff; color: #1677ff; font-weight: 600; }
+
+.export-toc-resizer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 6px;
+  height: 100%;
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.export-toc-resizer:hover,
+.export-toc-resizer.is-dragging {
+  background: rgba(22, 119, 255, 0.15);
+}
+
+.export-main {
+  min-width: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  padding: 40px clamp(24px, 4vw, 48px) 96px;
+  box-sizing: border-box;
+}
+.export-doc-header h1 { margin-top: 0; }
+
+/* HTML-format documents: style-isolated iframe, sized by the TOC JS. */
+.export-html-frame { width: 100%; border: 0; display: block; background: #fff; }
+
+@media (max-width: 900px) {
+  body.export-anthology {
+    display: block;
+  }
+  .export-toc {
+    position: static;
+    width: auto;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid #e8e8e8;
+  }
+  .export-toc-resizer { display: none; }
+  .export-main { padding: 24px 18px 64px; }
+}
+
+/* Print / PDF: reveal every panel, drop the TOC, break pages between docs.
+   These rules are media-agnostic so they hold even when Chromium emulates
+   screen media for the PDF render. */
+body.export-anthology.is-print {
+  display: block;
+}
+.export-anthology.is-print .export-main { margin: 0; padding: 0; max-width: none; }
+.export-anthology.is-print .export-doc-panel { display: block !important; }
+.export-anthology.is-print .export-doc-panel + .export-doc-panel {
+  page-break-before: always;
+  break-before: page;
+}
+
+@media print {
+  body.export-anthology { display: block; }
+  .export-toc { display: none; }
+  .export-main { margin: 0; padding: 0; }
+  .export-doc-panel + .export-doc-panel {
+    page-break-before: always;
+    break-before: page;
+  }
+}

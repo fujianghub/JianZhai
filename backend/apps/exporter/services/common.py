@@ -10,9 +10,9 @@ from io import BytesIO
 from pathlib import Path
 
 from django.conf import settings
-from markdown_it import MarkdownIt
 
 from ..scope import ExportScope
+from . import markdown_render
 
 # Cap per-file embed size for standalone HTML/PDF (avoids multi-hundred-MB exports).
 MAX_EMBED_BYTES = 10 * 1024 * 1024
@@ -38,6 +38,93 @@ def html_body_or_self(html: str) -> str:
     return match.group(1) if match else html
 
 
+_HEAD_RE = re.compile(r"<head[^>]*>(.*?)</head>", re.S | re.I)
+_STYLE_RE = re.compile(r"<style[^>]*>.*?</style>", re.S | re.I)
+
+# Cleared on embedded HTML before measuring iframe height: authored pages often
+# set ``min-height: 50vh`` on hero/cover shells, which balloons as we grow the
+# iframe to ``scrollHeight``. Mirrors the blog reader's VH override.
+_VH_OVERRIDE_STYLE = (
+    "<style>"
+    ':where(.hero,[class*="hero"],.cover,[class*="cover"],'
+    '.banner,[class*="banner"]){min-height:0!important;}'
+    ":where(html,body){min-height:0!important;}"
+    "</style>"
+)
+
+
+def prepare_full_html_document(content: str) -> str:
+    """Wrap a bare HTML fragment in a minimal full page; pass full pages through."""
+    from apps.knowledge.html_content import looks_like_html
+
+    text = content or ""
+    if looks_like_html(text):
+        return text
+    return (
+        '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"></head>'
+        f"<body>{text}</body></html>"
+    )
+
+
+def escape_srcdoc(html: str) -> str:
+    """Escape for use inside a double-quoted ``iframe[srcdoc]`` attribute."""
+    return (html or "").replace("&", "&amp;").replace('"', "&quot;")
+
+
+def extract_head_styles(html: str) -> str:
+    """Collect ``<style>`` blocks from the document head (for print flattening)."""
+    match = _HEAD_RE.search(html or "")
+    region = match.group(1) if match else ""
+    return "\n".join(m.group(0) for m in _STYLE_RE.finditer(region))
+
+
+def _inject_vh_override(html: str) -> str:
+    if "</head>" in html:
+        return html.replace("</head>", _VH_OVERRIDE_STYLE + "</head>", 1)
+    return _VH_OVERRIDE_STYLE + html
+
+
+# Resolve relative URLs / #anchors inside the iframe rather than against the
+# embedding page (which otherwise trips Chromium's "Unsafe attempt to load URL
+# ... Domains, protocols and ports must match" guard for in-doc TOC links).
+_SRCDOC_BASE = '<base href="about:srcdoc">'
+_HEAD_OPEN_RE = re.compile(r"<head[^>]*>", re.I)
+
+
+def _inject_srcdoc_base(html: str) -> str:
+    if re.search(r"<base\b", html, re.I):
+        return html  # respect an author-declared base
+    match = _HEAD_OPEN_RE.search(html)
+    if match:
+        return html[: match.end()] + _SRCDOC_BASE + html[match.end() :]
+    return _SRCDOC_BASE + html
+
+
+def render_html_document_interactive(content: str) -> str:
+    """Embed a full HTML document in a sandboxed ``iframe[srcdoc]`` (style-isolated)."""
+    full = prepare_full_html_document(content)
+    full = rewrite_html_media(full, embed=True)
+    full = _inject_srcdoc_base(full)
+    full = _inject_vh_override(full)
+    return (
+        '<iframe class="export-html-frame" '
+        'sandbox="allow-same-origin allow-scripts" '
+        f'srcdoc="{escape_srcdoc(full)}"></iframe>'
+    )
+
+
+def render_html_document_print(content: str) -> str:
+    """Flatten an HTML document for print: inline head ``<style>`` + body markup.
+
+    Avoids iframes, which headless Chromium prints as blank/unmeasured boxes.
+    """
+    full = prepare_full_html_document(content)
+    full = rewrite_html_media(full, embed=True)
+    styles = extract_head_styles(full)
+    body = html_body_or_self(full)
+    return f'<div class="export-html-print">{styles}{body}</div>'
+
+
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
 
@@ -54,11 +141,67 @@ def export_root() -> Path:
     root.mkdir(parents=True, exist_ok=True)
     return root
 
-_md_renderer = MarkdownIt("commonmark", {"breaks": True, "linkify": True}).enable("table")
+_EXPORT_MARKDOWN_CSS: str | None = None
 
 
 def render_markdown(text: str) -> str:
-    return _md_renderer.render(text or "")
+    """Render Markdown to HTML (preprocess + enhanced markdown-it)."""
+    return markdown_render.render_markdown(text)
+
+
+def load_export_markdown_css() -> str:
+    """Read bundled export markdown styles (cached)."""
+    global _EXPORT_MARKDOWN_CSS
+    if _EXPORT_MARKDOWN_CSS is None:
+        path = Path(__file__).resolve().parent.parent / "static" / "export-markdown.css"
+        _EXPORT_MARKDOWN_CSS = path.read_text(encoding="utf-8")
+    return _EXPORT_MARKDOWN_CSS
+
+
+_EXPORT_ANTHOLOGY_CSS: str | None = None
+
+
+def load_export_anthology_css() -> str:
+    """Read bundled anthology shell styles — TOC + panel switching (cached)."""
+    global _EXPORT_ANTHOLOGY_CSS
+    if _EXPORT_ANTHOLOGY_CSS is None:
+        path = Path(__file__).resolve().parent.parent / "static" / "export-anthology.css"
+        _EXPORT_ANTHOLOGY_CSS = path.read_text(encoding="utf-8")
+    return _EXPORT_ANTHOLOGY_CSS
+
+
+def export_stylesheet() -> str:
+    """Base + markdown export styles for HTML/PDF/site pages."""
+    return BASE_CSS + load_export_markdown_css()
+
+
+def render_document_body_html(
+    doc, *, embed_media: bool = True, export_mode: str = "interactive"
+) -> str:
+    """Render one document body to an HTML fragment for export shells.
+
+    ``export_mode`` only affects HTML-format documents: ``interactive`` embeds
+    the source in a style-isolated ``iframe[srcdoc]``; ``print`` flattens it
+    (inline head styles + body) so headless Chromium can paginate it.
+    """
+    from apps.knowledge.serializers import detect_doc_format
+
+    content = doc_export_body(doc)
+    if detect_doc_format(doc) == "html":
+        if export_mode == "print":
+            return render_html_document_print(content)
+        return render_html_document_interactive(content)
+
+    md = content
+    if not embed_media:
+        md = rewrite_markdown_media_paths(md)
+    html = render_markdown(md)
+    html = rewrite_html_media(
+        html,
+        embed=embed_media,
+        asset_prefix="" if embed_media else "assets/",
+    )
+    return f'<div class="jz-markdown export-markdown">{html}</div>'
 
 
 def safe_slug(name: str) -> str:
@@ -91,7 +234,7 @@ HTML_SHELL = """\
 <title>{title}</title>
 <style>{css}</style>
 </head>
-<body>
+<body class="{body_class}">
 <article class="post">
 {body}
 </article>
@@ -224,31 +367,31 @@ def rewrite_markdown_media_paths(markdown: str, prefix: str = "assets/") -> str:
     return _MD_IMAGE_RE.sub(repl, markdown or "")
 
 
-def doc_html_body(scope: ExportScope, render: bool = True) -> str:
-    """Concatenate every document in scope into a single HTML body.
+def _doc_meta_html(doc) -> str:
+    meta = _escape(doc.knowledge_base.name)
+    if doc.published_at:
+        meta += f" · {doc.published_at.strftime('%Y-%m-%d')}"
+    return f'<div class="post-meta">{meta}</div>'
 
-    HTML-format documents (``detect_doc_format == 'html'``) are kept as their
-    original markup — only the ``<body>`` contents are extracted so they nest
-    cleanly inside the surrounding shell, instead of being run through the
-    Markdown renderer (which would mangle real HTML).
+
+def doc_panels_html(scope: ExportScope, *, export_mode: str = "interactive") -> str:
+    """Render each document as a switchable ``.export-doc-panel`` section.
+
+    In ``interactive`` mode all panels but the first carry ``hidden`` (the TOC
+    JS toggles them); in ``print`` mode every panel stays visible for pagination.
     """
     from apps.knowledge.serializers import detect_doc_format
 
     parts: list[str] = []
-    for doc in scope.documents:
-        title = _escape(doc.title)
-        meta = f'<div class="post-meta">{_escape(doc.knowledge_base.name)}'
-        if doc.published_at:
-            meta += f" · {doc.published_at.strftime('%Y-%m-%d')}"
-        meta += "</div>"
-        content = doc_export_body(doc)
-        if detect_doc_format(doc) == "html":
-            body = html_body_or_self(content)
-        else:
-            body = render_markdown(content) if render else content
+    for idx, doc in enumerate(scope.documents):
+        fmt = "html" if detect_doc_format(doc) == "html" else "markdown"
+        body = render_document_body_html(doc, embed_media=True, export_mode=export_mode)
+        hidden = " hidden" if export_mode == "interactive" and idx > 0 else ""
         parts.append(
-            f'<section class="post" id="doc-{doc.id}">\n'
-            f"<h1>{title}</h1>\n{meta}\n{body}\n</section>"
+            f'<section class="export-doc-panel" id="doc-{doc.id}" '
+            f'data-format="{fmt}"{hidden}>\n'
+            f'<header class="export-doc-header"><h1>{_escape(doc.title)}</h1>'
+            f"{_doc_meta_html(doc)}</header>\n{body}\n</section>"
         )
     return "\n".join(parts)
 
