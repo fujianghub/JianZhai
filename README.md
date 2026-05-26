@@ -90,7 +90,7 @@ pnpm install
 pnpm dev                           # 监听 0.0.0.0:3001，局域网可用 http://<本机IP>:3001
 ```
 
-**局域网访问**：从其他设备打开时不要用 `localhost`（那指向对方本机）。在 [`backend/.env`](backend/.env) 设置 `JIANZHAI_PUBLIC_ORIGIN=http://<服务器IP>:3001`（可选同时设 `SITE_PUBLIC_URL`），**重启 Django** 后 POST/导出才过 CSRF。开发时前端保持默认走 Vite 的 `/api` 代理，**不要**把 `VITE_API_BASE_URL` 指到另一台机器的 `localhost:8002`。
+**局域网访问**：从其他设备打开时不要用 `localhost`（那指向对方本机）。在 [`backend/.env`](backend/.env) 设置 `JIANZHAI_PUBLIC_ORIGIN=http://<服务器IP>:3001`（可选同时设 `SITE_PUBLIC_URL`），**完全重启 Django** 后 POST/导出才过 CSRF（`.env` 不会被 runserver 热加载，仅改 `.py` 的 autoreload 不够）。开发时前端保持默认走 Vite 的 `/api` 代理，**不要**把 `VITE_API_BASE_URL` 指到另一台机器的 `localhost:8002`。
 
 ### 4. Celery（搜索索引 / 双向链接 / 导出）
 

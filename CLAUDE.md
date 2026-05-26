@@ -480,7 +480,7 @@ class AIUsageLog(models.Model):
 8. 前端：`pnpm install && pnpm dev`（3001，`host: 0.0.0.0`，局域网用 `http://<机器IP>:3001`）
 9. 浏览器访问前台；本机开发可用 http://localhost:3001，使用 superuser 登录后台
 
-**局域网**：浏览器 Origin 为 `http://<IP>:3001` 时须在 `backend/.env` 配置 `JIANZHAI_PUBLIC_ORIGIN`（或与之一致的 `SITE_PUBLIC_URL`），settings 会自动合并进 `CSRF_TRUSTED_ORIGINS` / `CORS_ALLOWED_ORIGINS` 并将 IP 加入 `ALLOWED_HOSTS`；改后需重启后端。勿在 `frontend/.env` 将 `VITE_API_BASE_URL` 设为跨机的 `http://localhost:8002/...`（会跨域且 CSRF 仍按页面 Origin 校验）。
+**局域网**：浏览器 Origin 为 `http://<IP>:3001` 时须在 `backend/.env` 配置 `JIANZHAI_PUBLIC_ORIGIN`（或与之一致的 `SITE_PUBLIC_URL`），settings 会自动合并进 `CSRF_TRUSTED_ORIGINS` / `CORS_ALLOWED_ORIGINS` 并将 IP 加入 `ALLOWED_HOSTS`；**修改 `.env` 后必须完全重启 Django**（`.env` 不会被 runserver 热加载）。勿在 `frontend/.env` 将 `VITE_API_BASE_URL` 设为跨机的 `http://localhost:8002/...`（会跨域且 CSRF 仍按页面 Origin 校验）。
 
 ---
 

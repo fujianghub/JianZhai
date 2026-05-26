@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import platform
 import sys
 from datetime import timedelta
@@ -174,6 +175,10 @@ def system_info(request):
                 "django": django.get_version(),
                 "platform": platform.platform(),
                 "debug": settings.DEBUG,
+            },
+            "security": {
+                "csrf_trusted_origins": settings.CSRF_TRUSTED_ORIGINS,
+                "public_origin": os.environ.get("JIANZHAI_PUBLIC_ORIGIN") or settings.SITE_PUBLIC_URL,
             },
             "counts": {
                 "knowledge_bases": KnowledgeBase.objects.count(),

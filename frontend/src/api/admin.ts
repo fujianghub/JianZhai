@@ -8,6 +8,11 @@ export interface SystemInfo {
     platform: string;
     debug: boolean;
   };
+  /** Effective CSRF/CORS public origin for the running process (superuser debug). */
+  security?: {
+    csrf_trusted_origins: string[];
+    public_origin: string;
+  };
   counts: {
     knowledge_bases: number;
     folders: number;

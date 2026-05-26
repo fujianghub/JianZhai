@@ -10,7 +10,9 @@ import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-load_dotenv(BASE_DIR / ".env")
+# override=True: backend/.env wins over stale shell exports (e.g. old ALLOWED_HOSTS
+# from a prior `source .env`). .env changes still require a full runserver restart.
+load_dotenv(BASE_DIR / ".env", override=True)
 
 
 def _env_bool(name: str, default: bool = False) -> bool:
