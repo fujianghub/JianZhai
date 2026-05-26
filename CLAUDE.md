@@ -15,7 +15,7 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9 — AI 助手、玻璃风格后台、自制图标库已落地 |
+| 实现阶段 | v0.9.1 — 搜索扩展、并发与安全修复在 v0.9 视觉系统之上 |
 | 多用户 | 支持。普通账号按 `owner` 隔离数据；`is_superuser` 跨租户可见 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
 
@@ -184,7 +184,7 @@ jianzhai/
 - **软删除**：`KnowledgeBase` / `Folder` / `Document` 均含 `is_deleted` + `deleted_at`，配合 `SoftDeleteManager`（默认排除已删）与 `all_objects`（含已删）。`Folder.soft_delete()` 级联子文件夹与文档。
 - **唯一性**：`UniqueConstraint(..., condition=Q(is_deleted=False))` 保证 slug 在「未删除」范围内唯一，回收站不冲突。
 - **多租户隔离**：`apps/accounts/scoping.py` 的 `scope_queryset(qs, user)`——匿名 → 空集；超级用户 → 不过滤；其他 → `filter(owner=user)`。
-- **乐观并发**：`Document` 加 `version` 字段，PATCH 接受 `expected_version`，不匹配返回 409 + 当前文档；前端提示并自动加载最新版本（防覆盖）。
+- **乐观并发**：`Document.version`；PATCH / 发布版 PATCH / `publish` / `unpublish` 均可带 `expected_version`；服务端 `select_for_update` 校验，冲突 409 + 文档快照；前端 `documentSave` 与编辑器自动加载最新版。
 
 ### Document 关键字段
 
@@ -341,18 +341,25 @@ class AIUsageLog(models.Model):
 ### 模块 7：全文搜索 ✅
 
 - 全局 `⌘K` 搜索框
-- 范围：标题 + 正文 + 标签 + 评论
-- jieba 切词后写入 PG `search_vector` GinIndex
-- 提供管理命令重建索引（`apps/search/management/commands/`）
+- **索引范围**：标题 + `raw_content`（HTML 会先剥标签）+ **标签名** + **评论正文**
+- jieba 切词后合并写入 PG `search_vector` GinIndex（`apps/search/services.py` → `collect_search_text`）
+- **异步刷新**：`Document` 保存 + `DocumentTag` / `Comment` 增删改 → Celery `refresh_document_vector`
+- 管理命令全量重建：`python manage.py reindex_search`（升级后建议跑一次）
+- 结果 snippet：正文无命中时回退到标签名 / 评论片段
 
 ### 模块 8：导出 ✅
 
 - 粒度：单文档 / 文件夹（树节点「导出」）/ 整 KB；格式：md / html / pdf（Playwright）/ docx / site (zip)
 - `apps/exporter/services/` 按格式拆分；产物在 `exports/`（`export_root()` 随 `MEDIA_ROOT` 解析）
 - **正文策略**：除整站 zip 仅 scope 内 `status=published` 外，各格式均 `doc_export_body()` — 优先 `published_content`，空则 `raw_content`
-- **离线资源**：HTML/PDF 单文件内嵌本地 `/media/` 为 base64；zip 类导出复制到 `assets/` 并重写路径
+- **HTML 合订本（多文档）**：`render_html(scope, mode="interactive")` 输出**单文件 anthology**——固定左侧目录 + **一次只显示一篇**的 `.export-doc-panel`（默认首篇，目录点击/`#doc-N` 链接切换，URL hash 同步，内联 ES5 JS 驱动）。
+  - **Markdown 篇**：经 `markdown_preprocess` + `markdown_render`（容器/callout、任务列表、脚注、表格、`doc:N` 锚点）渲染为 `.jz-markdown.export-markdown` 片段。
+  - **HTML 篇**：完整页面写入 `<iframe class="export-html-frame" srcdoc>`（仅 `/media/` → base64 重写 + 注入 vh-override），样式与外壳**互不污染**，原样保留作者 `<head>` 样式；**单篇** HTML 导出仍 `export()` 原样写出（不套外壳）。
+  - 样式：`BASE_CSS` + `export-markdown.css` + `export-anthology.css`（后者仅 html_export 加载，不进 export_stylesheet/静态站）。
+- **HTML/PDF 合订本（PDF）**：`render_html(scope, mode="print")`——展开全部 panel、去目录与脚本、篇章间 `page-break-before`；HTML 篇**不用 iframe**，改为抽取 `<head>` 内 `<style>` + body 扁平嵌入（`export-html-print`），避免 Chromium 打印空白 iframe。Playwright 用 `emulate_media("screen")` 保留屏幕样式（分页由 `.is-print` 类的常开断页规则驱动，不依赖 `@media print`）。外链 `<link>` CSS **不内嵌**（离线限制）。
+- **离线资源**：HTML/PDF 单文件内嵌本地 `/media/` 为 base64；zip 类导出复制到 `assets/` 并重写路径。Mermaid/PlantUML 在离线导出中为带语言标签的代码块，无运行时渲染。
 - Celery `exporter.run_export` 异步；broker 不可达时 create 内联 fallback；前端 `/admin/exports` 轮询 + `downloadExport()`（fetch + blob，避免跨域 cookie 问题）
-- 测试：`backend/apps/exporter/tests/`（25+ pytest）；PDF 用例在无 Playwright 时 skip
+- 测试：`backend/apps/exporter/tests/`（含 anthology interactive/print、iframe 隔离、HTML 扁平化用例）；PDF 用例在无 Playwright 时 skip
 
 ### 模块 9：博客前台 ✅
 
@@ -385,7 +392,7 @@ class AIUsageLog(models.Model):
 **模型路由**：
 - 用户偏好存 localStorage (`jz-ai-model`)，每次调用带 `model` 字段
 - 后端校验 `AVAILABLE_MODELS` 白名单（Opus 4.7 / Sonnet 4.6 / Haiku 4.5），默认 `claude-opus-4-7`
-- Admin 在 `/admin/ai` 设全局默认 + 主开关 + max_tokens
+- Admin 在 `/admin/ai` 设全局默认 + 主开关 + `max_tokens`（经 `get_max_tokens()` 注入每次 SDK 调用）
 
 **操作集（8 种）**：续写 / 润色 / 扩写 / 纠错 / 总结 / 大纲 / 中英互译。所有 prompt 模板在 `apps/ai/prompts.py`。
 
@@ -433,12 +440,13 @@ class AIUsageLog(models.Model):
 ## 关键风险与注意事项
 
 1. **Tiptap Markdown 互转保真度** — 复杂表格、合并单元格在富文本 ↔ Markdown 间可能丢失。
-2. **双向链接引用完整性** — `linking/signals.py` 在保存后异步更新，删除时前端做确认。
-3. **大文档性能** — 编辑器 10k+ 字时仍流畅，但建议未来对超长文档启用 Tiptap lazy rendering。
-4. **PDF 导出资源** — Playwright 单次启动约 200MB；Celery 串行处理。`pip install -e .[pdf]` + `playwright install chromium`。
-5. **PG 中文搜索** — `tsvector` 不支持中文分词，写入和查询两端都用 jieba。
-6. **超级用户跨租户可见** — `scope_queryset` 对 superuser 不过滤；多账号时小心 staff 误操作。
-7. **AI Token 成本** — 默认 `claude-opus-4-7` 单次输出 $0.01-$0.10。控成本可在 `/admin/ai` 切到 Haiku 或降低 `max_tokens`。
+2. **双向链接** — `linking/tasks.py` 仅接受**同 owner** 且未软删的目标文档；`sync_document_links` 对源文档 `select_for_update` 防并发重复写入。保存后 Celery 异步解析 `raw_content`。
+3. **乐观并发** — PATCH / 发布版 PATCH / `publish` / `unpublish` 均可带 `expected_version`；序列化器在事务内 `select_for_update` 校验；冲突返回 409 + 最新文档快照。
+4. **大文档性能** — 编辑器 10k+ 字时仍流畅，但建议未来对超长文档启用 Tiptap lazy rendering。
+5. **PDF 导出资源** — Playwright 单次启动约 200MB；Celery 串行处理。`pip install -e .[pdf]` + `playwright install chromium`。
+6. **PG 中文搜索** — `tsvector` 不支持中文分词，写入和查询两端都用 jieba；升级索引逻辑后需 `reindex_search`。
+7. **超级用户跨租户可见** — `scope_queryset` 对 superuser 不过滤；多账号时小心 staff 误操作。
+8. **AI Token 成本** — 默认 `claude-opus-4-7`；控成本可在 `/admin/ai` 切 Haiku 或调低 `max_tokens`（已对接运行时）。
 
 ---
 
@@ -455,7 +463,8 @@ class AIUsageLog(models.Model):
 | **v0.7 UI 打磨** | 白边修复、博客 sticky 顶栏 + 卡片质感、4 主题适配、印章式 favicon、PWA | ✅ |
 | **v0.8 编辑体验** | 大纲固定 / 全屏退出 / 全屏目录 / 所有编辑模式 AI / 路由 bug | ✅ |
 | **v0.9 视觉系统** | 自制 SVG 图标库 + 双色调彩点 + 主题联动染色 | ✅ |
-| **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 回收站 UI / 实时多人协作 (Yjs) | 🔲 |
+| **v0.9.1 维护** | 搜索含标签/评论；链接租户边界；原子 version；AI max_tokens；编辑器竞态修复 | ✅ |
+| **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 回收站 UI / 超大 KB 树分页 / Yjs | 🔲 |
 
 ---
 
@@ -468,8 +477,10 @@ class AIUsageLog(models.Model):
 5. （可选）种公开 KB：`python manage.py seed_architecture_kb`
 6. 启动后端：`python manage.py runserver 0.0.0.0:8002`
 7. 启动 Celery：`celery -A jianzhai worker -l info`
-8. 前端：`pnpm install && pnpm dev`（3001）
-9. 浏览器访问 http://localhost:3001，使用 superuser 登录后台
+8. 前端：`pnpm install && pnpm dev`（3001，`host: 0.0.0.0`，局域网用 `http://<机器IP>:3001`）
+9. 浏览器访问前台；本机开发可用 http://localhost:3001，使用 superuser 登录后台
+
+**局域网**：浏览器 Origin 为 `http://<IP>:3001` 时须在 `backend/.env` 配置 `JIANZHAI_PUBLIC_ORIGIN`（或与之一致的 `SITE_PUBLIC_URL`），settings 会自动合并进 `CSRF_TRUSTED_ORIGINS` / `CORS_ALLOWED_ORIGINS` 并将 IP 加入 `ALLOWED_HOSTS`；改后需重启后端。勿在 `frontend/.env` 将 `VITE_API_BASE_URL` 设为跨机的 `http://localhost:8002/...`（会跨域且 CSRF 仍按页面 Origin 校验）。
 
 ---
 
@@ -484,6 +495,9 @@ REDIS_URL=redis://localhost:6379/0
 CELERY_BROKER_URL=redis://localhost:6379/1
 CELERY_RESULT_BACKEND=redis://localhost:6379/2
 MEDIA_ROOT=./media
+SITE_PUBLIC_URL=http://localhost:3001
+# 局域网：与浏览器地址栏 origin 一致，自动合并 CSRF/CORS（见 settings.py）
+# JIANZHAI_PUBLIC_ORIGIN=http://192.168.x.x:3001
 ALLOWED_HOSTS=localhost,127.0.0.1
 CORS_ALLOWED_ORIGINS=http://localhost:3001
 CSRF_TRUSTED_ORIGINS=http://localhost:3001,http://localhost:8002
@@ -504,5 +518,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.0
-**最后更新**：2026-05-21
+**文档版本**：v3.1  
+**最后更新**：2026-05-26

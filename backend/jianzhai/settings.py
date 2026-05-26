@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
@@ -24,6 +25,21 @@ def _env_list(name: str, default: list[str] | None = None) -> list[str]:
     if not raw:
         return list(default or [])
     return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+def _origin_from_url(url: str) -> str | None:
+    parsed = urlparse(url.strip())
+    if parsed.scheme and parsed.netloc:
+        return f"{parsed.scheme}://{parsed.netloc}"
+    return None
+
+
+def _merge_unique(base: list[str], *items: str | None) -> list[str]:
+    out = list(base)
+    for item in items:
+        if item and item not in out:
+            out.append(item)
+    return out
 
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
@@ -177,6 +193,21 @@ MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media")).resolve()
 
 # Public blog URL for static-site export RSS (and similar absolute links).
 SITE_PUBLIC_URL = os.environ.get("SITE_PUBLIC_URL", "http://localhost:3001")
+
+# LAN / production: browser Origin must match CSRF_TRUSTED_ORIGINS (see docs).
+# Prefer explicit JIANZHAI_PUBLIC_ORIGIN; else derive from SITE_PUBLIC_URL.
+_public_origin_candidate = os.environ.get("JIANZHAI_PUBLIC_ORIGIN", "").strip()
+_derived_public_origin = (
+    _origin_from_url(_public_origin_candidate)
+    if _public_origin_candidate
+    else _origin_from_url(SITE_PUBLIC_URL)
+)
+if _derived_public_origin:
+    CSRF_TRUSTED_ORIGINS = _merge_unique(CSRF_TRUSTED_ORIGINS, _derived_public_origin)
+    CORS_ALLOWED_ORIGINS = _merge_unique(CORS_ALLOWED_ORIGINS, _derived_public_origin)
+    _public_host = urlparse(_derived_public_origin).hostname
+    if _public_host:
+        ALLOWED_HOSTS = _merge_unique(ALLOWED_HOSTS, _public_host)
 
 # Upload limits (matches non-functional requirements: 50MB)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
