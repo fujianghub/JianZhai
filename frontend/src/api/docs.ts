@@ -121,14 +121,30 @@ export async function updatePublishedContent(
   return data;
 }
 
-export async function publishDocument(id: number): Promise<DocumentDetail> {
+export async function publishDocument(
+  id: number,
+  expected_version?: number,
+): Promise<DocumentDetail> {
   await ensureCsrf();
-  const { data } = await apiClient.post<DocumentDetail>(`/documents/${id}/publish/`);
+  const body =
+    expected_version != null ? { expected_version } : undefined;
+  const { data } = await apiClient.post<DocumentDetail>(
+    `/documents/${id}/publish/`,
+    body,
+  );
   return data;
 }
 
-export async function unpublishDocument(id: number): Promise<DocumentDetail> {
+export async function unpublishDocument(
+  id: number,
+  expected_version?: number,
+): Promise<DocumentDetail> {
   await ensureCsrf();
-  const { data } = await apiClient.post<DocumentDetail>(`/documents/${id}/unpublish/`);
+  const body =
+    expected_version != null ? { expected_version } : undefined;
+  const { data } = await apiClient.post<DocumentDetail>(
+    `/documents/${id}/unpublish/`,
+    body,
+  );
   return data;
 }

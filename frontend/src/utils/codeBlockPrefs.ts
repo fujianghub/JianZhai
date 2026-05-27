@@ -62,7 +62,7 @@ const KEYS = {
 } as const;
 
 const DEFAULT_PREFS: CodeBlockPrefs = {
-  fontSize: 14,
+  fontSize: 13,
   lineHeight: LINE_DEFAULT,
   lineNumbers: true,
   wrap: false,

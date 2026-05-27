@@ -21,7 +21,7 @@ def sync_document_links(document_id: int) -> None:
     from .parser import parse_mentions
 
     try:
-        doc = Document.all_objects.get(pk=document_id)
+        doc = Document.all_objects.select_related("knowledge_base").get(pk=document_id)
     except Document.DoesNotExist:
         DocumentLink.objects.filter(source_id=document_id).delete()
         return
@@ -36,11 +36,18 @@ def sync_document_links(document_id: int) -> None:
         return
 
     target_ids = {p.target_id for p in parsed if p.target_id != doc.id}
+    owner_id = doc.knowledge_base.owner_id
     valid_target_ids = set(
-        Document.objects.filter(id__in=target_ids).values_list("id", flat=True)
+        Document.objects.filter(
+            id__in=target_ids,
+            knowledge_base__owner_id=owner_id,
+            is_deleted=False,
+        ).values_list("id", flat=True)
     )
 
     with transaction.atomic():
+        # Serialize concurrent syncs for the same source document.
+        Document.all_objects.select_for_update().filter(pk=document_id).first()
         DocumentLink.objects.filter(source=doc).delete()
         DocumentLink.objects.bulk_create(
             [

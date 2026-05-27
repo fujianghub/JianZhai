@@ -285,6 +285,7 @@ class Document(models.Model):
         self.status = "published"
         if not self.published_at:
             self.published_at = timezone.now()
+        self.version += 1
         self.save(
             update_fields=[
                 "raw_content",
@@ -292,12 +293,14 @@ class Document(models.Model):
                 "status",
                 "published_at",
                 "updated_at",
+                "version",
             ]
         )
 
     def unpublish(self) -> None:
         self.status = "draft"
-        self.save(update_fields=["status", "updated_at"])
+        self.version += 1
+        self.save(update_fields=["status", "updated_at", "version"])
 
 
 class DocumentFavorite(models.Model):

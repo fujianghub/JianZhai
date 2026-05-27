@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Input, Segmented, Space, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Input, Segmented, Tag, Tooltip, Typography } from 'antd';
 import {
   BgColorsOutlined,
   CommentOutlined,
-  LineOutlined,
-  LinkOutlined,
   SaveOutlined,
   UnderlineOutlined,
 } from '@ant-design/icons';
+import MarkdownQuickInsertButton from './toolbar/MarkdownQuickInsertButton';
 import { renderMarkdown, wordCount } from '@/utils/markdown';
 import MentionPicker from './MentionPicker';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
@@ -21,6 +20,7 @@ import MarkdownSlashMenu, { useMarkdownSlashDisplayItems } from './MarkdownSlash
 import {
   applyMarkdownSlashCommand,
   findSlashTrigger,
+  getMarkdownInsertForCommand,
 } from './markdownSlashActions';
 import { trackRecentSlashCommand } from './slashCommandRegistry';
 import type { SlashCommandItem } from './slashCommandRegistry';
@@ -271,6 +271,31 @@ export default function MarkdownEditor({
     slashTriggerRef.current = null;
   }
 
+  function insertFromQuickMenu(item: SlashCommandItem) {
+    if (readOnly) return;
+    const insert = getMarkdownInsertForCommand(item);
+    if (insert === null) {
+      if (item.id === 'mention') {
+        openMentionAtCursor();
+        return;
+      }
+      message.info('该块请切换到富文本编辑器');
+      return;
+    }
+    const ta = textareaRef.current;
+    const start = ta?.selectionStart ?? value.length;
+    const end = ta?.selectionEnd ?? start;
+    const next = value.slice(0, start) + insert + value.slice(end);
+    trackRecentSlashCommand(item.title);
+    onChange(next);
+    const caret = start + insert.length;
+    queueMicrotask(() => {
+      if (!ta) return;
+      ta.focus();
+      ta.setSelectionRange(caret, caret);
+    });
+  }
+
   function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (slashOpen && slashDisplayItems.length > 0) {
       const n = slashDisplayItems.length;
@@ -495,27 +520,35 @@ export default function MarkdownEditor({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Space style={{ marginBottom: 8 }}>
-        <Tag color={statusLabel[status].color}>{statusLabel[status].text}</Tag>
-        <Text type="secondary">{count} 字</Text>
-        <Tooltip title="立即保存 (Ctrl/⌘+S)">
-          <Button
-            size="small"
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={status === 'saving'}
-            disabled={readOnly || !onAutoSave || (status === 'saved' && value === lastSavedRef.current)}
-            onClick={() => void saveNow()}
-          >
-            保存
-          </Button>
-        </Tooltip>
-        {status === 'error' && onAutoSave && !readOnly && (
-          <Button size="small" onClick={() => void saveNow()}>
-            重试
-          </Button>
-        )}
+    <div className="jz-editor-surface jz-md-editor-root">
+      <div className="jz-editor-toolbar jz-editor-toolbar--compact" role="toolbar" aria-label="Markdown 工具栏">
+        <div className="jz-editor-toolbar-meta">
+          <Tag color={statusLabel[status].color} style={{ margin: 0 }}>
+            {statusLabel[status].text}
+          </Tag>
+          <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
+          <Tooltip title="立即保存 (Ctrl/⌘+S)">
+            <Button
+              size="small"
+              className="jz-toolbar-save-btn"
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={status === 'saving'}
+              disabled={readOnly || !onAutoSave || (status === 'saved' && value === lastSavedRef.current)}
+              onClick={() => void saveNow()}
+            >
+              保存
+            </Button>
+          </Tooltip>
+          {status === 'error' && onAutoSave && !readOnly && (
+            <Button size="small" className="jz-toolbar-save-btn" onClick={() => void saveNow()}>
+              重试
+            </Button>
+          )}
+        </div>
+        <div className="jz-editor-toolbar-main">
+        <MarkdownQuickInsertButton onInsert={insertFromQuickMenu} disabled={readOnly} />
+        <span className="jz-editor-toolbar-divider" aria-hidden />
         <Tooltip title="下划线 (Ctrl+U)">
           <Button
             size="small"
@@ -552,24 +585,6 @@ export default function MarkdownEditor({
             <Button size="small" icon={<BgColorsOutlined />} disabled={readOnly} />
           </Tooltip>
         </Dropdown>
-        <Tooltip title="分割线（梅花纹）">
-          <Button
-            size="small"
-            icon={<LineOutlined />}
-            disabled={readOnly}
-            onClick={() => wrapSelection('\n\n---\n\n', '', '')}
-          />
-        </Tooltip>
-        <Tooltip title="插入文档引用（也可直接键入 @ 触发）">
-          <Button
-            size="small"
-            icon={<LinkOutlined />}
-            onClick={openMentionAtCursor}
-            disabled={readOnly}
-          >
-            引用
-          </Button>
-        </Tooltip>
         <Dropdown
           disabled={readOnly}
           menu={{
@@ -605,9 +620,10 @@ export default function MarkdownEditor({
             ]}
           />
         )}
-      </Space>
+        </div>
+      </div>
       <div
-        className="jz-md-editor-split"
+        className="jz-md-editor-split jz-editor-content-area"
         style={{
           display: 'grid',
           gridTemplateColumns:

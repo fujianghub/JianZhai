@@ -15,6 +15,22 @@ MAX_RESULTS = 50
 SNIPPET_RADIUS = 60
 
 
+def _document_snippet(doc: Document, tokens: list[str]) -> str:
+    """Prefer a snippet from body; fall back to tag names or comments when matched."""
+    sources = [
+        doc.raw_content or "",
+        " ".join(t.name for t in doc.tags.all()),
+        " ".join(c.content for c in doc.comments.all()),
+    ]
+    for source in sources:
+        if not source:
+            continue
+        lower = source.lower()
+        if any(tok.lower() in lower for tok in tokens):
+            return _snippet(source, tokens)
+    return _snippet(doc.raw_content or "", tokens)
+
+
 def _snippet(text: str, tokens: list[str]) -> str:
     """Return a short snippet around the first matching token (case-insensitive)."""
     if not text:
@@ -48,6 +64,7 @@ def search(request):
         .filter(search_vector=pg_query)
         .annotate(rank=SearchRank(F("search_vector"), pg_query))
         .select_related("knowledge_base")
+        .prefetch_related("tags", "comments")
     )
 
     # Optional filters
@@ -75,7 +92,7 @@ def search(request):
                     "id": d.id,
                     "title": d.title,
                     "slug": d.slug,
-                    "snippet": _snippet(d.raw_content or "", tokens),
+                    "snippet": _document_snippet(d, tokens),
                     "status": d.status,
                     "visibility": d.visibility,
                     "knowledge_base": {"id": d.knowledge_base_id, "name": d.knowledge_base.name},

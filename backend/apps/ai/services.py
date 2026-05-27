@@ -115,12 +115,18 @@ def _log_usage(
         pass
 
 
+def _resolved_max_tokens(max_tokens: int | None) -> int:
+    if max_tokens is not None:
+        return max_tokens
+    return get_max_tokens()
+
+
 def run_once(
     operation: str,
     content: str,
     extra: str = "",
     model: str | None = None,
-    max_tokens: int = DEFAULT_MAX_TOKENS,
+    max_tokens: int | None = None,
     *,
     user=None,
 ) -> str:
@@ -128,11 +134,12 @@ def run_once(
     import time
     client = _client()
     resolved = resolve_model(model)
+    token_limit = _resolved_max_tokens(max_tokens)
     started = time.monotonic()
     try:
         msg = client.messages.create(
             model=resolved,
-            max_tokens=max_tokens,
+            max_tokens=token_limit,
             system=SYSTEM_PROMPT,
             messages=build_messages(operation, content, extra),
         )
@@ -164,7 +171,7 @@ def run_stream(
     content: str,
     extra: str = "",
     model: str | None = None,
-    max_tokens: int = DEFAULT_MAX_TOKENS,
+    max_tokens: int | None = None,
     *,
     user=None,
 ) -> Iterator[str]:
@@ -172,13 +179,14 @@ def run_stream(
     import time
     client = _client()
     resolved = resolve_model(model)
+    token_limit = _resolved_max_tokens(max_tokens)
     started = time.monotonic()
     final_usage = {"in": 0, "out": 0}
     err = ""
     try:
         with client.messages.stream(
             model=resolved,
-            max_tokens=max_tokens,
+            max_tokens=token_limit,
             system=SYSTEM_PROMPT,
             messages=build_messages(operation, content, extra),
         ) as stream:

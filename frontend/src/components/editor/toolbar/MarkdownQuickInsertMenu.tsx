@@ -1,10 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
-import type { Editor } from '@tiptap/core';
 import type { SlashCommandItem } from '../slashCommandRegistry';
-import { executeSlashCommandAtCursor } from '../slashCommandRegistry';
-import type { InsertMenuActions } from '../insertMenuActions';
+import { trackRecentSlashCommand } from '../slashCommandRegistry';
+import { getMarkdownInsertForCommand } from '../markdownSlashActions';
 import {
   filterInsertMenu,
   insertMenuDisplayTitle,
@@ -15,17 +14,29 @@ import {
 import { insertIconToneClass } from './insertIconTone';
 
 interface Props {
-  editor: Editor;
-  actions: InsertMenuActions;
+  onInsert: (item: SlashCommandItem) => void;
   onClose: () => void;
 }
 
-export default function QuickInsertMenu({ editor, actions, onClose }: Props) {
+function itemAvailableInMarkdown(item: SlashCommandItem): boolean {
+  if (getMarkdownInsertForCommand(item) !== null) return true;
+  return !item.richTextOnly;
+}
+
+export default function MarkdownQuickInsertMenu({ onInsert, onClose }: Props) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const groups = useMemo(() => filterInsertMenu(query), [query]);
+  const groups = useMemo(() => {
+    const grouped = filterInsertMenu(query);
+    return grouped
+      .map((g) => ({
+        ...g,
+        items: g.items.filter(itemAvailableInMarkdown),
+      }))
+      .filter((g) => g.items.length > 0);
+  }, [query]);
 
   const flatItems = useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
@@ -36,12 +47,8 @@ export default function QuickInsertMenu({ editor, actions, onClose }: Props) {
   }, [selectedIndex]);
 
   function runItem(item: SlashCommandItem) {
-    executeSlashCommandAtCursor(editor, item, actions);
-    try {
-      editor.commands.scrollIntoView();
-    } catch {
-      /* optional command */
-    }
+    trackRecentSlashCommand(item.title);
+    onInsert(item);
     onClose();
   }
 
@@ -66,7 +73,7 @@ export default function QuickInsertMenu({ editor, actions, onClose }: Props) {
     }
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
-  }, [flatItems, selectedIndex, editor, actions, onClose]);
+  }, [flatItems, selectedIndex, onInsert, onClose]);
 
   let rowIndex = -1;
 
@@ -100,9 +107,7 @@ export default function QuickInsertMenu({ editor, actions, onClose }: Props) {
         <span className="jz-insert-item-body">
           <span className="jz-insert-item-title">{title}</span>
           {secondary && <span className="jz-insert-item-desc">{secondary}</span>}
-          {grid && shortcut && (
-            <span className="jz-insert-item-badge">{shortcut}</span>
-          )}
+          {grid && shortcut && <span className="jz-insert-item-badge">{shortcut}</span>}
         </span>
         {!grid && shortcut && <span className="jz-insert-item-shortcut">{shortcut}</span>}
       </button>
@@ -114,9 +119,7 @@ export default function QuickInsertMenu({ editor, actions, onClose }: Props) {
       return (
         <div key={group.section} className="jz-insert-menu-group">
           <div className="jz-insert-menu-group-title">{group.section}</div>
-          <div className="jz-insert-grid">
-            {group.items.map((item) => renderItem(item, true))}
-          </div>
+          <div className="jz-insert-grid">{group.items.map((item) => renderItem(item, true))}</div>
         </div>
       );
     }
@@ -133,7 +136,7 @@ export default function QuickInsertMenu({ editor, actions, onClose }: Props) {
       <div className="jz-insert-search">
         <Input
           prefix={<SearchOutlined style={{ color: 'var(--jz-accent)' }} />}
-          placeholder="请输入要搜索的功能名称"
+          placeholder="搜索要插入的块（引用、表格、链接…）"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           allowClear

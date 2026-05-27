@@ -27,6 +27,10 @@ export function getMarkdownInsertForCommand(item: SlashCommandItem): string | nu
       return '- [ ] ';
     case 'quote':
       return '> ';
+    case 'hyperlink':
+      return '[链接文字](https://)';
+    case 'table':
+      return '\n| 列1 | 列2 | 列3 |\n| --- | --- | --- |\n|  |  |  |\n\n';
     case 'hr':
       return '\n---\n\n';
     case 'code-block':

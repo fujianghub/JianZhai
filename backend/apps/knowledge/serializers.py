@@ -2,9 +2,11 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django.db import transaction
 from django.utils import timezone
 from rest_framework import serializers
 
+from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
 
 DOC_FORMAT_ORDER = {
@@ -124,12 +126,16 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             )
 
     def get_document_count(self, obj: KnowledgeBase) -> int:
+        annotated = getattr(obj, "_document_count", None)
+        if annotated is not None:
+            return annotated
         return obj.documents(manager="objects").count()
 
     def get_tags(self, obj: KnowledgeBase) -> list[dict]:
+        tag_list = obj.tags.all()
         return [
             {"id": t.id, "name": t.name, "slug": t.slug, "color": t.color}
-            for t in obj.tags.all()
+            for t in tag_list
         ]
 
 
@@ -251,6 +257,16 @@ class DocumentSerializer(serializers.ModelSerializer):
         return detect_doc_format(obj)
 
     def update(self, instance: Document, validated_data: dict) -> Document:
+        expected = self.context.get("expected_version")
+        if expected is not None:
+            with transaction.atomic():
+                locked = Document.objects.select_for_update().get(pk=instance.pk)
+                if locked.version != expected:
+                    raise VersionConflictError(locked)
+                return self._apply_update(locked, validated_data)
+        return self._apply_update(instance, validated_data)
+
+    def _apply_update(self, instance: Document, validated_data: dict) -> Document:
         if "is_pinned" in validated_data:
             if validated_data["is_pinned"]:
                 validated_data["pinned_at"] = timezone.now()

@@ -88,6 +88,12 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     };
   }, [refreshModel]);
 
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
   const collectSelection = useCallback(() => {
     if (!editor) return '';
     const { from, to } = editor.state.selection;

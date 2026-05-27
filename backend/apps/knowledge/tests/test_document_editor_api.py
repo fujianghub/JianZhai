@@ -99,6 +99,32 @@ def test_publish_copies_raw_to_published(api_client, owner, kb):
     assert resp.status_code == 200
     assert resp.data["status"] == "published"
     assert resp.data["published_content"] == "ship me"
+    assert resp.data["version"] == 2
+
+
+@pytest.mark.django_db
+def test_publish_expected_version_conflict(api_client, owner, kb):
+    doc = _doc(kb, raw_content="body")
+    api_client.force_authenticate(user=owner)
+    url = reverse("api_v1:document-publish", args=[doc.id])
+    resp = api_client.post(url, {"expected_version": 0}, format="json")
+    assert resp.status_code == 409
+    assert resp.data["code"] == "version_conflict"
+
+
+@pytest.mark.django_db
+def test_sequential_patch_same_expected_version_second_fails(api_client, owner, kb):
+    doc = _doc(kb, raw_content="v1")
+    api_client.force_authenticate(user=owner)
+    url = reverse("api_v1:document-detail", args=[doc.id])
+    v = doc.version
+
+    first = api_client.patch(url, {"raw_content": "v2", "expected_version": v}, format="json")
+    assert first.status_code == 200
+
+    second = api_client.patch(url, {"raw_content": "v3", "expected_version": v}, format="json")
+    assert second.status_code == 409
+    assert second.data["code"] == "version_conflict"
 
 
 @pytest.mark.django_db

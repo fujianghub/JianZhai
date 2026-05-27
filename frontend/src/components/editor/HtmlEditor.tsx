@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Input, Space, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Button, Input, Tag, Tooltip, Typography } from 'antd';
 import { ReloadOutlined, SaveOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
@@ -50,7 +50,7 @@ const STATUS_LABEL: Record<SaveStatus, { text: string; color?: string }> = {
  */
 function decodeHtml(buf: ArrayBuffer): { text: string; encoding: 'utf-8' | 'gbk' } {
   const utf8 = new TextDecoder('utf-8', { fatal: false }).decode(buf);
-  const repCount = (utf8.match(/�/g) || []).length;
+  const repCount = (utf8.match(/\uFFFD/g) || []).length;
   if (repCount > 3) {
     try {
       const gbk = new TextDecoder('gbk').decode(buf);
@@ -342,119 +342,113 @@ export default function HtmlEditor({
   const previewSrcdoc = useMemo(() => buildHtmlPreviewSrcdoc(debouncedValue), [debouncedValue]);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-      <Space style={{ marginBottom: 8 }} wrap>
-        <Tag color={STATUS_LABEL[status].color}>{STATUS_LABEL[status].text}</Tag>
-        <Text type="secondary">{value.length.toLocaleString()} 字符</Text>
-        {encoding && (
-          <Tooltip
-            title={
-              encoding === 'gbk'
-                ? '检测到 GBK 编码，已自动转码；保存后将以 UTF-8 写回 raw_content'
-                : '以 UTF-8 解码'
-            }
-          >
-            <Tag color={encoding === 'gbk' ? 'orange' : 'default'}>编码: {encoding}</Tag>
+    <div className="jz-editor-surface jz-html-editor">
+      <div className="jz-editor-toolbar jz-editor-toolbar--compact" role="toolbar" aria-label="HTML 工具栏">
+        <div className="jz-editor-toolbar-meta">
+          <Tag color={STATUS_LABEL[status].color} style={{ margin: 0 }}>
+            {STATUS_LABEL[status].text}
+          </Tag>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {value.length.toLocaleString()} 字符
+          </Text>
+          {encoding && (
+            <Tooltip
+              title={
+                encoding === 'gbk'
+                  ? '检测到 GBK 编码，已自动转码；保存后将以 UTF-8 写回 raw_content'
+                  : '以 UTF-8 解码'
+              }
+            >
+              <Tag color={encoding === 'gbk' ? 'orange' : 'default'}>编码: {encoding}</Tag>
+            </Tooltip>
+          )}
+          <Tooltip title="立即保存 (Ctrl/⌘+S)">
+            <Button
+              size="small"
+              className="jz-toolbar-save-btn"
+              type="primary"
+              icon={<SaveOutlined />}
+              loading={status === 'saving'}
+              disabled={readOnly || !onAutoSave || (status === 'saved' && value === lastSavedRef.current)}
+              onClick={() => void saveNow()}
+            >
+              保存
+            </Button>
           </Tooltip>
-        )}
-        <Tooltip title="立即保存 (Ctrl/⌘+S)">
-          <Button
-            size="small"
-            type="primary"
-            icon={<SaveOutlined />}
-            loading={status === 'saving'}
-            disabled={readOnly || !onAutoSave || (status === 'saved' && value === lastSavedRef.current)}
-            onClick={() => void saveNow()}
-          >
-            保存
-          </Button>
-        </Tooltip>
-        {status === 'error' && onAutoSave && !readOnly && (
-          <Button size="small" onClick={() => void saveNow()}>
-            重试
-          </Button>
-        )}
-        {legacyAttachmentUrl && (
-          <>
-            <Tooltip title="按 UTF-8 重新读取原 HTML">
-              <Button
-                size="small"
-                icon={<ReloadOutlined />}
-                disabled={hydrating}
-                onClick={() => reloadWithEncoding('utf-8')}
-              >
-                UTF-8
-              </Button>
-            </Tooltip>
-            <Tooltip title="按 GBK 重新读取原 HTML（中文老文件常见）">
-              <Button
-                size="small"
-                icon={<ReloadOutlined />}
-                disabled={hydrating}
-                onClick={() => reloadWithEncoding('gbk')}
-              >
-                GBK
-              </Button>
-            </Tooltip>
-          </>
-        )}
-        {uploading && <Tag color="blue">图片上传中…</Tag>}
-      </Space>
+          {status === 'error' && onAutoSave && !readOnly && (
+            <Button size="small" className="jz-toolbar-save-btn" onClick={() => void saveNow()}>
+              重试
+            </Button>
+          )}
+          {legacyAttachmentUrl && (
+            <>
+              <Tooltip title="按 UTF-8 重新读取原 HTML">
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  disabled={hydrating}
+                  onClick={() => reloadWithEncoding('utf-8')}
+                >
+                  UTF-8
+                </Button>
+              </Tooltip>
+              <Tooltip title="按 GBK 重新读取原 HTML（中文老文件常见）">
+                <Button
+                  size="small"
+                  icon={<ReloadOutlined />}
+                  disabled={hydrating}
+                  onClick={() => reloadWithEncoding('gbk')}
+                >
+                  GBK
+                </Button>
+              </Tooltip>
+            </>
+          )}
+          {uploading && <Tag color="blue">图片上传中…</Tag>}
+        </div>
+      </div>
 
       {hydrating && (
         <Alert
           type="info"
           showIcon
           message="正在读取原 HTML 文件…"
-          style={{ marginBottom: 8 }}
+          style={{ marginBottom: 8, flexShrink: 0 }}
         />
       )}
 
       <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: showPreviewPane ? '1fr 1fr' : '1fr',
-          gap: 12,
-          flex: 1,
-          minHeight: 0,
-        }}
+        className={
+          'jz-html-editor-panes' + (showPreviewPane ? ' jz-html-editor-panes--split' : '')
+        }
       >
-        <TextArea
-          ref={(el) => {
-            const ta = el?.resizableTextArea?.textArea ?? null;
-            textareaRef.current = ta;
-            onTextareaReady?.(ta);
-          }}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onPaste={handlePaste}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          readOnly={readOnly}
-          autoSize={false}
-          style={{
-            height: '100%',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            fontSize: 13,
-            resize: 'none',
-            tabSize: 2,
-          }}
-          placeholder="<!DOCTYPE html>&#10;<html>&#10;<head><meta charset='utf-8'></head>&#10;<body>&#10;  ...&#10;</body>&#10;</html>"
-          spellCheck={false}
-        />
-        {showPreviewPane && (
-          <iframe
-            title="HTML 预览"
-            srcDoc={previewSrcdoc}
-            sandbox="allow-scripts allow-popups allow-forms"
-            style={{
-              width: '100%',
-              height: '100%',
-              border: '1px solid var(--jz-border)',
-              borderRadius: 6,
-              background: '#fff',
+        <div className="jz-html-editor-source">
+          <TextArea
+            ref={(el) => {
+              const ta = el?.resizableTextArea?.textArea ?? null;
+              textareaRef.current = ta;
+              onTextareaReady?.(ta);
             }}
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            onPaste={handlePaste}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            readOnly={readOnly}
+            autoSize={false}
+            className="jz-html-editor-textarea"
+            placeholder="<!DOCTYPE html>&#10;<html>&#10;<head><meta charset='utf-8'></head>&#10;<body>&#10;  ...&#10;</body>&#10;</html>"
+            spellCheck={false}
           />
+        </div>
+        {showPreviewPane && (
+          <div className="jz-html-editor-preview">
+            <iframe
+              title="HTML 预览"
+              srcDoc={previewSrcdoc}
+              sandbox="allow-scripts allow-popups allow-forms"
+            />
+          </div>
         )}
       </div>
     </div>

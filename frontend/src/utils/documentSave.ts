@@ -6,6 +6,23 @@ import type { DocumentDetail } from '@/types';
 
 export type VersionConflictHandler = (live: DocumentDetail | undefined) => void;
 
+function handleVersionConflict(
+  err: unknown,
+  onConflict?: VersionConflictHandler,
+): boolean {
+  if (
+    isAxiosError(err) &&
+    err.response?.status === 409 &&
+    err.response.data?.code === 'version_conflict'
+  ) {
+    const live = err.response.data?.document as DocumentDetail | undefined;
+    onConflict?.(live);
+    message.warning('文档已被其他端修改，已加载最新版本');
+    throw new Error('version_conflict');
+  }
+  return false;
+}
+
 export async function patchDocumentRawContent(
   doc: DocumentDetail,
   rawContent: string,
@@ -17,15 +34,27 @@ export async function patchDocumentRawContent(
       expected_version: doc.version,
     });
   } catch (err: unknown) {
-    if (
-      isAxiosError(err) &&
-      err.response?.status === 409 &&
-      err.response.data?.code === 'version_conflict'
-    ) {
-      const live = err.response.data?.document as DocumentDetail | undefined;
-      onConflict?.(live);
-      message.warning('文档已被其他端修改，已加载最新版本');
-      throw new Error('version_conflict');
+    if (handleVersionConflict(err, onConflict)) {
+      /* thrown above */
+    }
+    message.error(formatApiError(err, '保存失败'));
+    throw err;
+  }
+}
+
+export async function patchPublishedContent(
+  doc: DocumentDetail,
+  publishedContent: string,
+  onConflict?: VersionConflictHandler,
+): Promise<DocumentDetail> {
+  try {
+    return await docsApi.updatePublishedContent(doc.id, {
+      published_content: publishedContent,
+      expected_version: doc.version,
+    });
+  } catch (err: unknown) {
+    if (handleVersionConflict(err, onConflict)) {
+      /* thrown above */
     }
     message.error(formatApiError(err, '保存失败'));
     throw err;
@@ -43,15 +72,8 @@ export async function patchDocumentTitle(
       expected_version: doc.version,
     });
   } catch (err: unknown) {
-    if (
-      isAxiosError(err) &&
-      err.response?.status === 409 &&
-      err.response.data?.code === 'version_conflict'
-    ) {
-      const live = err.response.data?.document as DocumentDetail | undefined;
-      onConflict?.(live);
-      message.warning('文档已被其他端修改，已加载最新版本');
-      throw new Error('version_conflict');
+    if (handleVersionConflict(err, onConflict)) {
+      /* thrown above */
     }
     message.error(formatApiError(err, '保存失败'));
     throw err;

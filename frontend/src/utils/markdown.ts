@@ -205,7 +205,7 @@ function renderYuqueToolbar(opts: {
 function readRenderPrefs() {
   return typeof window !== 'undefined'
     ? loadCodeBlockPrefs()
-    : { theme: 'one-dark-pro' as const, wrap: false, lineNumbers: true, fontSize: 14, lineHeight: 1.6 };
+    : { theme: 'one-dark-pro' as const, wrap: false, lineNumbers: true, fontSize: 13, lineHeight: 1.6 };
 }
 
 /**
@@ -280,7 +280,7 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
   if (lines.length && lines[lines.length - 1] === '') lines.pop();
   const numbered = lines
     .map((l) => `<span class="jz-code-line">${l || '​'}</span>`)
-    .join('\n');
+    .join('');
 
   return (
     `<div class="jz-code-block${collapsedClass}${wrapClass}${lineNumClass}" data-lang="${canon}" data-code-source="${sourceB64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +

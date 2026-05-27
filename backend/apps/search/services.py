@@ -73,6 +73,27 @@ def _iter_unique(items: Iterable[str]) -> Iterable[str]:
             yield it
 
 
+def collect_search_text(document) -> str:
+    """Plain text blob for indexing: title, body, tag names, comment bodies."""
+    from apps.knowledge.serializers import detect_doc_format
+
+    body = document.raw_content or ""
+    if detect_doc_format(document) == "html":
+        body = _strip_html_tags(body)
+
+    tag_names = " ".join(
+        document.tags.values_list("name", flat=True)
+    )
+    comment_text = " ".join(
+        document.comments.values_list("content", flat=True)
+    )
+    return " ".join(
+        part
+        for part in (document.title or "", body, tag_names, comment_text)
+        if part
+    )
+
+
 def update_search_vector(document) -> None:
     """Recompute and persist `document.search_vector`.
 
@@ -81,15 +102,8 @@ def update_search_vector(document) -> None:
     blog reader never shows raw HTML, search shouldn't index it either.
     """
     from apps.knowledge.models import Document  # local import to avoid cycle
-    from apps.knowledge.serializers import detect_doc_format
 
-    body = document.raw_content or ""
-    if detect_doc_format(document) == "html":
-        body = _strip_html_tags(body)
-
-    segmented_title = segment(document.title or "")
-    segmented_body = segment(body)
-    blob = f"{segmented_title} {segmented_body}".strip()
+    blob = segment(collect_search_text(document))
 
     Document.all_objects.filter(pk=document.pk).update(
         search_vector=SearchVector(Value(blob), config="simple")

@@ -11,11 +11,13 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set) => ({
+export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   loaded: false,
   loading: false,
   async loadSession() {
+    const { loaded, loading } = get();
+    if (loaded || loading) return;
     set({ loading: true });
     try {
       const res = await authApi.getSession();

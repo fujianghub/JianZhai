@@ -669,6 +669,32 @@ export function JzAttachmentIcon(p: IconProps) {
   );
 }
 
+/** 四角向外 — 进入全屏 / 完整编辑 */
+export function JzFullscreenIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M9 4H5a1 1 0 0 0-1 1v4" />
+      <path d="M15 4h4a1 1 0 0 1 1 1v4" />
+      <path d="M20 15v4a1 1 0 0 1-1 1h-4" />
+      <path d="M4 15v4a1 1 0 0 0 1 1h4" />
+      <circle cx="12" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 四角向内 — 退出全屏 */
+export function JzCompressIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M4 8h3a1 1 0 0 0 1-1V4" />
+      <path d="M20 8h-3a1 1 0 0 1-1-1V4" />
+      <path d="M16 20v-3a1 1 0 0 1 1-1h3" />
+      <path d="M8 20v-3a1 1 0 0 0-1-1H4" />
+      <circle cx="12" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
 /* ═══════════════ 通用导出 ═══════════════ */
 export const JZ_ICONS = {
   kb: JzKbIcon,
@@ -692,6 +718,8 @@ export const JZ_ICONS = {
   backlink: JzBacklinkIcon,
   comment: JzCommentIcon,
   attachment: JzAttachmentIcon,
+  fullscreen: JzFullscreenIcon,
+  compress: JzCompressIcon,
 } as const;
 
 export type JzIconName = keyof typeof JZ_ICONS;

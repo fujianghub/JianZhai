@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from django.db import transaction
-from django.db.models import Prefetch, Q
+from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
@@ -11,6 +11,7 @@ from rest_framework.response import Response
 from apps.accounts.scoping import scope_queryset
 from apps.editor.models import Attachment
 
+from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
 from .serializers import (
     DocumentListSerializer,
@@ -52,6 +53,17 @@ class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
     serializer_class = KnowledgeBaseSerializer
     permission_classes = [IsAuthenticated]
     lookup_field = "pk"
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        if self.action == "list":
+            qs = qs.annotate(
+                _document_count=Count(
+                    "documents",
+                    filter=Q(documents__is_deleted=False),
+                )
+            ).prefetch_related("tags")
+        return qs
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -125,34 +137,54 @@ class DocumentViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance: Document):
         instance.soft_delete()
 
-    def _expected_version_conflict(self, request, instance: Document) -> Response | None:
-        """Return 409/400 response when ``expected_version`` does not match."""
-        expected = request.data.get("expected_version") if isinstance(request.data, dict) else None
+    def _parse_expected_version(self, request) -> int | None | Response:
+        """Return expected version int, None if omitted, or a 400 Response."""
+        if not isinstance(request.data, dict):
+            return None
+        expected = request.data.get("expected_version")
         if expected is None:
             return None
         try:
-            expected_int = int(expected)
+            return int(expected)
         except (TypeError, ValueError):
             return Response(
                 {"detail": "expected_version 必须是整数"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        if expected_int != instance.version:
-            return Response(
-                {
-                    "detail": "文档已被其他端修改",
-                    "code": "version_conflict",
-                    "current_version": instance.version,
-                    "document": DocumentSerializer(instance).data,
-                },
-                status=status.HTTP_409_CONFLICT,
-            )
+
+    def _version_conflict_response(self, instance: Document) -> Response:
+        return Response(
+            {
+                "detail": "文档已被其他端修改",
+                "code": "version_conflict",
+                "current_version": instance.version,
+                "document": DocumentSerializer(instance, context=self.get_serializer_context()).data,
+            },
+            status=status.HTTP_409_CONFLICT,
+        )
+
+    def _expected_version_conflict(self, request, instance: Document) -> Response | None:
+        """Return 409/400 response when ``expected_version`` does not match."""
+        parsed = self._parse_expected_version(request)
+        if isinstance(parsed, Response):
+            return parsed
+        if parsed is None:
+            return None
+        if parsed != instance.version:
+            return self._version_conflict_response(instance)
         return None
 
     def _strip_expected_version(self, request) -> None:
         mutable = request.data.copy() if hasattr(request.data, "copy") else dict(request.data)
         mutable.pop("expected_version", None)
         request._full_data = mutable
+
+    def _serializer_context_with_version(self, request) -> dict:
+        ctx = self.get_serializer_context()
+        parsed = self._parse_expected_version(request)
+        if isinstance(parsed, int):
+            ctx = {**ctx, "expected_version": parsed}
+        return ctx
 
     def update(self, request, *args, **kwargs):
         """Optimistic-concurrency check on PATCH/PUT."""
@@ -162,19 +194,48 @@ class DocumentViewSet(viewsets.ModelViewSet):
             return conflict
         if isinstance(request.data, dict) and "expected_version" in request.data:
             self._strip_expected_version(request)
-        return super().update(request, *args, **kwargs)
+        partial = kwargs.pop("partial", False)
+        serializer = self.get_serializer(
+            instance,
+            data=request.data,
+            partial=partial,
+            context=self._serializer_context_with_version(request),
+        )
+        serializer.is_valid(raise_exception=True)
+        try:
+            self.perform_update(serializer)
+        except VersionConflictError as exc:
+            return self._version_conflict_response(exc.document)
+        return Response(serializer.data)
+
+    def _publish_or_unpublish(self, request, *, publish: bool) -> Response:
+        doc = self.get_object()
+        conflict = self._expected_version_conflict(request, doc)
+        if conflict is not None:
+            return conflict
+        parsed = self._parse_expected_version(request)
+        if isinstance(parsed, Response):
+            return parsed
+        with transaction.atomic():
+            locked = Document.objects.select_for_update().get(pk=doc.pk)
+            if parsed is not None and locked.version != parsed:
+                return self._version_conflict_response(locked)
+            if publish:
+                locked.publish()
+            else:
+                locked.unpublish()
+        locked.refresh_from_db()
+        return Response(
+            DocumentSerializer(locked, context=self.get_serializer_context()).data
+        )
 
     @action(detail=True, methods=["post"], url_path="publish")
     def publish(self, request, pk=None):
-        doc = self.get_object()
-        doc.publish()
-        return Response(DocumentSerializer(doc).data)
+        return self._publish_or_unpublish(request, publish=True)
 
     @action(detail=True, methods=["post"], url_path="unpublish")
     def unpublish(self, request, pk=None):
-        doc = self.get_object()
-        doc.unpublish()
-        return Response(DocumentSerializer(doc).data)
+        return self._publish_or_unpublish(request, publish=False)
 
     @action(detail=True, methods=["patch"], url_path="published")
     def update_published(self, request, pk=None):
@@ -188,12 +249,15 @@ class DocumentViewSet(viewsets.ModelViewSet):
             doc,
             data=data,
             partial=True,
-            context=self.get_serializer_context(),
+            context=self._serializer_context_with_version(request),
         )
         serializer.is_valid(raise_exception=True)
-        self.perform_update(serializer)
+        try:
+            self.perform_update(serializer)
+        except VersionConflictError as exc:
+            return self._version_conflict_response(exc.document)
         doc.refresh_from_db()
-        return Response(DocumentSerializer(doc).data)
+        return Response(DocumentSerializer(doc, context=self.get_serializer_context()).data)
 
     @action(detail=True, methods=["get"], url_path="stats")
     def stats(self, request, pk=None):
@@ -356,6 +420,32 @@ def reorder_tree(request):
         pk=data["knowledge_base"],
     )
 
+    parent_ids: set[int] = set()
+    for item in data["items"]:
+        pid = item.get("parent_folder_id")
+        if pid is not None:
+            parent_ids.add(pid)
+
+    valid_folder_ids: set[int] = set()
+    if parent_ids:
+        valid_folder_ids = set(
+            Folder.objects.filter(knowledge_base=kb, id__in=parent_ids).values_list(
+                "id", flat=True
+            )
+        )
+        invalid = parent_ids - valid_folder_ids
+        if invalid:
+            return Response(
+                {
+                    "detail": "parent_folder_id 必须属于同一知识库",
+                    "invalid_parent_folder_ids": sorted(invalid),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+    folders_to_update: list[Folder] = []
+    docs_to_update: list[Document] = []
+
     with transaction.atomic():
         for item in data["items"]:
             if item["type"] == "folder":
@@ -363,12 +453,17 @@ def reorder_tree(request):
                 obj.order = item["order"]
                 if "parent_folder_id" in item:
                     obj.parent_id = item["parent_folder_id"]
-                obj.save(update_fields=["order", "parent"])
+                folders_to_update.append(obj)
             else:
                 obj = get_object_or_404(Document.objects, pk=item["id"], knowledge_base=kb)
                 obj.order = item["order"]
                 if "parent_folder_id" in item:
                     obj.folder_id = item["parent_folder_id"]
-                obj.save(update_fields=["order", "folder"])
+                docs_to_update.append(obj)
+
+        if folders_to_update:
+            Folder.objects.bulk_update(folders_to_update, ["order", "parent"])
+        if docs_to_update:
+            Document.objects.bulk_update(docs_to_update, ["order", "folder"])
 
     return Response({"ok": True}, status=status.HTTP_200_OK)

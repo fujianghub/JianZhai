@@ -76,7 +76,7 @@ export function getRecentSlashTitles(): string[] {
   }
 }
 
-export type InsertMenuActionKind = 'image' | 'attachment' | 'mention' | 'emoji' | 'ai';
+export type InsertMenuActionKind = 'image' | 'attachment' | 'mention' | 'emoji' | 'ai' | 'link';
 
 export interface SlashCommandItem {
   id: string;
@@ -131,6 +131,9 @@ export function executeSlashCommandAtCursor(
         return;
       case 'ai':
         acts?.openAI?.();
+        return;
+      case 'link':
+        acts?.openLink?.();
         return;
       default:
         return;
@@ -190,6 +193,32 @@ export function buildSlashCommands(): SlashCommandItem[] {
   }));
 
   return [
+    {
+      id: 'hyperlink',
+      category: '基础',
+      icon: iconText('🔗'),
+      title: '超链接',
+      description: aliasDesc('lj', 'link') || 'Ctrl+K',
+      aliases: ['lj', 'link', 'lianjie'],
+      keywords: ['link', 'url', 'href', '链接', '超链接'],
+      menuSection: '基础',
+      menuOrder: 0,
+      menuGrid: true,
+      menuTitle: '链接',
+      menuAction: 'link',
+      command: ({ editor, range }) => {
+        editor
+          .chain()
+          .focus()
+          .deleteRange(range)
+          .insertContent({
+            type: 'text',
+            text: '链接文字',
+            marks: [{ type: 'link', attrs: { href: 'https://' } }],
+          })
+          .run();
+      },
+    },
     {
       id: 'image',
       category: '媒体',

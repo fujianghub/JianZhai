@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import type { SlashCommandItem } from './slashCommandRegistry';
 import { formatSlashDescription, getRecentSlashTitles } from './slashCommandRegistry';
 import { filterMarkdownSlashCommands } from './markdownSlashActions';
+import { insertIconToneClass } from './toolbar/insertIconTone';
 
 interface Props {
   open: boolean;
@@ -69,7 +70,10 @@ export default function MarkdownSlashMenu({
               if (!item.richTextOnly) onSelect(item);
             }}
           >
-            <span className="slash-menu-item-icon" aria-hidden>
+            <span
+              className={`slash-menu-item-icon ${insertIconToneClass(item.id)}`}
+              aria-hidden
+            >
               {item.icon}
             </span>
             <span className="slash-menu-item-body">

@@ -11,9 +11,9 @@ class Command(BaseCommand):
     help = "Recompute jieba-segmented PostgreSQL search vectors for all live documents."
 
     def handle(self, *args, **options):
-        docs = Document.objects.all()
+        docs = Document.objects.prefetch_related("tags", "comments")
         total = docs.count()
-        for i, doc in enumerate(docs.iterator(), start=1):
+        for i, doc in enumerate(docs.iterator(chunk_size=200), start=1):
             update_search_vector(doc)
             if i % 50 == 0 or i == total:
                 self.stdout.write(f"  reindexed {i}/{total}")

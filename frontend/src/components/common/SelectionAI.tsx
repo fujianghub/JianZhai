@@ -37,6 +37,12 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
   const lastSelectionRef = useRef<string>('');
 
   useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     function onSelectionChange() {
       const selection = window.getSelection();
       if (!selection || selection.isCollapsed) {

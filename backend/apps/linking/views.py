@@ -40,12 +40,20 @@ def graph(request):
     For superusers this returns the whole graph; staff/regular users see only
     docs owned by them via the standard ``scope_queryset`` filter.
     """
-    docs_qs = (
+    docs = list(
         scope_queryset(Document.objects.all(), request.user)
         .select_related("knowledge_base")
-        .only("id", "title", "slug", "knowledge_base__id", "knowledge_base__name", "status", "visibility")
+        .only(
+            "id",
+            "title",
+            "slug",
+            "knowledge_base__id",
+            "knowledge_base__name",
+            "status",
+            "visibility",
+        )
     )
-    doc_ids = set(docs_qs.values_list("id", flat=True))
+    doc_ids = {d.id for d in docs}
 
     nodes = [
         {
@@ -57,7 +65,7 @@ def graph(request):
             "kb_id": d.knowledge_base_id,
             "kb_name": d.knowledge_base.name,
         }
-        for d in docs_qs
+        for d in docs
     ]
 
     # Collapse multiple mentions of the same target from the same source.

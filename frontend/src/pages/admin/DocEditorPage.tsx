@@ -29,8 +29,13 @@ import {
   StopOutlined,
 } from '@ant-design/icons';
 import { message } from '@/utils/notify';
+import { isAxiosError } from 'axios';
 import { formatApiError } from '@/api/client';
 import * as docsApi from '@/api/docs';
+import {
+  patchDocumentRawContent,
+  patchPublishedContent,
+} from '@/utils/documentSave';
 import * as kbsApi from '@/api/kbs';
 import * as attApi from '@/api/attachments';
 import { attachmentAbsoluteUrl } from '@/api/attachments';
@@ -135,6 +140,10 @@ export default function DocEditorPage({
 
   const [kb, setKb] = useState<KnowledgeBase | null>(null);
   const [doc, setDoc] = useState<DocumentDetail | null>(null);
+  const docRef = useRef<DocumentDetail | null>(null);
+  const [localEditorBody, setLocalEditorBody] = useState('');
+  const kbLoadSeqRef = useRef(0);
+  const docLoadSeqRef = useRef(0);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [mode, setMode] = useState<EditorMode>('markdown');
@@ -209,13 +218,23 @@ export default function DocEditorPage({
         }
       }
       if (e.key === 'F9') {
-        e.preventDefault();
-        setFocusMode((v) => !v);
+        const active = document.activeElement;
+        const inTitleField =
+          active instanceof HTMLInputElement &&
+          active.classList.contains('jz-doc-title-input');
+        if (!inTitleField) {
+          e.preventDefault();
+          setFocusMode((v) => !v);
+        }
       }
     }
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [mode]);
+
+  useEffect(() => {
+    docRef.current = doc;
+  }, [doc]);
 
   // Escape 退出专注模式（避免干扰编辑器内的 Escape 处理，只在 focusMode 时挂载）
   useEffect(() => {
@@ -228,16 +247,22 @@ export default function DocEditorPage({
   }, [focusMode]);
 
   useEffect(() => {
-    void kbsApi.getKB(kbId).then(setKb);
+    const seq = ++kbLoadSeqRef.current;
+    void kbsApi.getKB(kbId).then((k) => {
+      if (seq === kbLoadSeqRef.current) setKb(k);
+    });
   }, [kbId]);
 
   useEffect(() => {
+    const seq = ++docLoadSeqRef.current;
     setLoading(true);
     setNotFound(false);
     docsApi
       .getDocument(documentId)
       .then((d) => {
+        if (seq !== docLoadSeqRef.current) return;
         setDoc(d);
+        setLocalEditorBody(d.raw_content);
         setContentSource('raw');
         contentSourceRef.current = 'raw';
         if (!modeTouched) {
@@ -251,11 +276,21 @@ export default function DocEditorPage({
           }
         }
       })
-      .catch(() => setNotFound(true))
-      .finally(() => setLoading(false));
-    // Reset the touched flag when switching docs so format-derived mode applies.
+      .catch(() => {
+        if (seq === docLoadSeqRef.current) setNotFound(true);
+      })
+      .finally(() => {
+        if (seq === docLoadSeqRef.current) setLoading(false);
+      });
     setModeTouched(false);
   }, [documentId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!doc) return;
+    setLocalEditorBody(
+      contentSource === 'published' ? doc.published_content : doc.raw_content,
+    );
+  }, [doc?.id, contentSource, conflictSyncRevision]);
 
   useEffect(() => {
     if (!doc) return;
@@ -278,7 +313,6 @@ export default function DocEditorPage({
   const saveGenRef = useRef(0);
 
   const applyVersionConflict = useCallback((live: DocumentDetail | undefined) => {
-    message.warning('文档已被其他端修改，已加载最新版本');
     if (live) {
       richEditor?.commands.blur();
       setConflictSyncRevision((n) => n + 1);
@@ -288,35 +322,33 @@ export default function DocEditorPage({
 
   const handleAutoSave = useCallback(
     async (content: string) => {
-      if (!doc) return;
+      const current = docRef.current;
+      if (!current) return;
       const gen = ++saveGenRef.current;
       const source = contentSourceRef.current;
       const run = async () => {
         try {
           const updated =
             source === 'published'
-              ? await docsApi.updatePublishedContent(doc.id, {
-                  published_content: content,
-                  expected_version: doc.version,
-                })
-              : await docsApi.updateDocument(doc.id, {
-                  raw_content: content,
-                  expected_version: doc.version,
-                });
+              ? await patchPublishedContent(
+                  current,
+                  content,
+                  applyVersionConflict,
+                )
+              : await patchDocumentRawContent(
+                  current,
+                  content,
+                  applyVersionConflict,
+                );
           if (gen !== saveGenRef.current) return;
           setDoc((prev) => (prev ? { ...prev, ...updated } : updated));
         } catch (err: unknown) {
-          const e = err as {
-            response?: {
-              status?: number;
-              data?: { code?: string; document?: DocumentDetail };
-            };
-          };
-          if (e?.response?.status === 409 && e.response.data?.code === 'version_conflict') {
-            applyVersionConflict(e.response.data.document);
-            throw new Error('version_conflict');
+          if (err instanceof Error && err.message === 'version_conflict') {
+            throw err;
           }
-          message.error(formatApiError(err, '保存失败'));
+          if (!isAxiosError(err)) {
+            message.error(formatApiError(err, '保存失败'));
+          }
           throw err;
         }
       };
@@ -346,7 +378,7 @@ export default function DocEditorPage({
     if (!doc) return;
     await flushPendingEdits();
     try {
-      const next = await docsApi.unpublishDocument(doc.id);
+      const next = await docsApi.unpublishDocument(doc.id, doc.version);
       setDoc(next);
       setContentSource('raw');
       message.success('已撤回发布');
@@ -370,7 +402,7 @@ export default function DocEditorPage({
     if (hasPublishBlockers(checks)) return;
     setPublishing(true);
     try {
-      const next = await docsApi.publishDocument(fresh.id);
+      const next = await docsApi.publishDocument(fresh.id, fresh.version);
       setDoc(next);
       message.success('已发布');
       setPublishCheckOpen(false);
@@ -493,8 +525,7 @@ export default function DocEditorPage({
         ? `/admin/kbs/${kb.id}`
         : '#';
 
-  const editorBody =
-    contentSource === 'published' ? doc.published_content : doc.raw_content;
+  const editorBody = localEditorBody;
   const publishOutOfSync =
     doc.status === 'published' && doc.raw_content !== doc.published_content;
   const aiContext = editorBody;
@@ -755,7 +786,7 @@ export default function DocEditorPage({
               }
             : {
                 flex: 1,
-                minHeight: 480,
+                minHeight: 0,
                 display: 'flex',
                 flexDirection: 'column',
                 minWidth: 0,
@@ -772,13 +803,7 @@ export default function DocEditorPage({
             primaryUrl={primaryUrl}
             onChange={(next) => {
               hasPendingChangesRef.current = true;
-              setDoc((prev) =>
-                prev
-                  ? contentSource === 'published'
-                    ? { ...prev, published_content: next }
-                    : { ...prev, raw_content: next }
-                  : prev,
-              );
+              setLocalEditorBody(next);
             }}
             onAutoSave={async (content) => {
               await handleAutoSave(content);
@@ -849,13 +874,7 @@ export default function DocEditorPage({
           mode === 'markdown' || mode === 'html'
             ? (next) => {
                 hasPendingChangesRef.current = true;
-                setDoc((prev) =>
-                  prev
-                    ? contentSource === 'published'
-                      ? { ...prev, published_content: next }
-                      : { ...prev, raw_content: next }
-                    : prev,
-                );
+                setLocalEditorBody(next);
               }
             : undefined
         }

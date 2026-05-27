@@ -22,6 +22,12 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
   const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    return () => {
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  useEffect(() => {
     getCapabilities()
       .then((c) => {
         const id = modelOverride || resolveAIModel(c);

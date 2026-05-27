@@ -3,6 +3,7 @@ import { Alert, Button, Modal, Spin, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import mammoth from 'mammoth';
 import { renderMarkdown } from '@/utils/markdown';
+import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { attachmentAbsoluteUrl, previewKind, type Attachment } from '@/api/attachments';
 import PdfCanvas from './PdfCanvas';
 import FullscreenableIframe from './FullscreenableIframe';
@@ -159,17 +160,20 @@ function MarkdownTextPreview({ url }: { url: string }) {
   if (err) return <Alert type="error" message={`Markdown 预览失败：${err}`} />;
   if (text === null) return <Centered><Spin /></Centered>;
   return (
-    <div
-      className="markdown-preview"
-      style={{
-        maxHeight: '85vh',
-        overflow: 'auto',
-        padding: 16,
-        border: '1px solid var(--jz-border)',
-        borderRadius: 6,
-      }}
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <>
+      <div
+        className="markdown-preview jz-file-preview-md"
+        style={{
+          maxHeight: '85vh',
+          overflow: 'auto',
+          padding: 16,
+          border: '1px solid var(--jz-border)',
+          borderRadius: 6,
+        }}
+        dangerouslySetInnerHTML={{ __html: html }}
+      />
+      <CodeBlockEnhancer selector=".jz-file-preview-md" bindKey={html} />
+    </>
   );
 }
 

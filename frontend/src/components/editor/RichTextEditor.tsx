@@ -53,16 +53,12 @@ import {
   CommentOutlined,
   ClearOutlined,
   FormatPainterOutlined,
-  ExpandOutlined,
-  CompressOutlined,
   ItalicOutlined,
-  LineOutlined,
   LinkOutlined,
   OrderedListOutlined,
   RedoOutlined,
   SaveOutlined,
   StrikethroughOutlined,
-  TableOutlined,
   UnderlineOutlined,
   UndoOutlined,
   UnorderedListOutlined,
@@ -91,6 +87,7 @@ import MoreMarksDropdown from './toolbar/MoreMarksDropdown';
 import FontSizeDropdown from './toolbar/FontSizeDropdown';
 import HighlightColorDropdown from './toolbar/HighlightColorDropdown';
 import { applyHeadingBlock, type HeadingLevel } from './toolbar/headingBlock';
+import JzIcon from '@/components/common/JzIcon';
 
 const { Text } = Typography;
 
@@ -652,8 +649,9 @@ export default function RichTextEditor({
         editor?.chain().focus().insertContent(':').run();
       },
       openAI: () => setAiPromptOpen(true),
+      openLink: () => openLinkPopover(),
     }),
-    [editor, value]
+    [editor, value, openLinkPopover]
   );
 
   useEffect(() => {
@@ -854,7 +852,7 @@ export default function RichTextEditor({
 
   return (
     <div
-      className={fullscreen ? 'jz-fullscreen-shell' : undefined}
+      className={fullscreen ? 'jz-fullscreen-shell' : 'jz-editor-surface'}
       style={
         fullscreen
           ? undefined
@@ -927,6 +925,42 @@ export default function RichTextEditor({
 
         <div className="jz-editor-toolbar-main">
         <QuickInsertButton editor={editor} actions={insertMenuActions} disabled={readOnly} />
+        <Popover
+          open={linkPopoverOpen}
+          onOpenChange={(v) => { if (!v) setLinkPopoverOpen(false); }}
+          title="插入链接"
+          placement="bottomLeft"
+          destroyOnHidden
+          content={
+            <div style={{ width: 280 }}>
+              <Input
+                value={linkInput}
+                onChange={(e) => setLinkInput(e.target.value)}
+                placeholder="https://..."
+                onPressEnter={confirmLink}
+                autoFocus
+                style={{ marginBottom: 8 }}
+              />
+              <div style={{ marginBottom: 8 }}>
+                <Checkbox checked={linkNewTab} onChange={(e) => setLinkNewTab(e.target.checked)}>
+                  在新标签页打开
+                </Checkbox>
+              </div>
+              <Space>
+                <Button size="small" type="primary" onClick={confirmLink}>确定</Button>
+                {editor.isActive('link') && (
+                  <Button size="small" danger onClick={() => {
+                    editor.chain().focus().extendMarkRange('link').unsetLink().run();
+                    setLinkPopoverOpen(false);
+                  }}>移除</Button>
+                )}
+                <Button size="small" onClick={() => setLinkPopoverOpen(false)}>取消</Button>
+              </Space>
+            </div>
+          }
+        >
+          <span className="jz-link-popover-anchor" aria-hidden />
+        </Popover>
         <span className="jz-editor-toolbar-divider" aria-hidden />
 
         <span className="jz-toolbar-group">
@@ -1048,87 +1082,9 @@ export default function RichTextEditor({
             title="任务列表"
             toggle={() => editor.chain().focus().toggleTaskList().run()}
           />
-          <Tooltip title="引用">
-            <Button
-              size="small"
-              className={'jz-toolbar-icon-btn' + (editor.isActive('blockquote') ? ' is-active' : '')}
-              icon={<span style={{ fontSize: 13 }}>❝</span>}
-              onClick={() => editor.chain().focus().toggleBlockquote().run()}
-            />
-          </Tooltip>
         </Space.Compact>
         </span>
-        <span className="jz-editor-toolbar-divider" aria-hidden />
 
-        <Popover
-          open={linkPopoverOpen}
-          onOpenChange={(v) => { if (!v) setLinkPopoverOpen(false); }}
-          title="插入链接"
-          placement="bottomLeft"
-          destroyOnHidden
-          content={
-            <div style={{ width: 280 }}>
-              <Input
-                value={linkInput}
-                onChange={(e) => setLinkInput(e.target.value)}
-                placeholder="https://..."
-                onPressEnter={confirmLink}
-                autoFocus
-                style={{ marginBottom: 8 }}
-              />
-              <div style={{ marginBottom: 8 }}>
-                <Checkbox checked={linkNewTab} onChange={(e) => setLinkNewTab(e.target.checked)}>
-                  在新标签页打开
-                </Checkbox>
-              </div>
-              <Space>
-                <Button size="small" type="primary" onClick={confirmLink}>确定</Button>
-                {editor.isActive('link') && (
-                  <Button size="small" danger onClick={() => {
-                    editor.chain().focus().extendMarkRange('link').unsetLink().run();
-                    setLinkPopoverOpen(false);
-                  }}>移除</Button>
-                )}
-                <Button size="small" onClick={() => setLinkPopoverOpen(false)}>取消</Button>
-              </Space>
-            </div>
-          }
-        >
-          <Tooltip title="链接 (Ctrl+K)">
-            <Button
-              size="small"
-              className={'jz-toolbar-icon-btn' + (editor.isActive('link') ? ' is-active' : '')}
-              icon={<LinkOutlined />}
-              onClick={openLinkPopover}
-            />
-          </Tooltip>
-        </Popover>
-        <Tooltip title="代码块">
-          <Button
-            size="small"
-            className={'jz-toolbar-icon-btn' + (editor.isActive('codeBlock') ? ' is-active' : '')}
-            icon={<CodeOutlined />}
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          />
-        </Tooltip>
-        <Tooltip title="表格 3×3">
-          <Button
-            size="small"
-            className="jz-toolbar-icon-btn"
-            icon={<TableOutlined />}
-            onClick={() =>
-              editor.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()
-            }
-          />
-        </Tooltip>
-        <Tooltip title="分割线">
-          <Button
-            size="small"
-            className="jz-toolbar-icon-btn"
-            icon={<LineOutlined />}
-            onClick={() => editor.chain().focus().setHorizontalRule().run()}
-          />
-        </Tooltip>
         <input
           ref={imageFileInputRef}
           type="file"
@@ -1148,7 +1104,7 @@ export default function RichTextEditor({
           <Button
             size="small"
             className="jz-toolbar-icon-btn"
-            icon={fullscreen ? <CompressOutlined /> : <ExpandOutlined />}
+            icon={<JzIcon name={fullscreen ? 'compress' : 'fullscreen'} />}
             onClick={() => setFullscreen((v) => !v)}
           />
         </Tooltip>
@@ -1216,7 +1172,7 @@ export default function RichTextEditor({
             </div>
           }
         >
-          <Button size="small" className="jz-toolbar-icon-btn">更多 ▾</Button>
+          <Button size="small" className="jz-toolbar-dropdown-btn">更多 ▾</Button>
         </Popover>
         </div>
       </div>

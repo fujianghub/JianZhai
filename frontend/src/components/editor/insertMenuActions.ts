@@ -5,6 +5,7 @@ export interface InsertMenuActions {
   openMention?: () => void;
   openEmoji?: () => void;
   openAI?: () => void;
+  openLink?: () => void;
 }
 
 let actions: InsertMenuActions | null = null;

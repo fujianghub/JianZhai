@@ -12,7 +12,9 @@ Rate-limiting piggybacks on DRF's default throttle scope.
 from __future__ import annotations
 
 import json
+import logging
 
+from django.conf import settings
 from django.http import StreamingHttpResponse
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
@@ -32,15 +34,23 @@ from .services import (
     AIUnavailable,
     AVAILABLE_MODELS,
     ALLOWED_MODEL_IDS,
-    DEFAULT_MODEL,
     get_default_model,
     is_enabled,
+    resolve_model,
     run_once,
     run_stream,
 )
 
+log = logging.getLogger(__name__)
 
 SUPPORTED_OPS = sorted(OPERATION_INSTRUCTIONS.keys())
+
+
+def _ai_error_detail(exc: Exception) -> str:
+    if settings.DEBUG:
+        return str(exc)
+    log.exception("AI request failed")
+    return "AI 服务暂时不可用，请稍后重试"
 
 
 class AIWriteThrottle(UserRateThrottle):
@@ -81,9 +91,12 @@ def run(request):
         text = run_once(op, content, extra, model=model, user=request.user)
     except AIUnavailable as e:
         return Response({"detail": str(e), "code": "ai_unavailable"}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
-    except Exception as e:  # noqa: BLE001 — surface API errors verbatim
-        return Response({"detail": str(e), "code": "ai_error"}, status=status.HTTP_502_BAD_GATEWAY)
-    return Response({"operation": op, "model": model or DEFAULT_MODEL, "result": text})
+    except Exception as e:  # noqa: BLE001
+        return Response(
+            {"detail": _ai_error_detail(e), "code": "ai_error"},
+            status=status.HTTP_502_BAD_GATEWAY,
+        )
+    return Response({"operation": op, "model": resolve_model(model), "result": text})
 
 
 @api_view(["POST"])
@@ -107,7 +120,7 @@ def stream(request):
         except AIUnavailable as e:
             yield f"event: error\ndata: {json.dumps({'detail': str(e), 'code': 'ai_unavailable'}, ensure_ascii=False)}\n\n"
         except Exception as e:  # noqa: BLE001
-            yield f"event: error\ndata: {json.dumps({'detail': str(e), 'code': 'ai_error'}, ensure_ascii=False)}\n\n"
+            yield f"event: error\ndata: {json.dumps({'detail': _ai_error_detail(e), 'code': 'ai_error'}, ensure_ascii=False)}\n\n"
 
     resp = StreamingHttpResponse(event_stream(), content_type="text/event-stream")
     resp["Cache-Control"] = "no-cache"

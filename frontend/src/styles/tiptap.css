@@ -148,9 +148,9 @@
   align-items: center;
   justify-content: center;
   flex: 0 0 auto;
-  width: 28px;
-  height: 28px;
-  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   background: var(--jz-surface-2);
   border: 1px solid var(--jz-border);
   font-size: 13px;
@@ -158,8 +158,7 @@
   color: var(--jz-text);
 }
 .slash-menu-item.is-active .slash-menu-item-icon {
-  background: color-mix(in srgb, var(--jz-accent) 25%, var(--jz-surface));
-  border-color: var(--jz-accent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--jz-insert-tone, var(--jz-accent)) 30%, transparent);
 }
 .slash-menu-item-body {
   display: flex;
@@ -2147,12 +2146,25 @@ sup.jz-footnote-ref:hover,
 }
 
 /* ── 居中限宽 960px 编辑区 —— */
-.jz-doc-body { position: relative; }
+.jz-doc-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .jz-doc-editor-col {
   max-width: 960px;
   margin: 0 auto;
   width: 100%;
   flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.jz-doc-editor-col > .jz-editor-surface {
+  flex: 1;
+  min-height: 0;
 }
 
 /* 语雀式并排 / 全屏预览布局 */

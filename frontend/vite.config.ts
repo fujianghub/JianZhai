@@ -26,7 +26,8 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: '0.0.0.0',
+      // Dual-stack: browsers often resolve localhost → ::1; 0.0.0.0 alone skips IPv6 loopback.
+      host: '::',
       port: 3001,
       strictPort: true,
       proxy: {

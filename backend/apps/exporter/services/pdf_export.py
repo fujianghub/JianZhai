@@ -5,14 +5,28 @@ Playwright/Chromium isn't installed (single-doc HTML/MD/DOCX exports still work)
 """
 from __future__ import annotations
 
+import logging
+import tempfile
 from pathlib import Path
 
 from ..scope import ExportScope
 from . import common, html_export
 
+log = logging.getLogger(__name__)
+
 
 class PlaywrightUnavailable(RuntimeError):
     """Playwright (or its Chromium binary) isn't installed in this environment."""
+
+# Headless Chromium defaults for PDF rendering (containers, small /dev/shm).
+CHROMIUM_LAUNCH_ARGS = (
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--disable-gpu",
+)
+
+# Large HTML-format exports can hit slow/offline subresources — stay above Playwright defaults.
+_DEFAULT_GOTO_TIMEOUT_MS = 120_000
 
 
 def export(scope: ExportScope) -> tuple[Path, str, str]:
@@ -34,18 +48,56 @@ def _render_pdf(html: str) -> bytes:
             "and `playwright install chromium`."
         ) from exc
 
-    with sync_playwright() as pw:
-        browser = pw.chromium.launch(args=["--no-sandbox"])
-        try:
-            page = browser.new_page()
-            # Keep screen styling in the PDF — our print layout is driven by the
-            # ``.is-print`` class (always-on page breaks), not @media print.
-            page.emulate_media(media="screen")
-            page.set_content(html, wait_until="load")
-            return page.pdf(
-                format="A4",
-                margin={"top": "20mm", "bottom": "20mm", "left": "16mm", "right": "16mm"},
-                print_background=True,
-            )
-        finally:
-            browser.close()
+    cleaned = (html or "").replace("\x00", "")
+    html_len = len(cleaned)
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            suffix=".html",
+            delete=False,
+        ) as tmp:
+            tmp.write(cleaned)
+            tmp_path = Path(tmp.name).resolve()
+    except OSError:
+        log.exception("pdf_export: failed to write temp HTML (html_char_len=%s)", html_len)
+        raise
+
+    uri = tmp_path.as_uri()
+    try:
+        with sync_playwright() as pw:
+            browser = pw.chromium.launch(args=list(CHROMIUM_LAUNCH_ARGS))
+            try:
+                page = browser.new_page()
+                page.set_default_timeout(_DEFAULT_GOTO_TIMEOUT_MS)
+                # Keep screen styling in the PDF — our print layout is driven by the
+                # ``.is-print`` class (always-on page breaks), not @media print.
+                page.emulate_media(media="screen")
+                page.goto(
+                    uri,
+                    wait_until="load",
+                    timeout=_DEFAULT_GOTO_TIMEOUT_MS,
+                )
+                return page.pdf(
+                    format="A4",
+                    margin={
+                        "top": "20mm",
+                        "bottom": "20mm",
+                        "left": "16mm",
+                        "right": "16mm",
+                    },
+                    print_background=True,
+                )
+            finally:
+                browser.close()
+    except Exception:
+        log.exception(
+            "pdf_export: Playwright PDF render failed (html_char_len=%s, tmp_path=%s)",
+            html_len,
+            tmp_path,
+        )
+        raise
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)

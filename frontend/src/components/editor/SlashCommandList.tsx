@@ -2,6 +2,7 @@ import { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState }
 import type { Editor, Range } from '@tiptap/core';
 import type { SlashCommandItem } from './slashCommandRegistry';
 import { formatSlashDescription, getRecentSlashTitles } from './slashCommandRegistry';
+import { insertIconToneClass } from './toolbar/insertIconTone';
 
 interface Props {
   items: SlashCommandItem[];
@@ -117,7 +118,10 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
           onMouseEnter={() => setSelectedIndex(idx)}
           onClick={() => selectItem(idx)}
         >
-          <span className="slash-menu-item-icon" aria-hidden>
+          <span
+            className={`slash-menu-item-icon ${insertIconToneClass(item.id)}`}
+            aria-hidden
+          >
             {item.icon}
           </span>
           <span className="slash-menu-item-body">
