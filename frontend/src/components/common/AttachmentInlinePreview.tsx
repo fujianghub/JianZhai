@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Alert, Button, Empty, Spin } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import mammoth from 'mammoth';
-import { renderMarkdown } from '@/utils/markdown';
+import { renderMarkdown, sanitizeHtml } from '@/utils/markdown';
 import {
   attachmentAbsoluteUrl,
   listDocumentAttachments,
@@ -149,7 +149,7 @@ function DocxInline({ url }: { url: string }) {
         return r.arrayBuffer();
       })
       .then((buf) => mammoth.convertToHtml({ arrayBuffer: buf }))
-      .then((r) => !cancelled && setHtml(r.value))
+      .then((r) => !cancelled && setHtml(sanitizeHtml(r.value)))
       .catch((e) => !cancelled && setErr(e?.message || '解析失败'));
     return () => {
       cancelled = true;

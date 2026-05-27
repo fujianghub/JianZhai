@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Modal, Spin, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import mammoth from 'mammoth';
-import { renderMarkdown } from '@/utils/markdown';
+import { renderMarkdown, sanitizeHtml } from '@/utils/markdown';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { attachmentAbsoluteUrl, previewKind, type Attachment } from '@/api/attachments';
 import PdfCanvas from './PdfCanvas';
@@ -112,7 +112,7 @@ function DocxPreview({ url }: { url: string }) {
       })
       .then((buf) => mammoth.convertToHtml({ arrayBuffer: buf }))
       .then((result) => {
-        if (!cancelled) setHtml(result.value);
+        if (!cancelled) setHtml(sanitizeHtml(result.value));
       })
       .catch((e) => {
         if (!cancelled) setErr(e?.message || '解析失败');

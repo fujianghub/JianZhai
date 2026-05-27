@@ -4,7 +4,6 @@ from django.utils.text import slugify
 from rest_framework import serializers
 
 from apps.accounts.scoping import scope_queryset
-from apps.knowledge.models import Document, KnowledgeBase
 
 from .models import Tag
 

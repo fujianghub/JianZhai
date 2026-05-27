@@ -87,7 +87,9 @@ export default function TagCloudPage() {
   const [entriesLoading, setEntriesLoading] = useState(false);
 
   useEffect(() => {
-    void publicTagCloud().then(setTags);
+    void publicTagCloud()
+      .then(setTags)
+      .catch(() => setTags([]));
   }, []);
 
   const visibleTags = useMemo(

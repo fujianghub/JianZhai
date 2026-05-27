@@ -335,7 +335,7 @@ def _resolve_media_path(url: str) -> Path | None:
     rel = url[len("/media/") :].lstrip("/")
     path = (Path(settings.MEDIA_ROOT) / rel).resolve()
     root = Path(settings.MEDIA_ROOT).resolve()
-    if not str(path).startswith(str(root)):
+    if not path.is_relative_to(root):  # blocks ../ escapes and sibling-prefix tricks
         return None
     return path if path.is_file() else None
 

@@ -33,7 +33,9 @@ export default function ArchivePage() {
   const [buckets, setBuckets] = useState<ArchiveBucket[] | null>(null);
 
   useEffect(() => {
-    void getArchive().then(setBuckets);
+    void getArchive()
+      .then(setBuckets)
+      .catch(() => setBuckets([]));
   }, []);
 
   if (buckets === null) {

@@ -126,7 +126,6 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         # Fall back to raw_content if nothing has been published yet — useful for local archives.
         docs = scope.documents
 
-    rel_url_root = "./"
     nav_html = _render_nav(docs, current_id=None)
     recent_html = "".join(
         f'<li><a href="{_doc_filename(d)}">{common._escape(d.title)}</a></li>'

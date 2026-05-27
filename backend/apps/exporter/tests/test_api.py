@@ -64,7 +64,7 @@ def test_download_before_done_404(owner, kb, api_client):
 
 def test_list_not_paginated(owner, kb, api_client):
     api_client.force_authenticate(user=owner)
-    for i in range(25):
+    for _ in range(25):
         ExportTask.objects.create(
             owner=owner,
             scope="kb",

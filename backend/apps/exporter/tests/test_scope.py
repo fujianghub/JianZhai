@@ -4,7 +4,7 @@ import pytest
 
 from apps.exporter.scope import collect_for_scope
 from apps.exporter.tests.conftest import make_doc
-from apps.knowledge.models import Document, Folder
+from apps.knowledge.models import Folder
 
 
 @pytest.mark.django_db

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import * as authApi from '@/api/auth';
+import { clearPreviewCache } from '@/api/docs';
 import type { SessionUser } from '@/types';
 
 interface AuthState {
@@ -29,6 +30,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   async login(username, password) {
     set({ loading: true });
     try {
+      clearPreviewCache(); // discard any previous user's cached previews
       const res = await authApi.login(username, password);
       set({ user: res.user, loaded: true, loading: false });
     } finally {
@@ -36,7 +38,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
   async logout() {
-    await authApi.logout();
-    set({ user: null });
+    try {
+      await authApi.logout();
+    } finally {
+      // Always clear local auth + caches even if the server call fails.
+      clearPreviewCache();
+      set({ user: null });
+    }
   },
 }));

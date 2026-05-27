@@ -62,7 +62,10 @@ export default function BlogHome() {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
   useEffect(() => {
-    void kbsApi.listPublicKBCategories().then(setGroups);
+    void kbsApi
+      .listPublicKBCategories()
+      .then(setGroups)
+      .catch(() => setGroups([]));
   }, []);
 
   const totalKbs =

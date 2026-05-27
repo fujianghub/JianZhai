@@ -38,6 +38,7 @@ def _published_qs():
             status="published",
             visibility="public",
             knowledge_base__visibility="public",
+            knowledge_base__is_deleted=False,
         )
         .select_related("knowledge_base")
         .prefetch_related(
@@ -398,6 +399,7 @@ class PublicPostRelatedView(APIView):
                 source__status="published",
                 source__visibility="public",
                 source__knowledge_base__visibility="public",
+                source__knowledge_base__is_deleted=False,
                 source__is_deleted=False,
             )
             .order_by("-created_at")[:5]
@@ -412,6 +414,7 @@ class PublicPostRelatedView(APIView):
                 target__status="published",
                 target__visibility="public",
                 target__knowledge_base__visibility="public",
+                target__knowledge_base__is_deleted=False,
                 target__is_deleted=False,
             )
             .order_by("-created_at")[:5]
@@ -481,6 +484,7 @@ class PublicBacklinksView(APIView):
                 source__status="published",
                 source__visibility="public",
                 source__knowledge_base__visibility="public",
+                source__knowledge_base__is_deleted=False,
                 source__is_deleted=False,
             )
             .order_by("-created_at")
@@ -488,19 +492,19 @@ class PublicBacklinksView(APIView):
         return Response(
             [
                 {
-                    "id": l.id,
-                    "context": l.context,
-                    "position": l.position,
-                    "created_at": l.created_at,
+                    "id": link.id,
+                    "context": link.context,
+                    "position": link.position,
+                    "created_at": link.created_at,
                     "source": {
-                        "id": l.source.id,
-                        "title": l.source.title,
-                        "slug": l.source.slug,
-                        "knowledge_base": l.source.knowledge_base_id,
-                        "status": l.source.status,
-                        "visibility": l.source.visibility,
+                        "id": link.source.id,
+                        "title": link.source.title,
+                        "slug": link.source.slug,
+                        "knowledge_base": link.source.knowledge_base_id,
+                        "status": link.source.status,
+                        "visibility": link.source.visibility,
                     },
                 }
-                for l in links
+                for link in links
             ]
         )

@@ -9,6 +9,24 @@ from rest_framework import serializers
 from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
 
+
+def _assert_owned(serializer, obj, owner_id):
+    """Reject a writable FK that points outside the requesting user's tenant.
+
+    DRF only calls ``validate_<field>`` for fields actually present in the
+    payload, so autosave PATCHes (which omit ``knowledge_base``/``folder``)
+    never pay this cost; it guards the create path against cross-tenant IDOR.
+    """
+    request = serializer.context.get("request")
+    user = getattr(request, "user", None)
+    if user is None or not user.is_authenticated:
+        raise serializers.ValidationError("未认证")
+    if user.is_superuser:
+        return obj
+    if owner_id != user.id:
+        raise serializers.ValidationError("无权引用该资源")
+    return obj
+
 DOC_FORMAT_ORDER = {
     "markdown": 0,
     "html": 1,
@@ -156,6 +174,14 @@ class FolderSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ["id", "tags", "created_at", "updated_at"]
 
+    def validate_knowledge_base(self, value: KnowledgeBase) -> KnowledgeBase:
+        return _assert_owned(self, value, value.owner_id)
+
+    def validate_parent(self, value: Folder | None) -> Folder | None:
+        if value is None:
+            return value
+        return _assert_owned(self, value, value.knowledge_base.owner_id)
+
     def get_tags(self, obj: Folder) -> list[dict]:
         return [
             {"id": t.id, "name": t.name, "slug": t.slug, "color": t.color}
@@ -255,6 +281,14 @@ class DocumentSerializer(serializers.ModelSerializer):
 
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
+
+    def validate_knowledge_base(self, value: KnowledgeBase) -> KnowledgeBase:
+        return _assert_owned(self, value, value.owner_id)
+
+    def validate_folder(self, value: Folder | None) -> Folder | None:
+        if value is None:
+            return value
+        return _assert_owned(self, value, value.knowledge_base.owner_id)
 
     def update(self, instance: Document, validated_data: dict) -> Document:
         expected = self.context.get("expected_version")

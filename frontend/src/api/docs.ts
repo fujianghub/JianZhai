@@ -43,6 +43,11 @@ export async function getDocument(id: number): Promise<DocumentDetail> {
 const previewCache = new Map<number, { at: number; data: DocumentPreview }>();
 const PREVIEW_TTL_MS = 60_000;
 
+/** Drop cached previews — call on login/logout so user A's docs never leak to B. */
+export function clearPreviewCache(): void {
+  previewCache.clear();
+}
+
 export async function getDocumentPreview(id: number): Promise<DocumentPreview> {
   const cached = previewCache.get(id);
   const now = Date.now();

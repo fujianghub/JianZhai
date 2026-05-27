@@ -19,6 +19,7 @@ _PUBLIC_DOC_FILTER = Q(
     status="published",
     visibility="public",
     knowledge_base__visibility="public",
+    knowledge_base__is_deleted=False,
     is_deleted=False,
 )
 
@@ -27,6 +28,7 @@ _PUBLIC_TAG_DOC_Q = Q(
     documents__status="published",
     documents__visibility="public",
     documents__knowledge_base__visibility="public",
+    documents__knowledge_base__is_deleted=False,
     documents__is_deleted=False,
 )
 

@@ -178,6 +178,15 @@ function sanitize(html: string): string {
   return DOMPurify.sanitize(html, PURIFY_CONFIG) as unknown as string;
 }
 
+/**
+ * Public sanitizer for untrusted HTML that does NOT come from our Markdown
+ * pipeline — e.g. DOCX converted by mammoth before rendering via
+ * ``dangerouslySetInnerHTML``. Shares the same allowlist as Markdown output.
+ */
+export function sanitizeHtml(html: string): string {
+  return sanitize(html);
+}
+
 function renderYuqueToolbar(opts: {
   label: string;
   titleText: string;

@@ -66,8 +66,15 @@ class VersionDiff(APIView):
                 {"detail": "query params `a` and `b` are required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        va = get_object_or_404(doc.versions, pk=int(a))
-        vb = get_object_or_404(doc.versions, pk=int(b))
+        try:
+            a_id, b_id = int(a), int(b)
+        except (TypeError, ValueError):
+            return Response(
+                {"detail": "query params `a` and `b` must be integers"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        va = get_object_or_404(doc.versions, pk=a_id)
+        vb = get_object_or_404(doc.versions, pk=b_id)
         return Response(
             {
                 "a": DocumentVersionDetailSerializer(va).data,
