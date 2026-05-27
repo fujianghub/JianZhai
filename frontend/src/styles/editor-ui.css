@@ -4,12 +4,13 @@
  */
 
 .jz-admin-glass,
-.jz-post-inline-editor {
+.jz-post-inline-editor,
+.jz-doc-shell-blog {
   --jz-ai-gradient: linear-gradient(135deg, #0ea5e9 0%, #6366f1 55%, #8b5cf6 100%);
   --jz-ai-glow: 0 4px 20px rgba(99, 102, 241, 0.35);
   --jz-ai-surface: rgba(255, 255, 255, 0.92);
-  --jz-toolbar-height: 36px;
-  --jz-toolbar-icon-size: 28px;
+  --jz-toolbar-height: 44px;
+  --jz-toolbar-icon-size: 34px;
   --jz-overlay-radius: 10px;
   --jz-overlay-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
@@ -47,7 +48,7 @@
   align-items: center;
   flex: 1;
   min-width: 0;
-  gap: 6px;
+  gap: 9px;
   flex-wrap: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -71,11 +72,11 @@
 .jz-editor-toolbar-divider {
   display: inline-block;
   width: 1px;
-  height: 20px;
-  margin: 0 6px;
+  height: 24px;
+  margin: 0 7px;
   flex-shrink: 0;
   align-self: center;
-  background: var(--jz-border, var(--jz-divider));
+  background: color-mix(in srgb, var(--jz-border, var(--jz-divider)) 75%, transparent);
 }
 
 .jz-editor-toolbar-main .jz-toolbar-dropdown-btn {
@@ -125,37 +126,53 @@
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
-  border-radius: 6px !important;
+  /* Larger glyphs — AntD icons render at 1em, so this drives the SVG size. */
+  font-size: 17px !important;
+  border-radius: 9px !important;
   border-color: transparent !important;
   background: transparent !important;
   color: var(--jz-text) !important;
   box-shadow: none !important;
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.1s ease,
+    border-color 0.15s ease !important;
+}
+.jz-toolbar-icon-btn.ant-btn .anticon {
+  font-size: 17px !important;
 }
 
 .jz-toolbar-icon-btn.ant-btn:hover:not(:disabled) {
   background: color-mix(in srgb, var(--jz-text) 8%, transparent) !important;
-  border-color: var(--jz-border) !important;
+  border-color: color-mix(in srgb, var(--jz-border) 70%, transparent) !important;
+  /* Lift + soft shadow so buttons read as raised, not flat. */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1) !important;
+  transform: translateY(-1px);
+}
+.jz-toolbar-icon-btn.ant-btn:active:not(:disabled) {
+  transform: translateY(0);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12) !important;
 }
 
 .jz-toolbar-icon-btn.ant-btn-primary,
 .jz-toolbar-icon-btn.is-active {
-  background: color-mix(in srgb, var(--jz-text) 10%, transparent) !important;
-  border-color: var(--jz-border) !important;
-  color: var(--jz-text) !important;
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 35%, transparent) !important;
+  color: var(--jz-accent) !important;
 }
 
 .jz-toolbar-icon-btn.is-active {
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jz-accent) 40%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jz-accent) 45%, transparent),
+    0 1px 4px color-mix(in srgb, var(--jz-accent) 18%, transparent) !important;
 }
 
+/* Previously the Compact groups rendered flush (shared borders, touching) which
+   read as 间距太窄. Separate each button with a small gap and round all corners
+   so every icon gets its own breathing room. */
+.jz-editor-toolbar-main .ant-space-compact {
+  gap: 4px;
+}
 .jz-editor-toolbar-main .ant-space-compact .ant-btn {
-  border-radius: 0 !important;
-}
-.jz-editor-toolbar-main .ant-space-compact .ant-btn:first-child {
-  border-radius: 6px 0 0 6px !important;
-}
-.jz-editor-toolbar-main .ant-space-compact .ant-btn:last-child {
-  border-radius: 0 6px 6px 0 !important;
+  margin-inline-start: 0 !important;
+  border-radius: 9px !important;
 }
 
 /* AI toolbar trigger */
@@ -910,10 +927,16 @@
   min-width: 0;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--jz-border, var(--glass-border));
-  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--jz-border) 82%, transparent);
+  border-radius: 10px;
   overflow: hidden;
   background: var(--jz-surface, #fff);
+  /* Flush content box inside the outer editor card (no own elevation). */
+  box-shadow: none;
+  transition: border-color 0.2s ease;
+}
+.jz-html-editor-source:focus-within {
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-border));
 }
 
 .jz-html-editor-source .ant-input-textarea,
@@ -966,4 +989,16 @@
   min-height: 0 !important;
   height: 100% !important;
   resize: none !important;
+  /* Flush content box inside the outer editor card (elevation lives on the card,
+     not here — avoids a card-in-card). */
+  padding: 16px 18px !important;
+  border: 1px solid color-mix(in srgb, var(--jz-border) 82%, transparent) !important;
+  border-radius: 10px !important;
+  background: var(--jz-surface) !important;
+  box-shadow: none !important;
+  transition: border-color 0.2s ease !important;
+}
+.jz-md-editor-root .jz-md-editor-split textarea.ant-input:focus {
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-border)) !important;
+  box-shadow: none !important;
 }

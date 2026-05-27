@@ -293,6 +293,9 @@ a:hover { opacity: 0.85; }
   border-color: var(--jz-border) !important;
 }
 
+/* MD textarea / HTML panes are flush content boxes inside the outer editor card;
+   elevation lives on the card, so no per-pane shadow on dark themes. */
+
 /* Diff view colors are now driven by CSS variables in diff.css itself, with
    green/red ins/del bumped for dark themes via the data-theme selector — no
    inline overrides needed here. */

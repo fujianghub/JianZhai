@@ -651,7 +651,10 @@ export default function RichTextEditor({
       openAI: () => setAiPromptOpen(true),
       openLink: () => openLinkPopover(),
     }),
-    [editor, value, openLinkPopover]
+    // `value` is intentionally omitted — none of these actions read it, so
+    // keeping it here re-built the memo (and re-ran setInsertMenuActions) on
+    // every keystroke.
+    [editor, openLinkPopover]
   );
 
   useEffect(() => {

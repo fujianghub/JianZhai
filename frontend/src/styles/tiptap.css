@@ -5,14 +5,35 @@
 }
 .tiptap-shell .ProseMirror {
   outline: none;
-  min-height: 280px;
-  line-height: 1.7;
-  font-size: 15px;
+  min-height: 320px;
+  line-height: 1.85;
+  font-size: 16px;
   color: var(--jz-text);
+  /* Was 紧凑 (cramped): no vertical breathing room. */
+  padding-block: 4px 24px;
 }
 .tiptap-shell[contenteditable='true'] .ProseMirror,
 .tiptap-shell .ProseMirror[contenteditable='true'] {
   padding-left: 36px;
+}
+/* Comfortable block rhythm — paragraphs & lists previously used the bare
+   ProseMirror defaults and stacked too tightly. */
+.tiptap-shell .ProseMirror > :first-child {
+  margin-top: 0;
+}
+.tiptap-shell .ProseMirror p {
+  margin: 0.85em 0;
+}
+.tiptap-shell .ProseMirror ul,
+.tiptap-shell .ProseMirror ol {
+  margin: 0.75em 0;
+  padding-left: 1.6em;
+}
+.tiptap-shell .ProseMirror li {
+  margin: 0.4em 0;
+}
+.tiptap-shell .ProseMirror li > p {
+  margin: 0.2em 0;
 }
 .tiptap-shell .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
@@ -25,7 +46,7 @@
 .tiptap-shell .ProseMirror h1,
 .tiptap-shell .ProseMirror h2,
 .tiptap-shell .ProseMirror h3 {
-  margin: 1em 0 0.4em;
+  margin: 1.5em 0 0.6em;
   font-weight: 600;
   color: var(--jz-text);
 }
@@ -34,8 +55,9 @@
 .tiptap-shell .ProseMirror h3 { font-size: 1.25em; }
 .tiptap-shell .ProseMirror blockquote {
   border-left: 4px solid color-mix(in srgb, var(--jz-accent) 65%, var(--jz-divider));
-  padding: 0.4em 1em;
-  margin: 0.8em 0;
+  padding: 0.6em 1.2em;
+  margin: 1.1em 0;
+  border-radius: 0 8px 8px 0;
   color: var(--jz-text-muted);
   background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
 }
@@ -2371,27 +2393,75 @@ sup.jz-footnote-ref:hover,
   --jz-text-muted: #8c96a8;
 }
 
-/* ── 编辑器工具栏：组与组之间用分隔线，整体浅卡片化 ── */
-.jz-admin-glass .jz-editor-toolbar {
-  background: rgba(255, 255, 255, 0.78) !important;
-  border-radius: 8px !important;
-  padding: 8px 10px !important;
-  gap: 8px !important;
+/* ── 编辑器工具栏：组与组之间用分隔线，整体浅卡片化 ──
+   作用域用 .jz-glass（后台 .jz-admin-glass 与博客 .jz-doc-shell-blog 两套外壳都带
+   .jz-glass），这样从博客「完整编辑」进来时工具栏样式同样命中。 */
+.jz-glass .jz-editor-toolbar {
+  background: color-mix(in srgb, var(--jz-surface) 88%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--jz-border) 55%, transparent) !important;
+  border-radius: 10px !important;
+  padding: 6px 12px !important;
+  gap: 9px !important;
   flex-wrap: nowrap !important;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  box-shadow: none !important;
+  backdrop-filter: blur(8px) saturate(130%);
 }
-[data-theme='dark']  .jz-admin-glass .jz-editor-toolbar,
-[data-theme='starry'] .jz-admin-glass .jz-editor-toolbar,
-[data-theme='deepsea'] .jz-admin-glass .jz-editor-toolbar {
-  background: rgba(255, 255, 255, 0.045) !important;
+[data-theme='dark']  .jz-glass .jz-editor-toolbar,
+[data-theme='starry'] .jz-glass .jz-editor-toolbar,
+[data-theme='deepsea'] .jz-glass .jz-editor-toolbar {
+  background: rgba(255, 255, 255, 0.05) !important;
 }
 
-.jz-admin-glass .jz-editor-toolbar-divider {
-  background: var(--jz-border);
+.jz-glass .jz-editor-toolbar-divider {
+  background: color-mix(in srgb, var(--jz-border) 75%, transparent);
   width: 1px;
-  height: 18px;
-  margin: 0 4px;
+  height: 24px;
+  margin: 0 7px;
+}
+
+/* 完整编辑外观对齐博客内联「编辑」：把工具栏 + 内容区裹进一张带强调色描边的卡片，
+   而不是悬浮工具条 + 独立内容两块分离的元素。富文本 / Markdown / HTML 三种模式
+   统一套此外卡片（内部画布/文本域/面板降级为扁平内容区，避免卡中卡）；fullscreen
+   根类名是 .jz-fullscreen-shell，沉浸模式自然不套卡片。 */
+.jz-glass
+  .jz-doc-editor-col
+  > .jz-editor-surface {
+  padding: 10px;
+  border-radius: 16px;
+  border: 1px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 30%, var(--jz-border));
+  background: color-mix(in srgb, var(--jz-surface) 55%, transparent);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 7%, transparent),
+    0 1px 2px rgba(0, 0, 0, 0.04),
+    0 14px 36px rgba(0, 0, 0, 0.07);
+  backdrop-filter: blur(12px) saturate(140%);
+}
+[data-theme='dark']
+  .jz-glass
+  .jz-doc-editor-col
+  > .jz-editor-surface,
+[data-theme='starry']
+  .jz-glass
+  .jz-doc-editor-col
+  > .jz-editor-surface,
+[data-theme='deepsea']
+  .jz-glass
+  .jz-doc-editor-col
+  > .jz-editor-surface {
+  background: rgba(255, 255, 255, 0.035);
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 12%, transparent),
+    0 2px 6px rgba(0, 0, 0, 0.3),
+    0 16px 40px rgba(0, 0, 0, 0.4);
+}
+/* Inside the card the toolbar is a flush header strip and the canvas its body. */
+.jz-glass
+  .jz-doc-editor-col
+  > .jz-editor-surface
+  > .jz-editor-toolbar {
+  margin-bottom: 10px;
 }
 
 /* ── 侧栏（大纲 / 反链 / 评论 / 附件）── */
@@ -2527,20 +2597,20 @@ sup.jz-footnote-ref:hover,
   position: relative;
 }
 
-/* AntD Button 在白底下：浅灰 hover + 朱砂/翡翠选中态 */
-.jz-admin-glass .jz-editor-toolbar .ant-btn:hover {
+/* AntD Button 在白底下：浅灰 hover + 朱砂/翡翠选中态（两套外壳共用 .jz-glass） */
+.jz-glass .jz-editor-toolbar .ant-btn:hover {
   background: color-mix(in srgb, var(--jz-accent) 10%, var(--jz-surface)) !important;
   border-color: var(--jz-accent) !important;
   color: var(--jz-accent) !important;
 }
-.jz-admin-glass .jz-editor-toolbar .ant-btn-primary.jz-toolbar-save-btn {
+.jz-glass .jz-editor-toolbar .ant-btn-primary.jz-toolbar-save-btn {
   background: var(--jz-accent) !important;
   border-color: var(--jz-accent) !important;
   color: #ffffff !important;
 }
 
 /* 工具栏内的 Space.Compact 视觉分组 */
-.jz-admin-glass .jz-editor-toolbar .ant-space-compact .ant-btn {
+.jz-glass .jz-editor-toolbar .ant-space-compact .ant-btn {
   border-color: var(--jz-border);
 }
 
