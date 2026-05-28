@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Spin } from 'antd';
 import BlogLayout from '@/pages/blog/BlogLayout';
@@ -7,6 +7,24 @@ import RequireAuth from '@/pages/admin/RequireAuth';
 import LoginPage from '@/pages/admin/LoginPage';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
+import ErrorBoundary from '@/components/common/ErrorBoundary';
+
+/** Inline loading fallback with a contextual hint — used for heavier chunks
+ *  (editor, graph, post detail) so the user knows what's coming. */
+function RouteFallback({ label }: { label?: string }) {
+  return (
+    <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh', gap: 12 }}>
+      <Spin size="large" />
+      {label && <span style={{ color: 'var(--jz-text-muted)', fontSize: 13 }}>{label}</span>}
+    </div>
+  );
+}
+
+/** Per-route Suspense for slow chunks — gives a labeled fallback instead of
+ *  the bare global spinner. */
+function suspended(node: ReactNode, label: string): ReactNode {
+  return <Suspense fallback={<RouteFallback label={label} />}>{node}</Suspense>;
+}
 
 // Code-split everything past the public landing + auth shell. This pulls the
 // editor (Tiptap/KaTeX/lowlight), force-graph, pdfjs, mermaid, etc. out of the
@@ -31,7 +49,9 @@ const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const TrashPage = lazy(() => import('@/pages/admin/TrashPage'));
 const DocLinkResolver = lazy(() => import('@/pages/DocLinkResolver'));
 import 'tippy.js/dist/tippy.css';
+import './styles/tokens.css';
 import './styles/theme.css';
+import './styles/dashboard.css';
 import './styles/markdown.css';
 import './styles/tiptap.css';
 import './styles/editor-ui.css';
@@ -49,19 +69,14 @@ export default function App() {
     <>
       <StarryNight />
       <DeepSea />
-      <Suspense
-        fallback={
-          <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh' }}>
-            <Spin size="large" />
-          </div>
-        }
-      >
+      <ErrorBoundary context="root">
+      <Suspense fallback={<RouteFallback />}>
       <Routes>
       <Route element={<BlogLayout />}>
         <Route path="/" element={<BlogHome />} />
         <Route path="/kb/:slug" element={<KBPostsPage />} />
-        <Route path="/posts/:slug" element={<PostDetail />} />
-        <Route path="/posts/:slug/edit" element={<PostEditRoute />} />
+        <Route path="/posts/:slug" element={suspended(<PostDetail />, '加载文章…')} />
+        <Route path="/posts/:slug/edit" element={suspended(<PostEditRoute />, '加载编辑器…')} />
         <Route path="/archive" element={<ArchivePage />} />
         <Route path="/tags" element={<TagCloudPage />} />
         <Route
@@ -88,12 +103,12 @@ export default function App() {
         <Route index element={<AdminDashboard />} />
         <Route path="kbs" element={<KBListPage />} />
         <Route path="kbs/:id" element={<KBWorkspace />} />
-        <Route path="kbs/:id/docs/:docId" element={<DocEditorPage />} />
+        <Route path="kbs/:id/docs/:docId" element={suspended(<DocEditorPage />, '加载编辑器…')} />
         <Route path="exports" element={<ExportsPage />} />
         <Route path="users" element={<UsersPage />} />
         <Route path="overview" element={<SystemOverviewPage />} />
         <Route path="ai" element={<AIManagementPage />} />
-        <Route path="graph" element={<KnowledgeGraphPage />} />
+        <Route path="graph" element={suspended(<KnowledgeGraphPage />, '加载知识图谱…')} />
         <Route path="profile" element={<ProfilePage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="trash" element={<TrashPage />} />
@@ -102,6 +117,7 @@ export default function App() {
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       </Suspense>
+      </ErrorBoundary>
     </>
   );
 }

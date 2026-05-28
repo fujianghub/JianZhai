@@ -342,8 +342,20 @@ md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
   return defaultLinkOpen(tokens, idx, options, env, self);
 };
 
+/** Inject `loading="lazy" decoding="async"` on every <img> that doesn't already
+ *  declare them. Applied after sanitization so DOMPurify can't strip the attrs;
+ *  both attrs are on its allow-list above. */
+function addImgLazyAttrs(html: string): string {
+  return html.replace(/<img\b([^>]*?)>/gi, (_m, attrs: string) => {
+    let next = attrs;
+    if (!/\bloading\s*=/i.test(next)) next += ' loading="lazy"';
+    if (!/\bdecoding\s*=/i.test(next)) next += ' decoding="async"';
+    return `<img${next}>`;
+  });
+}
+
 export function renderMarkdown(source: string): string {
-  return sanitize(md.render(preprocessMarkdown(source ?? '')));
+  return addImgLazyAttrs(sanitize(md.render(preprocessMarkdown(source ?? ''))));
 }
 
 export interface TocEntry {
@@ -360,7 +372,7 @@ export interface TocEntry {
 export function renderMarkdownWithToc(source: string): { html: string; toc: TocEntry[] } {
   const env: { toc: TocEntry[] } = { toc: [] };
   const html = md.render(preprocessMarkdown(source ?? ''), env);
-  return { html: sanitize(html), toc: env.toc };
+  return { html: addImgLazyAttrs(sanitize(html)), toc: env.toc };
 }
 
 /**

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-import { DeleteOutlined, HomeOutlined } from '@ant-design/icons';
+import { DeleteOutlined, HomeOutlined, MenuOutlined } from '@ant-design/icons';
 import {
   JzKbIcon,
   JzGraphIcon,
@@ -31,6 +31,16 @@ export default function AdminLayout() {
   const location = useLocation();
   const { user } = useAuthStore();
   const [searchOpen, setSearchOpen] = useState(false);
+  // Sider collapses to 0 below the `lg` breakpoint — keep a controlled state so
+  // the mobile hamburger button can re-open it, and auto-collapse on navigation
+  // so the menu doesn't sit open after a link click.
+  const [siderCollapsed, setSiderCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth < 992) {
+      setSiderCollapsed(true);
+    }
+  }, [location.pathname]);
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
@@ -64,6 +74,9 @@ export default function AdminLayout() {
         width={232}
         breakpoint="lg"
         collapsedWidth={0}
+        trigger={null}
+        collapsed={siderCollapsed}
+        onBreakpoint={(broken) => setSiderCollapsed(broken)}
         className="jz-admin-sider"
       >
         <Link
@@ -144,6 +157,13 @@ export default function AdminLayout() {
       </Sider>
       <Layout>
         <Header className="jz-admin-header">
+          <Button
+            className="jz-admin-mobile-menu-btn"
+            type="text"
+            icon={<MenuOutlined />}
+            onClick={() => setSiderCollapsed((c) => !c)}
+            aria-label={siderCollapsed ? '展开菜单' : '收起菜单'}
+          />
           <Tooltip title="搜索 (⌘/Ctrl + K)">
             <Button
               shape="round"

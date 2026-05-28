@@ -9,6 +9,7 @@ import {
   Modal,
   Popconfirm,
   Select,
+  Skeleton,
   Space,
   Tag,
   Tooltip,
@@ -30,8 +31,9 @@ import type { KBCategory, KnowledgeBase, Visibility } from '@/types';
 import ExportDialog from '@/components/common/ExportDialog';
 import TagPicker from '@/components/common/TagPicker';
 import { resolveTagColor } from '@/utils/tagColor';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 
-const { Title, Paragraph, Text } = Typography;
+const { Paragraph, Text } = Typography;
 
 type KBFormValues = {
   name: string;
@@ -241,31 +243,39 @@ export default function KBListPage() {
 
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 20,
-          flexWrap: 'wrap',
-          gap: 12,
-        }}
-      >
-        <Title level={2} style={{ margin: 0 }}>
-          知识库
-        </Title>
-        <Space wrap>
-          <Button icon={<FolderOutlined />} onClick={() => setCategoryModal(true)}>
-            管理大类
-          </Button>
-          <Button type="primary" size="large" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
-            新建知识库
-          </Button>
-        </Space>
-      </div>
+      <AdminPageHeader
+        backTo="/admin"
+        backLabel="工作台"
+        title="知识库"
+        actions={
+          <Space wrap>
+            <Button icon={<FolderOutlined />} onClick={() => setCategoryModal(true)}>
+              管理大类
+            </Button>
+            <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+              新建知识库
+            </Button>
+          </Space>
+        }
+      />
 
-      {!loading && items.length === 0 ? (
-        <Empty description="还没有知识库，先建一个吧" />
+      {loading && items.length === 0 ? (
+        <div style={{ display: 'grid', gap: 16, gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} style={{ minHeight: 168 }}>
+              <Skeleton active title paragraph={{ rows: 2 }} />
+            </Card>
+          ))}
+        </div>
+      ) : !loading && items.length === 0 ? (
+        <Empty
+          description="还没有知识库，先建一个吧"
+          style={{ padding: '48px 0' }}
+        >
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
+            立即创建
+          </Button>
+        </Empty>
       ) : grouped.length > 0 ? (
         <Collapse
           defaultActiveKey={grouped.map((s) => s.key)}

@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Col, Row, Spin, Typography } from 'antd';
+import { Button, Col, Row, Skeleton, Typography } from 'antd';
+import { PlusOutlined } from '@ant-design/icons';
 import {
   JzAiIcon,
   JzArchitectureIcon,
@@ -38,15 +39,30 @@ export default function AdminDashboard() {
   const [kbs, setKbs] = useState<KnowledgeBase[] | null>(null);
   const [err, setErr] = useState(false);
 
-  useEffect(() => {
+  const refetch = useCallback(() => {
     let cancelled = false;
     listKBs()
-      .then((list) => !cancelled && setKbs(list))
+      .then((list) => !cancelled && (setKbs(list), setErr(false)))
       .catch(() => !cancelled && setErr(true));
     return () => {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    const cleanup = refetch();
+    // Re-pull stats when user returns to the tab so KBs created/deleted
+    // elsewhere reflect on the work-bench.
+    const onFocus = () => { refetch(); };
+    const onVis = () => { if (document.visibilityState === 'visible') refetch(); };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVis);
+    return () => {
+      cleanup?.();
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [refetch]);
 
   const stats = useMemo(() => {
     const list = kbs ?? [];
@@ -91,7 +107,13 @@ export default function AdminDashboard() {
           ].map((s) => (
             <Col xs={12} sm={8} key={s.label}>
               <div className="jz-overview-stat">
-                <div className="jz-dash-stat-value">{kbs === null && !err ? <Spin size="small" /> : s.value}</div>
+                <div className="jz-dash-stat-value">
+                  {kbs === null && !err ? (
+                    <Skeleton.Input active size="small" style={{ width: 56, minWidth: 56, height: 28 }} />
+                  ) : (
+                    s.value
+                  )}
+                </div>
                 <div className="jz-dash-stat-label">{s.label}</div>
               </div>
             </Col>
@@ -126,12 +148,15 @@ export default function AdminDashboard() {
             <Text type="secondary">概览加载失败，请稍后重试。</Text>
           </div>
         ) : kbs === null ? (
-          <div className="jz-admin-panel" style={{ display: 'grid', placeItems: 'center', minHeight: 120 }}>
-            <Spin />
+          <div className="jz-admin-panel">
+            <Skeleton active paragraph={{ rows: 3, width: ['80%', '60%', '70%'] }} />
           </div>
         ) : recentKbs.length === 0 ? (
-          <div className="jz-admin-panel">
-            <Text type="secondary">还没有知识库——去「知识库」页面创建第一个吧。</Text>
+          <div className="jz-admin-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+            <Text type="secondary">还没有知识库——一切就绪,创建你的第一个吧。</Text>
+            <Link to="/admin/kbs">
+              <Button type="primary" icon={<PlusOutlined />}>新建知识库</Button>
+            </Link>
           </div>
         ) : (
           <Row gutter={[16, 16]}>

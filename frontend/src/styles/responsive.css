@@ -43,3 +43,19 @@
     max-width: 100%;
   }
 }
+
+/* Admin sidebar collapses to width 0 at <lg (992px). Reveal a hamburger in the
+   header below that breakpoint so the menu can be re-opened. */
+.jz-admin-mobile-menu-btn {
+  display: none !important;
+}
+@media (max-width: 991px) {
+  .jz-admin-mobile-menu-btn {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    margin-right: 8px;
+    font-size: 18px;
+    color: var(--glass-text, var(--jz-text));
+  }
+}

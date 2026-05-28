@@ -1,0 +1,90 @@
+/* Dashboard / 个人空间工作台 surface — extracted from theme.css. Cascade after theme.css. */
+
+/* ── 通用玻璃面板：包裹表格 / 表单等内容区（不做 hover 抬升，区别于 .jz-card）── */
+.jz-admin-glass .jz-admin-panel {
+  background: var(--glass-surface, var(--jz-surface));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  border-radius: var(--glass-radius-md, 14px);
+  padding: 14px 16px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+}
+[data-theme='dark'] .jz-admin-glass .jz-admin-panel,
+[data-theme='starry'] .jz-admin-glass .jz-admin-panel,
+[data-theme='deepsea'] .jz-admin-glass .jz-admin-panel {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
+}
+/* The wrapped AntD table shouldn't paint its own card edges over the panel. */
+.jz-admin-glass .jz-admin-panel .ant-table { background: transparent; }
+.jz-admin-glass .jz-admin-panel .ant-table-thead > tr > th {
+  background: color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 70%, transparent);
+}
+
+/* ── 个人空间工作台首页 ───────────────────────────────────────────────── */
+.jz-admin-glass .jz-dash-hero {
+  background:
+    radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.22) 0%, transparent 55%),
+    radial-gradient(ellipse at bottom left, rgba(58, 110, 165, 0.12) 0%, transparent 55%),
+    var(--glass-surface) !important;
+  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  box-shadow: var(--glass-shadow-hero) !important;
+  border-radius: var(--glass-radius-lg, 18px);
+  padding: 28px 30px;
+  position: relative;
+  overflow: hidden;
+}
+.jz-admin-glass .jz-dash-hero::before {
+  content: '';
+  position: absolute;
+  top: -45%;
+  right: -6%;
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, transparent 70%);
+  pointer-events: none;
+  filter: blur(22px);
+}
+.jz-admin-glass .jz-dash-hero-greeting {
+  font-size: 13px;
+  color: var(--glass-text-muted);
+  margin: 0 0 4px;
+}
+.jz-admin-glass .jz-dash-hero-title.ant-typography {
+  margin: 0 0 6px;
+  color: var(--glass-text);
+}
+.jz-admin-glass .jz-dash-hero-sub {
+  color: var(--glass-text-muted);
+  margin: 0;
+  max-width: 60ch;
+}
+.jz-admin-glass .jz-dash-stat-value {
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--jz-accent);
+}
+.jz-admin-glass .jz-dash-stat-label {
+  font-size: 12px;
+  color: var(--glass-text-muted);
+  margin-top: 2px;
+}
+.jz-admin-glass a.jz-feature-card {
+  display: block;
+  color: inherit;
+}
+.jz-admin-glass a.jz-feature-card:hover { color: inherit; }
+
+/* 知识图谱画布：极淡的中心光晕,让力导向节点在玻璃底上更跳脱 */
+.jz-admin-glass .jz-graph-canvas {
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 5%, transparent) 0%, transparent 68%);
+}
+[data-theme='dark'] .jz-admin-glass .jz-graph-canvas,
+[data-theme='starry'] .jz-admin-glass .jz-graph-canvas,
+[data-theme='deepsea'] .jz-admin-glass .jz-graph-canvas {
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 9%, transparent) 0%, transparent 70%);
+}
