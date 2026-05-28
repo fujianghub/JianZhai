@@ -24,6 +24,7 @@ import {
   ExportOutlined,
   FullscreenOutlined,
   HistoryOutlined,
+  InfoCircleOutlined,
   UnorderedListOutlined,
   RocketOutlined,
   StopOutlined,
@@ -51,6 +52,7 @@ import TagPicker from '@/components/common/TagPicker';
 import CommentsPanel from '@/components/common/CommentsPanel';
 import AttachmentPanel from '@/components/common/AttachmentPanel';
 import VersionsDrawer from './VersionsDrawer';
+import DocStatsDrawer from '@/components/admin/DocStatsDrawer';
 import PublishCheckModal, {
   buildPublishChecks,
   hasPublishBlockers,
@@ -154,6 +156,7 @@ export default function DocEditorPage({
   const editorSaveRef = useRef<EditorSaveHandle | null>(null);
   const saveInFlightRef = useRef<Promise<void> | null>(null);
   const [versionsOpen, setVersionsOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [publishCheckOpen, setPublishCheckOpen] = useState(false);
   const [publishing, setPublishing] = useState(false);
@@ -720,6 +723,12 @@ export default function DocEditorPage({
             menu={{
               items: [
                 {
+                  key: 'stats',
+                  icon: <InfoCircleOutlined />,
+                  label: '文档信息',
+                  onClick: () => setStatsOpen(true),
+                },
+                {
                   key: 'history',
                   icon: <HistoryOutlined />,
                   label: '版本历史',
@@ -886,6 +895,12 @@ export default function DocEditorPage({
         loading={publishing}
         onConfirm={() => void confirmPublish()}
         onCancel={() => setPublishCheckOpen(false)}
+      />
+
+      <DocStatsDrawer
+        open={statsOpen}
+        onClose={() => setStatsOpen(false)}
+        documentId={doc.id}
       />
 
       <VersionsDrawer

@@ -388,19 +388,30 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["get"], url_path="stats")
     def stats(self, request, pk=None):
-        """Authorship / activity statistics for the doc panel.
+        """Rich document stats for the 文档信息 drawer.
 
         Returns:
-          - word_count: CJK chars + alphanumeric tokens
-          - created_at / created_by
-          - updated_at / last_edited_by
+          - word_count / char_count / reading_minutes
+          - created_at, updated_at, published_at, created_by, last_edited_by
           - contributors[]: distinct users who created any DocumentVersion,
             unioned with created_by / last_edited_by
+          - version_count + edits_last_7d sparkline data
+          - structure (heading counts, lists/code/tables/images/links)
+          - links: outgoing/incoming counts via DocumentLink
+          - tags[]: tag dicts attached to this doc
         """
+        from datetime import timedelta
         from apps.versioning.models import DocumentVersion, _word_count
+        from apps.linking.models import DocumentLink
+        from .structure import analyze as analyze_structure
+
         doc = self.get_object()
         body = doc.raw_content or ""
         wc = _word_count(body)
+        # Reading time: CJK ~300 chars/min, English ~200 words/min — close
+        # enough since `_word_count` already treats CJK chars and ASCII tokens
+        # uniformly. `max(1, ...)` avoids "0 分钟" on near-empty docs.
+        reading_minutes = max(1, round(wc / 300)) if wc > 0 else 0
 
         def _user_dict(u) -> dict | None:
             if not u:
@@ -432,8 +443,32 @@ class DocumentViewSet(viewsets.ModelViewSet):
         users_map = {u.id: u for u in User.objects.filter(id__in=contributor_ids)}
         contributors = [_user_dict(users_map[uid]) for uid in contributor_ids if uid in users_map]
 
+        # Sparkline: edits per day across the last 7 days (today inclusive).
+        from django.db.models.functions import TruncDate
+        today = timezone.localdate()
+        since = timezone.now() - timedelta(days=6)
+        bucket_rows = (
+            DocumentVersion.objects.filter(document=doc, created_at__gte=since)
+            .annotate(day=TruncDate("created_at"))
+            .values("day")
+            .annotate(count=Count("id"))
+        )
+        by_day = {row["day"].isoformat(): row["count"] for row in bucket_rows}
+        edits_last_7d = []
+        for i in range(7):
+            d = (today - timedelta(days=6 - i)).isoformat()
+            edits_last_7d.append({"date": d, "count": by_day.get(d, 0)})
+
+        # Tags: pull through the through-table without extra joins per row.
+        tags = [
+            {"id": t.id, "name": t.name, "slug": t.slug, "color": t.color}
+            for t in doc.tags.all()
+        ]
+
         return Response({
             "word_count": wc,
+            "char_count": len(body),
+            "reading_minutes": reading_minutes,
             "created_at": doc.created_at.isoformat() if doc.created_at else None,
             "updated_at": doc.updated_at.isoformat() if doc.updated_at else None,
             "published_at": doc.published_at.isoformat() if doc.published_at else None,
@@ -441,6 +476,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
             "last_edited_by": _user_dict(doc.last_edited_by),
             "contributors": contributors,
             "version_count": DocumentVersion.objects.filter(document=doc).count(),
+            "edits_last_7d": edits_last_7d,
+            "structure": analyze_structure(body),
+            "links": {
+                "outgoing_count": DocumentLink.objects.filter(source=doc).count(),
+                "incoming_count": DocumentLink.objects.filter(target=doc).count(),
+            },
+            "tags": tags,
         })
 
     @action(detail=True, methods=["get"], url_path="preview")

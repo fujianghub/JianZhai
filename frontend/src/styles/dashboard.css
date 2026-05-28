@@ -138,3 +138,77 @@
   background: var(--jz-divider, var(--jz-border));
   border-radius: 3px;
 }
+
+/* ── DocStatsDrawer ────────────────────────────────────────────────────── */
+.jz-stats-drawer .jz-stats-section {
+  margin-bottom: 22px;
+}
+.jz-stats-drawer .jz-stats-section:last-child {
+  margin-bottom: 0;
+}
+.jz-stats-drawer .jz-stats-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--jz-text-muted);
+  margin: 0 0 10px;
+}
+.jz-stats-drawer .jz-stats-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.jz-stats-drawer .jz-stats-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+  min-height: 24px;
+}
+.jz-stats-drawer .jz-stats-row-label {
+  color: var(--jz-text-muted);
+  flex-shrink: 0;
+}
+.jz-stats-drawer .jz-stats-row-value {
+  color: var(--jz-text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.jz-stats-drawer .jz-stats-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.jz-stats-drawer .jz-stats-pill {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 20%, transparent);
+  font-size: 12px;
+  color: var(--jz-text-muted);
+  line-height: 1.2;
+}
+.jz-stats-drawer .jz-stats-pill strong {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--jz-accent);
+  font-variant-numeric: tabular-nums;
+}
+.jz-stats-drawer .jz-stats-pill-label {
+  font-size: 12px;
+}
+.jz-stats-drawer .jz-stats-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

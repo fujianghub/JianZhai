@@ -21,6 +21,8 @@ export interface DocumentContributor {
 
 export interface DocumentStats {
   word_count: number;
+  char_count: number;
+  reading_minutes: number;
   created_at: string | null;
   updated_at: string | null;
   published_at: string | null;
@@ -28,6 +30,20 @@ export interface DocumentStats {
   last_edited_by: DocumentContributor | null;
   contributors: DocumentContributor[];
   version_count: number;
+  edits_last_7d: { date: string; count: number }[];
+  structure: {
+    headings: { h1: number; h2: number; h3: number; h4: number; h5: number; h6: number };
+    code_blocks: number;
+    images: number;
+    tables: number;
+    lists: number;
+    links: number;
+  };
+  links: {
+    outgoing_count: number;
+    incoming_count: number;
+  };
+  tags: { id: number; name: string; slug: string; color: string }[];
 }
 
 export async function getDocumentStats(id: number): Promise<DocumentStats> {
