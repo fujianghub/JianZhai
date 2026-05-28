@@ -8,6 +8,7 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -101,13 +102,38 @@ export default function AIManagementPage() {
   if (error) return <Alert type="error" message={error} showIcon />;
   if (!cap || !settings) return null;
 
-  const statusTag = !cap.configured ? (
-    <Tag color="default" icon={<WarningOutlined />}>未配置 API KEY</Tag>
-  ) : !cap.enabled ? (
+  // Global state — enabled vs disabled by the admin switch.
+  const globalStatusTag = !cap.enabled ? (
     <Tag color="warning" icon={<WarningOutlined />}>已禁用</Tag>
+  ) : !cap.configured ? (
+    <Tag color="default" icon={<WarningOutlined />}>未配置任何 API KEY</Tag>
   ) : (
     <Tag color="success" icon={<CheckCircleOutlined />}>运行中</Tag>
   );
+
+  // Per-provider chips — drives the badge color + tooltip. `providers_configured`
+  // is a recent field; legacy backends omit it and we fall back to the single
+  // `cap.configured` boolean by hiding the per-provider chips entirely.
+  const providers: { id: 'anthropic' | 'qwen'; label: string; envVar: string }[] = [
+    { id: 'anthropic', label: 'Anthropic Claude', envVar: 'ANTHROPIC_API_KEY' },
+    { id: 'qwen', label: '阿里通义千问', envVar: 'DASHSCOPE_API_KEY' },
+  ];
+  const providerChips = cap.providers_configured ? providers.map((p) => {
+    const ok = cap.providers_configured![p.id];
+    return (
+      <Tooltip
+        key={p.id}
+        title={ok ? `${p.envVar} 已配置 — ${p.label} 可用` : `在 backend/.env 设置 ${p.envVar} 并重启 Django`}
+      >
+        <Tag
+          icon={ok ? <CheckCircleOutlined /> : <WarningOutlined />}
+          color={ok ? 'success' : 'default'}
+        >
+          {p.label}{ok ? ' ✓' : ' · 未配置'}
+        </Tag>
+      </Tooltip>
+    );
+  }) : null;
 
   return (
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -120,10 +146,16 @@ export default function AIManagementPage() {
               AI 助手
             </Title>
             <Paragraph type="secondary" style={{ marginBottom: 8 }}>
-              基于 Anthropic Claude 的写作 / 阅读助手。
+              基于 Anthropic Claude 与阿里通义千问的写作 / 阅读助手。
               所有调用走后端代理，API key 永远不暴露给前端。
             </Paragraph>
-            <Space size={8}>{statusTag}<Tag>{settings.default_model}</Tag></Space>
+            <Space size={8} wrap>
+              {globalStatusTag}
+              {providerChips}
+              <Tooltip title="全局默认模型 — 用户没设置个人偏好时调用此模型">
+                <Tag color="blue">默认: {settings.default_model}</Tag>
+              </Tooltip>
+            </Space>
           </Col>
           <Col>
             <Segmented
