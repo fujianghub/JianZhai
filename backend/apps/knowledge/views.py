@@ -260,6 +260,78 @@ class DocumentViewSet(viewsets.ModelViewSet):
         doc.refresh_from_db()
         return Response(DocumentSerializer(doc, context=self.get_serializer_context()).data)
 
+    @action(detail=False, methods=["get"], url_path="activity")
+    def activity(self, request):
+        """Document-edit activity for a GitHub-style writing heatmap.
+
+        Counts the user's own documents (or all docs for a superuser) by
+        `updated_at` date over the last N days (default 365, capped 730).
+        Soft-deleted docs are excluded by the default manager. Only days with
+        at least one edit are returned — the frontend fills empty cells. """
+        from django.db.models.functions import TruncDate
+        try:
+            days = max(1, min(int(request.query_params.get("days", 365)), 730))
+        except (TypeError, ValueError):
+            days = 365
+        since = timezone.now() - timezone.timedelta(days=days)
+        qs = (
+            scope_queryset(Document.objects.all(), request.user)
+            .filter(updated_at__gte=since)
+            .annotate(day=TruncDate("updated_at"))
+            .values("day")
+            .annotate(count=Count("id"))
+            .order_by("day")
+        )
+        return Response({
+            "days": days,
+            "buckets": [
+                {"date": row["day"].isoformat(), "count": row["count"]}
+                for row in qs
+            ],
+        })
+
+    @action(detail=False, methods=["post"], url_path="quick-capture")
+    def quick_capture(self, request):
+        """Create a small scratch doc in the given KB — no folder, no template.
+
+        For the global ⌘+Shift+N capture flow: friction-free dump for fleeting
+        thoughts. The title is the first non-empty line up to 40 chars; if
+        empty, a timestamp. Slug uses an ms timestamp to avoid collisions when
+        multiple captures land in the same second."""
+        if not isinstance(request.data, dict):
+            return Response({"detail": "invalid payload"}, status=status.HTTP_400_BAD_REQUEST)
+        kb_id = request.data.get("knowledge_base")
+        text = (request.data.get("text") or "").strip()
+        if not kb_id:
+            return Response({"detail": "knowledge_base required"}, status=status.HTTP_400_BAD_REQUEST)
+        if not text:
+            return Response({"detail": "text required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            kb_id = int(kb_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "knowledge_base must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+        kb = scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner").filter(pk=kb_id).first()
+        if kb is None:
+            return Response({"detail": "找不到这个知识库"}, status=status.HTTP_404_NOT_FOUND)
+
+        now = timezone.now()
+        first_line = next((line.strip() for line in text.splitlines() if line.strip()), "")
+        title = (first_line[:40] or now.strftime("速记 %Y-%m-%d %H:%M"))
+        slug = "quick-" + str(int(now.timestamp() * 1000))
+
+        doc = Document.objects.create(
+            knowledge_base=kb,
+            title=title,
+            slug=slug,
+            raw_content=text,
+            created_by=request.user,
+            last_edited_by=request.user,
+        )
+        return Response(
+            {"id": doc.id, "knowledge_base": doc.knowledge_base_id, "title": doc.title, "slug": doc.slug},
+            status=status.HTTP_201_CREATED,
+        )
+
     @action(detail=False, methods=["post"], url_path="daily-note")
     def daily_note(self, request):
         """Find-or-create today's journal doc in the requested KB.

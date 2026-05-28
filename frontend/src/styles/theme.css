@@ -1487,6 +1487,43 @@ a.jz-meta-full-edit-btn:hover .anticon {
   opacity: 0.9;
 }
 
+/* ── KB tree (AntD Tree) smoothness ──────────────────────────────────────
+   Hover / selection background + expand arrow rotation get short transitions
+   so the tree doesn't feel snap-y. Drag-over rows get an emerald ring + bg
+   tint that fades in, matching the rest of the glass aesthetic. */
+.jz-kb-tree-panel .ant-tree-node-content-wrapper {
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+.jz-kb-tree-panel .ant-tree-switcher {
+  transition: background-color 0.15s ease;
+}
+.jz-kb-tree-panel .ant-tree-switcher-icon,
+.jz-kb-tree-panel .ant-tree-switcher .anticon-caret-down {
+  transition: transform 0.18s ease;
+}
+.jz-kb-tree-panel .ant-tree-treenode {
+  border-radius: 6px;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+.jz-kb-tree-panel .ant-tree-treenode-draggable .ant-tree-node-content-wrapper:hover {
+  background: color-mix(in srgb, var(--jz-kb-accent, var(--jz-accent)) 8%, transparent);
+}
+/* Active dragover target — emerald ring + subtle accent tint */
+.jz-kb-tree-panel .ant-tree-treenode-drag-over,
+.jz-kb-tree-panel .ant-tree-treenode-drag-over-gap-top,
+.jz-kb-tree-panel .ant-tree-treenode-drag-over-gap-bottom {
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jz-accent) 45%, transparent);
+}
+.jz-kb-tree-panel .ant-tree-treenode-drag-over-gap-top {
+  box-shadow: inset 0 2px 0 0 var(--jz-accent);
+  background: transparent;
+}
+.jz-kb-tree-panel .ant-tree-treenode-drag-over-gap-bottom {
+  box-shadow: inset 0 -2px 0 0 var(--jz-accent);
+  background: transparent;
+}
+
 /* ── Card：玻璃面 ───────────────────────────────────────────────────── */
 .jz-admin-glass .ant-card {
   background: var(--glass-surface) !important;

@@ -15,6 +15,7 @@ import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import QuickSwitcher from '@/components/common/QuickSwitcher';
+import QuickCaptureModal from '@/components/common/QuickCaptureModal';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
 import { AIModelBadge } from '@/components/common/AIModelBadge';
@@ -33,6 +34,7 @@ export default function AdminLayout() {
   const { user } = useAuthStore();
   const [searchOpen, setSearchOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [captureOpen, setCaptureOpen] = useState(false);
   // Sider collapses to 0 below the `lg` breakpoint — keep a controlled state so
   // the mobile hamburger button can re-open it, and auto-collapse on navigation
   // so the menu doesn't sit open after a link click.
@@ -46,8 +48,17 @@ export default function AdminLayout() {
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const k = e.key.toLowerCase();
+      // ⌘+Shift+N — quick capture (must check first; the n key would also
+      // bubble up to the ⌘+N "new window" but the shift discriminator
+      // separates them).
+      if (e.shiftKey && k === 'n') {
+        e.preventDefault();
+        setCaptureOpen(true);
+        return;
+      }
+      if (e.shiftKey) return;
       // ⌘K / Ctrl+K — global full-text search
       if (k === 'k') {
         e.preventDefault();
@@ -208,6 +219,7 @@ export default function AdminLayout() {
       </Layout>
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
       <QuickSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
+      <QuickCaptureModal open={captureOpen} onClose={() => setCaptureOpen(false)} />
     </Layout>
   );
 }

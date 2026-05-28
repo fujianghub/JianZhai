@@ -71,11 +71,46 @@ export interface DailyNoteResponse {
   created: boolean;
 }
 
+export interface ActivityBucket {
+  date: string;
+  count: number;
+}
+export interface ActivityResponse {
+  days: number;
+  buckets: ActivityBucket[];
+}
+
+/** Document edit activity for the writing heatmap. Owner-scoped. */
+export async function getDocumentActivity(days = 365): Promise<ActivityResponse> {
+  const { data } = await apiClient.get<ActivityResponse>('/documents/activity/', {
+    params: { days },
+  });
+  return data;
+}
+
 /** Find-or-create the date-keyed daily note in the given KB. Idempotent. */
 export async function dailyNote(knowledgeBaseId: number): Promise<DailyNoteResponse> {
   await ensureCsrf();
   const { data } = await apiClient.post<DailyNoteResponse>('/documents/daily-note/', {
     knowledge_base: knowledgeBaseId,
+  });
+  return data;
+}
+
+export interface QuickCaptureResponse {
+  id: number;
+  knowledge_base: number;
+  title: string;
+  slug: string;
+}
+
+/** Create a small scratch doc in the chosen inbox KB — friction-free path
+ *  for the global Cmd/Ctrl+Shift+N capture modal. */
+export async function quickCapture(knowledgeBaseId: number, text: string): Promise<QuickCaptureResponse> {
+  await ensureCsrf();
+  const { data } = await apiClient.post<QuickCaptureResponse>('/documents/quick-capture/', {
+    knowledge_base: knowledgeBaseId,
+    text,
   });
   return data;
 }

@@ -5,6 +5,7 @@ import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
 import { dailyNote } from '@/api/docs';
 import { formatApiError } from '@/api/client';
 import { message } from '@/utils/notify';
+import WritingHeatmap from '@/components/admin/WritingHeatmap';
 import {
   JzAiIcon,
   JzArchitectureIcon,
@@ -173,6 +174,8 @@ export default function AdminDashboard() {
           ))}
         </Row>
       </section>
+
+      <WritingHeatmap days={365} />
 
       <section>
         <Title level={4} style={{ marginBottom: 12 }}>快捷入口</Title>
