@@ -29,7 +29,7 @@ import {
   type AICapabilities,
   type AIModelOption,
 } from '@/api/ai';
-import { resolveAIModel, writeAIModel, readAIModelFromStorage } from '@/utils/aiModel';
+import { isModelConfigured, resolveAIModel, writeAIModel, readAIModelFromStorage } from '@/utils/aiModel';
 
 const { Paragraph, Text } = Typography;
 
@@ -92,23 +92,29 @@ export function MyModelPreferenceSection({ cap }: { cap: AICapabilities }) {
       <Row gutter={[16, 16]}>
         {cap.models.map((m) => {
           const active = preferredId === m.id;
+          const configured = isModelConfigured(cap, m.id);
           return (
             <Col xs={24} md={8} key={m.id}>
               <Card
                 size="small"
-                hoverable
+                hoverable={configured}
                 onClick={() => {
+                  if (!configured) {
+                    message.warning(`${m.label} 所属供应商未配置 API KEY,无法使用`);
+                    return;
+                  }
                   writeAIModel(m.id);
                   setPreferredId(m.id);
                   message.success(`已切换为 ${m.label}`);
                 }}
-                className={'jz-model-card' + (active ? ' is-active' : '')}
+                className={'jz-model-card' + (active ? ' is-active' : '') + (configured ? '' : ' is-unconfigured')}
                 style={{
-                  cursor: 'pointer',
+                  cursor: configured ? 'pointer' : 'not-allowed',
                   borderColor: active ? 'var(--jz-accent)' : undefined,
                   background: active
                     ? 'color-mix(in srgb, var(--jz-accent) 8%, var(--jz-surface))'
                     : undefined,
+                  opacity: configured ? 1 : 0.55,
                 }}
               >
                 <Space direction="vertical" style={{ width: '100%' }} size={4}>
@@ -123,7 +129,10 @@ export function MyModelPreferenceSection({ cap }: { cap: AICapabilities }) {
                     {m.provider === 'qwen' && (
                       <Tag color="orange" style={{ marginRight: 0 }}>阿里</Tag>
                     )}
-                    {active && <Tag color="success">当前</Tag>}
+                    {active && configured && <Tag color="success">当前</Tag>}
+                    {!configured && (
+                      <Tag color="warning" style={{ marginRight: 0 }}>未配置</Tag>
+                    )}
                   </Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>
                     {m.hint}
@@ -246,6 +255,7 @@ function CurrentModelCard({
   const effective = cap.models.find((m) => m.id === preferredId);
   const defaultModel = cap.models.find((m) => m.id === settings.default_model);
   const personalOverride = preferredId !== settings.default_model;
+  const effectiveConfigured = isModelConfigured(cap, preferredId);
 
   return (
     <Card title="当前模型" size="small" style={{ width: '100%', height: '100%' }}>
@@ -264,8 +274,16 @@ function CurrentModelCard({
           {personalOverride && (
             <Tag color="processing" style={{ marginRight: 0 }}>个人偏好</Tag>
           )}
+          {!effectiveConfigured && (
+            <Tag color="warning" style={{ marginRight: 0 }}>供应商未配置</Tag>
+          )}
         </div>
         <Text type="secondary">{effective?.hint}</Text>
+        {!effectiveConfigured && (
+          <Text type="warning" style={{ fontSize: 12 }}>
+            ⚠ 此模型所属供应商未配置 API KEY,调用会失败。切到其他模型,或在后端 .env 设置对应 KEY 后重启。
+          </Text>
+        )}
         {personalOverride && (
           <Text type="secondary" style={{ fontSize: 12 }}>
             全局默认：{defaultModel?.label ?? settings.default_model}
@@ -302,17 +320,26 @@ export function ModelsSection({
       <Row gutter={[16, 16]}>
         {cap.models.map((m) => {
           const active = settings.default_model === m.id;
+          const configured = isModelConfigured(cap, m.id);
           return (
             <Col xs={24} md={8} key={m.id}>
               <Card
                 size="small"
-                hoverable
-                onClick={() => !active && !saving && onPatch({ default_model: m.id })}
-                className={'jz-model-card' + (active ? ' is-active' : '')}
+                hoverable={configured}
+                onClick={() => {
+                  if (active || saving) return;
+                  if (!configured) {
+                    message.warning(`${m.label} 所属供应商未配置 API KEY,设为默认后 AI 调用会失败`);
+                    return;
+                  }
+                  void onPatch({ default_model: m.id });
+                }}
+                className={'jz-model-card' + (active ? ' is-active' : '') + (configured ? '' : ' is-unconfigured')}
                 style={{
-                  cursor: active ? 'default' : 'pointer',
+                  cursor: active ? 'default' : configured ? 'pointer' : 'not-allowed',
                   borderColor: active ? 'var(--jz-accent)' : undefined,
                   background: active ? 'color-mix(in srgb, var(--jz-accent) 8%, var(--jz-surface))' : undefined,
+                  opacity: configured ? 1 : 0.6,
                 }}
               >
                 <Space direction="vertical" style={{ width: '100%' }} size={4}>
@@ -322,7 +349,13 @@ export function ModelsSection({
                       style={{ color: active ? 'var(--jz-accent)' : 'var(--jz-text-muted)' }}
                     />
                     <Text strong style={{ fontSize: 15 }}>{m.label}</Text>
+                    {m.provider === 'qwen' && (
+                      <Tag color="orange" style={{ marginRight: 0 }}>阿里</Tag>
+                    )}
                     {active && <Tag color="success">默认</Tag>}
+                    {!configured && (
+                      <Tag color="warning" style={{ marginRight: 0 }}>未配置</Tag>
+                    )}
                   </Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>{m.hint}</Text>
                   <Text type="secondary" style={{ fontSize: 11, fontFamily: 'ui-monospace, monospace' }}>
@@ -528,12 +561,24 @@ export function SettingsSection({
           value={settings.default_model}
           onChange={(v) => void onPatch({ default_model: v })}
           disabled={saving}
-          style={{ width: '100%', maxWidth: 360 }}
-          options={cap.models.map((m: AIModelOption) => ({
-            value: m.id,
-            label: `${m.label} — ${m.hint}`,
-          }))}
+          style={{ width: '100%', maxWidth: 420 }}
+          options={cap.models.map((m: AIModelOption) => {
+            const configured = isModelConfigured(cap, m.id);
+            return {
+              value: m.id,
+              disabled: !configured,
+              label: (
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <span>{m.label} — {m.hint}</span>
+                  {!configured && <Tag color="warning" style={{ marginRight: 0 }}>未配置</Tag>}
+                </span>
+              ),
+            };
+          })}
         />
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+          标记「未配置」的模型 = 后端没有对应 API KEY (Anthropic / DashScope) — 设为默认后 AI 调用会失败。
+        </Text>
       </Card>
 
       <Card title="单次最大 Token" size="small">
