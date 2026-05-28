@@ -8,7 +8,18 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from django.db.models.functions import TruncMonth
-from django.db.models import Count
+from django.db.models import Count, Q
+
+# Annotation matching PublicKBSerializer.get_post_count — counts published+public,
+# non-deleted documents per KB in one query instead of one COUNT per KB.
+_POST_COUNT_ANNOTATION = Count(
+    "documents",
+    filter=Q(
+        documents__status="published",
+        documents__visibility="public",
+        documents__is_deleted=False,
+    ),
+)
 from django.http import HttpResponse
 from django.utils.feedgenerator import Rss201rev2Feed
 from xml.sax.saxutils import escape as xml_escape
@@ -111,6 +122,7 @@ class PublicKBViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             KnowledgeBase.objects.filter(visibility="public")
             .select_related("category")
             .prefetch_related("tags")
+            .annotate(_post_count=_POST_COUNT_ANNOTATION)
             .order_by("order", "id")
         )
 
@@ -134,6 +146,7 @@ class PublicKBCategoriesView(APIView):
         uncategorized = list(
             KnowledgeBase.objects.filter(visibility="public", is_deleted=False, category__isnull=True)
             .prefetch_related("tags")
+            .annotate(_post_count=_POST_COUNT_ANNOTATION)
             .order_by("order", "id")
         )
         groups = []
@@ -143,6 +156,7 @@ class PublicKBCategoriesView(APIView):
                     visibility="public", is_deleted=False, category=cat
                 )
                 .prefetch_related("tags")
+                .annotate(_post_count=_POST_COUNT_ANNOTATION)
                 .order_by("order", "id")
             )
             if kbs:

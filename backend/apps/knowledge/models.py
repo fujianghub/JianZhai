@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.conf import settings
 from django.contrib.postgres.indexes import GinIndex
 from django.contrib.postgres.search import SearchVectorField
-from django.db import models
+from django.db import models, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 
@@ -170,13 +170,16 @@ class Folder(models.Model):
         return self.name
 
     def soft_delete(self) -> None:
-        self.is_deleted = True
-        self.deleted_at = timezone.now()
-        self.save(update_fields=["is_deleted", "deleted_at"])
-        for child in self.children.all():
-            child.soft_delete()
-        for doc in self.documents.all():
-            doc.soft_delete()
+        # Atomic so a child folder/document created mid-cascade can't be left
+        # behind as a live orphan under a deleted parent.
+        with transaction.atomic():
+            self.is_deleted = True
+            self.deleted_at = timezone.now()
+            self.save(update_fields=["is_deleted", "deleted_at"])
+            for child in self.children.all():
+                child.soft_delete()
+            for doc in self.documents.all():
+                doc.soft_delete()
 
 
 class Document(models.Model):

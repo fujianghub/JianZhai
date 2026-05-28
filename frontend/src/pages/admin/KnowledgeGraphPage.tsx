@@ -132,6 +132,7 @@ export default function KnowledgeGraphPage() {
       >
         <div
           ref={containerRef}
+          className="jz-graph-canvas"
           style={{ width: '100%', height: 'min(75vh, 720px)', position: 'relative' }}
         >
           {loading && !data ? (

@@ -19,8 +19,9 @@ import { message } from '@/utils/notify';
 import { formatApiError } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
 import type { User } from '@/types';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 
-const { Title, Text } = Typography;
+const { Text } = Typography;
 
 interface CreateForm {
   username: string;
@@ -98,13 +99,18 @@ export default function UsersPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>用户</Title>
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
-          新建用户
-        </Button>
-      </div>
+      <AdminPageHeader
+        backTo="/admin"
+        backLabel="工作台"
+        title="用户管理"
+        actions={
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreateOpen(true)}>
+            新建用户
+          </Button>
+        }
+      />
 
+      <div className="jz-admin-panel">
       <Table<User>
         rowKey="id"
         dataSource={users ?? []}
@@ -185,6 +191,7 @@ export default function UsersPage() {
           },
         ]}
       />
+      </div>
 
       <Modal
         title="新建用户"

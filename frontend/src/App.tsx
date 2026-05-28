@@ -1,28 +1,35 @@
+import { lazy, Suspense } from 'react';
 import { Navigate, Route, Routes } from 'react-router-dom';
+import { Spin } from 'antd';
 import BlogLayout from '@/pages/blog/BlogLayout';
 import BlogHome from '@/pages/blog/BlogHome';
-import KBPostsPage from '@/pages/blog/KBPostsPage';
-import PostDetail from '@/pages/blog/PostDetail';
-import PostEditRoute from '@/pages/blog/PostEditPage';
-import ArchivePage from '@/pages/blog/ArchivePage';
-import TagCloudPage from '@/pages/blog/TagCloudPage';
-import LoginPage from '@/pages/admin/LoginPage';
 import RequireAuth from '@/pages/admin/RequireAuth';
-import AdminLayout from '@/pages/admin/AdminLayout';
-import KBListPage from '@/pages/admin/KBListPage';
-import KBWorkspace from '@/pages/admin/KBWorkspace';
-import DocEditorPage from '@/pages/admin/DocEditorPage';
-import ExportsPage from '@/pages/admin/ExportsPage';
-import UsersPage from '@/pages/admin/UsersPage';
-import SystemOverviewPage from '@/pages/admin/SystemOverviewPage';
-import AIManagementPage from '@/pages/admin/AIManagementPage';
-import KnowledgeGraphPage from '@/pages/admin/KnowledgeGraphPage';
-import ProfilePage from '@/pages/admin/ProfilePage';
-import FavoritesPage from '@/pages/FavoritesPage';
-import TrashPage from '@/pages/admin/TrashPage';
-import DocLinkResolver from '@/pages/DocLinkResolver';
+import LoginPage from '@/pages/admin/LoginPage';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
+
+// Code-split everything past the public landing + auth shell. This pulls the
+// editor (Tiptap/KaTeX/lowlight), force-graph, pdfjs, mermaid, etc. out of the
+// main chunk so first paint downloads far less JS.
+const KBPostsPage = lazy(() => import('@/pages/blog/KBPostsPage'));
+const PostDetail = lazy(() => import('@/pages/blog/PostDetail'));
+const PostEditRoute = lazy(() => import('@/pages/blog/PostEditPage'));
+const ArchivePage = lazy(() => import('@/pages/blog/ArchivePage'));
+const TagCloudPage = lazy(() => import('@/pages/blog/TagCloudPage'));
+const AdminLayout = lazy(() => import('@/pages/admin/AdminLayout'));
+const AdminDashboard = lazy(() => import('@/pages/admin/AdminDashboard'));
+const KBListPage = lazy(() => import('@/pages/admin/KBListPage'));
+const KBWorkspace = lazy(() => import('@/pages/admin/KBWorkspace'));
+const DocEditorPage = lazy(() => import('@/pages/admin/DocEditorPage'));
+const ExportsPage = lazy(() => import('@/pages/admin/ExportsPage'));
+const UsersPage = lazy(() => import('@/pages/admin/UsersPage'));
+const SystemOverviewPage = lazy(() => import('@/pages/admin/SystemOverviewPage'));
+const AIManagementPage = lazy(() => import('@/pages/admin/AIManagementPage'));
+const KnowledgeGraphPage = lazy(() => import('@/pages/admin/KnowledgeGraphPage'));
+const ProfilePage = lazy(() => import('@/pages/admin/ProfilePage'));
+const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
+const TrashPage = lazy(() => import('@/pages/admin/TrashPage'));
+const DocLinkResolver = lazy(() => import('@/pages/DocLinkResolver'));
 import 'tippy.js/dist/tippy.css';
 import './styles/theme.css';
 import './styles/markdown.css';
@@ -42,6 +49,13 @@ export default function App() {
     <>
       <StarryNight />
       <DeepSea />
+      <Suspense
+        fallback={
+          <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh' }}>
+            <Spin size="large" />
+          </div>
+        }
+      >
       <Routes>
       <Route element={<BlogLayout />}>
         <Route path="/" element={<BlogHome />} />
@@ -71,7 +85,7 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<Navigate to="kbs" replace />} />
+        <Route index element={<AdminDashboard />} />
         <Route path="kbs" element={<KBListPage />} />
         <Route path="kbs/:id" element={<KBWorkspace />} />
         <Route path="kbs/:id/docs/:docId" element={<DocEditorPage />} />
@@ -87,6 +101,7 @@ export default function App() {
 
       <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </Suspense>
     </>
   );
 }

@@ -175,4 +175,9 @@ class PublicKBSerializer(serializers.ModelSerializer):
         return _tags_summary(obj)
 
     def get_post_count(self, obj: KnowledgeBase) -> int:
+        # Prefer the annotation set by the viewset (avoids a COUNT query per KB on
+        # list endpoints); fall back to a live count if unannotated.
+        annotated = getattr(obj, "_post_count", None)
+        if annotated is not None:
+            return annotated
         return obj.documents.filter(status="published", visibility="public").count()

@@ -16,8 +16,9 @@ import { message } from '@/utils/notify';
 import * as exportsApi from '@/api/exports';
 import { formatApiError } from '@/api/client';
 import type { ExportFormat, ExportStatus, ExportTask } from '@/api/exports';
+import AdminPageHeader from '@/components/admin/AdminPageHeader';
 
-const { Title, Paragraph } = Typography;
+const { Paragraph } = Typography;
 
 const STATUS_COLORS: Record<ExportStatus, string> = {
   pending: 'default',
@@ -122,9 +123,12 @@ export default function ExportsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Title level={3} style={{ margin: 0 }}>导出历史</Title>
-        <Space>
+      <AdminPageHeader
+        backTo="/admin"
+        backLabel="工作台"
+        title="导出历史"
+        actions={
+          <Space>
           {selected.length > 0 && (
             <Popconfirm
               title={`删除选中的 ${selected.length} 项？该操作会同时删除已生成的文件，无法恢复。`}
@@ -141,8 +145,10 @@ export default function ExportsPage() {
           <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>
             刷新
           </Button>
-        </Space>
-      </div>
+          </Space>
+        }
+      />
+      <div className="jz-admin-panel">
       {tasks.length === 0 && !loading ? (
         <Empty description="还没有导出过任何内容" />
       ) : (
@@ -252,6 +258,7 @@ export default function ExportsPage() {
           ]}
         />
       )}
+      </div>
     </div>
   );
 }
