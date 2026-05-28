@@ -9,7 +9,6 @@ import {
   ClockCircleOutlined,
   EditOutlined,
   ExportOutlined,
-  EyeOutlined,
   FormOutlined,
   FolderOpenOutlined,
   HomeOutlined,
@@ -93,21 +92,6 @@ export default function PostDetail() {
    *  ``saveArticleFont``; the picked stack is applied as a CSS variable on
    *  the article element so it scopes only to this reader's view. */
   const [readerFont, setReaderFont] = useState<string>(loadArticleFont());
-  // Focus mode hides nav / TOC / footer / comments and enlarges typography.
-  // Transient — not persisted; user toggles per-session per-post.
-  const [focusMode, setFocusMode] = useState(false);
-  useEffect(() => {
-    if (!focusMode) return;
-    document.body.classList.add('jz-reader-focus');
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setFocusMode(false);
-    }
-    document.addEventListener('keydown', onKey);
-    return () => {
-      document.body.classList.remove('jz-reader-focus');
-      document.removeEventListener('keydown', onKey);
-    };
-  }, [focusMode]);
   /** Auth status determines whether the inline edit button is offered. */
   const authUser = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
@@ -579,18 +563,6 @@ export default function PostDetail() {
                     setReaderOverride(k);
                   }}
                 />
-                <Tooltip title={focusMode ? '退出专注模式 (Esc)' : '专注阅读：隐藏导航与侧栏'}>
-                  <Button
-                    size="small"
-                    type={focusMode ? 'primary' : 'default'}
-                    icon={<EyeOutlined />}
-                    onClick={() => setFocusMode((v) => !v)}
-                    className="jz-reader-control-btn"
-                    aria-pressed={focusMode}
-                  >
-                    {focusMode ? '退出' : '专注'}
-                  </Button>
-                </Tooltip>
                 {/* HTML-only: link to the original .html attachment for
                     a true "browser tab" experience (some pages depend on
                     full viewport width or have richer scripts). */}
