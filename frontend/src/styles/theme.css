@@ -2685,3 +2685,12 @@ a.jz-meta-full-edit-btn:hover .anticon {
 .blog-header .ant-btn:hover svg {
   transform: scale(1.1);
 }
+
+/* ── Search-hit highlight (GlobalSearch popover) ───────────────────────── */
+.jz-search-hit {
+  background: color-mix(in srgb, var(--jz-accent) 28%, transparent);
+  color: inherit;
+  border-radius: 3px;
+  padding: 0 1px;
+  font-weight: 600;
+}

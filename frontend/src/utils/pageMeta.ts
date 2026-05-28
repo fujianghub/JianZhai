@@ -41,6 +41,14 @@ export function applyPageMeta(opts: PageMetaOptions) {
   upsertMeta('property', 'og:title', title);
   upsertMeta('property', 'og:description', desc);
   upsertMeta('property', 'og:type', opts.ogType ?? 'website');
+  upsertMeta('property', 'og:site_name', '简斋 / JianZhai');
+  // Twitter Card — `summary_large_image` if we have a hero image, else
+  // `summary`. The crawler reads both `og:*` and `twitter:*` but having the
+  // explicit Twitter tags increases the chance of a rich preview on X / chat
+  // apps that look at twitter:card specifically.
+  upsertMeta('name', 'twitter:card', opts.ogImage ? 'summary_large_image' : 'summary');
+  upsertMeta('name', 'twitter:title', title);
+  upsertMeta('name', 'twitter:description', desc);
   if (opts.canonicalPath) {
     const canonical = new URL(opts.canonicalPath, window.location.origin).href;
     upsertLink('canonical', canonical);
@@ -48,6 +56,7 @@ export function applyPageMeta(opts: PageMetaOptions) {
   }
   if (opts.ogImage) {
     upsertMeta('property', 'og:image', opts.ogImage);
+    upsertMeta('name', 'twitter:image', opts.ogImage);
   }
 }
 

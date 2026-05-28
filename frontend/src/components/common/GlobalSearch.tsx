@@ -1,9 +1,28 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Input, Modal, Spin, Tag, Typography } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { search as searchApi, type SearchResult } from '@/api/search';
 
 const { Text } = Typography;
+
+/** Wrap each query token occurrence in <mark> so search hits visually pop in
+ *  result titles and snippets. Case-insensitive; longest tokens first so
+ *  "JianZhai" matches before "Jian" creates two side-by-side highlights. */
+function highlight(text: string, query: string): ReactNode {
+  const q = (query || '').trim();
+  if (!q || !text) return text;
+  const tokens = Array.from(new Set(q.split(/\s+/).filter((t) => t.length > 0)))
+    .sort((a, b) => b.length - a.length);
+  if (tokens.length === 0) return text;
+  const escaped = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+  const re = new RegExp(`(${escaped.join('|')})`, 'gi');
+  const parts = text.split(re);
+  return parts.map((p, i) =>
+    p && tokens.some((t) => t.toLowerCase() === p.toLowerCase())
+      ? <mark key={i} className="jz-search-hit">{p}</mark>
+      : <span key={i}>{p}</span>,
+  );
+}
 
 interface Props {
   open: boolean;
@@ -119,10 +138,10 @@ export default function GlobalSearch({ open, onClose, resultUrl }: Props) {
             }}
           >
             <div style={{ fontWeight: 500, marginBottom: 4, color: 'var(--jz-text)' }}>
-              {r.title}
+              {highlight(r.title, q)}
             </div>
             <div style={{ color: 'var(--jz-text-muted)', fontSize: 13, lineHeight: 1.5 }}>
-              {r.snippet}
+              {highlight(r.snippet, q)}
             </div>
             <div style={{ marginTop: 4 }}>
               <Tag color="blue">{r.knowledge_base.name}</Tag>

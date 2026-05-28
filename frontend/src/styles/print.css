@@ -1,0 +1,101 @@
+/* Print stylesheet — clean output of blog posts (Ctrl+P) without app chrome.
+   The PDF exporter uses Playwright + the dedicated print template, but plain
+   browser print should also produce readable output. */
+
+@media print {
+  /* Hide the entire app chrome: header, sidebar, footer, nav, comments, related
+     posts, edit controls, reading-progress strip, hover panels. */
+  .jz-blog-header,
+  .jz-blog-footer,
+  .jz-blog-header-nav,
+  .jz-post-aside,
+  .jz-post-toc,
+  .jz-meta-controls,
+  .jz-meta-edit-actions,
+  .jz-meta-edit-btn,
+  .jz-related-posts,
+  .jz-comments,
+  .jz-comment-list,
+  .jz-comment-form,
+  .jz-reading-progress,
+  .jz-doc-ai-panel,
+  .jz-selection-ai,
+  .ant-back-top,
+  .jz-blog-tag-bar,
+  .ant-message,
+  .ant-notification,
+  .ant-modal-mask,
+  .ant-modal-wrap,
+  .ant-drawer,
+  .ant-popover,
+  .ant-tooltip,
+  .ant-dropdown,
+  iframe.jz-mermaid-iframe,
+  button,
+  .jz-admin-glass,
+  .jz-admin-mobile-menu-btn {
+    display: none !important;
+  }
+
+  /* Body & containers: neutral white background, full width, no shadows. */
+  html, body, #root, .jz-blog-glass {
+    background: #fff !important;
+    color: #111 !important;
+  }
+  .ant-layout, .ant-layout-content {
+    background: transparent !important;
+  }
+
+  /* Article surface: drop blur / shadows / colored borders so printer doesn't
+     waste ink reproducing UI textures. */
+  .paper, .markdown-preview, .jz-post-main, .jz-post-shell {
+    background: #fff !important;
+    box-shadow: none !important;
+    border: none !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    margin: 0 auto !important;
+    max-width: 100% !important;
+  }
+
+  /* Show link URLs in printed pages (helpful for paper artifacts). */
+  .markdown-preview a[href]:not([href^="#"]):not([href^="javascript:"])::after {
+    content: ' (' attr(href) ')';
+    font-size: 0.85em;
+    color: #555;
+    word-break: break-all;
+  }
+
+  /* Avoid orphans: headings stay with their first paragraph; tables/figures
+     don't split across pages where possible. */
+  .markdown-preview h1,
+  .markdown-preview h2,
+  .markdown-preview h3 {
+    page-break-after: avoid;
+    break-after: avoid;
+  }
+  .markdown-preview pre,
+  .markdown-preview img,
+  .markdown-preview table,
+  .markdown-preview figure {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  .markdown-preview img {
+    max-width: 100% !important;
+    height: auto !important;
+  }
+
+  /* Slightly more print-friendly typography */
+  .markdown-preview {
+    font-size: 11pt;
+    line-height: 1.55;
+    color: #111;
+  }
+  .markdown-preview pre,
+  .markdown-preview code {
+    background: #f5f5f5 !important;
+    color: #111 !important;
+    border: 1px solid #ddd;
+  }
+}

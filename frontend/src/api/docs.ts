@@ -63,6 +63,23 @@ export async function createDocument(payload: Partial<DocumentDetail>): Promise<
   return data;
 }
 
+export interface DailyNoteResponse {
+  id: number;
+  knowledge_base: number;
+  title: string;
+  slug: string;
+  created: boolean;
+}
+
+/** Find-or-create the date-keyed daily note in the given KB. Idempotent. */
+export async function dailyNote(knowledgeBaseId: number): Promise<DailyNoteResponse> {
+  await ensureCsrf();
+  const { data } = await apiClient.post<DailyNoteResponse>('/documents/daily-note/', {
+    knowledge_base: knowledgeBaseId,
+  });
+  return data;
+}
+
 export async function updateDocument(
   id: number,
   payload: Partial<DocumentDetail> & { expected_version?: number }

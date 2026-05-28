@@ -32,6 +32,8 @@ import {
 import { useNavigate, useParams } from 'react-router-dom';
 import * as kbsApi from '@/api/kbs';
 import * as docsApi from '@/api/docs';
+import { listDocumentTemplates, applyTemplatePlaceholders, type DocTemplate } from '@/api/templates';
+import { useAuthStore } from '@/stores/auth';
 import * as foldersApi from '@/api/folders';
 import * as attApi from '@/api/attachments';
 import * as tagsApi from '@/api/tags';
@@ -66,7 +68,11 @@ export default function KBWorkspace() {
     title: string;
     folder?: number | null;
     content_kind: NewDocContentKind;
+    template?: string;
   }>();
+  // Built-in document templates ({{date}}/{{title}}/{{user}} placeholders) —
+  // loaded once when the KB workspace mounts; cheap, owner-scoped no-op call.
+  const [templates, setTemplates] = useState<DocTemplate[]>([]);
   const [folderForm] = Form.useForm<{ name: string; parent?: number | null }>();
   const [exportOpen, setExportOpen] = useState(false);
   const [folderExport, setFolderExport] = useState<TreeFolder | null>(null);
@@ -124,6 +130,14 @@ export default function KBWorkspace() {
   }, [kbId]);
 
   useEffect(() => {
+    let cancelled = false;
+    listDocumentTemplates()
+      .then((t) => !cancelled && setTemplates(t))
+      .catch(() => !cancelled && setTemplates([]));
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
     void kbsApi.getKB(kbId).then(setKb);
     void refreshTree();
   }, [kbId, refreshTree]);
@@ -141,11 +155,26 @@ export default function KBWorkspace() {
     }
     try {
       const isHtml = values.content_kind === 'html';
+      // Template body only applies to Markdown docs — HTML still gets the
+      // pre-existing NEW_HTML_DOCUMENT_TEMPLATE skeleton.
+      let raw = '';
+      if (isHtml) {
+        raw = NEW_HTML_DOCUMENT_TEMPLATE;
+      } else if (values.template && values.template !== 'blank') {
+        const tpl = templates.find((t) => t.id === values.template);
+        if (tpl) {
+          raw = applyTemplatePlaceholders(tpl.body, {
+            date: new Date().toISOString().slice(0, 10),
+            title: values.title,
+            user: useAuthStore.getState().user?.username ?? '',
+          });
+        }
+      }
       const created = await docsApi.createDocument({
         knowledge_base: kbId,
         folder: values.folder ?? null,
         title: values.title,
-        raw_content: isHtml ? NEW_HTML_DOCUMENT_TEMPLATE : '',
+        raw_content: raw,
       });
       setNewDocModal(false);
       docForm.resetFields();
@@ -703,7 +732,7 @@ export default function KBWorkspace() {
         <Form
           form={docForm}
           layout="vertical"
-          initialValues={{ folder: null, content_kind: 'markdown' }}
+          initialValues={{ folder: null, content_kind: 'markdown', template: 'blank' }}
         >
           <Form.Item label="标题" name="title" rules={[{ required: true }]}>
             <Input autoFocus />
@@ -713,6 +742,36 @@ export default function KBWorkspace() {
               <Radio value="markdown">Markdown</Radio>
               <Radio value="html">HTML</Radio>
             </Radio.Group>
+          </Form.Item>
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, next) => prev.content_kind !== next.content_kind}
+          >
+            {({ getFieldValue }) =>
+              getFieldValue('content_kind') === 'markdown' && templates.length > 0 ? (
+                <Form.Item
+                  label="从模板创建"
+                  name="template"
+                  tooltip="模板里的 {{date}} / {{title}} / {{user}} 会自动替换"
+                >
+                  <Select
+                    options={templates.map((t) => ({
+                      value: t.id,
+                      label: (
+                        <span>
+                          <span style={{ fontWeight: 500 }}>{t.name}</span>
+                          {t.description && (
+                            <Text type="secondary" style={{ marginLeft: 8, fontSize: 12 }}>
+                              {t.description}
+                            </Text>
+                          )}
+                        </span>
+                      ),
+                    }))}
+                  />
+                </Form.Item>
+              ) : null
+            }
           </Form.Item>
           <Form.Item label="所属文件夹" name="folder">
             <Select allowClear placeholder="（根目录）" options={folderOptions} />

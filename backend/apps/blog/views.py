@@ -439,6 +439,22 @@ class PublicPostRelatedView(APIView):
         return Response(items[:8])
 
 
+def robots_txt(request):
+    """Tell crawlers what to index. Public blog routes are crawlable; admin and
+    API surfaces are not. Points to the sitemap so search engines find posts
+    without crawling. Built dynamically so it always matches the current host."""
+    site = request.build_absolute_uri("/").rstrip("/")
+    body = (
+        "User-agent: *\n"
+        "Disallow: /admin\n"
+        "Disallow: /api/\n"
+        "Disallow: /d/\n"
+        "Allow: /\n"
+        f"Sitemap: {site}/sitemap.xml\n"
+    )
+    return HttpResponse(body, content_type="text/plain; charset=utf-8")
+
+
 def sitemap_xml(request):
     """Top-level sitemap for published public posts and static blog pages."""
     site = request.build_absolute_uri("/").rstrip("/")

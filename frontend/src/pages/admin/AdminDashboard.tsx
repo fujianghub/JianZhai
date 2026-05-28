@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Button, Col, Row, Skeleton, Typography } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
+import { Link, useNavigate } from 'react-router-dom';
+import { Button, Col, Modal, Row, Select, Skeleton, Typography } from 'antd';
+import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
+import { dailyNote } from '@/api/docs';
+import { formatApiError } from '@/api/client';
+import { message } from '@/utils/notify';
 import {
   JzAiIcon,
   JzArchitectureIcon,
@@ -34,10 +37,23 @@ interface QuickEntry {
   show: boolean;
 }
 
+const JOURNAL_KB_KEY = 'jz-journal-kb';
+
 export default function AdminDashboard() {
   const user = useAuthStore((s) => s.user);
+  const navigate = useNavigate();
   const [kbs, setKbs] = useState<KnowledgeBase[] | null>(null);
   const [err, setErr] = useState(false);
+  const [journalModalOpen, setJournalModalOpen] = useState(false);
+  const [journalKbId, setJournalKbId] = useState<number | null>(() => {
+    try {
+      const v = localStorage.getItem(JOURNAL_KB_KEY);
+      return v ? Number(v) || null : null;
+    } catch {
+      return null;
+    }
+  });
+  const [journalLoading, setJournalLoading] = useState(false);
 
   const refetch = useCallback(() => {
     let cancelled = false;
@@ -73,6 +89,32 @@ export default function AdminDashboard() {
     };
   }, [kbs]);
 
+  const openDailyNote = useCallback(async (kbId: number) => {
+    setJournalLoading(true);
+    try {
+      const res = await dailyNote(kbId);
+      try { localStorage.setItem(JOURNAL_KB_KEY, String(kbId)); } catch { /* ignore */ }
+      setJournalKbId(kbId);
+      setJournalModalOpen(false);
+      navigate(`/admin/kbs/${res.knowledge_base}/docs/${res.id}`);
+      if (res.created) {
+        message.success(`已创建 ${res.title}`);
+      }
+    } catch (e) {
+      message.error(formatApiError(e, '打开今日笔记失败'));
+    } finally {
+      setJournalLoading(false);
+    }
+  }, [navigate]);
+
+  const onJournalClick = useCallback(() => {
+    if (journalKbId && (kbs?.some((k) => k.id === journalKbId) ?? false)) {
+      void openDailyNote(journalKbId);
+    } else {
+      setJournalModalOpen(true);
+    }
+  }, [journalKbId, kbs, openDailyNote]);
+
   const recentKbs = useMemo(
     () => (kbs ?? []).slice().sort((a, b) => b.updated_at.localeCompare(a.updated_at)).slice(0, 6),
     [kbs],
@@ -99,6 +141,17 @@ export default function AdminDashboard() {
         <Paragraph className="jz-dash-hero-sub">
           一份内容，两种形态——在这里管理你的私人笔记与公开博客。下面是你的概览与快捷入口。
         </Paragraph>
+        <div style={{ marginTop: 14 }}>
+          <Button
+            type="primary"
+            icon={<CalendarOutlined />}
+            loading={journalLoading}
+            onClick={onJournalClick}
+            disabled={kbs !== null && kbs.length === 0}
+          >
+            打开今日笔记
+          </Button>
+        </div>
         <Row gutter={[16, 16]} style={{ marginTop: 18 }}>
           {[
             { label: '知识库', value: stats.kbCount },
@@ -181,6 +234,40 @@ export default function AdminDashboard() {
           </Row>
         )}
       </section>
+
+      <Modal
+        title="选择记录到哪个知识库"
+        open={journalModalOpen}
+        onCancel={() => setJournalModalOpen(false)}
+        footer={null}
+        destroyOnHidden
+      >
+        <p style={{ color: 'var(--jz-text-muted)', marginTop: 0 }}>
+          今日笔记会用 <code>daily-YYYYMMDD</code> 作为 slug,同一天再点会打开同一篇。
+          选择会记到 localStorage,下次直接打开。
+        </p>
+        <Select
+          autoFocus
+          placeholder="选择一个知识库…"
+          style={{ width: '100%' }}
+          value={journalKbId ?? undefined}
+          onChange={(v) => setJournalKbId(v)}
+          options={(kbs ?? []).map((kb) => ({ value: kb.id, label: kb.name }))}
+        />
+        <div style={{ marginTop: 16, textAlign: 'right' }}>
+          <Button onClick={() => setJournalModalOpen(false)} style={{ marginRight: 8 }}>
+            取消
+          </Button>
+          <Button
+            type="primary"
+            loading={journalLoading}
+            disabled={!journalKbId}
+            onClick={() => journalKbId && void openDailyNote(journalKbId)}
+          >
+            打开今日笔记
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

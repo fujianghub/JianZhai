@@ -14,6 +14,7 @@ import {
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
+import QuickSwitcher from '@/components/common/QuickSwitcher';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
 import { AIModelBadge } from '@/components/common/AIModelBadge';
@@ -31,6 +32,7 @@ export default function AdminLayout() {
   const location = useLocation();
   const { user } = useAuthStore();
   const [searchOpen, setSearchOpen] = useState(false);
+  const [switcherOpen, setSwitcherOpen] = useState(false);
   // Sider collapses to 0 below the `lg` breakpoint — keep a controlled state so
   // the mobile hamburger button can re-open it, and auto-collapse on navigation
   // so the menu doesn't sit open after a link click.
@@ -44,10 +46,19 @@ export default function AdminLayout() {
 
   useEffect(() => {
     function handler(e: KeyboardEvent) {
-      // Cmd+K (mac) / Ctrl+K — global search
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      if (!(e.metaKey || e.ctrlKey) || e.altKey || e.shiftKey) return;
+      const k = e.key.toLowerCase();
+      // ⌘K / Ctrl+K — global full-text search
+      if (k === 'k') {
         e.preventDefault();
         setSearchOpen(true);
+      }
+      // ⌘P / Ctrl+P — quick switcher (jump to doc by title). Overrides the
+      // browser print dialog inside /admin — admin pages don't need it; users
+      // who want to print can still File → Print from the menu.
+      if (k === 'p') {
+        e.preventDefault();
+        setSwitcherOpen(true);
       }
     }
     window.addEventListener('keydown', handler);
@@ -196,6 +207,7 @@ export default function AdminLayout() {
         </Content>
       </Layout>
       <GlobalSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <QuickSwitcher open={switcherOpen} onClose={() => setSwitcherOpen(false)} />
     </Layout>
   );
 }

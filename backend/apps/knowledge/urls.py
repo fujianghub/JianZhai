@@ -18,6 +18,7 @@ from .views import (
     FolderViewSet,
     KnowledgeBaseCategoryViewSet,
     KnowledgeBaseViewSet,
+    document_templates,
     reorder_tree,
 )
 
@@ -30,6 +31,7 @@ router.register(r"documents", DocumentViewSet, basename="document")
 urlpatterns = [
     path("", include(router.urls)),
     path("tree/reorder/", reorder_tree, name="tree-reorder"),
+    path("document-templates/", document_templates, name="document-templates"),
     path("trash/", trash_list, name="trash-list"),
     path("trash/kbs/<int:pk>/restore/", restore_knowledge_base, name="trash-kb-restore"),
     path("trash/kbs/<int:pk>/", purge_knowledge_base, name="trash-kb-purge"),

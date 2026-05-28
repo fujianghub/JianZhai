@@ -3,6 +3,7 @@ from __future__ import annotations
 from django.db import transaction
 from django.db.models import Count, Prefetch, Q
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework import status, viewsets
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -259,6 +260,60 @@ class DocumentViewSet(viewsets.ModelViewSet):
         doc.refresh_from_db()
         return Response(DocumentSerializer(doc, context=self.get_serializer_context()).data)
 
+    @action(detail=False, methods=["post"], url_path="daily-note")
+    def daily_note(self, request):
+        """Find-or-create today's journal doc in the requested KB.
+
+        Idempotent: calling multiple times on the same date returns the same
+        doc; slug is date-keyed (`daily-YYYYMMDD`) so the uniqueness constraint
+        catches duplicates within a KB. The `KnowledgeBase.objects` manager
+        already filters out soft-deleted KBs."""
+        kb_id = request.data.get("knowledge_base") if isinstance(request.data, dict) else None
+        if not kb_id:
+            return Response({"detail": "knowledge_base required"}, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            kb_id = int(kb_id)
+        except (TypeError, ValueError):
+            return Response({"detail": "knowledge_base must be an integer"}, status=status.HTTP_400_BAD_REQUEST)
+        kb = scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner").filter(pk=kb_id).first()
+        if kb is None:
+            return Response({"detail": "找不到这个知识库"}, status=status.HTTP_404_NOT_FOUND)
+
+        today = timezone.localdate()
+        slug = today.strftime("daily-%Y%m%d")
+        title = today.strftime("%Y-%m-%d 日记")
+
+        with transaction.atomic():
+            existing = (
+                Document.objects.select_for_update()
+                .filter(knowledge_base=kb, slug=slug, is_deleted=False)
+                .first()
+            )
+            if existing is not None:
+                created = False
+                doc = existing
+            else:
+                doc = Document.objects.create(
+                    knowledge_base=kb,
+                    title=title,
+                    slug=slug,
+                    raw_content=f"# {title}\n\n",
+                    created_by=request.user,
+                    last_edited_by=request.user,
+                )
+                created = True
+
+        return Response(
+            {
+                "id": doc.id,
+                "knowledge_base": doc.knowledge_base_id,
+                "title": doc.title,
+                "slug": doc.slug,
+                "created": created,
+            },
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
     @action(detail=True, methods=["get"], url_path="stats")
     def stats(self, request, pk=None):
         """Authorship / activity statistics for the doc panel.
@@ -467,3 +522,16 @@ def reorder_tree(request):
             Document.objects.bulk_update(docs_to_update, ["order", "folder"])
 
     return Response({"ok": True}, status=status.HTTP_200_OK)
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def document_templates(request):
+    """Built-in document templates for the new-doc dialog.
+
+    Returns markdown bodies with `{{date}}`/`{{title}}`/`{{user}}` placeholders;
+    the frontend substitutes when actually creating the doc. Hardcoded — no DB
+    model — until usage motivates user-editable templates."""
+    from .templates import BUILTIN_TEMPLATES
+
+    return Response({"templates": BUILTIN_TEMPLATES})

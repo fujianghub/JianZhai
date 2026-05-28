@@ -63,6 +63,7 @@ import './styles/reader.css';
 import './styles/starry.css';
 import './styles/deepsea.css';
 import './styles/responsive.css';
+import './styles/print.css';
 
 export default function App() {
   return (
