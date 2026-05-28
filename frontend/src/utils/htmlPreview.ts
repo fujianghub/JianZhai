@@ -31,6 +31,32 @@ export function withSrcdocBase(html: string): string {
   return SRCDOC_BASE + html;
 }
 
+/** With `<base href="about:srcdoc">`, root-relative URLs like `/media/uploads/…`
+ *  would otherwise resolve to `about:srcdoc/media/uploads/…` and 404 in the
+ *  preview iframe. Rewrite those to absolute backend URLs so user-embedded
+ *  images / stylesheets / scripts load. The iframe sandbox lacks
+ *  `allow-same-origin` so its origin is opaque — cross-origin image loads are
+ *  permitted (img/script src don't need CORS for rendering). */
+function MEDIA_HOST_ROOT(): string {
+  const env = (import.meta.env.VITE_MEDIA_BASE_URL as string | undefined) ?? '';
+  if (env) return env.replace(/\/media\/?$/, '');
+  if (typeof window !== 'undefined') return window.location.origin;
+  return '';
+}
+
+export function rewriteRootRelativeAssets(html: string): string {
+  if (!html) return html;
+  const root = MEDIA_HOST_ROOT();
+  if (!root) return html;
+  // Match `src="/media/…"`, `href='/static/…'`, also `action`, `poster`,
+  // `formaction`. Quoted form only — unquoted attrs are uncommon and risky to
+  // parse with a single regex.
+  return html.replace(
+    /(\s(?:src|href|action|poster|formaction)\s*=\s*)(["'])(\/(?:media|static)\/[^"']+)\2/gi,
+    (_m, attr: string, q: string, path: string) => `${attr}${q}${root}${path}${q}`,
+  );
+}
+
 export function buildHtmlPreviewSrcdoc(html: string): string {
-  return withSrcdocBase(html ?? '');
+  return withSrcdocBase(rewriteRootRelativeAssets(html ?? ''));
 }

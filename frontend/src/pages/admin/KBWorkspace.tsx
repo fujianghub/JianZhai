@@ -508,15 +508,13 @@ export default function KBWorkspace() {
 
       {batchMode && (
         <div
+          className="jz-admin-panel"
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 8,
-            padding: '8px 12px',
+            padding: '10px 14px',
             marginBottom: 12,
-            border: '1px solid var(--jz-border)',
-            borderRadius: 8,
-            background: 'var(--jz-surface-2)',
             flexWrap: 'wrap',
           }}
         >
@@ -574,10 +572,12 @@ export default function KBWorkspace() {
       )}
 
       <div
+        className="jz-admin-panel"
         style={{
           display: 'flex',
-          gap: 8,
+          gap: 10,
           marginBottom: 12,
+          padding: '10px 14px',
           flexWrap: 'wrap',
           alignItems: 'center',
         }}
@@ -619,7 +619,20 @@ export default function KBWorkspace() {
         }
       >
         {tree.folders.length === 0 && tree.documents.length === 0 ? (
-          <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="空知识库，先建一个文档或上传文件" />
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="空知识库，先建一个文档或上传文件"
+            style={{ padding: '48px 0' }}
+          >
+            <Space>
+              <Button type="primary" icon={<FileAddOutlined />} onClick={() => setNewDocModal(true)}>
+                新建文档
+              </Button>
+              <Button icon={<CloudUploadOutlined />} onClick={() => importInputRef.current?.click()}>
+                上传文件
+              </Button>
+            </Space>
+          </Empty>
         ) : (
           <KBTreeNav
             tree={tree}

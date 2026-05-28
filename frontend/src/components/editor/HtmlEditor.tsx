@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Alert, Button, Input, Tag, Tooltip, Typography } from 'antd';
-import { ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import { Alert, Button, Input, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { EditOutlined, EyeOutlined, ReloadOutlined, SaveOutlined, SplitCellsOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
 import { uploadFile } from '@/api/attachments';
@@ -78,6 +78,19 @@ export default function HtmlEditor({
   const [encoding, setEncoding] = useState<'utf-8' | 'gbk' | null>(null);
   const [hydrating, setHydrating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Persist the user's view choice across sessions when preview is available.
+  const [layoutMode, setLayoutMode] = useState<'edit' | 'preview' | 'split'>(() => {
+    if (!showPreviewPane) return 'edit';
+    try {
+      const v = localStorage.getItem('jz-html-editor-layout');
+      if (v === 'edit' || v === 'preview' || v === 'split') return v;
+    } catch { /* localStorage may be blocked — fall through */ }
+    return 'split';
+  });
+  useEffect(() => {
+    if (!showPreviewPane) return;
+    try { localStorage.setItem('jz-html-editor-layout', layoutMode); } catch { /* ignore */ }
+  }, [layoutMode, showPreviewPane]);
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const lastSavedRef = useRef(value);
   /** Last value we emitted locally — used to detect external updates. */
@@ -405,6 +418,19 @@ export default function HtmlEditor({
             </>
           )}
           {uploading && <Tag color="blue">图片上传中…</Tag>}
+          {showPreviewPane && (
+            <Segmented
+              size="small"
+              value={layoutMode}
+              onChange={(v) => setLayoutMode(v as 'edit' | 'preview' | 'split')}
+              options={[
+                { value: 'edit', icon: <EditOutlined />, label: '编辑' },
+                { value: 'split', icon: <SplitCellsOutlined />, label: '分屏' },
+                { value: 'preview', icon: <EyeOutlined />, label: '预览' },
+              ]}
+              style={{ marginLeft: 'auto' }}
+            />
+          )}
         </div>
       </div>
 
@@ -419,29 +445,31 @@ export default function HtmlEditor({
 
       <div
         className={
-          'jz-html-editor-panes' + (showPreviewPane ? ' jz-html-editor-panes--split' : '')
+          'jz-html-editor-panes' + (layoutMode === 'split' ? ' jz-html-editor-panes--split' : '')
         }
       >
-        <div className="jz-html-editor-source">
-          <TextArea
-            ref={(el) => {
-              const ta = el?.resizableTextArea?.textArea ?? null;
-              textareaRef.current = ta;
-              onTextareaReady?.(ta);
-            }}
-            value={value}
-            onChange={(e) => onChange(e.target.value)}
-            onPaste={handlePaste}
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            readOnly={readOnly}
-            autoSize={false}
-            className="jz-html-editor-textarea"
-            placeholder="<!DOCTYPE html>&#10;<html>&#10;<head><meta charset='utf-8'></head>&#10;<body>&#10;  ...&#10;</body>&#10;</html>"
-            spellCheck={false}
-          />
-        </div>
-        {showPreviewPane && (
+        {(!showPreviewPane || layoutMode === 'edit' || layoutMode === 'split') && (
+          <div className="jz-html-editor-source">
+            <TextArea
+              ref={(el) => {
+                const ta = el?.resizableTextArea?.textArea ?? null;
+                textareaRef.current = ta;
+                onTextareaReady?.(ta);
+              }}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onPaste={handlePaste}
+              onDrop={handleDrop}
+              onDragOver={handleDragOver}
+              readOnly={readOnly}
+              autoSize={false}
+              className="jz-html-editor-textarea"
+              placeholder="<!DOCTYPE html>&#10;<html>&#10;<head><meta charset='utf-8'></head>&#10;<body>&#10;  ...&#10;</body>&#10;</html>"
+              spellCheck={false}
+            />
+          </div>
+        )}
+        {showPreviewPane && (layoutMode === 'preview' || layoutMode === 'split') && (
           <div className="jz-html-editor-preview">
             <iframe
               title="HTML 预览"

@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { buildHtmlPreviewSrcdoc, withSrcdocBase } from './htmlPreview';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { buildHtmlPreviewSrcdoc, rewriteRootRelativeAssets, withSrcdocBase } from './htmlPreview';
 
 describe('withSrcdocBase', () => {
   it('inserts <base href="about:srcdoc"> as the first head child', () => {
@@ -34,5 +34,35 @@ describe('withSrcdocBase', () => {
 
   it('buildHtmlPreviewSrcdoc applies the base', () => {
     expect(buildHtmlPreviewSrcdoc('<p>x</p>')).toContain('<base href="about:srcdoc">');
+  });
+});
+
+describe('rewriteRootRelativeAssets', () => {
+  // Tests run in vitest's node environment (no `window`), so explicitly stub
+  // VITE_MEDIA_BASE_URL — production / dev both rely on that env var.
+  beforeEach(() => { vi.stubEnv('VITE_MEDIA_BASE_URL', 'http://test-host:8002/media'); });
+  afterEach(() => { vi.unstubAllEnvs(); });
+
+  it('rewrites /media/ image src to absolute', () => {
+    const out = rewriteRootRelativeAssets('<img src="/media/uploads/2026/05/a.png">');
+    expect(out).toBe('<img src="http://test-host:8002/media/uploads/2026/05/a.png">');
+  });
+
+  it('rewrites /static/ link href and leaves other paths alone', () => {
+    const html = '<link href="/static/x.css"><a href="/some/page">x</a><img src="https://cdn/y.png">';
+    const out = rewriteRootRelativeAssets(html);
+    expect(out).toContain('<link href="http://test-host:8002/static/x.css">');
+    // Non-media/static root-relative paths and absolute URLs left alone.
+    expect(out).toContain('<a href="/some/page">');
+    expect(out).toContain('<img src="https://cdn/y.png">');
+  });
+
+  it('handles single quotes', () => {
+    const out = rewriteRootRelativeAssets("<img src='/media/p.png'>");
+    expect(out).toBe("<img src='http://test-host:8002/media/p.png'>");
+  });
+
+  it('is a no-op on empty input', () => {
+    expect(rewriteRootRelativeAssets('')).toBe('');
   });
 });
