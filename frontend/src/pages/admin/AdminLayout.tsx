@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-import { DeleteOutlined } from '@ant-design/icons';
+import { DeleteOutlined, HomeOutlined } from '@ant-design/icons';
 import {
   JzKbIcon,
   JzGraphIcon,
@@ -54,7 +54,8 @@ export default function AdminLayout() {
     if (location.pathname.startsWith('/admin/overview')) return 'overview';
     if (location.pathname.startsWith('/admin/graph')) return 'graph';
     if (location.pathname.startsWith('/admin/kbs')) return 'kbs';
-    return 'kbs';
+    // Bare /admin (or /admin/) is the new 个人空间 work-bench dashboard.
+    return 'dashboard';
   }, [location.pathname]);
 
   return (
@@ -65,18 +66,28 @@ export default function AdminLayout() {
         collapsedWidth={0}
         className="jz-admin-sider"
       >
-        <div className="jz-admin-brand">
+        <Link
+          to="/admin"
+          className="jz-admin-brand"
+          style={{ color: 'inherit', textDecoration: 'none' }}
+          aria-label="回到个人空间工作台"
+        >
           <div className="jz-admin-brand-seal" aria-hidden>簡</div>
           <div className="jz-admin-brand-text">
             <div className="jz-admin-brand-name">简斋</div>
             <div className="jz-admin-brand-sub">个人空间</div>
           </div>
-        </div>
+        </Link>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
           className="jz-admin-menu"
           items={[
+            {
+              key: 'dashboard',
+              icon: menuIcon(<HomeOutlined style={{ fontSize: MENU_ICON_SIZE }} />),
+              label: <Link to="/admin">工作台</Link>,
+            },
             {
               key: 'kbs',
               icon: menuIcon(<JzKbIcon size={MENU_ICON_SIZE} />),
