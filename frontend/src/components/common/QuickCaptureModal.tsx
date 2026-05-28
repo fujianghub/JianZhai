@@ -117,23 +117,32 @@ export default function QuickCaptureModal({ open, onClose }: Props) {
           }
         }}
       />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 12 }}>
-        <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>收件箱:</Text>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 14, flexWrap: 'wrap' }}>
+        <Text type="secondary" style={{ fontSize: 12, flexShrink: 0 }}>收件箱</Text>
         <Select
           size="small"
           value={effectiveKbId ?? undefined}
           onChange={(v) => setKbId(v)}
           options={(kbs ?? []).map((kb) => ({ value: kb.id, label: kb.name }))}
           placeholder="选择 KB"
-          style={{ flex: 1, minWidth: 120 }}
+          style={{ flex: '1 1 140px', minWidth: 140 }}
           loading={kbs === null}
         />
         <div style={{ flexGrow: 1 }} />
-        <Button onClick={onClose} disabled={busy}>取消</Button>
-        <Button onClick={() => void submit(true)} disabled={busy || !text.trim()}>
+        <Button
+          type="link"
+          onClick={() => void submit(true)}
+          disabled={busy || !text.trim()}
+          style={{ padding: 0 }}
+        >
           保存并打开
         </Button>
-        <Button type="primary" loading={busy} disabled={!text.trim()} onClick={() => void submit(false)}>
+        <Button
+          type="primary"
+          loading={busy}
+          disabled={!text.trim()}
+          onClick={() => void submit(false)}
+        >
           保存
         </Button>
       </div>

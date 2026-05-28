@@ -88,3 +88,53 @@
   background:
     radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 9%, transparent) 0%, transparent 70%);
 }
+
+/* ── Writing heatmap ───────────────────────────────────────────────────── */
+.jz-admin-glass .jz-heatmap-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.jz-admin-glass .jz-heatmap-title {
+  font-weight: 600;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+}
+.jz-admin-glass .jz-heatmap-window {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--jz-text-muted);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--jz-text-muted) 14%, transparent);
+}
+.jz-admin-glass .jz-heatmap-stats {
+  display: inline-flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--jz-text-muted);
+}
+.jz-admin-glass .jz-heatmap-stat strong {
+  font-weight: 700;
+  color: var(--jz-text);
+  margin-right: 2px;
+  /* Tabular numerals keep stat numbers aligned across cards. */
+  font-variant-numeric: tabular-nums;
+}
+/* Scroll wrapper around the SVG so headers / legend stay put on narrow
+   viewports — gives a clean horizontal scroll affordance without the panel
+   itself overflowing. */
+.jz-admin-glass .jz-heatmap-scroll {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+.jz-admin-glass .jz-heatmap-scroll::-webkit-scrollbar { height: 6px; }
+.jz-admin-glass .jz-heatmap-scroll::-webkit-scrollbar-thumb {
+  background: var(--jz-divider, var(--jz-border));
+  border-radius: 3px;
+}

@@ -1645,6 +1645,14 @@ a.jz-meta-full-edit-btn:hover .anticon {
   box-shadow: 0 6px 20px rgba(16, 185, 129, 0.12);
   transform: translateY(-1px);
 }
+/* Keyboard a11y: cards are primary navigation; surface the focused state. */
+.jz-admin-glass .jz-feature-card:focus-visible,
+.jz-admin-glass .jz-overview-stat:focus-visible,
+.jz-admin-glass a.jz-feature-card:focus-visible {
+  outline: 2px solid var(--jz-accent);
+  outline-offset: 2px;
+  border-color: rgba(16, 185, 129, 0.45);
+}
 .jz-admin-glass .jz-feature-card-head {
   display: flex;
   align-items: center;

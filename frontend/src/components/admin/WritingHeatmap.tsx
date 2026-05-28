@@ -115,15 +115,33 @@ export default function WritingHeatmap({ days = 365 }: { days?: number }) {
   }
 
   return (
-    <div className="jz-admin-panel" style={{ overflowX: 'auto' }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
-        <div style={{ fontWeight: 600 }}>写作日历</div>
-        <div style={{ fontSize: 12, color: 'var(--jz-text-muted)' }}>
-          {data === null
-            ? '加载中…'
-            : `近 ${days} 天 · ${activeDays} 天活跃 · ${total} 次编辑 · 最长 ${longestStreak} 天连续`}
+    <div className="jz-admin-panel">
+      <div className="jz-heatmap-header">
+        <div className="jz-heatmap-title">
+          写作日历
+          <span className="jz-heatmap-window">近 {days} 天</span>
         </div>
+        {data === null ? (
+          <div style={{ fontSize: 12, color: 'var(--jz-text-muted)' }}>加载中…</div>
+        ) : total === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--jz-text-muted)' }}>
+            还没有写作记录——这片空白等你点亮
+          </div>
+        ) : (
+          <div className="jz-heatmap-stats">
+            <span className="jz-heatmap-stat">
+              <strong>{activeDays}</strong> 天活跃
+            </span>
+            <span className="jz-heatmap-stat">
+              <strong>{total}</strong> 次编辑
+            </span>
+            <span className="jz-heatmap-stat">
+              最长 <strong>{longestStreak}</strong> 天连续
+            </span>
+          </div>
+        )}
       </div>
+      <div className="jz-heatmap-scroll">
       <svg width={width} height={height} role="img" aria-label={`过去 ${days} 天的文档编辑活动`}>
         {/* Weekday labels — render every other one to save space. */}
         {WEEKDAY_LABELS.map((w, i) => (
@@ -179,6 +197,7 @@ export default function WritingHeatmap({ days = 365 }: { days?: number }) {
           );
         })}
       </svg>
+      </div>
       {/* Legend */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 11, color: 'var(--jz-text-muted)', justifyContent: 'flex-end' }}>
         少

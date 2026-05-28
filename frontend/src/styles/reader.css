@@ -336,6 +336,10 @@ body.jz-post-inline-edit .jz-reading-progress {
   place-items: center;
 }
 .jz-lightbox-close:hover { background: rgba(255, 255, 255, 0.22); }
+.jz-lightbox-close:focus-visible {
+  outline: 2px solid rgba(255, 255, 255, 0.65);
+  outline-offset: 3px;
+}
 
 /* Visual cue that images are zoomable */
 .jz-post-article img:not([data-no-lightbox='true']) {

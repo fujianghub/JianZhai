@@ -56,30 +56,27 @@ export default function AdminDashboard() {
   });
   const [journalLoading, setJournalLoading] = useState(false);
 
-  const refetch = useCallback(() => {
-    let cancelled = false;
-    listKBs()
-      .then((list) => !cancelled && (setKbs(list), setErr(false)))
-      .catch(() => !cancelled && setErr(true));
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
+  // Single mounted-flag across the component lifetime — every in-flight
+  // listKBs() races through this one gate, so focus/visibilitychange refetches
+  // don't pile up orphan cancellation tokens and can't setState after unmount.
   useEffect(() => {
-    const cleanup = refetch();
-    // Re-pull stats when user returns to the tab so KBs created/deleted
-    // elsewhere reflect on the work-bench.
+    let mounted = true;
+    const refetch = () => {
+      listKBs()
+        .then((list) => { if (mounted) { setKbs(list); setErr(false); } })
+        .catch(() => { if (mounted) setErr(true); });
+    };
+    refetch();
     const onFocus = () => { refetch(); };
     const onVis = () => { if (document.visibilityState === 'visible') refetch(); };
     window.addEventListener('focus', onFocus);
     document.addEventListener('visibilitychange', onVis);
     return () => {
-      cleanup?.();
+      mounted = false;
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVis);
     };
-  }, [refetch]);
+  }, []);
 
   const stats = useMemo(() => {
     const list = kbs ?? [];

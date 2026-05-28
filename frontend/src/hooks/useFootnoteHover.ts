@@ -1,4 +1,5 @@
 import { useEffect, type RefObject } from 'react';
+import DOMPurify from 'dompurify';
 
 /**
  * markdown-it-footnote renders footnotes as
@@ -31,10 +32,16 @@ export function useFootnoteHover(containerRef: RefObject<HTMLElement | null>): v
       const id = decodeURIComponent(href.slice(1));
       const li = container?.querySelector<HTMLElement>(`li#${CSS.escape(id)}`);
       if (!li) return;
-      // Copy the footnote content but strip the back-jump arrow.
+      // Copy the footnote content but strip the back-jump arrow. The post body
+      // is already DOMPurified server-side, but assigning to innerHTML deserves
+      // its own sanitize pass — defense in depth keeps this safe even if the
+      // upstream allow-list ever loosens.
       const clone = li.cloneNode(true) as HTMLElement;
       clone.querySelectorAll('.footnote-backref').forEach((el) => el.remove());
-      tip.innerHTML = clone.innerHTML;
+      tip.innerHTML = DOMPurify.sanitize(clone.innerHTML, {
+        ALLOWED_TAGS: ['a', 'strong', 'em', 'code', 'span', 'p', 'br', 'sup', 'sub'],
+        ALLOWED_ATTR: ['href', 'title', 'class'],
+      });
       const rect = target.getBoundingClientRect();
       // Position above the ref, fall back to below if there's no room above.
       tip.style.display = 'block';
