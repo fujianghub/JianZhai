@@ -239,8 +239,12 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
   const collapsedAttr = meta.collapsed ? ' data-collapsed="true"' : '';
   const wrapClass = prefs.wrap ? ' is-wrapped' : '';
   const lineNumClass = prefs.lineNumbers ? '' : ' jz-code-no-line-numbers';
-  const diagramSourceBtn = (action: string) =>
-    `<button type="button" class="jz-code-btn jz-code-btn-text" data-action="${action}" title="查看源代码" aria-label="查看源代码">源码</button>`;
+  const diagramActions = (sourceAction: string) =>
+    // Order matters in the toolbar: 源码 / 下载 / 全屏 — reads left-to-right
+    // mirroring the user's most-likely actions while inspecting a diagram.
+    `<button type="button" class="jz-code-btn jz-code-btn-text" data-action="${sourceAction}" title="查看源代码" aria-label="查看源代码">源码</button>` +
+    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="diagram-download" title="下载 SVG" aria-label="下载 SVG">⤓</button>` +
+    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="diagram-fullscreen" title="全屏查看 (Esc 退出)" aria-label="全屏查看">⤢</button>`;
 
   // Mermaid intentionally takes a different path: the raw fence body is
   // emitted as a base64 attribute so the runtime enhancer can render it as
@@ -253,10 +257,10 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
         label,
         titleText,
         themeName,
-        extraActions: diagramSourceBtn('mermaid-source'),
+        extraActions: diagramActions('mermaid-source'),
       }) +
       `<div class="jz-mermaid-canvas" aria-live="polite">` +
-      `<div class="jz-mermaid-loading">正在渲染图表…</div>` +
+      `<div class="jz-mermaid-loading"><span class="jz-mermaid-spinner" aria-hidden="true"></span>正在渲染图表…</div>` +
       `</div>` +
       `<pre class="jz-code-pre hljs jz-mermaid-source" hidden><code class="hljs language-mermaid">${escape(code)}</code></pre>` +
       `</div>`
@@ -273,10 +277,10 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
         label,
         titleText,
         themeName,
-        extraActions: diagramSourceBtn('plantuml-source'),
+        extraActions: diagramActions('plantuml-source'),
       }) +
       `<div class="jz-mermaid-canvas" aria-live="polite">` +
-      `<div class="jz-mermaid-loading">正在向 PlantUML 服务请求…</div>` +
+      `<div class="jz-mermaid-loading"><span class="jz-mermaid-spinner" aria-hidden="true"></span>正在向 PlantUML 服务请求…</div>` +
       `</div>` +
       `<pre class="jz-code-pre hljs jz-mermaid-source" hidden><code class="hljs language-plantuml">${escape(code)}</code></pre>` +
       `</div>`

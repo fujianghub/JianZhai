@@ -890,13 +890,25 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  min-height: 80px;
-  padding: 10px 12px;
-  overflow: auto;
+  min-height: 120px;
+  padding: 20px 24px;
+  overflow-x: auto;
   /* Strip the leading/trailing whitespace mermaid emits inside its SVG
      root so the diagram hugs the canvas border instead of leaving a half-line
      gap. */
   line-height: 0;
+  /* Subtle accent-tinted wash distinguishes diagrams from regular code blocks
+     at a glance — Yuque uses a similar very-light background. */
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 3%, transparent) 0%, transparent 70%),
+    color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 50%, transparent);
+}
+[data-theme='dark'] .jz-mermaid-canvas,
+[data-theme='starry'] .jz-mermaid-canvas,
+[data-theme='deepsea'] .jz-mermaid-canvas {
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 6%, transparent) 0%, transparent 70%),
+    rgba(255, 255, 255, 0.02);
 }
 .jz-mermaid-canvas svg {
   max-width: 100%;
@@ -921,29 +933,96 @@
   padding: 8px 0;
 }
 .jz-mermaid-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
   color: var(--jz-text-muted);
   font-size: 13px;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
+  /* line-height:0 on the parent strips the spinner box — restore it here. */
+  line-height: 1;
 }
+.jz-mermaid-spinner {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid color-mix(in srgb, var(--jz-accent) 25%, transparent);
+  border-top-color: var(--jz-accent);
+  animation: jz-mermaid-spin 0.8s linear infinite;
+  display: inline-block;
+}
+@keyframes jz-mermaid-spin {
+  to { transform: rotate(360deg); }
+}
+
 .jz-mermaid-error {
-  color: var(--jz-accent);
+  padding: 12px 14px;
+  border-radius: 8px;
+  border-left: 3px solid #e5484d;
+  background: color-mix(in srgb, #e5484d 6%, transparent);
+  color: #c1373b;
   font-size: 13px;
+  line-height: 1.55;
   text-align: left;
   max-width: 100%;
   overflow: auto;
 }
 .jz-mermaid-error code {
   display: block;
-  margin-top: 6px;
-  padding: 8px;
-  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
-  border-radius: 4px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  background: color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 80%, transparent);
+  border: 1px solid var(--jz-border);
+  border-radius: 6px;
   color: var(--jz-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
   white-space: pre-wrap;
 }
+[data-theme='dark'] .jz-mermaid-error,
+[data-theme='starry'] .jz-mermaid-error,
+[data-theme='deepsea'] .jz-mermaid-error {
+  background: color-mix(in srgb, #e5484d 12%, transparent);
+  color: #ff8a8d;
+}
 .jz-mermaid-source {
-  /* When switched to source mode, use the standard code-block look */
+  /* When switched to source mode, use the standard code-block look but with
+     a hint of accent so the user knows they're inspecting a diagram source,
+     not a regular ```mermaid block that failed to render. */
   display: block !important;
+  background: color-mix(in srgb, var(--jz-accent) 4%, var(--jz-surface-2, var(--jz-surface))) !important;
+  border-top: 1px solid color-mix(in srgb, var(--jz-accent) 15%, var(--jz-border));
+}
+
+/* ── Diagram fullscreen overlay (⤢ button) ────────────────────────────── */
+.jz-diagram-fullscreen {
+  /* Inherits .jz-lightbox base from reader.css (backdrop + close button +
+     animation). Stage tweaks below. */
+  padding: 48px;
+}
+.jz-diagram-fullscreen-stage {
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  max-width: 100%;
+  max-height: 100%;
+  overflow: auto;
+  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.jz-diagram-fullscreen-stage svg {
+  max-width: 100%;
+  max-height: 80vh;
+  width: auto;
+  height: auto;
+  display: block;
+}
+[data-theme='dark'] .jz-diagram-fullscreen-stage,
+[data-theme='starry'] .jz-diagram-fullscreen-stage,
+[data-theme='deepsea'] .jz-diagram-fullscreen-stage {
+  background: #f5f5f5;
 }
 
 /* ──────────────────────────────────────────────────────────────────────

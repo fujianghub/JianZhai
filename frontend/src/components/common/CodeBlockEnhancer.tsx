@@ -51,6 +51,10 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
           ]);
         } else if (action === 'mermaid-source' || action === 'plantuml-source') {
           handlers.push([btn, () => toggleMermaidSource(block, btn)]);
+        } else if (action === 'diagram-fullscreen') {
+          handlers.push([btn, () => openDiagramFullscreen(block)]);
+        } else if (action === 'diagram-download') {
+          handlers.push([btn, () => downloadDiagramSvg(block, btn)]);
         }
       }
 
@@ -153,6 +157,88 @@ function copyBlockToClipboard(block: HTMLElement, btn: HTMLButtonElement) {
     }, 1500);
   };
   writeCodeToClipboard(text).then(ok, fail);
+}
+
+/** Read the live <svg> out of a diagram block's canvas. Returns null if the
+ *  block hasn't finished hydrating (or has rendered an error message). */
+function getDiagramSvg(block: HTMLElement): SVGSVGElement | null {
+  return block.querySelector<HTMLElement>('.jz-mermaid-canvas')?.querySelector('svg') ?? null;
+}
+
+/** Save the currently-rendered diagram as a standalone .svg file. */
+function downloadDiagramSvg(block: HTMLElement, btn: HTMLButtonElement): void {
+  const svg = getDiagramSvg(block);
+  if (!svg) return;
+  // Clone so we can attach an xmlns (mermaid omits it in inline mode) and
+  // strip mermaid's internal generated id from the filename.
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  clone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+  const xml = new XMLSerializer().serializeToString(clone);
+  const blob = new Blob(['<?xml version="1.0" encoding="UTF-8"?>\n', xml], {
+    type: 'image/svg+xml;charset=utf-8',
+  });
+  const url = URL.createObjectURL(blob);
+  const lang = block.dataset.lang || 'diagram';
+  const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `${lang}-${ts}.svg`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+
+  const original = btn.textContent;
+  btn.classList.add('is-success');
+  btn.textContent = '✓';
+  window.setTimeout(() => {
+    btn.classList.remove('is-success');
+    btn.textContent = original ?? '⤓';
+  }, 1200);
+}
+
+/** Open the diagram in a centered overlay sized to the viewport. ESC or
+ *  click-outside closes. Reuses the same lightbox aesthetic as the inline
+ *  image zoom (.jz-lightbox styles in reader.css). */
+function openDiagramFullscreen(block: HTMLElement): void {
+  const svg = getDiagramSvg(block);
+  if (!svg) return;
+
+  const overlay = document.createElement('div');
+  overlay.className = 'jz-lightbox jz-diagram-fullscreen';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-label', '图表全屏预览');
+
+  const stage = document.createElement('div');
+  stage.className = 'jz-diagram-fullscreen-stage';
+  const clone = svg.cloneNode(true) as SVGSVGElement;
+  clone.removeAttribute('style');
+  stage.appendChild(clone);
+  overlay.appendChild(stage);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'jz-lightbox-close';
+  closeBtn.setAttribute('aria-label', '关闭预览');
+  closeBtn.textContent = '✕';
+  overlay.appendChild(closeBtn);
+
+  function close() {
+    overlay.remove();
+    document.removeEventListener('keydown', onKey);
+    document.body.style.overflow = '';
+  }
+  function onKey(e: KeyboardEvent) {
+    if (e.key === 'Escape') close();
+  }
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay || e.target === closeBtn) close();
+  });
+
+  document.body.appendChild(overlay);
+  document.addEventListener('keydown', onKey);
+  document.body.style.overflow = 'hidden';
 }
 
 function escapeHtml(s: string): string {
