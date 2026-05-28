@@ -33,6 +33,18 @@ interface Props {
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
+/** Pure helper — exported for unit tests. The `--split` modifier may only ride
+ *  along when the host actually permits preview AND the user picked split;
+ *  otherwise a stale localStorage 'split' would leave the source pane in a
+ *  1fr 1fr grid with a blank right column. */
+export function htmlEditorPanesClass(
+  showPreviewPane: boolean,
+  layoutMode: 'edit' | 'preview' | 'split',
+): string {
+  return 'jz-html-editor-panes'
+    + (showPreviewPane && layoutMode === 'split' ? ' jz-html-editor-panes--split' : '');
+}
+
 const STATUS_LABEL: Record<SaveStatus, { text: string; color?: string }> = {
   idle: { text: '已同步' },
   pending: { text: '待保存…', color: 'orange' },
@@ -356,8 +368,9 @@ export default function HtmlEditor({
 
   return (
     <div className="jz-editor-surface jz-html-editor">
-      <div className="jz-editor-toolbar jz-editor-toolbar--compact" role="toolbar" aria-label="HTML 工具栏">
-        <div className="jz-editor-toolbar-meta">
+      <div className="jz-editor-toolbar jz-editor-toolbar--compact jz-html-editor-toolbar" role="toolbar" aria-label="HTML 工具栏">
+        {/* LEFT zone — status info (sticky, never wraps) */}
+        <div className="jz-html-toolbar-status">
           <Tag color={STATUS_LABEL[status].color} style={{ margin: 0 }}>
             {STATUS_LABEL[status].text}
           </Tag>
@@ -375,6 +388,54 @@ export default function HtmlEditor({
               <Tag color={encoding === 'gbk' ? 'orange' : 'default'}>编码: {encoding}</Tag>
             </Tooltip>
           )}
+          {uploading && <Tag color="blue">图片上传中…</Tag>}
+        </div>
+
+        {/* MIDDLE zone — legacy-HTML re-decode toggles (conditional, wraps OK) */}
+        {legacyAttachmentUrl && (
+          <div className="jz-html-toolbar-legacy">
+            <Tooltip title="按 UTF-8 重新读取原 HTML">
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                disabled={hydrating}
+                onClick={() => reloadWithEncoding('utf-8')}
+              >
+                UTF-8
+              </Button>
+            </Tooltip>
+            <Tooltip title="按 GBK 重新读取原 HTML（中文老文件常见）">
+              <Button
+                size="small"
+                icon={<ReloadOutlined />}
+                disabled={hydrating}
+                onClick={() => reloadWithEncoding('gbk')}
+              >
+                GBK
+              </Button>
+            </Tooltip>
+          </div>
+        )}
+
+        {/* RIGHT zone — actions (layout toggle + save) — pushed to the right */}
+        <div className="jz-html-toolbar-actions">
+          {showPreviewPane && (
+            <Segmented
+              size="small"
+              value={layoutMode}
+              onChange={(v) => setLayoutMode(v as 'edit' | 'preview' | 'split')}
+              options={[
+                { value: 'edit', icon: <EditOutlined />, label: '编辑' },
+                { value: 'split', icon: <SplitCellsOutlined />, label: '分屏' },
+                { value: 'preview', icon: <EyeOutlined />, label: '预览' },
+              ]}
+            />
+          )}
+          {status === 'error' && onAutoSave && !readOnly && (
+            <Button size="small" className="jz-toolbar-save-btn" onClick={() => void saveNow()}>
+              重试
+            </Button>
+          )}
           <Tooltip title="立即保存 (Ctrl/⌘+S)">
             <Button
               size="small"
@@ -388,49 +449,6 @@ export default function HtmlEditor({
               保存
             </Button>
           </Tooltip>
-          {status === 'error' && onAutoSave && !readOnly && (
-            <Button size="small" className="jz-toolbar-save-btn" onClick={() => void saveNow()}>
-              重试
-            </Button>
-          )}
-          {legacyAttachmentUrl && (
-            <>
-              <Tooltip title="按 UTF-8 重新读取原 HTML">
-                <Button
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  disabled={hydrating}
-                  onClick={() => reloadWithEncoding('utf-8')}
-                >
-                  UTF-8
-                </Button>
-              </Tooltip>
-              <Tooltip title="按 GBK 重新读取原 HTML（中文老文件常见）">
-                <Button
-                  size="small"
-                  icon={<ReloadOutlined />}
-                  disabled={hydrating}
-                  onClick={() => reloadWithEncoding('gbk')}
-                >
-                  GBK
-                </Button>
-              </Tooltip>
-            </>
-          )}
-          {uploading && <Tag color="blue">图片上传中…</Tag>}
-          {showPreviewPane && (
-            <Segmented
-              size="small"
-              value={layoutMode}
-              onChange={(v) => setLayoutMode(v as 'edit' | 'preview' | 'split')}
-              options={[
-                { value: 'edit', icon: <EditOutlined />, label: '编辑' },
-                { value: 'split', icon: <SplitCellsOutlined />, label: '分屏' },
-                { value: 'preview', icon: <EyeOutlined />, label: '预览' },
-              ]}
-              style={{ marginLeft: 'auto' }}
-            />
-          )}
         </div>
       </div>
 
@@ -443,11 +461,7 @@ export default function HtmlEditor({
         />
       )}
 
-      <div
-        className={
-          'jz-html-editor-panes' + (layoutMode === 'split' ? ' jz-html-editor-panes--split' : '')
-        }
-      >
+      <div className={htmlEditorPanesClass(showPreviewPane, layoutMode)}>
         {(!showPreviewPane || layoutMode === 'edit' || layoutMode === 'split') && (
           <div className="jz-html-editor-source">
             <TextArea

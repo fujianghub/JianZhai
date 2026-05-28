@@ -1002,3 +1002,32 @@
   border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-border)) !important;
   box-shadow: none !important;
 }
+
+/* ── HTML editor toolbar: 3-zone responsive layout ────────────────────── */
+.jz-html-editor-toolbar {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.jz-html-toolbar-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.jz-html-toolbar-legacy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.jz-html-toolbar-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  /* Push to the right of the toolbar via auto margin — even with wrap, this
+     stays right-aligned within its own flex line. */
+  margin-left: auto;
+}
