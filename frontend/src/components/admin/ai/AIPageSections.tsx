@@ -190,26 +190,11 @@ export function OverviewSection({
           <Progress percent={successRate} showInfo={false} size="small" style={{ marginTop: 4 }} />
         </Card>
       </Col>
-      <Col xs={24} md={12}>
-        <Card title="当前模型" size="small">
-          <Space direction="vertical" style={{ width: '100%' }}>
-            <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--jz-text)' }}>
-              {cap.models.find((m) => m.id === settings.default_model)?.label ?? settings.default_model}
-            </div>
-            <Text type="secondary">
-              {cap.models.find((m) => m.id === settings.default_model)?.hint}
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              单次输出上限：{settings.max_tokens.toLocaleString()} token
-            </Text>
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              最后更新：{settings.updated_at ? dayjs(settings.updated_at).format('YYYY-MM-DD HH:mm') : '—'}
-            </Text>
-          </Space>
-        </Card>
+      <Col xs={24} md={12} style={{ display: 'flex' }}>
+        <CurrentModelCard cap={cap} settings={settings} />
       </Col>
-      <Col xs={24} md={12}>
-        <Card title="用量最高的模型" size="small">
+      <Col xs={24} md={12} style={{ display: 'flex' }}>
+        <Card title="用量最高的模型" size="small" style={{ width: '100%', height: '100%' }}>
           {topModel ? (
             <>
               <div style={{ fontSize: 22, fontWeight: 600, color: 'var(--jz-text)' }}>
@@ -228,6 +213,69 @@ export function OverviewSection({
         </Card>
       </Col>
     </Row>
+  );
+}
+
+/** "当前模型" — shows the user's *effective* model (the personal preference
+ *  from localStorage if set, otherwise the admin global default). Reacts to
+ *  jz-ai-model-changed events so toggles from MyModelPreferenceSection or the
+ *  header AIModelBadge update in real time. */
+function CurrentModelCard({
+  cap,
+  settings,
+}: {
+  cap: AICapabilities;
+  settings: AIAdminSettings;
+}) {
+  const [preferredId, setPreferredId] = useState(() =>
+    resolveAIModel(cap, readAIModelFromStorage()),
+  );
+  useEffect(() => {
+    const sync = () => setPreferredId(resolveAIModel(cap, readAIModelFromStorage()));
+    window.addEventListener('jz-ai-model-changed', sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener('jz-ai-model-changed', sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, [cap]);
+
+  const effective = cap.models.find((m) => m.id === preferredId);
+  const defaultModel = cap.models.find((m) => m.id === settings.default_model);
+  const personalOverride = preferredId !== settings.default_model;
+
+  return (
+    <Card title="当前模型" size="small" style={{ width: '100%', height: '100%' }}>
+      <Space direction="vertical" style={{ width: '100%' }}>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 8,
+            flexWrap: 'wrap',
+          }}
+        >
+          <span style={{ fontSize: 22, fontWeight: 600, color: 'var(--jz-text)' }}>
+            {effective?.label ?? preferredId}
+          </span>
+          {personalOverride && (
+            <Tag color="processing" style={{ marginRight: 0 }}>个人偏好</Tag>
+          )}
+        </div>
+        <Text type="secondary">{effective?.hint}</Text>
+        {personalOverride && (
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            全局默认：{defaultModel?.label ?? settings.default_model}
+          </Text>
+        )}
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          单次输出上限：{settings.max_tokens.toLocaleString()} token
+        </Text>
+        <Text type="secondary" style={{ fontSize: 12 }}>
+          最后更新：{settings.updated_at ? dayjs(settings.updated_at).format('YYYY-MM-DD HH:mm') : '—'}
+        </Text>
+      </Space>
+    </Card>
   );
 }
 
