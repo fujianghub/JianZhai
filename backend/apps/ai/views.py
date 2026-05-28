@@ -132,10 +132,14 @@ def stream(request):
 @permission_classes([IsAuthenticated])
 def capabilities(request):
     """Tell the frontend which operations + models are available."""
-    import os
+    from .services import providers_configured
+    provs = providers_configured()
     return Response(
         {
-            "configured": bool(os.environ.get("ANTHROPIC_API_KEY")),
+            # Backwards-compat: "configured" means "at least one provider has
+            # an API key". The detailed per-provider map lives next to it.
+            "configured": any(provs.values()),
+            "providers_configured": provs,
             "enabled": is_enabled(),
             "operations": SUPPORTED_OPS,
             "models": AVAILABLE_MODELS,

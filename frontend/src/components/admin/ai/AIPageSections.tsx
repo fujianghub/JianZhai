@@ -120,6 +120,9 @@ export function MyModelPreferenceSection({ cap }: { cap: AICapabilities }) {
                     <Text strong style={{ fontSize: 15 }}>
                       {m.label}
                     </Text>
+                    {m.provider === 'qwen' && (
+                      <Tag color="orange" style={{ marginRight: 0 }}>阿里</Tag>
+                    )}
                     {active && <Tag color="success">当前</Tag>}
                   </Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>

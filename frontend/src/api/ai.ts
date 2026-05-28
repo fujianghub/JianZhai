@@ -10,14 +10,21 @@ export type AIOperation =
   | 'fix'
   | 'outline';
 
+export type AIProvider = 'anthropic' | 'qwen';
+
 export interface AIModelOption {
   id: string;
   label: string;
   hint: string;
+  /** Backend will set; older deployments may omit — frontend treats missing
+   *  as 'anthropic' for backwards-compat. */
+  provider?: AIProvider;
 }
 
 export interface AICapabilities {
   configured: boolean;
+  /** Per-provider readiness — `configured` above is `any(providers_configured)`. */
+  providers_configured?: Partial<Record<AIProvider, boolean>>;
   enabled?: boolean;
   operations: AIOperation[];
   models: AIModelOption[];
