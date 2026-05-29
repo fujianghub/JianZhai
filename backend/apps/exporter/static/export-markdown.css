@@ -214,6 +214,57 @@
 .jz-markdown.export-markdown .jz-callout-success { --c: #10b981; --c-icon: "✓"; background: #ecfdf5; }
 .jz-markdown.export-markdown .jz-callout-color1 { --c: #2f8ef4; --c-icon: "①"; }
 .jz-markdown.export-markdown .jz-callout-color2 { --c: #a78bfa; --c-icon: "②"; }
+.jz-markdown.export-markdown .jz-callout-color3 { --c: #10b981; --c-icon: "③"; background: #ecfdf5; }
+.jz-markdown.export-markdown .jz-callout-color4 { --c: #f59e0b; --c-icon: "④"; background: #fffbeb; }
+.jz-markdown.export-markdown .jz-callout-color5 { --c: #ef4444; --c-icon: "⑤"; background: #fef2f2; }
+.jz-markdown.export-markdown .jz-callout-color6 { --c: #f43f5e; --c-icon: "⑥"; background: #fff1f2; }
+.jz-markdown.export-markdown .jz-callout-note    { --c: #6366f1; --c-icon: "📝"; }
+.jz-markdown.export-markdown .jz-callout-quote   { --c: #94a3b8; --c-icon: "❝"; background: #f8fafc; }
+.jz-markdown.export-markdown .jz-callout-error   { --c: #ef4444; --c-icon: "✕"; background: #fef2f2; }
+
+/* Math (KaTeX) — display + inline forms emitted by markdown-it katex plugin */
+.jz-markdown.export-markdown .jz-math-block {
+  margin: 1em 0;
+  padding: 12px 16px;
+  text-align: center;
+  background: #fafafa;
+  border: 1px dashed #d4d4d8;
+  border-radius: 8px;
+  overflow-x: auto;
+  line-height: 1.4;
+}
+.jz-markdown.export-markdown .jz-math-block .katex-display { margin: 0; }
+.jz-markdown.export-markdown .jz-math-inline { padding: 0 2px; }
+.jz-markdown.export-markdown .jz-math-error {
+  color: #b91c1c;
+  background: #fef2f2;
+  border-color: #fecaca;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Mermaid / PlantUML in offline exports — rendered as labelled "diagram source"
+   blocks (no JS to run mermaid.run). Distinct chrome makes that obvious to
+   the reader. */
+.jz-markdown.export-markdown .jz-code-block.jz-code-diagram {
+  border-color: #d4d4d8;
+  background: #fafafa;
+}
+.jz-markdown.export-markdown .jz-code-block.jz-code-diagram .jz-code-toolbar {
+  background: #f4f4f5;
+  color: #525252;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.jz-markdown.export-markdown .jz-code-block.jz-code-diagram .jz-code-diagram-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+}
+.jz-markdown.export-markdown .jz-code-block.jz-code-diagram .jz-code-pre {
+  background: #fafafa;
+  color: #1f1f1f;
+}
 
 /* HTML-format embed wrapper */
 .export-html-embed {

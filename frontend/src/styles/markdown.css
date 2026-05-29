@@ -2,6 +2,53 @@
   color: var(--jz-text);
   word-wrap: break-word;
 }
+
+/* ──────────────────────────────────────────────────────────────────────
+   KaTeX math blocks rendered by the markdown-it katex plugin (utils/markdown.ts)
+   and the Tiptap MathBlock NodeView. Both flows emit the same wrapper class
+   so the visual is identical between editor preview and public blog reader.
+   ────────────────────────────────────────────────────────────────────── */
+.markdown-preview .jz-math-block,
+.tiptap-shell .ProseMirror .jz-math-block,
+.export-markdown .jz-math-block {
+  margin: 1em 0;
+  padding: 12px 16px;
+  text-align: center;
+  background: color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 60%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--jz-divider) 80%, transparent);
+  border-radius: 8px;
+  overflow-x: auto;
+  /* KaTeX inserts its own line-height; clear pre-line-height inherits. */
+  line-height: 1.4;
+}
+.markdown-preview .jz-math-block .katex-display,
+.tiptap-shell .ProseMirror .jz-math-block .katex-display,
+.export-markdown .jz-math-block .katex-display {
+  margin: 0;
+}
+.markdown-preview .jz-math-inline,
+.export-markdown .jz-math-inline {
+  /* Subtle background hint so inline math reads as an integrated token,
+     not raw text. Stays invisible enough not to clash with surrounding
+     prose colour from the active theme. */
+  padding: 0 2px;
+  border-radius: 3px;
+}
+.markdown-preview .jz-math-error,
+.tiptap-shell .ProseMirror .jz-math-error,
+.export-markdown .jz-math-error {
+  color: #c1373b;
+  background: color-mix(in srgb, #e5484d 7%, transparent);
+  border-color: color-mix(in srgb, #e5484d 30%, transparent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+}
+[data-theme='dark'] .markdown-preview .jz-math-error,
+[data-theme='starry'] .markdown-preview .jz-math-error,
+[data-theme='deepsea'] .markdown-preview .jz-math-error {
+  color: #ff8a8d;
+  background: color-mix(in srgb, #e5484d 15%, transparent);
+}
 .markdown-preview h1,
 .markdown-preview h2,
 .markdown-preview h3,
@@ -42,8 +89,55 @@
   overflow: auto;
   font-size: 0.9em;
   line-height: 1.5;
+  /* Long code samples should scroll rather than push the rest of the page
+     off-screen. The auto overflow on x already handles wide lines; this
+     bounds vertical height so a 500-line dump doesn't trash the reading
+     flow. Keep it large enough that 25-line snippets still fit unscrolled. */
+  max-height: 70vh;
 }
 .markdown-preview pre code { background: transparent; color: inherit; padding: 0; }
+
+/* Links — use the active theme's accent so the colour reads on all four
+   palettes. The previous hardcoded #1677ff worked on light/dark but was the
+   wrong hue against the朱砂 (#b94a3b) on the starry / deepsea palettes. */
+.markdown-preview a:not(.doc-link):not(.footnote-ref):not(.footnote-backref) {
+  color: var(--jz-accent);
+  text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--jz-accent) 35%, transparent);
+  transition: border-color 120ms ease, background-color 120ms ease;
+}
+.markdown-preview a:not(.doc-link):not(.footnote-ref):not(.footnote-backref):hover {
+  border-bottom-color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+}
+
+/* Tables — sticky header keeps the column labels visible while scrolling a
+   long table on tall screens. ``overflow-x: auto`` on the parent wrapper
+   (when present) and a max-height keep wide / long tables from blowing out
+   the page. */
+.markdown-preview table {
+  border-collapse: collapse;
+  margin: 1em 0;
+  width: 100%;
+  display: block;
+  overflow-x: auto;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.markdown-preview table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 80%, var(--jz-surface));
+  /* sticky removes the cell's border-collapse; recreate via box-shadow so
+     the bottom border still draws on top of scrolled content. */
+  box-shadow: inset 0 -1px 0 var(--jz-divider);
+}
+.markdown-preview table th,
+.markdown-preview table td {
+  border: 1px solid var(--jz-divider);
+  padding: 6px 10px;
+}
 
 /* ──────────────────────────────────────────────────────────────────────
    Yuque-style code block chrome: language label + toolbar (copy / wrap /
@@ -906,9 +1000,34 @@
 [data-theme='dark'] .jz-mermaid-canvas,
 [data-theme='starry'] .jz-mermaid-canvas,
 [data-theme='deepsea'] .jz-mermaid-canvas {
+  /* Bumped the wash from 2 % to ~7 % so SVG strokes / text drawn at the
+     palette's --jz-text colour retain enough contrast against the gradient.
+     Earlier the canvas read as "almost the same as page background" and
+     mermaid labels on deepsea / starry could disappear into the gradient. */
   background:
-    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 6%, transparent) 0%, transparent 70%),
-    rgba(255, 255, 255, 0.02);
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 8%, transparent) 0%, transparent 65%),
+    color-mix(in srgb, #ffffff 7%, transparent);
+  /* A faint inner shadow lifts the picture off the page so the eye locks onto
+     the diagram boundary even on the deepest deepsea background. */
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, #ffffff 6%, transparent);
+}
+/* Canvas is interactive in both editor and reader: cursor + light hover
+   wash signal that one click reveals the source. */
+.jz-mermaid-canvas.is-clickable {
+  cursor: pointer;
+  transition: background 160ms ease;
+}
+.jz-mermaid-canvas.is-clickable:hover {
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 9%, transparent) 0%, transparent 70%),
+    color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 60%, transparent);
+}
+[data-theme='dark'] .jz-mermaid-canvas.is-clickable:hover,
+[data-theme='starry'] .jz-mermaid-canvas.is-clickable:hover,
+[data-theme='deepsea'] .jz-mermaid-canvas.is-clickable:hover {
+  background:
+    radial-gradient(ellipse at center, color-mix(in srgb, var(--jz-accent) 14%, transparent) 0%, transparent 65%),
+    color-mix(in srgb, #ffffff 11%, transparent);
 }
 .jz-mermaid-canvas svg {
   max-width: 100%;
@@ -985,13 +1104,162 @@
   background: color-mix(in srgb, #e5484d 12%, transparent);
   color: #ff8a8d;
 }
-.jz-mermaid-source {
-  /* When switched to source mode, use the standard code-block look but with
-     a hint of accent so the user knows they're inspecting a diagram source,
-     not a regular ```mermaid block that failed to render. */
-  display: block !important;
-  background: color-mix(in srgb, var(--jz-accent) 4%, var(--jz-surface-2, var(--jz-surface))) !important;
+/* Default: respect the ``hidden`` attribute. The source pre is rendered with
+ * ``hidden`` so it stays out of the way until the user clicks 源码; pre-fix
+ * this rule had ``display: block !important`` which overrode ``hidden`` and
+ * leaked the source code into every rendered mermaid block. */
+.jz-mermaid-source[hidden] {
+  display: none;
+}
+/* When the block is in show-source mode (class toggled by CodeBlockEnhancer
+ * / CodeBlockView), surface the source with a soft accent tint so the user
+ * can tell at a glance they're inspecting a diagram source — not a generic
+ * ```mermaid block that crashed silently. */
+.jz-mermaid-show-source .jz-mermaid-source {
+  display: block;
+  background: color-mix(in srgb, var(--jz-accent) 4%, var(--jz-surface-2, var(--jz-surface)));
   border-top: 1px solid color-mix(in srgb, var(--jz-accent) 15%, var(--jz-border));
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Yuque-style diagram block (.jz-diagram-block)
+   ──────────────────────────────────────────────────────────────────────
+
+   Drops the heavy .jz-code-toolbar that regular code blocks carry, leaving
+   only the rendered diagram in a clean rounded frame. A small action row
+   floats in the top-right corner — invisible by default, fades in on
+   hover/focus-within. Mirrors Yuque/Notion's "the picture is the UI,
+   tools come on demand" idiom.
+
+   Backward compat: every wrapper still carries .jz-code-block + the
+   .jz-code-mermaid / .jz-code-plantuml class, so the inherited frame,
+   collapse handling and Mermaid/PlantUML hydration logic all keep working.
+*/
+.jz-code-block.jz-diagram-block {
+  position: relative;
+  margin: 1em 0;
+  padding: 0;
+  /* Lighter border than the regular code-block chrome — closer to Yuque's
+     near-invisible frame than to the editor's dark code-toolbar bezel. */
+  border: 1px solid color-mix(in srgb, var(--jz-divider) 90%, transparent);
+  background: var(--jz-surface);
+  /* Soft elevation cue without going full Material — keeps prose feeling. */
+  box-shadow: 0 1px 2px -1px color-mix(in srgb, #000 8%, transparent);
+}
+[data-theme='dark'] .jz-code-block.jz-diagram-block,
+[data-theme='starry'] .jz-code-block.jz-diagram-block,
+[data-theme='deepsea'] .jz-code-block.jz-diagram-block {
+  border-color: color-mix(in srgb, var(--jz-divider) 80%, transparent);
+  background: color-mix(in srgb, #fff 4%, transparent);
+}
+
+/* Floating action row — top-right, fades in. Sits ABOVE the canvas so a
+   click on a button doesn't bubble to the canvas's "click to view source"
+   handler (the buttons stop propagation themselves; this is defence in
+   depth). */
+.jz-diagram-block .jz-diagram-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 4;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--jz-surface) 92%, transparent);
+  border: 1px solid color-mix(in srgb, var(--jz-divider) 70%, transparent);
+  box-shadow: 0 4px 12px -4px color-mix(in srgb, #000 18%, transparent);
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  pointer-events: none;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.jz-diagram-block:hover .jz-diagram-actions,
+.jz-diagram-block:focus-within .jz-diagram-actions {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+/* On touch devices (no hover), keep the actions visible at low opacity so
+   they're still discoverable. ``hover: none`` matches phones/tablets. */
+@media (hover: none) {
+  .jz-diagram-block .jz-diagram-actions {
+    opacity: 0.7;
+    pointer-events: auto;
+    transform: none;
+  }
+}
+
+.jz-diagram-block .jz-diagram-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 28px;
+  height: 26px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  border-radius: 5px;
+  color: var(--jz-text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.jz-diagram-block .jz-diagram-action-icon-only {
+  padding: 0;
+  width: 26px;
+  justify-content: center;
+}
+.jz-diagram-block .jz-diagram-action:hover {
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
+}
+.jz-diagram-block .jz-diagram-action.is-success {
+  color: #10b981;
+  background: color-mix(in srgb, #10b981 12%, transparent);
+}
+.jz-diagram-block .jz-diagram-action.is-error {
+  color: #ef4444;
+}
+.jz-diagram-block .jz-diagram-action-icon {
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+.jz-diagram-block .jz-diagram-action-label {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* When the user toggles 源码 view, the action button picks up an "active"
+   look so it's obvious which mode the block is in. */
+.jz-diagram-block.jz-mermaid-show-source .jz-diagram-action[data-action$="source"] {
+  background: color-mix(in srgb, var(--jz-accent) 16%, transparent);
+  color: var(--jz-accent);
+}
+
+/* Diagram canvas inside the new wrapper: no extra margins, generous padding
+   so the SVG breathes inside its rounded frame. */
+.jz-diagram-block .jz-mermaid-canvas {
+  min-height: 160px;
+  padding: 28px 28px 24px;
+  background: transparent;
+}
+.jz-diagram-block.jz-mermaid-show-source .jz-mermaid-canvas {
+  /* When source is shown the canvas collapses out of the layout entirely. */
+  display: none;
+}
+/* Source view inside a Yuque-style block uses the soft accent tint but
+   without the heavy border-top divider (no toolbar above it to divide from). */
+.jz-diagram-block .jz-mermaid-source {
+  border-top: none;
+  border-radius: 0;
+  margin: 0;
+  padding: 16px 20px;
 }
 
 /* ── Diagram fullscreen overlay (⤢ button) ────────────────────────────── */

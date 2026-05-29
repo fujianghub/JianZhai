@@ -6,6 +6,7 @@ import mimetypes
 import re
 import uuid
 import zipfile
+from functools import lru_cache
 from io import BytesIO
 from pathlib import Path
 
@@ -156,33 +157,26 @@ def export_root() -> Path:
     root.mkdir(parents=True, exist_ok=True)
     return root
 
-_EXPORT_MARKDOWN_CSS: str | None = None
-
-
 def render_markdown(text: str) -> str:
     """Render Markdown to HTML (preprocess + enhanced markdown-it)."""
     return markdown_render.render_markdown(text)
 
 
+# CSS readers are cached via ``lru_cache``: it's thread-safe (Python's GIL +
+# functools' own locking around the cache dict) and avoids a module-level
+# global that two gunicorn worker threads could race on during a cold start.
+@lru_cache(maxsize=1)
 def load_export_markdown_css() -> str:
-    """Read bundled export markdown styles (cached)."""
-    global _EXPORT_MARKDOWN_CSS
-    if _EXPORT_MARKDOWN_CSS is None:
-        path = Path(__file__).resolve().parent.parent / "static" / "export-markdown.css"
-        _EXPORT_MARKDOWN_CSS = path.read_text(encoding="utf-8")
-    return _EXPORT_MARKDOWN_CSS
+    """Read bundled export markdown styles (cached, thread-safe)."""
+    path = Path(__file__).resolve().parent.parent / "static" / "export-markdown.css"
+    return path.read_text(encoding="utf-8")
 
 
-_EXPORT_ANTHOLOGY_CSS: str | None = None
-
-
+@lru_cache(maxsize=1)
 def load_export_anthology_css() -> str:
     """Read bundled anthology shell styles — TOC + panel switching (cached)."""
-    global _EXPORT_ANTHOLOGY_CSS
-    if _EXPORT_ANTHOLOGY_CSS is None:
-        path = Path(__file__).resolve().parent.parent / "static" / "export-anthology.css"
-        _EXPORT_ANTHOLOGY_CSS = path.read_text(encoding="utf-8")
-    return _EXPORT_ANTHOLOGY_CSS
+    path = Path(__file__).resolve().parent.parent / "static" / "export-anthology.css"
+    return path.read_text(encoding="utf-8")
 
 
 def export_stylesheet() -> str:

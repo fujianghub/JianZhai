@@ -39,6 +39,7 @@ import {
   DIAGRAM_ZOOM_STEPS,
   loadMermaidDiagramPrefs,
   saveMermaidDiagramPrefs,
+  toggleDiagramSource,
   type DiagramViewMode,
 } from '@/utils/mermaidDiagramPrefs';
 import {
@@ -136,6 +137,17 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   const cycleViewMode = useCallback(() => {
     setDiagramViewMode((m) => {
       const next = cycleDiagramViewMode(m);
+      saveMermaidDiagramPrefs({ defaultViewMode: next });
+      return next;
+    });
+  }, []);
+
+  /** Single-click on the rendered diagram surface → flip to source view (and
+   * back). Mirrors Yuque/Notion behaviour where the picture is primary and
+   * the source is one click away. */
+  const toggleSourceFromCanvas = useCallback(() => {
+    setDiagramViewMode((m) => {
+      const next = toggleDiagramSource(m);
       saveMermaidDiagramPrefs({ defaultViewMode: next });
       return next;
     });
@@ -421,7 +433,18 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 </div>
               ) : previewHtml ? (
                 <div
-                  className="jz-mermaid-canvas jz-mermaid-canvas-zoom"
+                  className="jz-mermaid-canvas jz-mermaid-canvas-zoom is-clickable"
+                  role="button"
+                  tabIndex={0}
+                  title="点击查看源码"
+                  aria-label="点击查看源码"
+                  onClick={toggleSourceFromCanvas}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      toggleSourceFromCanvas();
+                    }
+                  }}
                   style={{ transform: `scale(${diagramZoom})`, transformOrigin: 'top center' }}
                   dangerouslySetInnerHTML={{ __html: previewHtml }}
                 />

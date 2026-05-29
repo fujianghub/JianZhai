@@ -48,6 +48,21 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 DEBUG = _env_bool("DEBUG", default=True)
 ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 
+# Refuse to boot in production with the placeholder secret. JianZhai's primary
+# deployment story is single-user localhost, but if someone moves it to a
+# real host (DEBUG=False) and forgets to populate ``.env`` we'd otherwise
+# happily sign session cookies with the development key — a textbook
+# password-on-postit-note level of bad. Failing fast is the obviously-right
+# answer; the operator sees the message and fixes it before any traffic
+# touches the box.
+if not DEBUG and SECRET_KEY == "dev-secret-change-me":
+    raise RuntimeError(
+        "SECRET_KEY is still the development placeholder while DEBUG=False. "
+        "Set SECRET_KEY in backend/.env to a long random string (e.g. "
+        "`python -c 'import secrets; print(secrets.token_urlsafe(50))'`) "
+        "before deploying."
+    )
+
 INSTALLED_APPS = [
     "django.contrib.admin",
     "django.contrib.auth",

@@ -15,7 +15,7 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9.1 — 搜索扩展、并发与安全修复在 v0.9 视觉系统之上 |
+| 实现阶段 | v0.9.2 — MD/Mermaid 体验大修 + 架构 P0/P1 修复在 v0.9.1 之上 |
 | 多用户 | 支持。普通账号按 `owner` 隔离数据；`is_superuser` 跨租户可见 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
 
@@ -338,6 +338,16 @@ class AIUsageLog(models.Model):
 
 文档级 + 段落级（`block_id` 定位）；Markdown 内容；单用户自动通过审核。
 
+### 模块 6.5：数学公式（KaTeX）✅（v0.9.2）
+
+- **编辑器**：`MathBlock` / `MathInline` Tiptap 节点 + 双击 Modal 可视化输入
+  - `addInputRules`：行首 `$$expr$$` + 回车自动转 MathBlock
+  - `addPasteRules`：粘贴含 `$$..$$` 或 `$..$` 的文本自动转节点
+- **博客阅读端**：`markdown-it` 已接入自写 KaTeX 插件（`utils/markdown.ts → katexPlugin`），`$$..$$` 块级、`$..$` 行内均渲染（防 currency 误识：`$5` `$10` 不会被解析）
+- **离线导出**：HTML/PDF/static-site 全部内嵌 KaTeX HTML + 样式
+- **错误处理**：`throwOnError: false` + `.jz-math-error` 红框降级，不抛异常
+- 共用 CSS class `.jz-math-block` / `.jz-math-inline`，编辑器、阅读端、导出端三端一致
+
 ### 模块 7：全文搜索 ✅
 
 - 全局 `⌘K` 搜索框
@@ -440,7 +450,7 @@ class AIUsageLog(models.Model):
 ## 关键风险与注意事项
 
 1. **Tiptap Markdown 互转保真度** — 复杂表格、合并单元格在富文本 ↔ Markdown 间可能丢失。
-2. **双向链接** — `linking/tasks.py` 仅接受**同 owner** 且未软删的目标文档；`sync_document_links` 对源文档 `select_for_update` 防并发重复写入。保存后 Celery 异步解析 `raw_content`。
+2. **双向链接** — `linking/tasks.py` 仅接受**同 owner** 且未软删的目标文档；`sync_document_links` 对源文档 `select_for_update` 并把锁结果**赋值给本地变量**（v0.9.2 修复了"取了锁就丢"导致的并发争用），bulk_create 完整运行在 atomic 块内。保存后 Celery 异步解析 `raw_content`。
 3. **乐观并发** — PATCH / 发布版 PATCH / `publish` / `unpublish` 均可带 `expected_version`；序列化器在事务内 `select_for_update` 校验；冲突返回 409 + 最新文档快照。
 4. **大文档性能** — 编辑器 10k+ 字时仍流畅，但建议未来对超长文档启用 Tiptap lazy rendering。
 5. **PDF 导出资源** — Playwright 单次启动约 200MB；Celery 串行处理。`pip install -e .[pdf]` + `playwright install chromium`。
@@ -464,6 +474,7 @@ class AIUsageLog(models.Model):
 | **v0.8 编辑体验** | 大纲固定 / 全屏退出 / 全屏目录 / 所有编辑模式 AI / 路由 bug | ✅ |
 | **v0.9 视觉系统** | 自制 SVG 图标库 + 双色调彩点 + 主题联动染色 | ✅ |
 | **v0.9.1 维护** | 搜索含标签/评论；链接租户边界；原子 version；AI max_tokens；编辑器竞态修复 | ✅ |
+| **v0.9.2 MD/图表 + 架构** | KaTeX 全链路渲染；Mermaid/PlantUML 默认渲染图 + 单击切源码；暗主题画布对比度；docN 链接重写；linking 锁修复；AI 服务端长度上限；exporter CSS 线程安全；prod SECRET_KEY 兜底 | ✅ |
 | **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 回收站 UI / 超大 KB 树分页 / Yjs | 🔲 |
 
 ---
@@ -518,5 +529,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.1  
-**最后更新**：2026-05-26
+**文档版本**：v3.2  
+**最后更新**：2026-05-29

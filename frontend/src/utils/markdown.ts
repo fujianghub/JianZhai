@@ -13,6 +13,11 @@ import mdMark from 'markdown-it-mark';
 import mdFootnote from 'markdown-it-footnote';
 import mdMultimdTable from 'markdown-it-multimd-table';
 import DOMPurify from 'dompurify';
+import katex from 'katex';
+// KaTeX's own stylesheet — without this the public blog reader has unstyled
+// math (MathNode.tsx imports the same sheet for the editor; this duplicate
+// import is dedup'd by Vite). Loaded eagerly so first-paint math doesn't FOUC.
+import 'katex/dist/katex.min.css';
 import { highlightCode, languageLabel, normalizeLanguage } from './codeBlocks';
 import { loadCodeBlockPrefs, themeLabel } from './codeBlockPrefs';
 import { parseCodeFenceInfo } from './codeFenceMeta';
@@ -43,6 +48,153 @@ md.use(mdSup);
 md.use(mdMark);
 md.use(mdFootnote);
 md.use(mdMultimdTable, { multiline: true, rowspan: true, headerless: false });
+md.use(katexPlugin);
+
+/**
+ * KaTeX plugin for markdown-it. Without this the public blog (which renders
+ * pure Markdown — no Tiptap MathBlock to paper over the gap) leaves ``$$E=mc^2$$``
+ * as literal dollar-sign text.
+ *
+ * Block rule: a ``$$`` opener at the start of a line, content (one or more
+ * lines), closed by ``$$`` on the opener line or any later line. Renders as
+ * ``<div class="jz-math-block">{katex html}</div>``.
+ *
+ * Inline rule: a paired ``$…$`` span inside a paragraph. To avoid stealing
+ * currency notation we require: (a) no whitespace immediately after the
+ * opening ``$``, (b) no whitespace immediately before the closing ``$``, and
+ * (c) no digit immediately before the opener (so ``5$ to 10$`` reads as text).
+ *
+ * KaTeX runs with ``throwOnError: false`` so bad LaTeX shows a red message in
+ * place of an exception. ``output: 'html'`` skips the MathML twin so DOMPurify
+ * doesn't need to know about ``<math>``/``<mrow>``/… tags — every emitted node
+ * is a ``span`` with a class, all already on the allowlist.
+ */
+function katexPlugin(mdInst: MarkdownIt): void {
+  // Block: $$...$$
+  mdInst.block.ruler.before(
+    'fence',
+    'math_block',
+    (state, startLine, endLine, silent) => {
+      const start = state.bMarks[startLine] + state.tShift[startLine];
+      const max = state.eMarks[startLine];
+      if (start + 2 > max) return false;
+      if (state.src.slice(start, start + 2) !== '$$') return false;
+
+      // close on same line: $$expr$$
+      const restOfLine = state.src.slice(start + 2, max).trimEnd();
+      let content: string;
+      let lastLine = startLine;
+      if (restOfLine.endsWith('$$')) {
+        content = restOfLine.slice(0, -2);
+      } else {
+        const parts: string[] = [restOfLine];
+        let l = startLine + 1;
+        let closed = false;
+        while (l < endLine) {
+          const ls = state.bMarks[l] + state.tShift[l];
+          const lm = state.eMarks[l];
+          const lineText = state.src.slice(ls, lm);
+          if (lineText.trimEnd().endsWith('$$')) {
+            parts.push(lineText.replace(/\$\$\s*$/, ''));
+            lastLine = l;
+            closed = true;
+            break;
+          }
+          parts.push(lineText);
+          l++;
+        }
+        if (!closed) return false;
+        content = parts.join('\n');
+      }
+      if (silent) return true;
+      const token = state.push('math_block', 'div', 0);
+      token.block = true;
+      token.content = content.trim();
+      token.markup = '$$';
+      token.map = [startLine, lastLine + 1];
+      state.line = lastLine + 1;
+      return true;
+    },
+    { alt: [] },
+  );
+
+  // Inline: $...$
+  mdInst.inline.ruler.after('escape', 'math_inline', (state, silent) => {
+    const pos = state.pos;
+    if (state.src[pos] !== '$') return false;
+    // Disallow $$ here (block-level handles that)
+    if (state.src[pos + 1] === '$') return false;
+    // Reject currency: digit immediately before $ → almost always money.
+    const prev = pos > 0 ? state.src[pos - 1] : '';
+    if (prev && /\d/.test(prev)) return false;
+    // Opening $ must not be followed by whitespace
+    const afterOpen = state.src[pos + 1];
+    if (!afterOpen || /\s/.test(afterOpen)) return false;
+
+    // Walk to the closing $
+    let end = pos + 1;
+    const max = state.posMax;
+    while (end < max) {
+      const ch = state.src[end];
+      if (ch === '\\' && end + 1 < max) {
+        end += 2;
+        continue;
+      }
+      if (ch === '\n') return false;
+      if (ch === '$') {
+        // Closing $ must not be preceded by whitespace
+        const beforeClose = state.src[end - 1];
+        if (/\s/.test(beforeClose)) {
+          end++;
+          continue;
+        }
+        // Don't close on $$ — leave it for the block rule or text
+        if (state.src[end + 1] === '$') return false;
+        // Reject currency on close side too (e.g. `… 5$`)
+        const afterClose = state.src[end + 1] ?? '';
+        if (afterClose && /\d/.test(afterClose)) {
+          end++;
+          continue;
+        }
+        if (silent) return true;
+        const token = state.push('math_inline', 'span', 0);
+        token.content = state.src.slice(pos + 1, end);
+        token.markup = '$';
+        state.pos = end + 1;
+        return true;
+      }
+      end++;
+    }
+    return false;
+  });
+
+  mdInst.renderer.rules.math_block = (tokens, idx) => {
+    try {
+      const html = katex.renderToString(tokens[idx].content, {
+        displayMode: true,
+        throwOnError: false,
+        output: 'html',
+      });
+      return `<div class="jz-math-block">${html}</div>\n`;
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '公式渲染失败';
+      return `<div class="jz-math-block jz-math-error" title="${escape(msg)}">${escape(tokens[idx].content)}</div>\n`;
+    }
+  };
+
+  mdInst.renderer.rules.math_inline = (tokens, idx) => {
+    try {
+      return katex.renderToString(tokens[idx].content, {
+        displayMode: false,
+        throwOnError: false,
+        output: 'html',
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : '公式渲染失败';
+      return `<span class="jz-math-inline jz-math-error" title="${escape(msg)}">${escape(tokens[idx].content)}</span>`;
+    }
+  };
+}
 
 /** Minimal markdown-it instance for GFM pipe-table → HTML conversion in preprocess. */
 const tableMd = new MarkdownIt({ html: true, linkify: false, breaks: false });
@@ -143,6 +295,10 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'text', 'tspan', 'defs', 'marker', 'foreignObject', 'use', 'symbol', 'clipPath',
     'linearGradient', 'radialGradient', 'stop', 'mask', 'pattern', 'image', 'desc',
     'title', 'style',
+    // KaTeX uses span/svg + class for HTML-only output; allow ``annotation``
+    // so users who embed MathML round-trip cleanly too.
+    'annotation', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac',
+    'msqrt', 'mtext', 'math',
   ],
   ALLOWED_ATTR: [
     'href', 'target', 'rel', 'name',
@@ -239,50 +395,42 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
   const collapsedAttr = meta.collapsed ? ' data-collapsed="true"' : '';
   const wrapClass = prefs.wrap ? ' is-wrapped' : '';
   const lineNumClass = prefs.lineNumbers ? '' : ' jz-code-no-line-numbers';
-  const diagramActions = (sourceAction: string) =>
-    // Order matters in the toolbar: 源码 / 下载 / 全屏 — reads left-to-right
-    // mirroring the user's most-likely actions while inspecting a diagram.
-    `<button type="button" class="jz-code-btn jz-code-btn-text" data-action="${sourceAction}" title="查看源代码" aria-label="查看源代码">源码</button>` +
-    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="diagram-download" title="下载 SVG" aria-label="下载 SVG">⤓</button>` +
-    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="diagram-fullscreen" title="全屏查看 (Esc 退出)" aria-label="全屏查看">⤢</button>`;
 
-  // Mermaid intentionally takes a different path: the raw fence body is
-  // emitted as a base64 attribute so the runtime enhancer can render it as
-  // SVG without any markdown-it escaping shenanigans corrupting the source.
-  if (canon === 'mermaid') {
+  // Mermaid / PlantUML render Yuque-style: just the diagram in a clean frame,
+  // no always-on toolbar. A floating action row in the top-right fades in on
+  // hover/focus and exposes the four useful operations (source toggle, copy
+  // source, download SVG, fullscreen). Single-click on the canvas also flips
+  // to source mode — see ``wireCanvasClickToSource`` in CodeBlockEnhancer.
+  //
+  // Backward compat: the wrapper keeps ``jz-code-block`` + ``jz-code-mermaid``
+  // /``jz-code-plantuml`` classes so existing tests, CSS hooks and the
+  // CodeBlockEnhancer hydration logic all keep working. The new
+  // ``jz-diagram-block`` modifier opts into the Yuque-style chrome (which
+  // drops the heavy ``.jz-code-toolbar`` in favour of the floating row).
+  if (canon === 'mermaid' || canon === 'plantuml') {
+    const isMermaid = canon === 'mermaid';
     const b64 = base64UTF8(code.replace(/\n+$/, ''));
+    const langClass = isMermaid ? 'jz-code-mermaid' : 'jz-code-plantuml';
+    const sourceAction = isMermaid ? 'mermaid-source' : 'plantuml-source';
+    const loadingText = isMermaid
+      ? '正在渲染图表…'
+      : '正在向 PlantUML 服务请求…';
     return (
-      `<div class="jz-code-block jz-code-mermaid${collapsedClass}${wrapClass}${lineNumClass}" data-lang="mermaid" data-source="${b64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
-      renderYuqueToolbar({
-        label,
-        titleText,
-        themeName,
-        extraActions: diagramActions('mermaid-source'),
-      }) +
-      `<div class="jz-mermaid-canvas" aria-live="polite">` +
-      `<div class="jz-mermaid-loading"><span class="jz-mermaid-spinner" aria-hidden="true"></span>正在渲染图表…</div>` +
+      `<div class="jz-code-block jz-diagram-block ${langClass}${collapsedClass}" ` +
+      `data-lang="${canon}" data-source="${b64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
+      `<div class="jz-diagram-actions" role="toolbar" aria-label="图表操作" contenteditable="false">` +
+      `<button type="button" class="jz-diagram-action" data-action="${sourceAction}" title="查看源代码" aria-label="查看源代码">` +
+      `<span class="jz-diagram-action-icon" aria-hidden="true">&lt;/&gt;</span>` +
+      `<span class="jz-diagram-action-label">源码</span>` +
+      `</button>` +
+      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="copy" title="复制源代码" aria-label="复制源代码">⧉</button>` +
+      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="diagram-download" title="下载 SVG" aria-label="下载 SVG">⤓</button>` +
+      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="diagram-fullscreen" title="全屏查看 (Esc 退出)" aria-label="全屏查看">⤢</button>` +
       `</div>` +
-      `<pre class="jz-code-pre hljs jz-mermaid-source" hidden><code class="hljs language-mermaid">${escape(code)}</code></pre>` +
-      `</div>`
-    );
-  }
-
-  // PlantUML 走和 mermaid 类似的"分图渲染"路径，但渲染目标是远端 svg URL，
-  // 所以同样把源码 base64 出来留给运行时增强器处理。
-  if (canon === 'plantuml') {
-    const b64 = base64UTF8(code.replace(/\n+$/, ''));
-    return (
-      `<div class="jz-code-block jz-code-plantuml${collapsedClass}${wrapClass}${lineNumClass}" data-lang="plantuml" data-source="${b64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
-      renderYuqueToolbar({
-        label,
-        titleText,
-        themeName,
-        extraActions: diagramActions('plantuml-source'),
-      }) +
       `<div class="jz-mermaid-canvas" aria-live="polite">` +
-      `<div class="jz-mermaid-loading"><span class="jz-mermaid-spinner" aria-hidden="true"></span>正在向 PlantUML 服务请求…</div>` +
+      `<div class="jz-mermaid-loading"><span class="jz-mermaid-spinner" aria-hidden="true"></span>${loadingText}</div>` +
       `</div>` +
-      `<pre class="jz-code-pre hljs jz-mermaid-source" hidden><code class="hljs language-plantuml">${escape(code)}</code></pre>` +
+      `<pre class="jz-code-pre hljs jz-mermaid-source" hidden><code class="hljs language-${canon}">${escape(code)}</code></pre>` +
       `</div>`
     );
   }

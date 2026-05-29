@@ -1,4 +1,4 @@
-import { Node, mergeAttributes } from '@tiptap/core';
+import { Node, mergeAttributes, nodeInputRule, nodePasteRule } from '@tiptap/core';
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Input, Modal } from 'antd';
@@ -82,9 +82,89 @@ export const MathBlock = Node.create({
           state.write(`$$${node.attrs.latex || ''}$$`);
           state.closeBlock(node);
         },
-        parse: {},
+        // Teach tiptap-markdown's internal markdown-it instance how to tokenize
+        // ``$$…$$`` so pasting raw LaTeX (which the tiptap-markdown extension
+        // routes through markdown parsing via ``transformPastedText: true``)
+        // produces a MathBlock node instead of literal dollar-sign text.
+        parse: {
+          setup(mdInst: unknown) {
+            const m = mdInst as {
+              block: { ruler: { before: (a: string, n: string, fn: unknown) => void } };
+              renderer: { rules: Record<string, (tokens: { content: string }[], i: number) => string> };
+            };
+            m.block.ruler.before('fence', 'math_block', (state: {
+              bMarks: number[]; tShift: number[]; eMarks: number[]; src: string; line: number;
+              push: (n: string, t: string, x: number) => { content: string; markup: string; block: boolean; map: [number, number] };
+            }, startLine: number, endLine: number, silent: boolean) => {
+              const start = state.bMarks[startLine] + state.tShift[startLine];
+              const max = state.eMarks[startLine];
+              if (start + 2 > max) return false;
+              if (state.src.slice(start, start + 2) !== '$$') return false;
+              const rest = state.src.slice(start + 2, max).trimEnd();
+              let content: string;
+              let lastLine = startLine;
+              if (rest.endsWith('$$')) {
+                content = rest.slice(0, -2);
+              } else {
+                const parts = [rest];
+                let l = startLine + 1;
+                let closed = false;
+                while (l < endLine) {
+                  const ls = state.bMarks[l] + state.tShift[l];
+                  const lm = state.eMarks[l];
+                  const lt = state.src.slice(ls, lm);
+                  if (lt.trimEnd().endsWith('$$')) {
+                    parts.push(lt.replace(/\$\$\s*$/, ''));
+                    lastLine = l;
+                    closed = true;
+                    break;
+                  }
+                  parts.push(lt);
+                  l++;
+                }
+                if (!closed) return false;
+                content = parts.join('\n');
+              }
+              if (silent) return true;
+              const tok = state.push('math_block', 'div', 0);
+              tok.content = content.trim();
+              tok.markup = '$$';
+              tok.block = true;
+              tok.map = [startLine, lastLine + 1];
+              state.line = lastLine + 1;
+              return true;
+            });
+            // Tiptap-markdown will use the rule above to identify the token,
+            // then look up a node-type by ``token.tag``. We emit ``div`` and
+            // map it via tiptap-markdown's node mapping (handled by our schema).
+            m.renderer.rules.math_block = (tokens, idx) =>
+              `<div data-jz-math-block data-latex="${(tokens[idx].content || '').replace(/"/g, '&quot;')}"></div>`;
+          },
+        },
       },
     };
+  },
+
+  /** ``$$…$$`` typed at the start of a paragraph → MathBlock. */
+  addInputRules() {
+    return [
+      nodeInputRule({
+        find: /\$\$([^$\n]+?)\$\$$/,
+        type: this.type,
+        getAttributes: (match) => ({ latex: match[1] }),
+      }),
+    ];
+  },
+
+  /** Pasting plaintext containing ``$$…$$`` → MathBlock(s). */
+  addPasteRules() {
+    return [
+      nodePasteRule({
+        find: /\$\$([\s\S]+?)\$\$/g,
+        type: this.type,
+        getAttributes: (match) => ({ latex: match[1].trim() }),
+      }),
+    ];
   },
 });
 
@@ -138,9 +218,62 @@ export const MathInline = Node.create({
         ) {
           state.write(`$${node.attrs.latex || ''}$`);
         },
-        parse: {},
+        parse: {
+          setup(mdInst: unknown) {
+            const m = mdInst as {
+              inline: { ruler: { after: (a: string, n: string, fn: unknown) => void } };
+              renderer: { rules: Record<string, (tokens: { content: string }[], i: number) => string> };
+            };
+            m.inline.ruler.after('escape', 'math_inline', (state: {
+              src: string; pos: number; posMax: number;
+              push: (n: string, t: string, x: number) => { content: string; markup: string };
+            }, silent: boolean) => {
+              const pos = state.pos;
+              if (state.src[pos] !== '$') return false;
+              if (state.src[pos + 1] === '$') return false;
+              const prev = pos > 0 ? state.src[pos - 1] : '';
+              if (prev && /\d/.test(prev)) return false;
+              const afterOpen = state.src[pos + 1];
+              if (!afterOpen || /\s/.test(afterOpen)) return false;
+              let end = pos + 1;
+              const max = state.posMax;
+              while (end < max) {
+                const ch = state.src[end];
+                if (ch === '\\' && end + 1 < max) { end += 2; continue; }
+                if (ch === '\n') return false;
+                if (ch === '$') {
+                  if (/\s/.test(state.src[end - 1])) { end++; continue; }
+                  if (state.src[end + 1] === '$') return false;
+                  if (silent) return true;
+                  const tok = state.push('math_inline', 'span', 0);
+                  tok.content = state.src.slice(pos + 1, end);
+                  tok.markup = '$';
+                  state.pos = end + 1;
+                  return true;
+                }
+                end++;
+              }
+              return false;
+            });
+            m.renderer.rules.math_inline = (tokens, idx) =>
+              `<span data-jz-math-inline data-latex="${(tokens[idx].content || '').replace(/"/g, '&quot;')}"></span>`;
+          },
+        },
       },
     };
+  },
+
+  /** Pasting plaintext containing ``$…$`` → inline MathInline node(s). */
+  addPasteRules() {
+    return [
+      nodePasteRule({
+        // Avoid eating $$…$$ here (block handler takes those) — the (?!\$)
+        // lookahead skips dollar-doubles.
+        find: /(?<![\d\\$])\$(?!\$)([^\s$][^$\n]*?[^\s$])\$(?![\d$])/g,
+        type: this.type,
+        getAttributes: (match) => ({ latex: match[1] }),
+      }),
+    ];
   },
 });
 

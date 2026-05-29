@@ -48,6 +48,32 @@ interface Props {
  *  readable even if the bootstrap was blocked by a page-level CSP. */
 const FALLBACK_DELAY_MS = 3000;
 
+/** Detect whether the iframe URL is cross-origin to the parent. When true we
+ *  can't read scrollHeight / headings (same-origin policy), so the bootstrap
+ *  path doesn't apply — we render at a viewport-relative default and let the
+ *  iframe scroll internally. This is **not** a security-policy block; it's
+ *  the documented cross-origin design. Surfacing the old "CSP blocked"
+ *  warning here was misleading.
+ */
+function isCrossOrigin(url: string | undefined): boolean {
+  if (!url) return false;
+  if (typeof window === 'undefined') return false;
+  try {
+    const u = new URL(url, window.location.href);
+    return u.origin !== window.location.origin;
+  } catch {
+    return false;
+  }
+}
+
+/** A pleasant default size for cross-origin iframes where we can't introspect
+ *  the document. Keeps the embed taller than a typical viewport so users
+ *  rarely need to scroll inside. */
+function viewportDefaultHeight(): number {
+  if (typeof window === 'undefined') return 1200;
+  return Math.max(720, Math.min(window.innerHeight - 120, 1400));
+}
+
 /** Id of the style node we inject into embedded HTML documents to break the
  *  iframe vh feedback loop: authored pages often set ``.hero { min-height:
  *  50vh }`` while we size the iframe to ``scrollHeight``, so vh grows with
@@ -153,6 +179,9 @@ function HtmlPostReader({
   const [cspFallback, setCspFallback] = useState(false);
 
   const useDirectSrc = !!attachmentUrl;
+  /** Cross-origin attachment? Same-origin policy prevents reading scrollHeight,
+   *  so don't even attempt — and don't arm the fallback warning. */
+  const crossOrigin = useDirectSrc && isCrossOrigin(attachmentUrl);
   const srcDoc = useMemo(
     () => (useDirectSrc ? '' : injectHtmlReaderBootstrap(html)),
     [html, useDirectSrc],
@@ -206,9 +235,19 @@ function HtmlPostReader({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useDirectSrc]);
 
-  // Reset state when the source changes (iframe will reload). If meta never
-  // arrives within FALLBACK_DELAY_MS, drop in a sensible default frame size
-  // — covers both same-origin race conditions and CSP blocks.
+  // Reset state when the source changes (iframe will reload). Two scenarios
+  // here:
+  //
+  //   1. Same-origin (srcDoc, or src on the parent's origin): we expect the
+  //      bootstrap / load handler to surface meta. If it doesn't within
+  //      FALLBACK_DELAY_MS, the **likely** cause is a page-level CSP block on
+  //      the script — surface a brief explainer + sensible default size.
+  //
+  //   2. Cross-origin attachment URL (the common case — backend on :8002,
+  //      page on :3001): same-origin policy makes scrollHeight unreadable
+  //      *by design*. No bootstrap can run inside a cross-origin /media file.
+  //      Set a viewport-relative size immediately; never show the warning,
+  //      because nothing went wrong.
   useEffect(() => {
     hasMetaRef.current = false;
     lastHeightRef.current = 0;
@@ -216,23 +255,41 @@ function HtmlPostReader({
     setHasMeta(false);
     setCspFallback(false);
     setHeight(null);
+
+    if (crossOrigin) {
+      // Skip the timer entirely — cross-origin embeds get a stable default
+      // and scroll internally if their content exceeds it.
+      setHeight(viewportDefaultHeight());
+      return;
+    }
+
     const timer = window.setTimeout(() => {
       if (!hasMetaRef.current) {
-        const fallback = Math.min(window.innerHeight - 160, 1400);
-        setHeight(Math.max(720, fallback));
+        setHeight(viewportDefaultHeight());
         setCspFallback(true);
       }
     }, FALLBACK_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [srcDoc, attachmentUrl]);
+  }, [srcDoc, attachmentUrl, crossOrigin]);
 
   // ── src mode: read meta directly off the same-origin iframe document on
   //              load, then re-read whenever the document mutates / resizes.
   const handleSameOriginLoad = () => {
     if (!useDirectSrc) return;
     const iframe = internalRef.current;
-    const doc = iframe?.contentDocument;
-    if (!doc) return; // cross-origin (shouldn't happen for /media on same host)
+    // Cross-origin: ``iframe.contentDocument`` throws or returns null. Don't
+    // even try — the height already came from ``viewportDefaultHeight``.
+    if (crossOrigin) return;
+    let doc: Document | null = null;
+    try {
+      doc = iframe?.contentDocument ?? null;
+    } catch {
+      // Defensive: some browsers raise SecurityError synchronously. Treat as
+      // cross-origin (the upfront detection should have caught this, but
+      // belt-and-suspenders never hurt).
+      return;
+    }
+    if (!doc) return;
 
     // Break the vh feedback loop before the first height read.
     injectVhOverride(doc);
@@ -294,8 +351,17 @@ function HtmlPostReader({
     borderRadius: hasMeta ? 0 : 12,
     background: '#fff',
     display: 'block',
-    overflow: 'hidden',
+    // Cross-origin: keep ``visible`` so the iframe's own scrollbar appears.
+    // Same-origin meta-driven: ``hidden`` because the parent page scroll
+    // flows past the embedded content.
+    overflow: crossOrigin ? 'visible' : 'hidden',
   };
+
+  // For cross-origin attachments we let the iframe scroll internally because
+  // we can't grow it to match content height. Same-origin embeds keep the
+  // parent-page scroll flow (``scrolling="no"``) — meta-driven sizing keeps
+  // the embed flush with surrounding prose.
+  const innerScrolling = crossOrigin ? 'auto' : 'no';
 
   return (
     <>
@@ -303,7 +369,7 @@ function HtmlPostReader({
         <Alert
           type="warning"
           showIcon
-          message="页面安全策略阻止了高度检测，当前为固定高度预览；正文较长时可在框内滚动查看。"
+          message="页面脚本被阻止，无法自动测量正文高度；已切换为固定窗口预览，可在框内滚动查看。"
           style={{ marginBottom: 8 }}
         />
       )}
@@ -313,7 +379,7 @@ function HtmlPostReader({
           title={title || 'HTML 文档'}
           src={attachmentUrl}
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-          scrolling="no"
+          scrolling={innerScrolling}
           onLoad={handleSameOriginLoad}
           style={iframeStyle}
         />

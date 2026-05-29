@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 from django.core.exceptions import ObjectDoesNotExist
@@ -15,6 +16,8 @@ from .models import ExportTask
 from .scope import collect_for_scope
 from .serializers import ExportTaskSerializer
 from .tasks import run_export
+
+log = logging.getLogger(__name__)
 
 
 class ExportTaskViewSet(
@@ -77,9 +80,21 @@ def download(request, pk: int):
     task = get_object_or_404(ExportTask, pk=pk)
     if not request.user.is_authenticated:
         raise Http404
-    # Superusers can download any export; owners can download their own.
-    if not request.user.is_superuser and task.owner_id != request.user.id:
-        raise Http404
+    # Owners can download their own. Superusers can cross-tenant download
+    # (matches the documented "is_superuser bypasses scoping" design), but
+    # log the access so the audit trail is searchable if the box ever moves
+    # to multi-tenant mode. Other users get a 404 (not 403 — keeps the IDOR
+    # surface flat: an enumerator can't tell "exists but not yours" from "no
+    # such id").
+    if task.owner_id != request.user.id:
+        if not request.user.is_superuser:
+            raise Http404
+        log.info(
+            "export.download cross_tenant: user=%s task=%s owner=%s",
+            request.user.username,
+            pk,
+            task.owner_id,
+        )
     if task.status != ExportTask.STATUS_DONE or not task.file_path:
         raise Http404
     path = Path(task.file_path)

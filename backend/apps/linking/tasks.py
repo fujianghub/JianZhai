@@ -46,8 +46,15 @@ def sync_document_links(document_id: int) -> None:
     )
 
     with transaction.atomic():
-        # Serialize concurrent syncs for the same source document.
-        Document.all_objects.select_for_update().filter(pk=document_id).first()
+        # Serialize concurrent syncs for the same source document. The lock is
+        # held for the duration of the `with` block — assigning the result to a
+        # local prevents Django from issuing a second query that drops it (and,
+        # more subtly, makes the intent unambiguous to readers). If the doc was
+        # hard-deleted between fetch and lock, treat it as a no-op.
+        locked = Document.all_objects.select_for_update().filter(pk=document_id).first()
+        if locked is None:
+            DocumentLink.objects.filter(source_id=document_id).delete()
+            return
         DocumentLink.objects.filter(source=doc).delete()
         DocumentLink.objects.bulk_create(
             [

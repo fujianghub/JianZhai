@@ -30,14 +30,22 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
 
       if (block.classList.contains('jz-code-mermaid')) {
         void hydrateMermaid(block);
+        cleanups.push(wireCanvasClickToSource(block));
       } else if (block.classList.contains('jz-code-plantuml')) {
         void hydratePlantuml(block);
+        cleanups.push(wireCanvasClickToSource(block));
       }
 
       cleanups.push(attachCodeCopyHandler(pre, () => getCodePlainTextFromBlock(block)));
 
       const handlers: Array<[HTMLButtonElement, (ev: Event) => void]> = [];
-      for (const btn of block.querySelectorAll<HTMLButtonElement>('.jz-code-btn')) {
+      // Pick up both the legacy ``.jz-code-btn`` toolbar buttons and the new
+      // Yuque-style ``.jz-diagram-action`` floating action row. Same data-
+      // action contract on either; we don't care which surface produced it.
+      const buttons = block.querySelectorAll<HTMLButtonElement>(
+        '.jz-code-btn, .jz-diagram-action',
+      );
+      for (const btn of buttons) {
         const action = btn.dataset.action;
         if (action === 'copy') {
           handlers.push([btn, () => copyBlockToClipboard(block, btn)]);
@@ -50,11 +58,32 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
             },
           ]);
         } else if (action === 'mermaid-source' || action === 'plantuml-source') {
-          handlers.push([btn, () => toggleMermaidSource(block, btn)]);
+          // Stop propagation so clicks on the source-toggle button don't also
+          // hit the canvas's "click to view source" handler (which would
+          // otherwise toggle the state twice and feel broken).
+          handlers.push([
+            btn,
+            (ev) => {
+              ev.stopPropagation();
+              toggleMermaidSource(block, btn);
+            },
+          ]);
         } else if (action === 'diagram-fullscreen') {
-          handlers.push([btn, () => openDiagramFullscreen(block)]);
+          handlers.push([
+            btn,
+            (ev) => {
+              ev.stopPropagation();
+              openDiagramFullscreen(block);
+            },
+          ]);
         } else if (action === 'diagram-download') {
-          handlers.push([btn, () => downloadDiagramSvg(block, btn)]);
+          handlers.push([
+            btn,
+            (ev) => {
+              ev.stopPropagation();
+              downloadDiagramSvg(block, btn);
+            },
+          ]);
         }
       }
 
@@ -126,15 +155,72 @@ async function hydratePlantuml(block: HTMLElement) {
   }
 }
 
-function toggleMermaidSource(block: HTMLElement, btn: HTMLButtonElement) {
+function toggleMermaidSource(block: HTMLElement, _btn: HTMLButtonElement) {
+  // Delegate to the shared state applier; it patches every visible source-
+  // toggle button in the block (legacy code-toolbar + new diagram-actions)
+  // so all surfaces stay in sync regardless of which one was clicked.
   const showingSource = !block.classList.contains('jz-mermaid-show-source');
+  applyDiagramSourceState(block, showingSource);
+}
+
+/** Shared low-level toggler used by both the toolbar button and the
+ * "click on canvas to inspect source" affordance on the blog reader. */
+function applyDiagramSourceState(block: HTMLElement, showingSource: boolean): void {
   block.classList.toggle('jz-mermaid-show-source', showingSource);
   const pre = block.querySelector<HTMLElement>('.jz-mermaid-source');
   const canvas = block.querySelector<HTMLElement>('.jz-mermaid-canvas');
   if (pre) pre.hidden = !showingSource;
   if (canvas) canvas.style.display = showingSource ? 'none' : '';
-  btn.textContent = showingSource ? '图表' : '源码';
-  btn.title = showingSource ? '返回图表预览' : '查看 Mermaid 源码';
+  // Re-label every source-toggle button in this block (legacy ``.jz-code-btn``
+  // + new ``.jz-diagram-action``). When the button has a ``.jz-diagram-
+  // action-label`` child we surgically replace just that text; otherwise
+  // (legacy single-text-node button) we fall back to ``textContent``.
+  const toggles = block.querySelectorAll<HTMLButtonElement>(
+    '[data-action="mermaid-source"], [data-action="plantuml-source"]'
+  );
+  for (const t of toggles) {
+    const labelEl = t.querySelector<HTMLElement>('.jz-diagram-action-label');
+    if (labelEl) {
+      labelEl.textContent = showingSource ? '图表' : '源码';
+    } else {
+      t.textContent = showingSource ? '图表' : '源码';
+    }
+    t.title = showingSource ? '返回图表预览' : '查看源代码';
+    t.setAttribute('aria-label', t.title);
+  }
+}
+
+/** Make the rendered diagram clickable: single-click flips to source, single-
+ * click again returns to the picture. Keyboard accessible via Enter / Space.
+ * Used in the blog/public reader where there's no inline toolbar. */
+function wireCanvasClickToSource(block: HTMLElement): () => void {
+  const canvas = block.querySelector<HTMLElement>('.jz-mermaid-canvas');
+  if (!canvas) return () => {};
+  canvas.classList.add('is-clickable');
+  canvas.setAttribute('role', 'button');
+  canvas.setAttribute('tabindex', '0');
+  canvas.setAttribute('title', '点击查看源码');
+  canvas.setAttribute('aria-label', '点击查看源码');
+  const onClick = (ev: MouseEvent) => {
+    // Don't fire when the user clicks an SVG anchor / link inside the diagram.
+    const t = ev.target as HTMLElement | null;
+    if (t && (t.closest('a') || t.tagName === 'A')) return;
+    const showingSource = !block.classList.contains('jz-mermaid-show-source');
+    applyDiagramSourceState(block, showingSource);
+  };
+  const onKey = (ev: KeyboardEvent) => {
+    if (ev.key === 'Enter' || ev.key === ' ') {
+      ev.preventDefault();
+      const showingSource = !block.classList.contains('jz-mermaid-show-source');
+      applyDiagramSourceState(block, showingSource);
+    }
+  };
+  canvas.addEventListener('click', onClick);
+  canvas.addEventListener('keydown', onKey);
+  return () => {
+    canvas.removeEventListener('click', onClick);
+    canvas.removeEventListener('keydown', onKey);
+  };
 }
 
 function copyBlockToClipboard(block: HTMLElement, btn: HTMLButtonElement) {

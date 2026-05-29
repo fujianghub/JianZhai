@@ -102,14 +102,46 @@ def _highlight_code(code: str, lang: str) -> str:
     return "".join(parts)
 
 
+# Per-render code-block theme. Default keeps backwards compat with existing
+# exports; render_markdown() accepts an override so future Admin UI / export
+# options can flow user preference through cleanly.
+DEFAULT_CODE_THEME = "one-dark-pro"
+_CODE_THEME = {"value": DEFAULT_CODE_THEME}
+
+# Mermaid / PlantUML are intentionally rendered as **annotated** code blocks
+# in offline exports — the reader has no JS to run mermaid.run(), so the best
+# we can offer is a clearly-labelled "diagram source" panel that copy-pastes
+# back into the editor cleanly. (Documented in CLAUDE.md "Mermaid/PlantUML
+# 在离线导出中为带语言标签的代码块，无运行时渲染.")
+_DIAGRAM_LANGS = {"mermaid", "plantuml", "puml"}
+
+
 def _render_fence(self, tokens, idx, options, env):
     token = tokens[idx]
     info = (token.info or "").strip()
     lang = info.split()[0] if info else ""
     label = lang or "text"
+    theme = _CODE_THEME["value"]
+    if lang.lower() in _DIAGRAM_LANGS:
+        # Distinct chrome — readers grok "this is a diagram source, not
+        # ordinary code" without needing JS-driven rendering. The body keeps
+        # plain text + a hint banner so users can paste it into a live
+        # JianZhai instance to re-render.
+        body_text = token.content.rstrip("\n")
+        return (
+            f'<div class="jz-code-block jz-code-diagram jz-code-{_escape(lang)}" '
+            f'data-code-theme="{_escape(theme)}" data-lang="{_escape(lang)}">'
+            f'<div class="jz-code-toolbar">'
+            f'<span class="jz-code-lang">{_escape(label)}</span>'
+            f'<span class="jz-code-diagram-hint">图表源码（离线导出不渲染图）</span>'
+            f'</div>'
+            f'<pre class="jz-code-pre"><code class="language-{_escape(lang)} hljs">'
+            f"{_escape(body_text)}</code></pre>"
+            f"</div>\n"
+        )
     body = _highlight_code(token.content, lang)
     return (
-        f'<div class="jz-code-block" data-code-theme="one-dark-pro" data-lang="{_escape(lang)}">'
+        f'<div class="jz-code-block" data-code-theme="{_escape(theme)}" data-lang="{_escape(lang)}">'
         f'<div class="jz-code-toolbar"><span class="jz-code-lang">{_escape(label)}</span></div>'
         f'<pre class="jz-code-pre"><code class="language-{_escape(lang)} hljs">{body}</code></pre>'
         f"</div>\n"
@@ -143,7 +175,20 @@ def _rewrite_doc_links(html: str) -> str:
     return _DOC_LINK_HREF.sub(r'href="#doc-\1"', html)
 
 
-def render_markdown(text: str) -> str:
-    """Preprocess + render Markdown to an HTML fragment."""
+def render_markdown(text: str, *, code_theme: str | None = None) -> str:
+    """Preprocess + render Markdown to an HTML fragment.
+
+    ``code_theme`` overrides the code-block ``data-code-theme`` attribute so
+    callers (interactive HTML, static-site export, …) can wire it through to
+    a user preference instead of the hardcoded one-dark-pro default. Restored
+    to default once the renderer returns so concurrent calls don't poison
+    each other (the renderer instance is module-level for caching reasons).
+    """
     prepared = preprocess_markdown(text)
-    return _rewrite_doc_links(_RENDERER.render(prepared))
+    previous = _CODE_THEME["value"]
+    if code_theme:
+        _CODE_THEME["value"] = code_theme
+    try:
+        return _rewrite_doc_links(_RENDERER.render(prepared))
+    finally:
+        _CODE_THEME["value"] = previous
