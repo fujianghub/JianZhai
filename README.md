@@ -1,6 +1,8 @@
 # 简斋 / JianZhai
 
-个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.1**）。
+[![tests](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml)
+
+个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.2**）。
 
 一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。支持多账号，普通用户按 `owner` 隔离数据；超级用户可跨租户管理。
 
