@@ -606,6 +606,67 @@
   position: relative;
 }
 
+/* v0.9.7 — 附图缩略 (Vision 输入) */
+.jz-ai-panel-images {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--jz-border);
+}
+.jz-ai-panel-images img {
+  max-width: 60px;
+  max-height: 60px;
+  border-radius: 6px;
+  border: 1px solid var(--jz-border);
+  object-fit: cover;
+}
+
+/* v0.9.7 — 错误内联 Alert */
+.jz-ai-panel-error {
+  border-radius: 8px;
+}
+.jz-ai-panel-error .ant-alert-description {
+  font-size: 12.5px;
+  line-height: 1.7;
+}
+
+/* v0.9.7 — Diff preview modal */
+.jz-ai-diff-summary {
+  padding: 6px 12px;
+  margin-bottom: 12px;
+  background: color-mix(in srgb, var(--jz-text) 3%, transparent);
+  border-radius: 6px;
+}
+.jz-ai-diff-body {
+  max-height: 520px;
+  overflow: auto;
+  padding: 16px 18px;
+  background: var(--jz-surface, #fafafa);
+  border: 1px solid var(--jz-border);
+  border-radius: 8px;
+  font-family: 'Noto Serif SC', Songti SC, serif;
+  font-size: 14px;
+  line-height: 1.85;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.jz-ai-diff-kept { color: var(--jz-text); }
+.jz-ai-diff-added {
+  background: color-mix(in srgb, #10b981 18%, transparent);
+  color: #047857;
+  text-decoration: none;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+.jz-ai-diff-removed {
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+  color: #b91c1c;
+  text-decoration: line-through;
+  border-radius: 2px;
+  padding: 1px 2px;
+}
+
 .jz-ai-panel-empty {
   text-align: center;
   padding: 32px 16px;

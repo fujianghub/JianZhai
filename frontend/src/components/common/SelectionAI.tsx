@@ -99,8 +99,8 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
           model,
           signal: ctrl.signal,
           onDelta: (d) => setAnswer((prev) => prev + d),
-          onError: (msg) => {
-            setAnswer((prev) => prev + `\n[错误] ${msg}`);
+          onError: (err) => {
+            setAnswer((prev) => prev + `\n[错误] ${err.detail}`);
             setStreaming(false);
           },
           onDone: () => setStreaming(false),

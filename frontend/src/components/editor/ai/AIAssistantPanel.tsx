@@ -1,5 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef } from 'react';
-import { Button, Spin } from 'antd';
+import { Alert, Button, Spin, Tag, Tooltip } from 'antd';
+import { ReloadOutlined } from '@ant-design/icons';
+import type { AIErrorPayload } from '@/api/ai';
 import { JzAiIcon } from '@/components/common/JzIcon';
 import { renderMarkdown } from '@/utils/markdown';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
@@ -10,15 +12,27 @@ export interface AIAssistantPanelProps {
   modelLabel?: string;
   streaming: boolean;
   text: string;
+  /** v0.9.7: when an error occurs, render an inline Alert with classified
+   *  message + retry button. Replaces the raw "AI 生成失败" toast. */
+  error?: AIErrorPayload | null;
+  errorTitle?: string;
+  errorHint?: string;
   selectionPreview?: string;
+  /** v0.9.7: thumbnails of attached images (data URLs). */
+  images?: string[];
   canReplace?: boolean;
   embedded?: boolean;
   onAbort: () => void;
   onClose: () => void;
+  /** v0.9.7: re-run the most recent call. Called on the ↻ button. */
+  onRegenerate?: () => void;
   onCopy?: () => void;
   onInsertBefore?: () => void;
   onInsertAfter?: () => void;
   onReplace?: () => void;
+  /** Display a tooltip showing token / cost estimate when the user hovers
+   *  the primary action. */
+  estimate?: { tokens: number; usd: number } | null;
 }
 
 export default function AIAssistantPanel({
@@ -27,44 +41,42 @@ export default function AIAssistantPanel({
   modelLabel,
   streaming,
   text,
+  error,
+  errorTitle,
+  errorHint,
   selectionPreview,
+  images,
   canReplace = true,
   embedded = false,
   onAbort,
   onClose,
+  onRegenerate,
   onCopy,
   onInsertBefore,
   onInsertAfter,
   onReplace,
+  estimate,
 }: AIAssistantPanelProps) {
-  // ─── 流式 Markdown 渲染 ───────────────────────────────────────────────
-  //
-  // AI 后端 prompt 明确要求输出 Markdown（见 apps/ai/prompts.py），但此前
-  // panel 一直用 <pre>{text}</pre> 显示纯文本，标题 / 列表 / 代码块都不会
-  // 渲染为对应 HTML。这一版改用项目共用的 ``renderMarkdown()``（与博客阅
-  // 读端、编辑器实时预览同一管线，自带 markdown-it + KaTeX + DOMPurify
-  // 净化 + 代码高亮 + callout 容器）。
-  //
-  // 流式期间每来一个 delta 都全量重渲染 markdown-it 太贵（30+ delta/s ×
-  // 5-50ms 解析 = 主线程卡顿）。用 React 18 的 useDeferredValue 把"渲染
-  // 用的副本"标记为可延迟，浏览器空闲时才追赶最新 text，打字感仍流畅。
-  // 流停后（streaming 切回 false）useDeferredValue 立刻吐出终局值。
-  //
-  // 代码块复制按钮 / Mermaid 图渲染挂载在 ``CodeBlockEnhancer``，只在流
-  // 停后才挂——流式中半截 markdown 可能引出残缺代码栅栏，hydrate Mermaid
-  // 会报错；onDone 后挂载就能正常渲染。
   const deferredText = useDeferredValue(text);
   const renderedHtml = useMemo(() => renderMarkdown(deferredText), [deferredText]);
   const bodyRef = useRef<HTMLDivElement | null>(null);
-  // 流式时让 panel 自动滚到底，体验跟 ChatGPT 一致。
+
   useEffect(() => {
     if (!streaming) return;
     const el = bodyRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    if (el) el.scrollTop = el.scrollHeight;
   }, [streaming, deferredText]);
 
   if (!open) return null;
+
+  const errorAlertType = (() => {
+    switch (error?.code) {
+      case 'ai_budget_exceeded': return 'warning' as const;
+      case 'ai_unavailable':
+      case 'ai_disabled': return 'info' as const;
+      default: return 'error' as const;
+    }
+  })();
 
   const body = (
     <div className={'jz-ai-panel' + (embedded ? ' jz-ai-panel--embedded' : '')}>
@@ -72,6 +84,11 @@ export default function AIAssistantPanel({
         <JzAiIcon size={18} style={{ color: '#6366f1', flexShrink: 0 }} />
         <span className="jz-ai-panel-title">{title}</span>
         {modelLabel && <span className="jz-ai-panel-chip">{modelLabel}</span>}
+        {estimate && (
+          <Tooltip title={`约 ${estimate.tokens} 输入 token · 约 $${estimate.usd.toFixed(4)} 输出上限`}>
+            <Tag style={{ marginLeft: 6, fontSize: 11 }}>≈ ${estimate.usd.toFixed(3)}</Tag>
+          </Tooltip>
+        )}
         <button type="button" className="jz-ai-panel-close" onClick={onClose} aria-label="关闭">
           ×
         </button>
@@ -82,14 +99,36 @@ export default function AIAssistantPanel({
           {selectionPreview}
         </div>
       )}
+      {images && images.length > 0 && (
+        <div className="jz-ai-panel-images" aria-label="附图">
+          {images.map((src, i) => (
+            <img key={i} src={src} alt={`图 ${i + 1}`} />
+          ))}
+        </div>
+      )}
       <div className="jz-ai-panel-body" ref={bodyRef}>
-        {streaming && !text && (
+        {streaming && !text && !error && (
           <div className="jz-ai-panel-empty">
             <Spin size="small" /> <span style={{ marginLeft: 8 }}>正在生成…</span>
           </div>
         )}
-        {!streaming && !text && !selectionPreview && (
+        {!streaming && !text && !error && !selectionPreview && (
           <div className="jz-ai-panel-empty">等待 AI 响应…</div>
+        )}
+        {error && (
+          <Alert
+            className="jz-ai-panel-error"
+            type={errorAlertType}
+            showIcon
+            message={errorTitle || 'AI 调用失败'}
+            description={errorHint || error.detail}
+            action={onRegenerate ? (
+              <Button size="small" onClick={onRegenerate} icon={<ReloadOutlined />}>
+                重试
+              </Button>
+            ) : null}
+            style={{ marginBottom: text ? 12 : 0 }}
+          />
         )}
         {text && (
           <div className="jz-ai-panel-markdown">
@@ -98,9 +137,6 @@ export default function AIAssistantPanel({
               dangerouslySetInnerHTML={{ __html: renderedHtml }}
             />
             {streaming && <span className="jz-ai-panel-caret" aria-hidden>▍</span>}
-            {/* 代码块复制 / Mermaid / PlantUML 等增强仅在流停后挂载，避免
-                流式过程中半截源码触发 hydrate 报错。绑定 key 到最终 text，
-                这样同一次响应只挂一次。 */}
             {!streaming && (
               <CodeBlockEnhancer
                 selector=".jz-ai-panel-body .jz-ai-md"
@@ -114,6 +150,18 @@ export default function AIAssistantPanel({
         <Button size="small" onClick={streaming ? onAbort : onClose}>
           {streaming ? '中止' : '关闭'}
         </Button>
+        {onRegenerate && (
+          <Tooltip title="用同样的输入再来一次（如对结果不满意）">
+            <Button
+              size="small"
+              icon={<ReloadOutlined />}
+              disabled={streaming || (!text.trim() && !error)}
+              onClick={onRegenerate}
+            >
+              再来一次
+            </Button>
+          </Tooltip>
+        )}
         {onCopy && (
           <Button size="small" disabled={streaming || !text.trim()} onClick={onCopy}>
             复制

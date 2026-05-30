@@ -13,6 +13,7 @@ import {
   Switch,
   Table,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -58,6 +59,8 @@ export interface UsageResponse {
     estimated_usd?: number;
   }>;
   by_operation: Array<{ operation: string; calls: number }>;
+  by_kb?: Array<{ id: number; name: string; calls: number; estimated_usd: number }>;
+  by_document?: Array<{ id: number; title: string; calls: number; estimated_usd: number }>;
   pricing?: Record<string, { input_per_mtok_usd: number; output_per_mtok_usd: number }>;
   recent: Array<{
     id: number;
@@ -70,6 +73,9 @@ export interface UsageResponse {
     duration_ms: number;
     succeeded: boolean;
     error: string;
+    fallback_from?: string;
+    document_id?: number | null;
+    knowledge_base_id?: number | null;
     created_at: string;
   }>;
 }
@@ -490,16 +496,83 @@ export function UsageSection({
         size="small"
         title={<span><ClockCircleOutlined /> Token 花费日历</span>}
         extra={
-          <Radio.Group value={days} onChange={(e) => onDaysChange(e.target.value)} size="small">
-            <Radio.Button value={7}>7 天</Radio.Button>
-            <Radio.Button value={30}>30 天</Radio.Button>
-            <Radio.Button value={90}>90 天</Radio.Button>
-            <Radio.Button value={365}>1 年</Radio.Button>
-          </Radio.Group>
+          <Space>
+            <Radio.Group value={days} onChange={(e) => onDaysChange(e.target.value)} size="small">
+              <Radio.Button value={7}>7 天</Radio.Button>
+              <Radio.Button value={30}>30 天</Radio.Button>
+              <Radio.Button value={90}>90 天</Radio.Button>
+              <Radio.Button value={365}>1 年</Radio.Button>
+            </Radio.Group>
+            <Tooltip title="按当前窗口导出原始用量数据（CSV）">
+              <a
+                href={`/api/v1/ai/usage/csv/?days=${days}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: 12 }}
+              >
+                ⤓ CSV
+              </a>
+            </Tooltip>
+          </Space>
         }
       >
         <UsageHeatmap days={heatmapData} windowDays={days} />
       </Card>
+
+      {(usage?.by_kb?.length || usage?.by_document?.length) ? (
+        <Row gutter={[16, 16]}>
+          <Col xs={24} md={12}>
+            <Card title="按知识库消耗排序" size="small">
+              <Table
+                size="small"
+                pagination={false}
+                rowKey="id"
+                dataSource={usage?.by_kb ?? []}
+                columns={[
+                  { title: '知识库', dataIndex: 'name' },
+                  { title: '调用', dataIndex: 'calls', align: 'right' as const, width: 80 },
+                  {
+                    title: 'USD',
+                    dataIndex: 'estimated_usd',
+                    align: 'right' as const,
+                    width: 100,
+                    render: (v: number) => (
+                      <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--jz-accent)' }}>
+                        ${v.toFixed(3)}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+          <Col xs={24} md={12}>
+            <Card title="按文档消耗排序 (Top 20)" size="small">
+              <Table
+                size="small"
+                pagination={false}
+                rowKey="id"
+                dataSource={usage?.by_document ?? []}
+                columns={[
+                  { title: '文档', dataIndex: 'title', ellipsis: true },
+                  { title: '调用', dataIndex: 'calls', align: 'right' as const, width: 80 },
+                  {
+                    title: 'USD',
+                    dataIndex: 'estimated_usd',
+                    align: 'right' as const,
+                    width: 100,
+                    render: (v: number) => (
+                      <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--jz-accent)' }}>
+                        ${v.toFixed(3)}
+                      </span>
+                    ),
+                  },
+                ]}
+              />
+            </Card>
+          </Col>
+        </Row>
+      ) : null}
 
       <Row gutter={[16, 16]}>
         <Col xs={24} md={12}>
@@ -617,6 +690,63 @@ export function SettingsSection({
             </Text>
           </Col>
         </Row>
+      </Card>
+
+      <Card title="v0.9.7 高级控制" size="small">
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <Row align="middle" gutter={16}>
+            <Col flex="auto">
+              <Text strong>扩展推理（Extended thinking）</Text>
+              <div style={{ fontSize: 12, color: 'var(--jz-text-muted)', marginTop: 2 }}>
+                仅 Claude 4 系列 (Opus / Sonnet) 支持。开启后难题用 CoT，结果质量提升但更贵更慢。
+              </div>
+            </Col>
+            <Col>
+              <Switch
+                checked={!!settings.enable_thinking}
+                disabled={saving}
+                onChange={(v) => void onPatch({ enable_thinking: v } as Partial<typeof settings>)}
+              />
+            </Col>
+          </Row>
+
+          <Row align="middle" gutter={16}>
+            <Col flex="auto">
+              <Text strong>自动降级</Text>
+              <div style={{ fontSize: 12, color: 'var(--jz-text-muted)', marginTop: 2 }}>
+                Opus 限流时自动退到 Sonnet → Haiku；Qwen 同理。日志会记录原始模型。
+              </div>
+            </Col>
+            <Col>
+              <Switch
+                checked={settings.fallback_enabled !== false}
+                disabled={saving}
+                onChange={(v) => void onPatch({ fallback_enabled: v } as Partial<typeof settings>)}
+              />
+            </Col>
+          </Row>
+
+          <Row align="middle" gutter={16}>
+            <Col>
+              <Text strong>每用户每日预算 (USD)</Text>
+              <div style={{ fontSize: 12, color: 'var(--jz-text-muted)', marginTop: 2 }}>
+                0 = 不限。超出后调用返回 429。管理员（is_staff）不受限。
+              </div>
+            </Col>
+            <Col>
+              <InputNumber
+                min={0}
+                max={1000}
+                step={0.5}
+                value={settings.daily_budget_usd_per_user ?? 0}
+                disabled={saving}
+                onChange={(v) => v != null && void onPatch({ daily_budget_usd_per_user: Number(v) } as Partial<typeof settings>)}
+                addonAfter="USD"
+                style={{ width: 160 }}
+              />
+            </Col>
+          </Row>
+        </Space>
       </Card>
 
       <Card

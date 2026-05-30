@@ -49,7 +49,9 @@ export function runAIOp(
     model: modelId || undefined,
     signal,
     onDelta: (d) => callbacks.onDelta(d),
-    onError: callbacks.onError,
+    // v0.9.7: streamAI now emits a typed AIErrorPayload; consumers that
+    // still want a plain-string message convert via .detail.
+    onError: (err) => callbacks.onError(err.detail),
     onDone: callbacks.onDone,
   });
 }

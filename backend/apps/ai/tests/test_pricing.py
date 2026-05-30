@@ -23,6 +23,25 @@ def test_table_has_anthropic_and_qwen():
     assert any(m.startswith("qwen") for m in MODEL_PRICES_USD)
 
 
+def test_prices_cover_every_production_model():
+    """The pricing table MUST contain every model id that services
+    actually serves — a mismatch silently falls back to DEFAULT_PRICE_USD
+    (Sonnet-tier) and corrupts the admin usage cost estimate.
+
+    Before v0.9.7 this contract was broken (services used ``qwen-max`` etc
+    while pricing had ``qwen3-max``), so ALL Qwen calls were priced as
+    Sonnet — a 30%+ over-estimate. This test pins the fix.
+    """
+    from apps.ai.services import ALLOWED_MODEL_IDS
+
+    missing = ALLOWED_MODEL_IDS - set(MODEL_PRICES_USD.keys())
+    assert not missing, (
+        f"models registered in services but missing from pricing table: {missing}. "
+        "Each model id served via /api/v1/ai/run/ must have an exact-match "
+        "price entry in apps/ai/pricing.py — partial matches don't help."
+    )
+
+
 def test_estimate_zero_tokens_is_zero():
     assert estimate_cost_usd("claude-opus-4-7", 0, 0) == 0.0
 

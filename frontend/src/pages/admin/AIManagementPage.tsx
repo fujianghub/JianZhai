@@ -39,11 +39,12 @@ import {
   UsageSection,
   SettingsSection,
 } from '@/components/admin/ai/AIPageSections';
+import PromptsSection from '@/components/admin/ai/PromptsSection';
 
 const { Title, Paragraph } = Typography;
 
 export default function AIManagementPage() {
-  const [tab, setTab] = useState<'overview' | 'models' | 'usage' | 'settings'>('overview');
+  const [tab, setTab] = useState<'overview' | 'models' | 'prompts' | 'usage' | 'settings'>('overview');
   const [cap, setCap] = useState<AICapabilities | null>(null);
   const [settings, setSettings] = useState<AIAdminSettings | null>(null);
   const [usage, setUsage] = useState<UsageResponse | null>(null);
@@ -179,6 +180,14 @@ export default function AIManagementPage() {
                   ),
                 },
                 {
+                  value: 'prompts',
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                      ✨ 模板
+                    </span>
+                  ),
+                },
+                {
                   value: 'usage',
                   label: (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
@@ -217,6 +226,7 @@ export default function AIManagementPage() {
           />
         </Space>
       )}
+      {tab === 'prompts' && <PromptsSection />}
       {tab === 'usage' && (
         <UsageSection
           usage={usage}
