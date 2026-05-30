@@ -504,13 +504,106 @@
   padding: 16px;
 }
 
-.jz-ai-panel-body pre {
-  white-space: pre-wrap;
-  font-family: inherit;
-  margin: 0;
+/* ── AI panel Markdown 渲染区 ─────────────────────────────────────────
+   Panel 内宽度紧凑（drawer 一般 ≤ 480px），需要把 Markdown 的默认大边距
+   收一收，但不要破坏 ``.markdown-preview`` 的标题/列表/代码块语义本身——
+   只在 ``.jz-ai-md`` 作用域里收紧间距。代码块依然 One Dark Pro 暗色，
+   只是横向滚动而不破容器宽。
+
+   Caret（打字光标）跟在最后一个字符后面，用 inline-block 跟随末尾换行；
+   流停后自动隐藏。 */
+.jz-ai-panel-body .jz-ai-md {
   font-size: 14px;
-  line-height: 1.75;
+  line-height: 1.7;
   color: var(--jz-text);
+}
+.jz-ai-panel-body .jz-ai-md > *:first-child { margin-top: 0; }
+.jz-ai-panel-body .jz-ai-md > *:last-child { margin-bottom: 0; }
+.jz-ai-panel-body .jz-ai-md h1,
+.jz-ai-panel-body .jz-ai-md h2,
+.jz-ai-panel-body .jz-ai-md h3,
+.jz-ai-panel-body .jz-ai-md h4 {
+  margin: 0.9em 0 0.4em;
+  line-height: 1.35;
+  font-weight: 600;
+  color: var(--jz-text);
+}
+.jz-ai-panel-body .jz-ai-md h1 { font-size: 1.3em; border-bottom: 1px solid var(--jz-divider); padding-bottom: 0.2em; }
+.jz-ai-panel-body .jz-ai-md h2 { font-size: 1.18em; border-bottom: 1px solid var(--jz-divider); padding-bottom: 0.15em; }
+.jz-ai-panel-body .jz-ai-md h3 { font-size: 1.06em; }
+.jz-ai-panel-body .jz-ai-md h4 { font-size: 1em; color: var(--jz-text-muted); }
+.jz-ai-panel-body .jz-ai-md p { margin: 0.55em 0; }
+.jz-ai-panel-body .jz-ai-md ul,
+.jz-ai-panel-body .jz-ai-md ol { margin: 0.55em 0; padding-left: 1.6em; }
+.jz-ai-panel-body .jz-ai-md li { margin: 0.2em 0; }
+.jz-ai-panel-body .jz-ai-md blockquote {
+  margin: 0.7em 0;
+  padding: 0.25em 0.9em;
+  border-left: 3px solid color-mix(in srgb, var(--jz-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 5%, transparent);
+  color: var(--jz-text-muted);
+  border-radius: 0 4px 4px 0;
+}
+.jz-ai-panel-body .jz-ai-md code:not(pre code) {
+  font-size: 0.88em;
+  padding: 1px 5px;
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  color: color-mix(in srgb, var(--jz-accent) 80%, var(--jz-text) 20%);
+  border-radius: 4px;
+}
+/* 代码块（jz-code-block）在 panel 内收紧外边距，禁止溢出 panel 宽。 */
+.jz-ai-panel-body .jz-ai-md .jz-code-block {
+  margin: 0.7em 0;
+  max-width: 100%;
+}
+.jz-ai-panel-body .jz-ai-md .jz-code-pre {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.jz-ai-panel-body .jz-ai-md table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  margin: 0.7em 0;
+  font-size: 0.95em;
+}
+.jz-ai-panel-body .jz-ai-md table th,
+.jz-ai-panel-body .jz-ai-md table td {
+  border: 1px solid var(--jz-border);
+  padding: 6px 10px;
+}
+.jz-ai-panel-body .jz-ai-md table th {
+  background: color-mix(in srgb, var(--jz-text) 4%, transparent);
+  font-weight: 600;
+}
+.jz-ai-panel-body .jz-ai-md hr {
+  margin: 1em 0;
+  border: none;
+  border-top: 1px dashed var(--jz-divider);
+}
+.jz-ai-panel-body .jz-ai-md img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+}
+
+/* 打字光标 — 流式期间显示。inline-block 让它紧跟最后一个字符。 */
+.jz-ai-panel-caret {
+  display: inline-block;
+  margin-left: 2px;
+  opacity: 0.6;
+  color: var(--jz-accent);
+  animation: jz-ai-caret-blink 1s steps(2, end) infinite;
+}
+@keyframes jz-ai-caret-blink {
+  from, to { opacity: 0.15; }
+  50% { opacity: 0.85; }
+}
+
+/* 整个 markdown wrapper 是相对定位，方便后面再补 hover 操作。 */
+.jz-ai-panel-markdown {
+  position: relative;
 }
 
 .jz-ai-panel-empty {
