@@ -7,6 +7,7 @@ import * as kbsApi from '@/api/kbs';
 import { useAuthStore } from '@/stores/auth';
 import type { PublicKB, PublicKBCategoryGroup } from '@/types';
 import { resolveTagColor } from '@/utils/tagColor';
+import HeroQuoteRotator from '@/components/blog/HeroQuoteRotator';
 
 const { Text } = Typography;
 
@@ -102,21 +103,11 @@ export default function BlogHome() {
     <div>
       {homeToolbar}
       <section className="jz-hero" aria-label="题记">
-        <div className="jz-hero-quote">
-          <span>年与时驰</span>
-          <span className="jz-hero-quote-sep">·</span>
-          <span>意与日去</span>
-          <span className="jz-hero-quote-sep">·</span>
-          <span>遂成枯落</span>
-          <span className="jz-hero-seal" aria-label="印章">
-            <span className="jz-hero-seal-text">简斋</span>
-          </span>
-        </div>
-        <div className="jz-hero-attr">
-          <span className="jz-hero-attr-rule" aria-hidden />
-          <span>诸葛亮 · 诫子书</span>
-          <span className="jz-hero-attr-rule" aria-hidden />
-        </div>
+        {/* Quote + 印章 + 署名行 — driven by the singleton /api/v1/public/hero/.
+            Falls back to the original 诸葛亮 quote when the API is unreachable
+            so an offline / first-boot homepage still has a banner. Managed
+            from /admin/profile (题记 Tab). */}
+        <HeroQuoteRotator />
         <div className="jz-hero-sub">
           <h2 className="jz-hero-cangjingge" aria-label="藏经阁">
             <span className="jz-hero-cangjingge-char">藏</span>

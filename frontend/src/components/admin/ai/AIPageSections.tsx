@@ -30,6 +30,7 @@ import {
   type AIModelOption,
 } from '@/api/ai';
 import { isModelConfigured, resolveAIModel, writeAIModel, readAIModelFromStorage } from '@/utils/aiModel';
+import UsageHeatmap from './UsageHeatmap';
 
 const { Paragraph, Text } = Typography;
 
@@ -40,10 +41,24 @@ export interface UsageResponse {
     input_tokens: number;
     output_tokens: number;
     failed: number;
+    estimated_usd?: number;
   };
-  by_model: Array<{ model: string; calls: number; input_tokens: number; output_tokens: number }>;
-  by_day: Array<{ day: string; calls: number; input_tokens: number; output_tokens: number }>;
+  by_model: Array<{
+    model: string;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    estimated_usd?: number;
+  }>;
+  by_day: Array<{
+    day: string;
+    calls: number;
+    input_tokens: number;
+    output_tokens: number;
+    estimated_usd?: number;
+  }>;
   by_operation: Array<{ operation: string; calls: number }>;
+  pricing?: Record<string, { input_per_mtok_usd: number; output_per_mtok_usd: number }>;
   recent: Array<{
     id: number;
     user: string | null;
@@ -381,8 +396,14 @@ export function UsageSection({
   days: number;
   onDaysChange: (d: number) => void;
 }) {
-  const sparkData = usage?.by_day ?? [];
-  const maxCalls = useMemo(() => Math.max(1, ...sparkData.map((d) => d.calls)), [sparkData]);
+  const heatmapData = useMemo(
+    () =>
+      (usage?.by_day ?? []).map((d) => ({
+        ...d,
+        estimated_usd: d.estimated_usd ?? 0,
+      })),
+    [usage?.by_day],
+  );
 
   const opCols = [
     { title: '操作', dataIndex: 'operation', render: (op: string) => OP_LABEL[op] ?? op },
@@ -402,6 +423,16 @@ export function UsageSection({
       dataIndex: 'output_tokens',
       align: 'right' as const,
       render: (v: number) => v.toLocaleString(),
+    },
+    {
+      title: '估算 (USD)',
+      dataIndex: 'estimated_usd',
+      align: 'right' as const,
+      render: (v: number | undefined) => (
+        <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--jz-accent)' }}>
+          ${(v ?? 0).toFixed(3)}
+        </span>
+      ),
     },
   ];
   const recentCols = [
@@ -457,7 +488,7 @@ export function UsageSection({
     <Space direction="vertical" size="middle" style={{ width: '100%' }}>
       <Card
         size="small"
-        title={<span><ClockCircleOutlined /> 时间窗口</span>}
+        title={<span><ClockCircleOutlined /> Token 花费日历</span>}
         extra={
           <Radio.Group value={days} onChange={(e) => onDaysChange(e.target.value)} size="small">
             <Radio.Button value={7}>7 天</Radio.Button>
@@ -467,21 +498,7 @@ export function UsageSection({
           </Radio.Group>
         }
       >
-        {!usage || usage.by_day.length === 0 ? (
-          <Empty description="该窗口内无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        ) : (
-          <div className="jz-spark">
-            {sparkData.map((d) => (
-              <div key={d.day} className="jz-spark-col" title={`${d.day}：${d.calls} 次`}>
-                <div
-                  className="jz-spark-bar"
-                  style={{ height: `${Math.max(2, (d.calls / maxCalls) * 100)}%` }}
-                />
-                <div className="jz-spark-label">{dayjs(d.day).format('MM-DD')}</div>
-              </div>
-            ))}
-          </div>
-        )}
+        <UsageHeatmap days={heatmapData} windowDays={days} />
       </Card>
 
       <Row gutter={[16, 16]}>

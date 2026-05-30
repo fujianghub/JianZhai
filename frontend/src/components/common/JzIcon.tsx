@@ -695,6 +695,9 @@ export function JzCompressIcon(p: IconProps) {
   );
 }
 
+// JzQuoteIcon 已在上方定义（line ~264），无需重复。
+// 注册到 JZ_ICONS map 下方即可让侧栏菜单引用。
+
 /* ═══════════════ 通用导出 ═══════════════ */
 export const JZ_ICONS = {
   kb: JzKbIcon,
@@ -720,6 +723,7 @@ export const JZ_ICONS = {
   attachment: JzAttachmentIcon,
   fullscreen: JzFullscreenIcon,
   compress: JzCompressIcon,
+  quote: JzQuoteIcon,
 } as const;
 
 export type JzIconName = keyof typeof JZ_ICONS;

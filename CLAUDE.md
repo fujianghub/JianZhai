@@ -15,7 +15,7 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9.2 — MD/Mermaid 体验大修 + 架构 P0/P1 修复在 v0.9.1 之上 |
+| 实现阶段 | v0.9.3 — HTML 阅读端性能 + Mermaid 全屏 Modal + LAN HTTPS dev + AI 花费日历热图 |
 | 多用户 | 支持。普通账号按 `owner` 隔离数据；`is_superuser` 跨租户可见 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
 
@@ -475,6 +475,7 @@ class AIUsageLog(models.Model):
 | **v0.9 视觉系统** | 自制 SVG 图标库 + 双色调彩点 + 主题联动染色 | ✅ |
 | **v0.9.1 维护** | 搜索含标签/评论；链接租户边界；原子 version；AI max_tokens；编辑器竞态修复 | ✅ |
 | **v0.9.2 MD/图表 + 架构** | KaTeX 全链路渲染；Mermaid/PlantUML 默认渲染图 + 单击切源码；暗主题画布对比度；docN 链接重写；linking 锁修复；AI 服务端长度上限；exporter CSS 线程安全；prod SECRET_KEY 兜底 | ✅ |
+| **v0.9.3 HTML/Mermaid 体验 + 安全下载** | HtmlPostReader 懒加载 + 异步元数据 + sessionStorage LRU；renderMarkdownWithToc 模块级 LRU；Mermaid 全屏 Modal（滚轮缩放/拖拽/下载 PNG）；编辑器加全屏按钮；Mermaid 四主题适配（diagram surface 派生色 + 不透明 edgeLabel）；工具栏 hover 染色 + 胶囊缩放按钮；downloadExport 抛弃 fetch+blob 改原生 a href（消除 Chrome 不安全下载警告）；新 `pnpm dev:https` 用 @vitejs/plugin-basic-ssl 解决 LAN IP HTTP 下载告警；AI 用量日历热图（GitHub 风格 SVG + USD 估算）；apps/ai/pricing.py 模型价格表；重写开发指南 simple/detailed 两篇到 v0.9.3 真实状态；11 个新测试 | ✅ |
 | **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 回收站 UI / 超大 KB 树分页 / Yjs | 🔲 |
 
 ---
@@ -529,5 +530,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.2  
-**最后更新**：2026-05-29
+**文档版本**：v3.3  
+**最后更新**：2026-05-30

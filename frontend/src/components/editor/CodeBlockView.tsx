@@ -50,6 +50,7 @@ import {
 } from './slashCommandRegistry';
 import CodeBlockMoreMenu from './CodeBlockMoreMenu';
 import CodeBlockThemeSelect from './CodeBlockThemeSelect';
+import { openDiagramFullscreenFromHtml } from '@/utils/diagramFullscreen';
 
 export default function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const lang = normalizeLanguage((node.attrs.language as string | null) ?? '');
@@ -318,6 +319,21 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 复制 SVG
               </Button>
             )}
+            <Tooltip title="全屏查看（Esc 退出，滚轮缩放，拖拽平移）">
+              <Button
+                size="small"
+                type="text"
+                aria-label="全屏查看图表"
+                disabled={!previewHtml}
+                onClick={() =>
+                  openDiagramFullscreenFromHtml(previewHtml, {
+                    lang: isMermaid ? 'mermaid' : 'plantuml',
+                  })
+                }
+              >
+                ⤢
+              </Button>
+            </Tooltip>
             <span className="jz-code-toolbar-divider" aria-hidden />
           </>
         )}

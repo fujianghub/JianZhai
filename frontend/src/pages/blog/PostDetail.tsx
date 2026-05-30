@@ -62,6 +62,72 @@ function postHref(postSlug: string, kb?: string) {
   return kb ? `${path}?kb=${encodeURIComponent(kb)}` : path;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Session-scoped LRU cache for already-fetched posts.
+ *
+ *  Why: clicking back from a /posts/foo deep link, or hopping between
+ *  prev/next via the adjacency nav, re-fetches the full document each
+ *  time even though the server response hasn't changed inside the same
+ *  reading session. We keep the last few posts (~10) and a 5-minute TTL
+ *  in sessionStorage so revisits paint instantly without any markdown
+ *  re-parse / iframe re-mount delay.
+ *
+ *  The cache is per-tab (sessionStorage) and skipped when the storage
+ *  API throws (private windows). The TTL guards against a stale post
+ *  that was edited in another tab; freshness still wins because we issue
+ *  a background fetch and replace the cached snapshot when it returns.
+ * ------------------------------------------------------------------ */
+const POST_CACHE_TTL_MS = 5 * 60 * 1000;
+const POST_CACHE_KEY = 'jz-post-cache-v1';
+const POST_CACHE_MAX = 10;
+
+interface PostCacheEntry {
+  ts: number;
+  data: PublicPostDetail;
+}
+
+function postCacheKey(slug: string, kb?: string): string {
+  return kb ? `${kb}::${slug}` : `__::${slug}`;
+}
+
+function readPostCache(slug: string, kb?: string): PublicPostDetail | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(POST_CACHE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw) as Record<string, PostCacheEntry>;
+    const hit = map[postCacheKey(slug, kb)];
+    if (!hit) return null;
+    if (Date.now() - hit.ts > POST_CACHE_TTL_MS) return null;
+    return hit.data;
+  } catch {
+    return null;
+  }
+}
+
+function writePostCache(slug: string, kb: string | undefined, data: PublicPostDetail): void {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    const raw = sessionStorage.getItem(POST_CACHE_KEY);
+    const map = (raw ? (JSON.parse(raw) as Record<string, PostCacheEntry>) : {});
+    map[postCacheKey(slug, kb)] = { ts: Date.now(), data };
+    // Evict oldest if over capacity. Order is preserved by JSON object key
+    // insertion in modern engines, but we sort by ts to be defensive.
+    const keys = Object.keys(map);
+    if (keys.length > POST_CACHE_MAX) {
+      const sorted = keys
+        .map((k) => [k, map[k]!.ts] as const)
+        .sort((a, b) => a[1] - b[1])
+        .slice(0, keys.length - POST_CACHE_MAX)
+        .map(([k]) => k);
+      for (const k of sorted) delete map[k];
+    }
+    sessionStorage.setItem(POST_CACHE_KEY, JSON.stringify(map));
+  } catch {
+    /* storage full or disabled — silently skip caching */
+  }
+}
+
 function buildPostGridColumns(kbW: number, tocW: number, showKb: boolean, showToc: boolean): string {
   const main = 'minmax(0, 1fr)';
   const gap = '6px';
@@ -264,9 +330,23 @@ export default function PostDetail() {
   }, [kbNavOpen]);
 
   useEffect(() => {
-    setPost(null);
-    setNotFound(false);
-    setLoadError(null);
+    // Optimistic cache read: if we've fetched this post in the last 5 minutes
+    // within the same tab, paint the cached snapshot immediately so the
+    // article is interactive on the very next frame; the background fetch
+    // still runs and replaces the snapshot with a fresh server response
+    // before the user notices.
+    const cached = slug ? readPostCache(slug, kbSlug) : null;
+    if (cached) {
+      setPost(cached);
+      setNotFound(false);
+      setLoadError(null);
+    } else {
+      setPost(null);
+      setNotFound(false);
+      setLoadError(null);
+    }
+    // Adjacent/related don't share the cache — they're cheap and stale data
+    // here is jarring (a prev/next button to a renamed post would feel wrong).
     setAdjacent(null);
     setRelated([]);
     setHtmlMeta(null);
@@ -274,11 +354,17 @@ export default function PostDetail() {
     const kbParams = kbSlug ? { kb: kbSlug } : undefined;
     blogApi
       .getPublicPost(slug, kbParams)
-      .then(setPost)
+      .then((p) => {
+        setPost(p);
+        writePostCache(slug, kbSlug, p);
+      })
       .catch((err) => {
         if (isAxiosError(err) && err.response?.status === 404) {
           setNotFound(true);
-        } else {
+        } else if (!cached) {
+          // Only surface the error UI if we don't already have a usable
+          // cached snapshot — otherwise the user keeps reading and we
+          // silently retry on next navigation.
           setLoadError('加载失败，请稍后重试');
         }
       });

@@ -516,15 +516,49 @@ export interface TocEntry {
   text: string;
 }
 
+/* ------------------------------------------------------------------ *
+ *  Module-level LRU cache for ``renderMarkdownWithToc``.
+ *
+ *  Why: PostDetail re-runs the renderer inside ``useMemo`` whenever the
+ *  ``post`` object identity changes, which happens on every background
+ *  refetch even when the Markdown source is byte-identical. For a 30-字
+ *  post the parse + sanitize cycle costs ~80–200 ms; cached repeat hits
+ *  return in O(1).
+ *
+ *  Cache size is small (20 entries) — we expect a single reader to be
+ *  navigating between a handful of recently-opened posts. Memory cost
+ *  is bounded by the source length × 20 + the rendered HTML; sanity
+ *  upper-bound ~5–10 MB which is well within a tab budget.
+ * ------------------------------------------------------------------ */
+const RENDER_CACHE_MAX = 20;
+const renderCache = new Map<string, { html: string; toc: TocEntry[] }>();
+
 /**
  * Render Markdown and extract a flat TOC of H1–H4 headings. Each heading gets
  * a deterministic, document-unique `id` attribute so the TOC links scroll to
  * the right spot via the URL fragment.
  */
 export function renderMarkdownWithToc(source: string): { html: string; toc: TocEntry[] } {
+  const raw = source ?? '';
+  const cached = renderCache.get(raw);
+  if (cached) {
+    // Bump for LRU: re-insert so it becomes the most-recently-used. Map
+    // iteration order = insertion order so deleting + re-adding moves the
+    // entry to the tail in O(1).
+    renderCache.delete(raw);
+    renderCache.set(raw, cached);
+    return cached;
+  }
   const env: { toc: TocEntry[] } = { toc: [] };
-  const html = md.render(preprocessMarkdown(source ?? ''), env);
-  return { html: addImgLazyAttrs(sanitize(html)), toc: env.toc };
+  const html = md.render(preprocessMarkdown(raw), env);
+  const result = { html: addImgLazyAttrs(sanitize(html)), toc: env.toc };
+  renderCache.set(raw, result);
+  // Evict the oldest if over capacity. ``Map.keys().next()`` is O(1).
+  if (renderCache.size > RENDER_CACHE_MAX) {
+    const oldest = renderCache.keys().next().value;
+    if (oldest !== undefined) renderCache.delete(oldest);
+  }
+  return result;
 }
 
 /**

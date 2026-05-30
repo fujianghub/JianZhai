@@ -109,8 +109,18 @@ function makeSlug(text: string): string {
   return s || 'h' + Math.random().toString(36).slice(2, 7);
 }
 
-/** Read meta directly from a same-origin iframe document. */
-function readMetaFromDoc(doc: Document): HtmlReaderMeta {
+/** Plain-text cap for word-count / reading-time. 60k chars covers a 30 000-字
+ *  Chinese article plus latin headings comfortably — well past the upper
+ *  bound of a single readable post. The previous 200k limit cost a
+ *  measurable ``innerText`` re-layout pass on every observer fire for large
+ *  HTML documents (which can include hidden offscreen siblings), and word-
+ *  count never benefits from the extra bytes. */
+const PLAIN_TEXT_LIMIT = 60_000;
+
+/** Fast-path meta read: ONLY scrollHeight + nav-presence flag. Used to size
+ *  the iframe immediately on load so the parent page can finish layout in
+ *  one frame; headings + plainText come from the idle-callback pass below. */
+function readFastMetaFromDoc(doc: Document): Pick<HtmlReaderMeta, 'height' | 'hasBuiltInNav'> {
   const html = doc.documentElement;
   const body = doc.body;
   const height = Math.max(
@@ -119,6 +129,18 @@ function readMetaFromDoc(doc: Document): HtmlReaderMeta {
     html?.offsetHeight ?? 0,
     body?.offsetHeight ?? 0,
   );
+  const navLinks = doc.querySelectorAll(
+    'aside a[href],nav a[href],[class*="toc"] a[href],[class*="sidebar"] a[href]',
+  );
+  return { height, hasBuiltInNav: navLinks.length >= 10 };
+}
+
+/** Full meta read — headings + plainText. Heavier (one querySelectorAll +
+ *  per-heading getBoundingClientRect + innerText) so we defer it via
+ *  requestIdleCallback to keep first paint snappy. */
+function readMetaFromDoc(doc: Document): HtmlReaderMeta {
+  const fast = readFastMetaFromDoc(doc);
+  const body = doc.body;
   const seen: Record<string, number> = {};
   const headings: HtmlHeading[] = Array.from(
     doc.querySelectorAll<HTMLHeadingElement>('h1,h2,h3,h4,h5,h6'),
@@ -142,16 +164,25 @@ function readMetaFromDoc(doc: Document): HtmlReaderMeta {
       top: el.getBoundingClientRect().top + (win?.pageYOffset ?? 0),
     };
   });
-  const navLinks = doc.querySelectorAll(
-    'aside a[href],nav a[href],[class*="toc"] a[href],[class*="sidebar"] a[href]',
-  );
   return {
-    height,
+    height: fast.height,
     headings,
-    plainText: (body?.innerText ?? '').slice(0, 200000),
-    hasBuiltInNav: navLinks.length >= 10,
+    plainText: (body?.innerText ?? '').slice(0, PLAIN_TEXT_LIMIT),
+    hasBuiltInNav: fast.hasBuiltInNav,
   };
 }
+
+/** Polyfill for ``requestIdleCallback`` — Safari/some older WebViews lack it. */
+type IdleHandle = number;
+const ric =
+  typeof window !== 'undefined' && 'requestIdleCallback' in window
+    ? (window.requestIdleCallback as (cb: () => void, opts?: { timeout?: number }) => IdleHandle)
+    : ((cb: () => void) =>
+        window.setTimeout(cb, 100) as unknown as IdleHandle);
+const cic =
+  typeof window !== 'undefined' && 'cancelIdleCallback' in window
+    ? (window.cancelIdleCallback as (h: IdleHandle) => void)
+    : ((h: IdleHandle) => window.clearTimeout(h as unknown as number));
 
 function HtmlPostReader({
   html,
@@ -295,7 +326,30 @@ function HtmlPostReader({
     injectVhOverride(doc);
 
     let pending = 0;
-    const reportNow = () => {
+    let idleHandle: IdleHandle | null = null;
+    // Two-stage report:
+    //   1. ``reportFast`` — sync read of just scrollHeight + nav flag, fires
+    //      immediately so the iframe lands at its natural size in one frame
+    //      and the parent page stops jumping.
+    //   2. ``reportFull`` — heavier scan (headings + plainText). Scheduled
+    //      via requestIdleCallback so it never delays first paint of long
+    //      HTML posts. Heading text feeds the in-page word-count; until it
+    //      arrives we still show the article with a "—" word counter that
+    //      flips to the real number once the idle pass lands.
+    const reportFast = () => {
+      try {
+        const fast = readFastMetaFromDoc(doc);
+        applyMeta({
+          height: fast.height,
+          headings: [],
+          plainText: '',
+          hasBuiltInNav: fast.hasBuiltInNav,
+        });
+      } catch {
+        /* parser/cross-origin races — leave fallback height in place */
+      }
+    };
+    const reportFull = () => {
       try {
         applyMeta(readMetaFromDoc(doc));
       } catch {
@@ -306,11 +360,25 @@ function HtmlPostReader({
       if (pending) return;
       pending = window.setTimeout(() => {
         pending = 0;
-        reportNow();
+        reportFast();
+        // Defer the heavy scan; cancel and re-arm so bursty mutations
+        // collapse into one idle pass.
+        if (idleHandle != null) cic(idleHandle);
+        idleHandle = ric(() => {
+          idleHandle = null;
+          reportFull();
+        }, { timeout: 800 });
       }, 50);
     };
 
-    reportNow();
+    reportFast();
+    // First full scan in idle time — typically within ~20ms of load on a
+    // healthy main thread, much later if the page is busy parsing late
+    // images / fonts. Either way it doesn't block the iframe rendering.
+    idleHandle = ric(() => {
+      idleHandle = null;
+      reportFull();
+    }, { timeout: 800 });
     // Late image / font loads that change layout.
     const win = doc.defaultView;
     try {
@@ -381,6 +449,11 @@ function HtmlPostReader({
           sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
           scrolling={innerScrolling}
           onLoad={handleSameOriginLoad}
+          // ``loading="lazy"`` defers the fetch + parse until the iframe is
+          // close to the viewport. For HTML posts above the fold this is a
+          // no-op (already visible), but for long reads it skips parsing
+          // off-screen content until the user scrolls there.
+          loading="lazy"
           style={iframeStyle}
         />
       ) : (
@@ -390,6 +463,7 @@ function HtmlPostReader({
           srcDoc={srcDoc}
           sandbox="allow-scripts allow-popups allow-forms"
           scrolling="no"
+          loading="lazy"
           style={iframeStyle}
         />
       )}

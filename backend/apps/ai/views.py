@@ -29,6 +29,7 @@ from django.db.models.functions import TruncDate
 from django.utils import timezone
 
 from .models import AISettings, AIUsageLog
+from .pricing import MODEL_PRICES_USD, estimate_cost_usd
 from .prompts import OPERATION_INSTRUCTIONS
 from .services import (
     AIUnavailable,
@@ -176,8 +177,9 @@ def usage(request):
     )
     failed = qs.filter(succeeded=False).count()
 
-    # Per-model breakdown
-    by_model = list(
+    # Per-model breakdown — augmented with USD cost so the dashboard
+    # heatmap can colour by spend, not just call count.
+    by_model_raw = list(
         qs.values("model")
         .annotate(
             calls=Count("id"),
@@ -186,11 +188,26 @@ def usage(request):
         )
         .order_by("-calls")
     )
+    by_model = [
+        {
+            **row,
+            "input_tokens": row["input_tokens"] or 0,
+            "output_tokens": row["output_tokens"] or 0,
+            "estimated_usd": estimate_cost_usd(
+                row["model"],
+                row["input_tokens"] or 0,
+                row["output_tokens"] or 0,
+            ),
+        }
+        for row in by_model_raw
+    ]
 
-    # Per-day series for the chart
+    # Per-day series — split by model so each day's cost can be summed
+    # using the right per-model rate (a day mixing Opus + Haiku calls
+    # would otherwise smear the average).
     by_day_qs = (
         qs.annotate(day=TruncDate("created_at"))
-        .values("day")
+        .values("day", "model")
         .annotate(
             calls=Count("id"),
             input_tokens=Sum("input_tokens"),
@@ -198,15 +215,30 @@ def usage(request):
         )
         .order_by("day")
     )
-    by_day = [
-        {
-            "day": row["day"].isoformat() if row["day"] else None,
-            "calls": row["calls"] or 0,
-            "input_tokens": row["input_tokens"] or 0,
-            "output_tokens": row["output_tokens"] or 0,
-        }
-        for row in by_day_qs
-    ]
+    # Roll the (day, model) rows back up into one entry per day, summing
+    # tokens across models and computing USD via the per-model rate.
+    daily: dict[str, dict] = {}
+    for row in by_day_qs:
+        if not row["day"]:
+            continue
+        key = row["day"].isoformat()
+        bucket = daily.setdefault(
+            key,
+            {"day": key, "calls": 0, "input_tokens": 0, "output_tokens": 0, "estimated_usd": 0.0},
+        )
+        bucket["calls"] += row["calls"] or 0
+        bucket["input_tokens"] += row["input_tokens"] or 0
+        bucket["output_tokens"] += row["output_tokens"] or 0
+        bucket["estimated_usd"] = round(
+            bucket["estimated_usd"]
+            + estimate_cost_usd(
+                row["model"],
+                row["input_tokens"] or 0,
+                row["output_tokens"] or 0,
+            ),
+            4,
+        )
+    by_day = sorted(daily.values(), key=lambda r: r["day"])
 
     # Per-operation breakdown
     by_op = list(
@@ -233,6 +265,9 @@ def usage(request):
         for r in qs.select_related("user")[:20]
     ]
 
+    # Total cost = sum of per-model costs (each model uses its own rate).
+    total_usd = round(sum(r["estimated_usd"] for r in by_model), 4)
+
     return Response({
         "window_days": days,
         "totals": {
@@ -240,11 +275,18 @@ def usage(request):
             "input_tokens": totals["input_tokens"] or 0,
             "output_tokens": totals["output_tokens"] or 0,
             "failed": failed,
+            "estimated_usd": total_usd,
         },
         "by_model": by_model,
         "by_day": by_day,
         "by_operation": by_op,
         "recent": recent,
+        # Expose the rate table so the frontend can render a "pricing
+        # reference" footer without baking the numbers into TS code.
+        "pricing": {
+            model: {"input_per_mtok_usd": rate_in, "output_per_mtok_usd": rate_out}
+            for model, (rate_in, rate_out) in MODEL_PRICES_USD.items()
+        },
     })
 
 

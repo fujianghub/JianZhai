@@ -458,19 +458,89 @@
 }
 
 /* Mermaid 实时预览面板：紧贴 <pre> 下方，和代码共用一块 NodeView，
-   contentEditable=false 防止预览区被光标驻留。 */
+   contentEditable=false 防止预览区被光标驻留。
+
+   Background uses ``--jz-diagram-surface`` — a per-theme tinted variant of
+   surface so nodes (which mermaid fills with the same accent-mixed colour)
+   are still distinguishable from the panel. Defaults to plain surface if
+   the variable isn't set, so older theme overrides keep working. */
 .jz-codeblock-mermaid-preview {
+  --jz-diagram-surface: color-mix(in srgb, var(--jz-surface) 92%, var(--jz-accent) 8%);
   margin-top: 8px;
   padding: 12px;
-  background: var(--jz-surface);
+  background: var(--jz-diagram-surface);
   border: 1px dashed var(--jz-border);
   border-radius: 6px;
   text-align: center;
   user-select: none;
 }
+[data-theme='dark'] .jz-codeblock-mermaid-preview {
+  --jz-diagram-surface: color-mix(in srgb, var(--jz-surface) 88%, var(--jz-accent) 12%);
+}
+[data-theme='starry'] .jz-codeblock-mermaid-preview {
+  --jz-diagram-surface: color-mix(in srgb, var(--jz-surface) 86%, #7c3aed 14%);
+}
+[data-theme='deepsea'] .jz-codeblock-mermaid-preview {
+  --jz-diagram-surface: color-mix(in srgb, var(--jz-surface) 86%, #0891b2 14%);
+}
 .jz-codeblock-mermaid-preview .jz-mermaid-canvas svg {
   max-width: 100%;
   height: auto;
+}
+
+/* ── Editor-side mermaid toolbar polish ─────────────────────────────────
+   Default AntD ``type="text"`` buttons have no hover background and the
+   zoom +/- pair feels disconnected. Group them into a 24px-high band with
+   subtle hover染色, capsule zoom controls, and an accent ring on the active
+   view-mode button. Applies only inside ``.jz-code-block`` that flagged
+   itself as a diagram (`.jz-code-mermaid` / `.jz-code-plantuml`). */
+.jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm,
+.jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm {
+  height: 24px;
+  padding-inline: 8px;
+  border-radius: 6px;
+  color: var(--jz-text-muted);
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm:hover,
+.jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm:hover {
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
+}
+/* Zoom capsule: the −, %, + trio is visually a single control. We do this
+   purely via sibling adjacency — no extra wrapping markup needed. */
+.jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm[aria-label="缩小"],
+.jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm[aria-label="缩小"] {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  min-width: 22px;
+  padding-inline: 4px;
+  font-weight: 600;
+}
+.jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm[aria-label="放大"],
+.jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm[aria-label="放大"] {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  min-width: 22px;
+  padding-inline: 4px;
+  font-weight: 600;
+}
+.jz-code-block.jz-code-mermaid .jz-diagram-zoom-label,
+.jz-code-block.jz-code-plantuml .jz-diagram-zoom-label {
+  border-radius: 0;
+  padding: 0 6px;
+  background: color-mix(in srgb, var(--jz-surface) 80%, var(--jz-accent) 4%);
+  border-top: 1px solid color-mix(in srgb, var(--jz-divider) 50%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--jz-divider) 50%, transparent);
+  height: 24px;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+}
+/* Toolbar dividers more visible — without this they vanish under accent
+   hover backgrounds. */
+.jz-code-block.jz-code-mermaid .jz-code-toolbar-divider,
+.jz-code-block.jz-code-plantuml .jz-code-toolbar-divider {
+  background: color-mix(in srgb, var(--jz-divider) 80%, var(--jz-text-muted) 20%);
 }
 
 /* Mermaid / PlantUML diagram editor — Yuque-style split source + preview */

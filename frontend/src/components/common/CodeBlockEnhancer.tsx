@@ -9,6 +9,7 @@ import {
 } from '@/utils/codeClipboard';
 import { applyPrefsInContainer, togglePreviewSettingsPanel } from '@/utils/codeBlockPreviewPanel';
 import { CODE_PREFS_CHANGE_EVENT } from '@/utils/codeBlockPrefs';
+import { openDiagramFullscreen as openDiagramFullscreenOverlay } from '@/utils/diagramFullscreen';
 
 /**
  * Hook that wires up the per-code-block toolbar rendered by renderCodeBlock.
@@ -284,47 +285,22 @@ function downloadDiagramSvg(block: HTMLElement, btn: HTMLButtonElement): void {
   }, 1200);
 }
 
-/** Open the diagram in a centered overlay sized to the viewport. ESC or
- *  click-outside closes. Reuses the same lightbox aesthetic as the inline
- *  image zoom (.jz-lightbox styles in reader.css). */
+/** Blog-reader entry point: locate the live ``<svg>`` in the rendered
+ *  diagram block, then hand off to the shared fullscreen overlay util.
+ *  Auto-flips source view back to preview if the user toggled it before
+ *  clicking ⤢, otherwise there's no SVG in the DOM to fullscreen. */
 function openDiagramFullscreen(block: HTMLElement): void {
-  const svg = getDiagramSvg(block);
-  if (!svg) return;
-
-  const overlay = document.createElement('div');
-  overlay.className = 'jz-lightbox jz-diagram-fullscreen';
-  overlay.setAttribute('role', 'dialog');
-  overlay.setAttribute('aria-label', '图表全屏预览');
-
-  const stage = document.createElement('div');
-  stage.className = 'jz-diagram-fullscreen-stage';
-  const clone = svg.cloneNode(true) as SVGSVGElement;
-  clone.removeAttribute('style');
-  stage.appendChild(clone);
-  overlay.appendChild(stage);
-
-  const closeBtn = document.createElement('button');
-  closeBtn.type = 'button';
-  closeBtn.className = 'jz-lightbox-close';
-  closeBtn.setAttribute('aria-label', '关闭预览');
-  closeBtn.textContent = '✕';
-  overlay.appendChild(closeBtn);
-
-  function close() {
-    overlay.remove();
-    document.removeEventListener('keydown', onKey);
-    document.body.style.overflow = '';
+  if (block.classList.contains('jz-mermaid-show-source')) {
+    applyDiagramSourceState(block, false);
   }
-  function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') close();
-  }
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay || e.target === closeBtn) close();
+  // Hydration may still be pending if the user clicks fullscreen on a
+  // freshly-mounted reader. Wait one frame so the canvas can finish its
+  // mermaid render. If after that there's still no SVG, bail silently.
+  requestAnimationFrame(() => {
+    const svg = getDiagramSvg(block);
+    if (!svg) return;
+    openDiagramFullscreenOverlay(svg, { lang: block.dataset.lang });
   });
-
-  document.body.appendChild(overlay);
-  document.addEventListener('keydown', onKey);
-  document.body.style.overflow = 'hidden';
 }
 
 function escapeHtml(s: string): string {

@@ -70,23 +70,34 @@ export function downloadUrl(id: number): string {
   return `${base}/exports/${id}/download/`;
 }
 
-/** Fetch artifact with session cookies and trigger a browser download. */
-export async function downloadExport(task: ExportTask): Promise<void> {
+/** Trigger a browser download via a native `<a href download>` click.
+ *
+ * Why not ``fetch + blob URL`` here? Chrome 122+ treats blob-URL downloads
+ * from an insecure context (HTTP on a LAN IP — not localhost, not HTTPS) as
+ * "downloads that cannot be verified" and pops the "this file is not securely
+ * downloaded" warning regardless of MIME type. A direct ``<a href>`` to the
+ * same-origin download endpoint sidesteps the blob layer entirely: the
+ * browser sees the real ``Content-Disposition: attachment`` header and treats
+ * it as a normal navigation download, so localhost stays warning-free and LAN
+ * IP downgrades to the (unavoidable) per-origin "insecure site" indicator
+ * instead of a per-download blocker.
+ *
+ * Vite's dev proxy forwards ``/api/v1/exports/{id}/download/`` to the backend
+ * on the same origin as the SPA, so session cookies travel with the request
+ * automatically — no ``credentials: 'include'`` plumbing needed. */
+export function downloadExport(task: ExportTask): void {
   const url = downloadUrl(task.id);
-  const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) {
-    throw new Error(`下载失败 (${res.status})`);
-  }
-  const blob = await res.blob();
-  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = objectUrl;
+  a.href = url;
+  // ``download`` is a hint only — the browser still honours the server's
+  // ``Content-Disposition`` ``filename=`` when present (which we set in
+  // ``ExportTaskViewSet.download``). Keeping it here covers the case where
+  // the response somehow lacks the header.
   a.download = task.filename || `export-${task.id}`;
   a.rel = 'noopener';
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(objectUrl);
 }
 
 export async function deleteExport(id: number): Promise<void> {

@@ -8,7 +8,7 @@ import {
   JzAiIcon,
   JzUsersIcon,
   JzArchitectureIcon,
-  JzBlogIcon,
+  JzQuoteIcon,
   JzSearchIcon,
 } from '@/components/common/JzIcon';
 import { Link, Outlet, useLocation } from 'react-router-dom';
@@ -80,6 +80,7 @@ export default function AdminLayout() {
     if (location.pathname.startsWith('/admin/trash')) return 'trash';
     if (location.pathname.startsWith('/admin/favorites')) return 'favorites';
     if (location.pathname.startsWith('/admin/profile')) return 'profile';
+    if (location.pathname.startsWith('/admin/hero')) return 'hero';
     if (location.pathname.startsWith('/admin/exports')) return 'exports';
     if (location.pathname.startsWith('/admin/ai')) return 'ai';
     if (location.pathname.startsWith('/admin/users')) return 'users';
@@ -101,11 +102,16 @@ export default function AdminLayout() {
         onBreakpoint={(broken) => setSiderCollapsed(broken)}
         className="jz-admin-sider"
       >
+        {/* 印章 logo — primary "回博客首页" affordance.
+            v0.9.4 deletion of the explicit ``查看博客`` menu item makes
+            this the only "leave-admin" anchor, so keep the click target
+            generous and the aria label descriptive. */}
         <Link
-          to="/admin"
+          to="/"
           className="jz-admin-brand"
           style={{ color: 'inherit', textDecoration: 'none' }}
-          aria-label="回到个人空间工作台"
+          aria-label="返回博客首页（藏经阁）"
+          title="返回博客首页"
         >
           <div className="jz-admin-brand-seal" aria-hidden>簡</div>
           <div className="jz-admin-brand-text">
@@ -164,16 +170,23 @@ export default function AdminLayout() {
                   },
                 ]
               : []),
+            // 首页题记 — staff-only management of the homepage banner. Sits
+            // between 架构总览 and 个人资料 because it's "site content"
+            // category alongside 架构总览, but its visibility scope
+            // (is_staff) matches users management above.
+            ...(user?.is_staff
+              ? [{
+                  key: 'hero',
+                  icon: menuIcon(<JzQuoteIcon size={MENU_ICON_SIZE} />),
+                  label: <Link to="/admin/hero">首页题记</Link>,
+                }]
+              : []),
             {
               key: 'profile',
               icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/profile">个人资料</Link>,
             },
-            {
-              key: 'blog',
-              icon: menuIcon(<JzBlogIcon size={MENU_ICON_SIZE} />),
-              label: <Link to="/">查看博客</Link>,
-            },
+            // 「查看博客」菜单项已删除（v0.9.4）；点击左上角「簡」logo 直返首页。
           ]}
         />
       </Sider>

@@ -45,6 +45,7 @@ const SystemOverviewPage = lazy(() => import('@/pages/admin/SystemOverviewPage')
 const AIManagementPage = lazy(() => import('@/pages/admin/AIManagementPage'));
 const KnowledgeGraphPage = lazy(() => import('@/pages/admin/KnowledgeGraphPage'));
 const ProfilePage = lazy(() => import('@/pages/admin/ProfilePage'));
+const HeroPage = lazy(() => import('@/pages/admin/HeroPage'));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const TrashPage = lazy(() => import('@/pages/admin/TrashPage'));
 const DocLinkResolver = lazy(() => import('@/pages/DocLinkResolver'));
@@ -111,6 +112,7 @@ export default function App() {
         <Route path="ai" element={<AIManagementPage />} />
         <Route path="graph" element={suspended(<KnowledgeGraphPage />, '加载知识图谱…')} />
         <Route path="profile" element={<ProfilePage />} />
+        <Route path="hero" element={<HeroPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="trash" element={<TrashPage />} />
       </Route>

@@ -785,8 +785,36 @@ a.jz-meta-full-edit-btn:hover .anticon {
    followed by a faded-ink attribution on a thin gold rule. */
 .jz-hero {
   text-align: center;
-  margin: 8px 0 24px;       /* 顶部从 36 → 8；底部从 48 → 24 */
-  padding: 0;               /* 移除上下 8px padding */
+  margin: 8px 0 24px;
+  padding: 14px 0 10px;
+  position: relative;
+}
+/* Scroll-end cloud lines: a centred gold gradient with end caps that
+   suggest a horizontal hanging scroll. Above the quote and below the
+   藏经阁 section. Use pseudo-elements so we don't need extra markup. */
+.jz-hero::before,
+.jz-hero::after {
+  content: '';
+  display: block;
+  margin: 0 auto;
+  width: clamp(180px, 36vw, 360px);
+  height: 1px;
+  background:
+    linear-gradient(
+      to right,
+      transparent 0,
+      color-mix(in srgb, var(--jz-gold) 75%, transparent) 25%,
+      var(--jz-gold) 50%,
+      color-mix(in srgb, var(--jz-gold) 75%, transparent) 75%,
+      transparent 100%
+    );
+  opacity: 0.55;
+}
+.jz-hero::before {
+  margin-bottom: 18px;
+}
+.jz-hero::after {
+  margin-top: 24px;
 }
 .jz-hero-quote {
   display: inline-flex;
@@ -1765,6 +1793,77 @@ a.jz-meta-full-edit-btn:hover .anticon {
   box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
 }
 
+/* ── 用量热图：GitHub 风格贡献日历 ──────────────────────────────────── */
+.jz-usage-heatmap {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.jz-usage-heatmap-summary {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+  font-size: 13px;
+  color: var(--jz-text-muted);
+}
+.jz-usage-heatmap-stat strong {
+  color: var(--jz-text);
+  font-weight: 600;
+  font-size: 16px;
+  margin-right: 2px;
+}
+.jz-usage-heatmap-usd strong {
+  color: var(--jz-accent);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.jz-usage-heatmap-svg {
+  display: block;
+}
+.jz-usage-heatmap-cell {
+  /* Base stroke gives empty days a faint outline so the calendar grid
+     stays legible during low-traffic weeks. Stroke is suppressed on
+     non-zero cells to keep the heat read clean. */
+  cursor: default;
+  stroke: color-mix(in srgb, var(--jz-divider) 60%, transparent);
+  stroke-width: 1;
+  transition: opacity 120ms ease;
+}
+.jz-usage-heatmap-cell:hover {
+  opacity: 0.75;
+}
+.jz-usage-heatmap-cell.is-future {
+  fill: transparent;
+  stroke: color-mix(in srgb, var(--jz-divider) 40%, transparent);
+  stroke-dasharray: 2 2;
+  pointer-events: none;
+}
+.jz-usage-heatmap-shade-0 {
+  fill: color-mix(in srgb, var(--jz-surface) 92%, var(--jz-divider) 8%);
+}
+.jz-usage-heatmap-shade-1 {
+  fill: color-mix(in srgb, var(--jz-accent) 18%, transparent);
+  stroke: transparent;
+}
+.jz-usage-heatmap-shade-2 {
+  fill: color-mix(in srgb, var(--jz-accent) 38%, transparent);
+  stroke: transparent;
+}
+.jz-usage-heatmap-shade-3 {
+  fill: color-mix(in srgb, var(--jz-accent) 62%, transparent);
+  stroke: transparent;
+}
+.jz-usage-heatmap-shade-4 {
+  fill: var(--jz-accent);
+  stroke: transparent;
+}
+/* Light-theme legibility: brighten the base shade so it doesn't blur into
+   the card background.  Dark themes already have enough contrast. */
+[data-theme='light'] .jz-usage-heatmap-shade-0 {
+  fill: color-mix(in srgb, var(--jz-surface) 80%, var(--jz-divider) 20%);
+}
+
 /* ── Statistic 数字 ──────────────────────────────────────────────────── */
 .jz-admin-glass .ant-statistic-title {
   color: var(--glass-text-muted) !important;
@@ -2738,4 +2837,358 @@ a.jz-meta-full-edit-btn:hover .anticon {
   border-radius: 3px;
   padding: 0 1px;
   font-weight: 600;
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Hero quote rotator — v0.9.4 two-stage transition + 4 animations.
+
+   How the cycle works (see HeroQuoteRotator.tsx for the timer state):
+     1. New quote mounts with key bump → entry keyframe plays (0.7s).
+     2. Wrapper holds for ``rotation_seconds``.
+     3. ``.is-leaving`` class applied → exit keyframe plays (0.5s).
+     4. Index advances, key bumps, loop.
+
+   Each animation has TWO keyframes (in + out) so the leave half is a
+   proper inverse of the enter half. CSS does the work — React just toggles
+   the class.
+
+   Anim slugs map 1:1 to the backend ``HERO_ANIMATIONS`` enum
+   (fade / slide / typewriter / ink-wash). Renaming here requires a model
+   + migration change in apps.accounts.
+
+   Layered visual hierarchy:
+     .jz-hero-quote        — 正文 (large + 印章)
+     .jz-hero-attr-author  — 作者 (medium + flanking gold rules)
+     .jz-hero-attr-source  — 〈篇名〉 (small italic, muted)
+   ────────────────────────────────────────────────────────────────────── */
+.jz-hero-rotator {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  position: relative;
+  /* The wrapper's own opacity / transform is what most exit keyframes
+     animate; entry keyframes restore. */
+  will-change: opacity, transform, filter;
+}
+.jz-hero-quote-seg {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Admin preview frame — wraps the live HeroQuoteCard in the management
+   page so it's clear "this is what the homepage will look like". Uses a
+   宣纸 tint (color-mix surface + paper warmth) + thin gold border + a
+   pair of tiny gold corner accents. */
+.jz-hero-preview-frame {
+  position: relative;
+  margin: 8px 4px;
+  padding: 36px 28px 32px;
+  border-radius: 6px;
+  background:
+    radial-gradient(
+      circle at top center,
+      color-mix(in srgb, var(--jz-gold) 5%, transparent) 0%,
+      transparent 70%
+    ),
+    color-mix(in srgb, var(--jz-surface) 88%, #f5e9c8 12%);
+  border: 1px solid color-mix(in srgb, var(--jz-gold) 35%, var(--jz-border));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--jz-gold) 12%, transparent),
+    0 2px 14px -8px color-mix(in srgb, var(--jz-gold) 30%, transparent);
+  text-align: center;
+}
+.jz-hero-preview-frame::before,
+.jz-hero-preview-frame::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--jz-gold);
+  opacity: 0.55;
+}
+.jz-hero-preview-frame::before {
+  top: 6px;
+  left: 6px;
+  border-right: none;
+  border-bottom: none;
+}
+.jz-hero-preview-frame::after {
+  bottom: 6px;
+  right: 6px;
+  border-left: none;
+  border-top: none;
+}
+[data-theme='dark'] .jz-hero-preview-frame,
+[data-theme='starry'] .jz-hero-preview-frame,
+[data-theme='deepsea'] .jz-hero-preview-frame {
+  background:
+    radial-gradient(
+      circle at top center,
+      color-mix(in srgb, var(--jz-gold) 10%, transparent) 0%,
+      transparent 70%
+    ),
+    color-mix(in srgb, var(--jz-surface) 92%, transparent);
+}
+
+/* ── 「」 corner brackets flanking the quote — gold, oversized, faded.
+   Pure decoration; aria-hidden in markup. The wrap container is what
+   the brackets live on so they grow / shrink with the title. */
+.jz-hero-quote-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 32px;
+}
+.jz-hero-quote-mark {
+  position: absolute;
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-size: clamp(1.8rem, 4vw, 2.6rem);
+  font-weight: 700;
+  line-height: 1;
+  color: var(--jz-gold);
+  opacity: 0.42;
+  pointer-events: none;
+  user-select: none;
+  text-shadow: 0 2px 4px color-mix(in srgb, var(--jz-bg-app) 60%, transparent);
+}
+.jz-hero-quote-mark-left {
+  top: -0.15em;
+  left: -4px;
+}
+.jz-hero-quote-mark-right {
+  bottom: -0.45em;
+  right: -4px;
+}
+
+/* Sharpen the 印章 — slight metallic gradient + inner ring, gentle 浮雕. */
+.jz-hero-seal {
+  /* Inherit base from existing rule (rotation + colour) but layer
+     extra inner depth. */
+  background:
+    radial-gradient(
+      circle at 30% 25%,
+      color-mix(in srgb, #fff 20%, transparent) 0%,
+      transparent 38%
+    ),
+    repeating-linear-gradient(
+      90deg,
+      transparent 0 2px,
+      rgba(255, 255, 255, 0.06) 2px 3px
+    ),
+    linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+}
+/* 简斋 印章 — a hairline highlight on top, plus subtle 浮雕 from a second
+   inset shadow. Overrides without breaking the existing base values. */
+.jz-hero-seal {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.32),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.28),
+    inset 0 0 0 1px color-mix(in srgb, var(--jz-accent) 30%, transparent),
+    0 3px 8px color-mix(in srgb, #581c1c 35%, transparent);
+}
+
+/* ── v0.9.5 单行三色署名 — 〔朝代〕 作者 〈篇名〉 ────────────────
+   The whole row sits between two flanking gold rules. Each piece is
+   tinted independently so the eye reads ``朝代`` (bronze) →
+   ``作者`` (cinnabar) →  ``〈篇名〉`` (ink italic) without needing
+   visible separators. Small margin between pieces does the visual
+   work — the angle quotes themselves are gold for warmth. */
+.jz-hero-cite {
+  margin-top: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  width: auto;
+}
+.jz-hero-cite-inner {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 13px;
+  letter-spacing: 3px;
+  line-height: 1.6;
+}
+/* Dynasty — bronze with subtle inner box brackets. */
+.jz-hero-cite-dynasty {
+  color: color-mix(in srgb, var(--jz-gold) 75%, var(--jz-text-muted) 25%);
+  font-weight: 600;
+  font-size: 12px;
+}
+.jz-hero-cite-dynasty > [aria-hidden] {
+  color: var(--jz-gold);
+  opacity: 0.85;
+  margin: 0 1px;
+}
+/* Author — cinnabar / accent emphasis. */
+.jz-hero-cite-author {
+  color: color-mix(in srgb, var(--jz-accent) 88%, var(--jz-text) 12%);
+  font-weight: 600;
+}
+/* Source — ink italic with gold angle brackets. */
+.jz-hero-cite-source {
+  color: color-mix(in srgb, var(--jz-text-muted) 90%, transparent);
+  font-style: italic;
+  font-size: 12px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 1px;
+}
+.jz-hero-cite-source > [aria-hidden] {
+  color: var(--jz-gold);
+  font-style: normal;
+  font-size: 1.1em;
+  opacity: 0.9;
+}
+
+/* ── fade — letter-spacing micro-shift gives the line a 落笔 feel ─── */
+.jz-hero-anim-fade {
+  animation: jz-hero-fade-in 0.7s ease-out both;
+}
+.jz-hero-anim-fade.is-leaving {
+  animation: jz-hero-fade-out 0.5s ease-in both;
+}
+@keyframes jz-hero-fade-in {
+  from {
+    opacity: 0;
+    letter-spacing: 10px;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    letter-spacing: normal;
+    transform: none;
+  }
+}
+@keyframes jz-hero-fade-out {
+  from { opacity: 1; transform: none; }
+  to   { opacity: 0; transform: translateY(-3px); }
+}
+
+/* ── slide — up-slide w/ blur recovery, exit slides further up ─── */
+.jz-hero-anim-slide {
+  animation: jz-hero-slide-in 0.7s cubic-bezier(0.22, 1.4, 0.36, 1) both;
+}
+.jz-hero-anim-slide.is-leaving {
+  animation: jz-hero-slide-out 0.5s cubic-bezier(0.55, 0, 0.55, 1) both;
+}
+@keyframes jz-hero-slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(2.5px);
+  }
+  55% { opacity: 1; filter: blur(0); }
+  to {
+    opacity: 1;
+    transform: none;
+    filter: blur(0);
+  }
+}
+@keyframes jz-hero-slide-out {
+  from { opacity: 1; transform: none; filter: blur(0); }
+  to {
+    opacity: 0;
+    transform: translateY(-14px);
+    filter: blur(2px);
+  }
+}
+
+/* ── ink-wash — 水墨晕化：blur-fade in, blur-fade out with scale ──
+   Replaces v0.9.3 ``zoom``. The blur start + scale 0.96 gives the
+   impression ink hasn't fully settled; the wash-out reverses with a
+   gentle drift. Best paired with serif weight bumped slightly so the
+   blur edge reads clearly. */
+.jz-hero-anim-ink-wash {
+  animation: jz-hero-ink-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.jz-hero-anim-ink-wash.is-leaving {
+  animation: jz-hero-ink-out 0.5s cubic-bezier(0.6, 0, 0.7, 0.2) both;
+}
+@keyframes jz-hero-ink-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+    filter: blur(8px) saturate(1.6);
+  }
+  50% {
+    opacity: 0.7;
+    filter: blur(3px) saturate(1.3);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0) saturate(1);
+  }
+}
+@keyframes jz-hero-ink-out {
+  from {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.04);
+    filter: blur(6px);
+  }
+}
+
+/* ── typewriter — per-char reveal + blinking caret ─────────────── */
+.jz-hero-anim-typewriter {
+  /* Wrapper is opaque — chars carry the keyframe. Exit uses a simple
+     fade so we don't have to reverse-type each char. */
+}
+.jz-hero-anim-typewriter.is-leaving {
+  animation: jz-hero-fade-out 0.5s ease-in both;
+}
+.jz-hero-typewriter-line {
+  display: inline-block;
+}
+.jz-hero-typewriter-char {
+  display: inline-block;
+  opacity: 0;
+  transform: translateY(4px);
+  animation: jz-hero-typewriter 0.32s ease-out both;
+}
+@keyframes jz-hero-typewriter {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.jz-hero-typewriter-caret {
+  display: inline-block;
+  width: 0.55em;
+  margin-left: 2px;
+  color: var(--jz-gold);
+  opacity: 0;
+  animation: jz-hero-caret-blink 1.05s steps(2, end) infinite both;
+}
+@keyframes jz-hero-caret-blink {
+  from { opacity: 0; }
+  50%  { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Honour reduced-motion preferences — instantly settle to the end frame
+   and skip every keyframe / blink. */
+@media (prefers-reduced-motion: reduce) {
+  .jz-hero-anim-fade,
+  .jz-hero-anim-slide,
+  .jz-hero-anim-ink-wash,
+  .jz-hero-anim-typewriter,
+  .jz-hero-anim-fade.is-leaving,
+  .jz-hero-anim-slide.is-leaving,
+  .jz-hero-anim-ink-wash.is-leaving,
+  .jz-hero-anim-typewriter.is-leaving,
+  .jz-hero-typewriter-char,
+  .jz-hero-typewriter-caret {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
 }

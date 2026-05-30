@@ -1146,11 +1146,21 @@
   /* Soft elevation cue without going full Material — keeps prose feeling. */
   box-shadow: 0 1px 2px -1px color-mix(in srgb, #000 8%, transparent);
 }
-[data-theme='dark'] .jz-code-block.jz-diagram-block,
-[data-theme='starry'] .jz-code-block.jz-diagram-block,
+[data-theme='dark'] .jz-code-block.jz-diagram-block {
+  border-color: color-mix(in srgb, var(--jz-divider) 80%, transparent);
+  background: color-mix(in srgb, var(--jz-surface) 86%, var(--jz-accent) 14%);
+}
+/* Starry / deepsea borrow the same accent-blended tint approach but use the
+   palette's signature hue (deep purple / cyan) so mermaid nodes — which now
+   pick the same accent-mixed fill — stand out against the canvas instead of
+   blending into the dark uniform background. */
+[data-theme='starry'] .jz-code-block.jz-diagram-block {
+  border-color: color-mix(in srgb, var(--jz-divider) 80%, transparent);
+  background: color-mix(in srgb, var(--jz-surface) 82%, #7c3aed 18%);
+}
 [data-theme='deepsea'] .jz-code-block.jz-diagram-block {
   border-color: color-mix(in srgb, var(--jz-divider) 80%, transparent);
-  background: color-mix(in srgb, #fff 4%, transparent);
+  background: color-mix(in srgb, var(--jz-surface) 82%, #0891b2 18%);
 }
 
 /* Floating action row — top-right, fades in. Sits ABOVE the canvas so a
@@ -1264,33 +1274,141 @@
 
 /* ── Diagram fullscreen overlay (⤢ button) ────────────────────────────── */
 .jz-diagram-fullscreen {
-  /* Inherits .jz-lightbox base from reader.css (backdrop + close button +
-     animation). Stage tweaks below. */
-  padding: 48px;
+  /* Inherits .jz-lightbox base from reader.css (backdrop + animation). The
+     overlay fills the viewport; the toolbar floats above the stage. */
+  padding: 0;
+  display: flex;
+  flex-direction: column;
 }
+/* Stage owns the SVG and absorbs wheel / pointer events for pan-zoom. */
 .jz-diagram-fullscreen-stage {
-  background: #fff;
-  border-radius: 12px;
-  padding: 32px;
-  max-width: 100%;
-  max-height: 100%;
-  overflow: auto;
-  box-shadow: 0 12px 60px rgba(0, 0, 0, 0.6);
+  flex: 1 1 auto;
+  position: relative;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
+  cursor: grab;
+  /* Subtle dotted background so panning gives visual feedback even when the
+     diagram is small. Light grid on dark backdrop. */
+  background-image:
+    radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
 }
-.jz-diagram-fullscreen-stage svg {
+.jz-diagram-fullscreen-stage.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+/* Inner wrapper applies translate+scale via transform — keeping the SVG
+   sized to 100/100 means transform anchors stay predictable. */
+.jz-diagram-fullscreen-inner {
+  width: min(1200px, 80vw);
+  height: min(80vh, 800px);
+  background: #fff;
+  border-radius: 12px;
+  padding: 32px;
+  box-shadow: 0 20px 80px rgba(0, 0, 0, 0.6);
+  transform-origin: center center;
+  transition: transform 60ms linear;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.jz-diagram-fullscreen-inner > svg {
   max-width: 100%;
-  max-height: 80vh;
+  max-height: 100%;
   width: auto;
   height: auto;
   display: block;
 }
-[data-theme='dark'] .jz-diagram-fullscreen-stage,
-[data-theme='starry'] .jz-diagram-fullscreen-stage,
-[data-theme='deepsea'] .jz-diagram-fullscreen-stage {
+[data-theme='dark'] .jz-diagram-fullscreen-inner,
+[data-theme='starry'] .jz-diagram-fullscreen-inner,
+[data-theme='deepsea'] .jz-diagram-fullscreen-inner {
   background: #f5f5f5;
+}
+
+/* Toolbar — top-right, glass tile with cluster buttons. */
+.jz-diagram-fullscreen-toolbar {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px;
+  border-radius: 10px;
+  background: rgba(28, 28, 32, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  color: #f0f0f0;
+}
+.jz-diagram-fullscreen-toolbar button {
+  appearance: none;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  padding: 6px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  min-width: 28px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.jz-diagram-fullscreen-toolbar button:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+.jz-diagram-fullscreen-toolbar button.is-success {
+  background: rgba(16, 185, 129, 0.28);
+  color: #6ee7b7;
+}
+.jz-diagram-fullscreen-toolbar button.is-error {
+  background: rgba(239, 68, 68, 0.28);
+  color: #fca5a5;
+}
+.jz-diagram-fullscreen-zoom {
+  display: inline-block;
+  min-width: 48px;
+  padding: 0 6px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: rgba(240, 240, 240, 0.85);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.jz-diagram-fullscreen-sep {
+  display: inline-block;
+  width: 1px;
+  height: 18px;
+  background: rgba(255, 255, 255, 0.18);
+  margin: 0 4px;
+}
+@media (max-width: 720px) {
+  .jz-diagram-fullscreen-inner {
+    width: 92vw;
+    height: 70vh;
+    padding: 16px;
+  }
+  .jz-diagram-fullscreen-toolbar {
+    top: 8px;
+    right: 8px;
+    padding: 4px;
+  }
+  .jz-diagram-fullscreen-toolbar button {
+    padding: 4px 8px;
+    height: 26px;
+    font-size: 12px;
+  }
 }
 
 /* ──────────────────────────────────────────────────────────────────────

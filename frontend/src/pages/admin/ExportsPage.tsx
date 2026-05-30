@@ -60,14 +60,17 @@ export default function ExportsPage() {
     }
   }, []);
 
-  async function handleDownload(task: ExportTask) {
+  function handleDownload(task: ExportTask) {
+    // Native ``<a href>`` triggers an immediate browser download — there's no
+    // promise to await and nothing to throw. The transient busy state still
+    // surfaces the click affordance, then clears on the next microtask.
     setDownloadingId(task.id);
     try {
-      await exportsApi.downloadExport(task);
+      exportsApi.downloadExport(task);
     } catch (err) {
       message.error(formatApiError(err, '下载失败'));
     } finally {
-      setDownloadingId(null);
+      window.setTimeout(() => setDownloadingId(null), 400);
     }
   }
 
