@@ -12,8 +12,9 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { DeleteOutlined, PlusOutlined } from '@ant-design/icons';
+import { DeleteOutlined, KeyOutlined, PlusOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
+import * as authApi from '@/api/auth';
 import * as usersApi from '@/api/users';
 import { message } from '@/utils/notify';
 import { formatApiError } from '@/api/client';
@@ -26,13 +27,25 @@ const { Text } = Typography;
 interface CreateForm {
   username: string;
   password: string;
-  email?: string;
+  email: string;
   is_staff?: boolean;
+}
+
+/** Can the current operator act on this target row? Mirrors backend
+ *  ``can_manage_user``: root can touch anyone but self; non-root staff
+ *  can only touch non-superuser users. */
+function canManage(me: { id: number; is_root?: boolean } | null, target: User): boolean {
+  if (!me) return false;
+  if (target.id === me.id) return false;
+  if (me.is_root) return true;
+  return !target.is_superuser && !target.is_root;
 }
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[] | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [resetTarget, setResetTarget] = useState<User | null>(null);
+  const [resetPwd, setResetPwd] = useState('');
   const [form] = Form.useForm<CreateForm>();
   const me = useAuthStore((s) => s.user);
 
@@ -79,9 +92,26 @@ export default function UsersPage() {
 
   async function onToggleActive(user: User, next: boolean) {
     try {
-      await usersApi.updateUser(user.id, { is_active: next });
+      if (next) await authApi.enableUser(user.id);
+      else await authApi.disableUser(user.id);
       message.success(next ? '已启用' : '已禁用');
       void load();
+    } catch (e) {
+      message.error(formatApiError(e));
+    }
+  }
+
+  async function onResetPassword() {
+    if (!resetTarget) return;
+    if (!resetPwd || resetPwd.length < 8) {
+      message.warning('新密码至少 8 个字符');
+      return;
+    }
+    try {
+      await authApi.resetUserPassword(resetTarget.id, resetPwd);
+      message.success(`已重置 ${resetTarget.username} 的密码`);
+      setResetTarget(null);
+      setResetPwd('');
     } catch (e) {
       message.error(formatApiError(e));
     }
@@ -123,7 +153,8 @@ export default function UsersPage() {
             render: (v: string, r) => (
               <Space>
                 <Text strong>{v}</Text>
-                {r.is_superuser && <Tag color="gold">超级</Tag>}
+                {r.is_root && <Tag color="gold" style={{ marginRight: 0 }}>🛡 根</Tag>}
+                {r.is_superuser && !r.is_root && <Tag color="purple">超级</Tag>}
                 {me?.id === r.id && <Tag color="blue">当前</Tag>}
               </Space>
             ),
@@ -133,27 +164,49 @@ export default function UsersPage() {
             title: '管理员',
             dataIndex: 'is_staff',
             width: 100,
-            render: (v: boolean, r) => (
-              <Tooltip title={r.is_superuser ? '超级管理员，无法降级' : r.id === me?.id ? '不能取消自己' : ''}>
-                <Switch
-                  checked={v}
-                  disabled={r.is_superuser || r.id === me?.id}
-                  onChange={(next) => onToggleStaff(r, next)}
-                />
-              </Tooltip>
-            ),
+            render: (v: boolean, r) => {
+              const disabled = r.is_superuser || !canManage(me, r);
+              return (
+                <Tooltip
+                  title={
+                    r.is_root
+                      ? '根管理员，只能本人修改'
+                      : r.is_superuser
+                        ? '超级管理员，无法降级'
+                        : !canManage(me, r)
+                          ? '无权修改'
+                          : ''
+                  }
+                >
+                  <Switch checked={v} disabled={disabled} onChange={(next) => onToggleStaff(r, next)} />
+                </Tooltip>
+              );
+            },
           },
           {
             title: '启用',
             dataIndex: 'is_active',
             width: 80,
-            render: (v: boolean, r) => (
-              <Switch
-                checked={v}
-                disabled={r.id === me?.id || r.is_superuser}
-                onChange={(next) => onToggleActive(r, next)}
-              />
-            ),
+            render: (v: boolean, r) => {
+              const disabled = r.is_root || !canManage(me, r);
+              return (
+                <Tooltip
+                  title={
+                    r.is_root
+                      ? '根管理员账号不能禁用'
+                      : !canManage(me, r)
+                        ? '无权操作此账号'
+                        : ''
+                  }
+                >
+                  <Switch
+                    checked={v}
+                    disabled={disabled}
+                    onChange={(next) => onToggleActive(r, next)}
+                  />
+                </Tooltip>
+              );
+            },
           },
           {
             title: '创建时间',
@@ -169,24 +222,40 @@ export default function UsersPage() {
           },
           {
             title: '操作',
-            width: 80,
+            width: 130,
             render: (_, r) => (
-              <Popconfirm
-                title="删除用户"
-                description={`确定删除 ${r.username}？此操作不可撤销。`}
-                onConfirm={() => onDelete(r)}
-                okText="删除"
-                cancelText="取消"
-                disabled={r.is_superuser || r.id === me?.id}
-              >
-                <Button
-                  type="text"
-                  danger
-                  size="small"
-                  icon={<DeleteOutlined />}
-                  disabled={r.is_superuser || r.id === me?.id}
-                />
-              </Popconfirm>
+              <Space size={4}>
+                <Tooltip title={canManage(me, r) ? '重置该用户的密码' : '无权操作'}>
+                  <Button
+                    type="text"
+                    size="small"
+                    icon={<KeyOutlined />}
+                    disabled={!canManage(me, r)}
+                    onClick={() => {
+                      setResetTarget(r);
+                      setResetPwd('');
+                    }}
+                  />
+                </Tooltip>
+                <Popconfirm
+                  title="删除用户"
+                  description={`确定删除 ${r.username}？此操作不可撤销。`}
+                  onConfirm={() => onDelete(r)}
+                  okText="删除"
+                  cancelText="取消"
+                  disabled={!canManage(me, r) || r.is_root}
+                >
+                  <Tooltip title={r.is_root ? '根管理员不能删除' : ''}>
+                    <Button
+                      type="text"
+                      danger
+                      size="small"
+                      icon={<DeleteOutlined />}
+                      disabled={!canManage(me, r) || r.is_root}
+                    />
+                  </Tooltip>
+                </Popconfirm>
+              </Space>
             ),
           },
         ]}
@@ -223,13 +292,44 @@ export default function UsersPage() {
           >
             <Input.Password />
           </Form.Item>
-          <Form.Item label="邮箱（可选）" name="email" rules={[{ type: 'email', message: '邮箱格式不正确' }]}>
+          <Form.Item
+            label="邮箱"
+            name="email"
+            rules={[
+              { required: true, message: '请输入邮箱' },
+              { type: 'email', message: '邮箱格式不正确' },
+            ]}
+          >
             <Input />
           </Form.Item>
           <Form.Item label="管理员权限" name="is_staff" valuePropName="checked">
             <Switch />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        title={resetTarget ? `重置「${resetTarget.username}」的密码` : '重置密码'}
+        open={!!resetTarget}
+        onCancel={() => {
+          setResetTarget(null);
+          setResetPwd('');
+        }}
+        onOk={() => void onResetPassword()}
+        okText="重置"
+        cancelText="取消"
+        destroyOnHidden
+      >
+        <Text type="secondary" style={{ display: 'block', marginBottom: 12 }}>
+          重置后该用户用新密码登录。请把新密码安全地传给本人。
+        </Text>
+        <Input.Password
+          value={resetPwd}
+          onChange={(e) => setResetPwd(e.target.value)}
+          placeholder="新密码（至少 8 位）"
+          autoFocus
+          onPressEnter={() => void onResetPassword()}
+        />
       </Modal>
     </div>
   );

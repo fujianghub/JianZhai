@@ -55,6 +55,14 @@ ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 # don't need to log in just to view the homepage.
 SITE_REQUIRE_LOGIN = _env_bool("SITE_REQUIRE_LOGIN", default=False)
 
+# v0.9.9 — "root admin" identity. The user whose username matches this
+# value is the only one who can disable / reset-password / demote OTHER
+# superusers (including the default ``admin``). Other superusers can
+# still manage non-superuser accounts but can't touch each other or the
+# root. Defaults to ``fengfujiang`` to match the operator's request;
+# can be overridden via env on multi-tenant deployments.
+ROOT_ADMIN_USERNAME = os.environ.get("JIANZHAI_ROOT_ADMIN_USERNAME", "fengfujiang")
+
 # Refuse to boot in production with the placeholder secret. JianZhai's primary
 # deployment story is single-user localhost, but if someone moves it to a
 # real host (DEBUG=False) and forgets to populate ``.env`` we'd otherwise

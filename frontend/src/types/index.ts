@@ -161,8 +161,16 @@ export interface KBTree {
 export interface SessionUser {
   id: number;
   username: string;
+  /** v0.9.9 — email is now part of every user record. Falsy on legacy
+   *  rows that pre-date the requirement. */
+  email?: string;
   is_staff: boolean;
   is_superuser: boolean;
+  /** v0.9.9 — true iff username === ROOT_ADMIN_USERNAME and is_superuser.
+   *  UI uses this to show the 🛡 root badge and hide destructive
+   *  buttons targeting the root account. */
+  is_root?: boolean;
+  is_active?: boolean;
   avatar_url?: string | null;
 }
 
@@ -173,6 +181,7 @@ export interface User {
   is_staff: boolean;
   is_superuser: boolean;
   is_active: boolean;
+  is_root?: boolean;
   date_joined: string;
   last_login: string | null;
 }
