@@ -180,6 +180,11 @@ export interface User {
 export interface SessionResponse {
   authenticated: boolean;
   user: SessionUser | null;
+  /** v0.9.8 — true when the deployment runs in "friends-only" mode
+   *  (SITE_REQUIRE_LOGIN env). Frontend uses this to gate the blog and
+   *  redirect anonymous visitors to ``/admin/login``. Optional for
+   *  back-compat with old backends. */
+  require_login?: boolean;
 }
 
 export interface Paginated<T> {

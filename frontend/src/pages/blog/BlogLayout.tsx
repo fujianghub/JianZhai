@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { Button, Layout, Space, Tooltip } from 'antd';
-import { Link, NavLink, Outlet } from 'react-router-dom';
+import { Button, Layout, Space, Spin, Tooltip } from 'antd';
+import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { UserOutlined } from '@ant-design/icons';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
@@ -55,11 +55,36 @@ export default function BlogLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
   const authUser = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
+  const requireLogin = useAuthStore((s) => s.requireLogin);
   const loadSession = useAuthStore((s) => s.loadSession);
+  const location = useLocation();
 
   useEffect(() => {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
+
+  // v0.9.8 "friends-only" mode: the deployment was started with
+  // SITE_REQUIRE_LOGIN=true. Anonymous visitors to any blog route get
+  // bounced to the login page; ``from`` carries the original URL so the
+  // login page can return them after authenticating. Until the session
+  // call resolves we show a spinner — without the gate the page would
+  // briefly render content before the redirect, which looks broken.
+  if (requireLogin && !authLoaded) {
+    return (
+      <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh' }}>
+        <Spin />
+      </div>
+    );
+  }
+  if (requireLogin && authLoaded && !authUser) {
+    return (
+      <Navigate
+        to="/admin/login"
+        replace
+        state={{ from: location.pathname + location.search }}
+      />
+    );
+  }
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

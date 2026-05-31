@@ -1,0 +1,167 @@
+# docker-compose.prod.yml — production orchestration.
+#
+# Six services on one host:
+#   caddy       reverse-proxy + HTTPS + SPA static
+#   backend     Django + Gunicorn (web)
+#   celery      Django code in worker mode (async tasks)
+#   postgres    主数据 + tsvector 全文索引
+#   redis       cache + Celery broker/result
+#   backup      cron-style nightly pg_dump (writes to ./backup/)
+#
+# Usage:
+#   cd infra
+#   cp .env.example.prod .env.prod
+#   # edit .env.prod with real secrets
+#   docker compose -f docker-compose.prod.yml --env-file .env.prod up -d --build
+#
+# On code change after first deploy:
+#   ./deploy.sh    (does git pull + rebuild backend & caddy + migrate)
+
+name: jianzhai
+
+services:
+  caddy:
+    build:
+      context: ..
+      dockerfile: infra/frontend.Dockerfile
+    image: jianzhai-caddy:latest
+    container_name: jianzhai-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: jianzhai-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-jianzhai}
+      POSTGRES_USER: ${POSTGRES_USER:-jianzhai}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD required in .env.prod}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-jianzhai} -d ${POSTGRES_DB:-jianzhai}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  redis:
+    image: redis:7-alpine
+    container_name: jianzhai-redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  backend:
+    build:
+      context: ..
+      dockerfile: infra/backend.Dockerfile
+    image: jianzhai-backend:latest
+    container_name: jianzhai-backend
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-jianzhai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-jianzhai}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - media_data:/app/media
+    command: >
+      sh -c "
+        python manage.py migrate --noinput &&
+        python manage.py collectstatic --noinput --clear &&
+        gunicorn jianzhai.wsgi:application
+          --bind 0.0.0.0:8002
+          --workers 3
+          --threads 2
+          --timeout 120
+          --access-logfile -
+          --error-logfile -
+      "
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/api/v1/auth/csrf/"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  celery:
+    image: jianzhai-backend:latest
+    container_name: jianzhai-celery
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-jianzhai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-jianzhai}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - media_data:/app/media
+    command: celery -A jianzhai worker --loglevel=info --concurrency=2
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Nightly pg_dump → /backup on the host.  Backups stay on disk; the
+  # operator (you) sync them off to local storage via rsync / scp.
+  backup:
+    image: postgres:16-alpine
+    container_name: jianzhai-backup
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER:-jianzhai}
+      POSTGRES_DB: ${POSTGRES_DB:-jianzhai}
+    volumes:
+      - ./backup:/backup
+    entrypoint:
+      - sh
+      - -c
+      - |
+        # Run pg_dump every day at 03:00 server time.  Keeps last 14 days.
+        echo "0 3 * * * sh -c 'pg_dump -h postgres -U \$POSTGRES_USER \$POSTGRES_DB | gzip > /backup/jianzhai-\$(date +\%Y\%m\%d).sql.gz && find /backup -name \"jianzhai-*.sql.gz\" -mtime +14 -delete' > /proc/1/fd/1 2>&1" > /etc/crontabs/root
+        crond -f -l 8
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  pg_data:
+    name: jianzhai_pg_data
+  redis_data:
+    name: jianzhai_redis_data
+  media_data:
+    name: jianzhai_media_data
+  caddy_data:
+    name: jianzhai_caddy_data
+  caddy_config:
+    name: jianzhai_caddy_config

@@ -4,7 +4,8 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.permissions import IsAuthenticated
+from apps.accounts.permissions import PublicOrLoginGated
 from rest_framework.response import Response
 
 from apps.accounts.scoping import scope_queryset
@@ -88,7 +89,7 @@ def folder_tags(request, folder_id: int):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([PublicOrLoginGated])
 def public_tag_cloud(request):
     """Tags with at least one published, public document on a public knowledge base."""
     qs = (
@@ -124,7 +125,7 @@ def public_tag_cloud(request):
 
 
 @api_view(["GET"])
-@permission_classes([AllowAny])
+@permission_classes([PublicOrLoginGated])
 def public_tag_entries(request, tag_id: int):
     """Published public posts tagged with this tag (by tag primary key)."""
     tag = get_object_or_404(Tag, pk=tag_id)

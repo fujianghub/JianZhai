@@ -59,9 +59,18 @@ def csrf(request):
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def session(request):
+    """Bootstrap-time check called by the SPA before mounting any route.
+
+    Also surfaces ``require_login`` (set by ``SITE_REQUIRE_LOGIN`` env in
+    production) so the frontend BlogLayout can redirect anonymous users to
+    the login page when the deployment is in friends-only mode.
+    """
+    base = {
+        "require_login": bool(getattr(settings, "SITE_REQUIRE_LOGIN", False)),
+    }
     if request.user.is_authenticated:
-        return Response({"authenticated": True, "user": _serialize_user(request.user)})
-    return Response({"authenticated": False, "user": None})
+        return Response({**base, "authenticated": True, "user": _serialize_user(request.user)})
+    return Response({**base, "authenticated": False, "user": None})
 
 
 @api_view(["POST"])

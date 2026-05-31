@@ -3,7 +3,7 @@ from __future__ import annotations
 from django.http import Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, viewsets
-from rest_framework.permissions import AllowAny
+from apps.accounts.permissions import PublicOrLoginGated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -87,7 +87,7 @@ def resolve_public_post_by_slug(
 class PublicPostViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
 ):
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
     lookup_field = "slug"
 
     def get_queryset(self):
@@ -113,7 +113,7 @@ class PublicPostViewSet(
 
 
 class PublicKBViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
     serializer_class = PublicKBSerializer
     lookup_field = "slug"
 
@@ -130,7 +130,7 @@ class PublicKBViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
 class PublicKBCategoriesView(APIView):
     """Public KBs grouped by category for the blog home page."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
 
     def get(self, request):
         from .serializers import PublicKBSerializer
@@ -274,7 +274,7 @@ def _build_public_folder_tree(
 
 
 class PublicKBTreeView(APIView):
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
 
     def get(self, request, slug: str):
         kb = get_object_or_404(KnowledgeBase.objects.filter(visibility="public"), slug=slug)
@@ -308,7 +308,7 @@ class PublicKBTreeView(APIView):
 class PublicPostByIdView(APIView):
     """Lookup a public post by numeric id — used by the @-mention link resolver."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
 
     def get(self, request, doc_id: int):
         doc = get_object_or_404(_published_qs(), pk=doc_id)
@@ -318,7 +318,7 @@ class PublicPostByIdView(APIView):
 class PublicArchiveView(APIView):
     """Group published+public posts by year/month for the blog archive page."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
 
     def get(self, request):
         qs = (
@@ -365,7 +365,7 @@ def rss_feed(request):
 class PublicPostRelatedView(APIView):
     """Related published posts by shared tags and backlinks (public sources only)."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
 
     def get(self, request, slug: str):
         kb_slug = request.query_params.get("kb")
@@ -481,7 +481,7 @@ def sitemap_xml(request):
 
 class PublicPostAdjacentView(APIView):
     """Return the immediately older and newer published posts relative to `slug`."""
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
 
     def get(self, request, slug: str):
         kb_slug = request.query_params.get("kb")
@@ -503,7 +503,7 @@ class PublicPostAdjacentView(APIView):
 class PublicBacklinksView(APIView):
     """Backlinks for a published+public document; only public sources are exposed."""
 
-    permission_classes = [AllowAny]
+    permission_classes = [PublicOrLoginGated]
 
     def get(self, request, doc_id: int):
         target = get_object_or_404(_published_qs(), pk=doc_id)

@@ -48,6 +48,13 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 DEBUG = _env_bool("DEBUG", default=True)
 ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 
+# v0.9.8 — private-blog mode. When ``true`` (production default for the
+# friends-only deployment), every ``/api/v1/public/*`` endpoint requires a
+# logged-in session; the frontend SPA's BlogLayout redirects anonymous
+# visitors to /admin/login.  Local dev defaults to false so contributors
+# don't need to log in just to view the homepage.
+SITE_REQUIRE_LOGIN = _env_bool("SITE_REQUIRE_LOGIN", default=False)
+
 # Refuse to boot in production with the placeholder secret. JianZhai's primary
 # deployment story is single-user localhost, but if someone moves it to a
 # real host (DEBUG=False) and forgets to populate ``.env`` we'd otherwise

@@ -1,0 +1,98 @@
+# Caddyfile — production reverse-proxy + HTTPS.
+#
+# Caddy auto-provisions a Let's Encrypt cert for the domain below the
+# first time it receives a request.  The cert lives in the ``caddy_data``
+# volume so it survives container restarts.
+#
+# IMPORTANT: replace ``fujiang.jianzhai.cn`` with your real ICP-备案'd
+# domain before deploying.  If you haven't filed yet, comment out the
+# domain block and use the ``:80`` fallback below so you can test
+# locally while waiting for 管局.
+
+{
+    # Global options.  ``email`` is used by Let's Encrypt for expiry
+    # notifications — put a mailbox you actually read.
+    email fujiangfeng28@gmail.com
+}
+
+# ─── Main site ───────────────────────────────────────────────────────
+fujiang.jianzhai.cn {
+    # Reverse-proxy Django API.  ``backend`` is the docker-compose
+    # service name; docker's internal DNS resolves it.
+    @api {
+        path /api/* /feed.xml /sitemap.xml /robots.txt
+    }
+    handle @api {
+        reverse_proxy backend:8002 {
+            # Stream SSE without buffering — required for /ai/stream/
+            # and /ai/chat/ to deliver tokens in real time.
+            flush_interval -1
+            # 2-min read timeout — AI calls can take a while.
+            transport http {
+                read_timeout 120s
+                response_header_timeout 120s
+            }
+        }
+    }
+
+    # Django admin (Django's built-in /admin/) — kept reachable so
+    # the operator can poke models directly.
+    handle /django-admin/* {
+        reverse_proxy backend:8002
+    }
+
+    # Static files served by WhiteNoise inside Django.
+    handle /static/* {
+        reverse_proxy backend:8002
+    }
+
+    # User-uploaded media (avatars, attachments, etc).  Same backend
+    # serves these via Django's ``static`` URL helper.
+    handle /media/* {
+        reverse_proxy backend:8002
+    }
+
+    # SPA fallback — anything else hits the React build.  ``try_files``
+    # serves real files when they exist (assets/*.js), otherwise
+    # falls back to index.html so the SPA router can take over.
+    handle {
+        root * /srv
+        try_files {path} /index.html
+        file_server
+    }
+
+    # Gzip + zstd compression for text-y responses.
+    encode zstd gzip
+
+    # Security headers.
+    header {
+        # SPA needs to load inline scripts from itself.
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Permissions-Policy explicitly disables features we don't use.
+        Permissions-Policy "geolocation=(), camera=(), microphone=()"
+        # HSTS — only enable after you've confirmed Let's Encrypt works.
+        # Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        -Server
+    }
+
+    # Log access to docker-compose's stdout for ``docker compose logs caddy``.
+    log {
+        output stdout
+        format console
+        level INFO
+    }
+}
+
+# ─── HTTP-only fallback ──────────────────────────────────────────────
+#
+# Useful before ICP 备案 finishes — point your local hosts file to the
+# server IP and access via http://<ip>:80 for smoke-testing.
+# Uncomment the block when needed; comment out the domain block above.
+#
+# :80 {
+#     handle /api/* { reverse_proxy backend:8002 }
+#     handle /media/* { reverse_proxy backend:8002 }
+#     handle /static/* { reverse_proxy backend:8002 }
+#     handle { root * /srv; try_files {path} /index.html; file_server }
+# }
