@@ -30,6 +30,7 @@ import { formatApiError } from '@/api/client';
 import type { KBCategory, KnowledgeBase, Visibility } from '@/types';
 import ExportDialog from '@/components/common/ExportDialog';
 import TagPicker from '@/components/common/TagPicker';
+import ColorField from '@/components/common/ColorField';
 import { resolveTagColor } from '@/utils/tagColor';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 
@@ -368,7 +369,7 @@ export default function KBListPage() {
             <Input placeholder="https://..." />
           </Form.Item>
           <Form.Item label="主题色" name="accent_color">
-            <Input placeholder="#1677ff" />
+            <ColorField />
           </Form.Item>
           {editing && (
             <Form.Item label="标签">
@@ -413,7 +414,7 @@ export default function KBListPage() {
             <Input placeholder="https://..." />
           </Form.Item>
           <Form.Item label="主题色" name="accent_color">
-            <Input placeholder="#1677ff" />
+            <ColorField />
           </Form.Item>
         </Form>
       </Modal>
@@ -443,7 +444,7 @@ export default function KBListPage() {
             <Input.TextArea rows={2} />
           </Form.Item>
           <Form.Item label="标题色" name="accent_color">
-            <Input placeholder="#1677ff" />
+            <ColorField />
           </Form.Item>
           <Button type="primary" htmlType="submit">
             {editingCategory ? '更新大类' : '添加大类'}

@@ -32,7 +32,8 @@ export async function uploadFile(file: File, documentId?: number): Promise<Attac
 export async function importFileAsDoc(
   file: File,
   kbId: number,
-  folderId: number | null = null
+  folderId: number | null = null,
+  onProgress?: (loaded: number, total: number) => void
 ): Promise<{ id: number; title: string; folder: number | null; knowledge_base: number }> {
   await ensureCsrf();
   const fd = new FormData();
@@ -41,6 +42,9 @@ export async function importFileAsDoc(
   if (folderId != null) fd.append('folder', String(folderId));
   const { data } = await apiClient.post('/imports/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(e.loaded, e.total);
+    },
   });
   return data;
 }

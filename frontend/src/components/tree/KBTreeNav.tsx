@@ -60,6 +60,35 @@ function filterFolder(
   return { ...f, documents: docs, children: subs };
 }
 
+/**
+ * Collect the ids of every document and folder currently *visible* under the
+ * given filter (title query + status). Reuses the same `filterFolder` pruning
+ * as the tree render so "全选" only picks what the user can actually see.
+ */
+export function collectVisibleSelection(
+  tree: KBTree,
+  filterQuery = '',
+  filterStatus: 'all' | 'published' | 'draft' = 'all'
+): CheckedSelection {
+  const docIds: number[] = [];
+  const folderIds: number[] = [];
+  const walk = (folders: TreeFolder[]) => {
+    for (const f of folders) {
+      folderIds.push(f.id);
+      for (const d of f.documents) docIds.push(d.id);
+      walk(f.children);
+    }
+  };
+  const folders = tree.folders
+    .map((f) => filterFolder(f, filterQuery, filterStatus))
+    .filter((x): x is TreeFolder => x !== null);
+  walk(folders);
+  for (const d of tree.documents.filter((d) => docMatches(d, filterQuery, filterStatus))) {
+    docIds.push(d.id);
+  }
+  return { docIds, folderIds };
+}
+
 function collectFolderKeys(folders: TreeFolder[]): React.Key[] {
   const keys: React.Key[] = [];
   function walk(list: TreeFolder[]) {

@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import {
   Alert,
   Button,
+  Checkbox,
   Dropdown,
   Empty,
   Form,
   Input,
   Modal,
+  Progress,
   Radio,
   Popconfirm,
   Segmented,
@@ -39,7 +41,7 @@ import * as attApi from '@/api/attachments';
 import * as tagsApi from '@/api/tags';
 import { formatApiError } from '@/api/client';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
-import KBTreeNav, { type CheckedSelection } from '@/components/tree/KBTreeNav';
+import KBTreeNav, { collectVisibleSelection, type CheckedSelection } from '@/components/tree/KBTreeNav';
 import ExportDialog from '@/components/common/ExportDialog';
 import type { DocSortMode, KBTree, KnowledgeBase, TreeDocument, TreeFolder } from '@/types';
 import type { Tag as ApiTag } from '@/api/tags';
@@ -189,15 +191,18 @@ export default function KBWorkspace() {
 
   async function handleImportFile(file: File) {
     setImporting(true);
+    setBatchProgress({ loaded: 0, total: 1 });
     try {
-      const newDoc = await attApi.importFileAsDoc(file, kbId, null);
+      await attApi.importFileAsDoc(file, kbId, null, (loaded, total) =>
+        setBatchProgress({ loaded, total })
+      );
       await refreshTree();
-      navigate(`/admin/kbs/${kbId}/docs/${newDoc.id}`);
       message.success(`已导入 ${file.name}`);
     } catch (err) {
       message.error(formatApiError(err, '导入失败'));
     } finally {
       setImporting(false);
+      setBatchProgress(null);
     }
   }
 
@@ -265,6 +270,14 @@ export default function KBWorkspace() {
 
   // -------- batch ops --------
   const selectionCount = checked.docIds.length + checked.folderIds.length;
+
+  // All currently-visible (filter-aware) docs/folders, for the "全选" checkbox.
+  const visibleSelection = useMemo(
+    () => (tree ? collectVisibleSelection(tree, filterQuery, filterStatus) : { docIds: [], folderIds: [] }),
+    [tree, filterQuery, filterStatus]
+  );
+  const visibleCount = visibleSelection.docIds.length + visibleSelection.folderIds.length;
+  const allVisibleChecked = visibleCount > 0 && selectionCount >= visibleCount;
 
   function toggleBatch() {
     if (batchMode) {
@@ -535,6 +548,29 @@ export default function KBWorkspace() {
         }
       />
 
+      {batchProgress && (
+        <div
+          className="jz-admin-panel"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '10px 14px',
+            marginBottom: 12,
+          }}
+        >
+          <CloudUploadOutlined style={{ color: 'var(--jz-accent)' }} />
+          <Text style={{ whiteSpace: 'nowrap' }}>
+            {batchProgress.loaded >= batchProgress.total ? '处理中…' : '上传中…'}
+          </Text>
+          <Progress
+            style={{ flex: 1, margin: 0 }}
+            percent={Math.round((batchProgress.loaded / batchProgress.total) * 100)}
+            status="active"
+          />
+        </div>
+      )}
+
       {batchMode && (
         <div
           className="jz-admin-panel"
@@ -547,6 +583,18 @@ export default function KBWorkspace() {
             flexWrap: 'wrap',
           }}
         >
+          <Checkbox
+            checked={allVisibleChecked}
+            indeterminate={selectionCount > 0 && !allVisibleChecked}
+            disabled={visibleCount === 0}
+            onChange={(e) =>
+              setChecked(
+                e.target.checked ? visibleSelection : { docIds: [], folderIds: [] }
+              )
+            }
+          >
+            全选
+          </Checkbox>
           <Text strong>已选 {selectionCount} 项</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>
             （文档 {checked.docIds.length} · 文件夹 {checked.folderIds.length}）
