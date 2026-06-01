@@ -15,8 +15,9 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9.3 — HTML 阅读端性能 + Mermaid 全屏 Modal + LAN HTTPS dev + AI 花费日历热图 |
-| 多用户 | 支持。普通账号按 `owner` 隔离数据；`is_superuser` 跨租户可见 |
+| 实现阶段 | v0.9.9 — 根管理员分级 + 邮箱必填 + 账号自服务（叠加 v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商、v0.9.5 Hero 名句） |
+| 多用户 | 支持。普通账号按 `owner` 隔离；`is_superuser` 跨租户可见；单一**根管理员**（`ROOT_ADMIN_USERNAME`）位于权限顶端，不可被禁用/删除 |
+| 博客形态 | 全开放（匿名）或**友邻可见**（`SITE_REQUIRE_LOGIN=true` → 需登录），由 `PublicOrLoginGated` 权限类逐请求判定 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
 
 ---
@@ -37,9 +38,10 @@
 | PDF 导出 | Playwright (headless Chromium) | 可选依赖 |
 | Word 导出 | `python-docx` | |
 | 静态站打包 | Jinja2 + `apps/exporter/services/static_site.py` | 生成 zip |
-| 认证 | Django Session + DRF SessionAuthentication | |
-| AI 助手 | `anthropic` SDK（可选） | 未装时端点优雅降级 |
+| 认证 | Django Session + DRF SessionAuthentication | 根管理员分级 + 友邻闸门权限类 |
+| AI 助手 | `anthropic` SDK（Claude）+ `openai` SDK 兼容模式（通义千问 DashScope） | 多供应商；任一未配置时该供应商优雅降级 |
 | 图片处理 | Pillow | 缩略图与元数据 |
+| 生产部署 | Docker Compose + Caddy + Gunicorn | 套件在 `infra/`（腾讯云）；`backup.sh` 每日 `pg_dump` |
 
 ### 前端（`frontend/package.json`）
 
@@ -81,14 +83,20 @@ jianzhai/
 │   │   ├── celery.py
 │   │   └── {wsgi,asgi}.py
 │   ├── apps/
-│   │   ├── accounts/              # 多用户登录 + scoping 工具
-│   │   ├── ai/                    # AI 助手 (Anthropic Claude 代理)
-│   │   │   ├── models.py          # AISettings + AIUsageLog
-│   │   │   ├── prompts.py         # 系统 prompt + 8 种操作模板
-│   │   │   ├── services.py        # SDK 封装、模型路由、用量日志
-│   │   │   ├── views.py           # /ai/run /ai/stream /ai/capabilities /ai/settings /ai/usage
+│   │   ├── accounts/              # 多用户登录 + scoping + 根管理员分级 + 账号自服务
+│   │   │   ├── models.py          # HeroSettings（首页名句单例）
+│   │   │   ├── permissions.py     # is_root_admin / can_manage_user / PublicOrLoginGated（友邻闸门）
+│   │   │   ├── hero.py            # Hero 名句：public 读 / admin CRUD / 批量导入
+│   │   │   ├── views.py           # 登录 · me · 改密码/邮箱/用户名/头像 · UserViewSet
+│   │   │   └── scoping.py         # scope_queryset
+│   │   ├── ai/                    # AI 助手（多供应商代理：Anthropic Claude + 阿里通义千问）
+│   │   │   ├── models.py          # AISettings + AIUsageLog + AIPromptTemplate + AIConversation
+│   │   │   ├── prompts.py         # 系统 prompt（prompt caching）+ 8 内置操作 + 多轮构造
+│   │   │   ├── pricing.py         # 模型价格表（Claude USD + Qwen CNY→USD）+ 花费估算
+│   │   │   ├── services.py        # 供应商路由、失败降级链、日预算校验、run_once/stream/chat
+│   │   │   ├── views.py           # run/stream/chat/capabilities/settings/usage(+csv)/templates/conversations/estimate
 │   │   │   └── urls.py
-│   │   ├── knowledge/             # KnowledgeBase / Folder / Document
+│   │   ├── knowledge/             # KnowledgeBaseCategory / KnowledgeBase / Folder / Document（置顶/收藏/排序）
 │   │   │   └── management/
 │   │   │       └── commands/
 │   │   │           └── seed_architecture_kb.py   # 一键种公开 KB
@@ -138,11 +146,14 @@ jianzhai/
 │       │   ├── admin/             # 登录后界面
 │       │   │   ├── AdminLayout.tsx          # 侧栏 + 顶栏（玻璃风）
 │       │   │   ├── KBListPage.tsx KBWorkspace.tsx DocEditorPage.tsx
-│       │   │   ├── AIManagementPage.tsx     # /admin/ai 独立 Tab 页
+│       │   │   ├── AIManagementPage.tsx     # /admin/ai（多供应商 + 模板 + 对话 + 用量热图）
+│       │   │   ├── HeroPage.tsx              # /admin/hero 名句轮播管理
+│       │   │   ├── ProfilePage.tsx          # /admin/profile 账号自服务（改密码/邮箱/用户名/头像）
+│       │   │   ├── TrashPage.tsx            # 回收站 UI
 │       │   │   ├── ExportsPage.tsx UsersPage.tsx VersionsDrawer.tsx
-│       │   │   ├── KnowledgeGraphPage.tsx SystemOverviewPage.tsx
+│       │   │   ├── KnowledgeGraphPage.tsx SystemOverviewPage.tsx AdminDashboard.tsx
 │       │   │   └── LoginPage.tsx RequireAuth.tsx
-│       │   ├── blog/              # 公开博客（匿名）
+│       │   ├── blog/              # 公开博客（匿名 / 友邻可见）
 │       │   │   ├── BlogLayout.tsx BlogHome.tsx PostDetail.tsx
 │       │   │   ├── KBPostsPage.tsx ArchivePage.tsx TagCloudPage.tsx
 │       │   └── DocLinkResolver.tsx
@@ -165,8 +176,10 @@ jianzhai/
 
 | 模型 | App | 说明 |
 |---|---|---|
-| `User` | django.contrib.auth | 多账号 |
-| `KnowledgeBase` | knowledge | 顶层容器（owner / visibility / cover / accent_color） |
+| `User` | django.contrib.auth | 多账号；根管理员 = `is_superuser` 且 username == `ROOT_ADMIN_USERNAME`（非 DB 字段，靠 `permissions.is_root_admin` 判定） |
+| `HeroSettings` | accounts | **单例**：首页名句轮播（`quotes` JSON：text/dynasty/author/source、`animation`、`rotation_seconds`） |
+| `KnowledgeBaseCategory` | knowledge | KB 大类分组（name / accent_color） |
+| `KnowledgeBase` | knowledge | 顶层容器（owner / visibility / cover / accent_color / category / doc_sort_mode） |
 | `Folder` | knowledge | self-FK 可嵌套 |
 | `Document` | knowledge | **含 `version` 乐观并发字段** |
 | `DocumentVersion` | versioning | 历史快照（保留 100 个/文档） |
@@ -176,8 +189,10 @@ jianzhai/
 | `Comment` | comments | `block_id` 区分文档级 / 段落级 |
 | `Attachment` | editor | 附件（KIND: image / document / other） |
 | `ExportTask` | exporter | 异步导出任务状态机 |
-| `AISettings` | ai | **单例**：默认模型 / 主开关 / max_tokens |
-| `AIUsageLog` | ai | AI 调用审计：用户 / 模型 / token / 耗时 / 成功率 |
+| `AISettings` | ai | **单例**：默认模型 / 主开关 / max_tokens / `enable_thinking` / `daily_budget_usd_per_user` / `fallback_enabled` |
+| `AIUsageLog` | ai | 调用审计：用户 / 模型 / token / 耗时 / 成功率 / `document` / `knowledge_base` / `fallback_from` / `prompt_chars` |
+| `AIPromptTemplate` | ai | 用户自定义 AI 操作（owner / name / icon / instruction / requires_selection / replace_mode） |
+| `AIConversation` | ai | 多轮对话历史（owner / title / `messages` JSON / model / document） |
 
 ### 通用模式
 
@@ -217,28 +232,38 @@ class Document(models.Model):
         ]
 ```
 
-### AISettings + AIUsageLog
+### AISettings + AIUsageLog（v0.9.7 起多供应商）
 
 ```python
 class AISettings(models.Model):
     """单例。Admin 在 /admin/ai 页设置。"""
-    default_model = CharField(max_length=80, default='claude-opus-4-7')
-    enabled = BooleanField(default=True)           # 主开关
+    default_model = CharField(max_length=80, default='claude-opus-4-7')  # 可为 Claude 或 Qwen
+    enabled = BooleanField(default=True)                 # 主开关
     max_tokens = PositiveIntegerField(default=1024)
+    enable_thinking = BooleanField(default=False)        # Claude 4 扩展思考
+    daily_budget_usd_per_user = FloatField(default=0.0)  # 0 = 不限；超出 429
+    fallback_enabled = BooleanField(default=True)        # 首 token 前失败时自动降级
     updated_at = DateTimeField(auto_now=True)
 
 class AIUsageLog(models.Model):
-    """单次调用审计。每次 run_once / run_stream 后写一行。"""
+    """单次调用审计。每次 run_once / run_stream / run_chat_stream 后写一行。"""
     user = FK(User, null=True)
-    operation = CharField(max_length=32)           # continue/polish/...
+    operation = CharField(max_length=32)           # continue/polish/.../tpl_<id>
     model = CharField(max_length=80)
     streaming = BooleanField()
     input_tokens / output_tokens = PositiveIntegerField()
     duration_ms = PositiveIntegerField()
     succeeded = BooleanField()
     error = CharField(max_length=200, blank=True)
+    document / knowledge_base = FK(null=True)      # 成本归因
+    fallback_from = CharField(max_length=80, blank=True)  # 降级前的原模型
+    prompt_chars = PositiveIntegerField()          # 估算输入用
     created_at = DateTimeField()
+
+# 另：AIPromptTemplate（用户自定义操作）、AIConversation（多轮对话 messages JSON）
 ```
+
+**供应商路由**（`services.py`）：`AVAILABLE_MODELS` 每项带 `provider`（`anthropic` / `qwen`）；`_provider_for(model)` 选客户端，Qwen 走 DashScope OpenAI 兼容端点（`DASHSCOPE_API_KEY`）。`FALLBACK_CHAIN` 定义降级路径（Opus→Sonnet→Haiku、Max→Plus→Turbo、VL-Max→VL-Plus）。`check_daily_budget(user)` 在调用前校验日预算。
 
 ---
 
@@ -248,7 +273,9 @@ class AIUsageLog(models.Model):
 
 ```
 /admin/                       Django admin
-/api/v1/auth/                 登录 / 登出 / CSRF / session / system-info / UserViewSet
+/api/v1/auth/                 登录 / 登出 / CSRF / session(含 require_login) / me / system-info / UserViewSet
+/api/v1/auth/me/avatar|change-password|change-email|change-username/   账号自服务
+/api/v1/auth/hero/  /hero/batch/   Hero 名句：员工读写 + 批量导入
 /api/v1/kbs|folders|documents/   knowledge CRUD（DRF Router）
 /api/v1/tree/reorder/         批量调整节点排序与父子关系
 /api/v1/uploads/              附件上传
@@ -264,17 +291,23 @@ class AIUsageLog(models.Model):
 /api/v1/search/               全文搜索
 /api/v1/exports/              异步导出任务（含 download/）
 /api/v1/tags/                 标签 CRUD
-/api/v1/ai/capabilities/      AI 模型列表 + 配置状态
+/api/v1/ai/capabilities/      模型列表（含 provider/vision/thinking）+ 各供应商配置状态 + 用户模板
 /api/v1/ai/settings/          Admin: GET/PATCH AI 全局设置
-/api/v1/ai/usage/             用量聚合 + 最近记录
-/api/v1/ai/run/               非流式 AI 调用
-/api/v1/ai/stream/            SSE 流式 AI 调用
-/api/v1/public/posts/         公开博客（含 by-id / by-slug / adjacent / backlinks）
+/api/v1/ai/usage/  /usage/csv/   用量聚合（按模型/日/操作/KB/文档）+ CSV 导出
+/api/v1/ai/run/  /stream/      非流式 / SSE 流式 AI 调用
+/api/v1/ai/chat/              多轮对话 SSE 流式
+/api/v1/ai/templates/  /templates/{id}/   用户自定义操作模板 CRUD
+/api/v1/ai/conversations/  /conversations/{id}/   对话历史 列表/查看/删除
+/api/v1/ai/estimate/          token / 花费预览（不真正调用）
+/api/v1/public/posts/         公开博客（含 by-id / by-slug / adjacent / backlinks）；受友邻闸门约束
 /api/v1/public/kbs/           公开 KB（含 tree）
 /api/v1/public/tags/          公开标签云
 /api/v1/public/archive/       归档
+/api/v1/public/hero/          首页 Hero 名句（匿名精简形态）
 /feed.xml                     RSS
 ```
+
+> **友邻闸门**：所有 `/api/v1/public/*` 经 `PublicOrLoginGated` 权限——`SITE_REQUIRE_LOGIN=false` 时全开放；为 `true` 时未登录返回 403，前端引导登录。
 
 ---
 
@@ -373,8 +406,8 @@ class AIUsageLog(models.Model):
 
 ### 模块 9：博客前台 ✅
 
-- 完全匿名访问
-- 首页（KB 网格 + 「藏经阁」hero）/ KB 浏览（树形目录）/ 文章详情（TOC + 相邻文章 + 反链）/ 归档 / 标签云 / RSS
+- 匿名访问；`SITE_REQUIRE_LOGIN=true` 时切「友邻可见」需登录（见模块 16）
+- 首页（KB 网格 + 「藏经阁」hero + Hero 名句轮播，见模块 15）/ KB 浏览（树形目录）/ 文章详情（TOC + 相邻文章 + 反链）/ 归档 / 标签云 / RSS
 - 多套主题与「纸张」背景（编辑器与阅读端共用 `paper_style`）
 - 暗 / 亮主题切换；4 套主题：`light` / `dark` / `starry` / `deepsea`
 
@@ -386,34 +419,44 @@ class AIUsageLog(models.Model):
 
 `GET /api/v1/links/graph/` 返回节点+边 → `KnowledgeGraphPage` 用 `react-force-graph-2d` 渲染；按 KB 着色 / 过滤。
 
-### 模块 12：多用户与权限 ✅
+### 模块 12：多用户与权限 ✅（v0.9.9 根管理员 + 账号自服务）
 
-`accounts.UserViewSet` 管理；session + CSRF；`apps/accounts/scoping.py` 隔离；自定义权限类 `IsStaffUser` / `IsSuperUser`。
+- `accounts.UserViewSet` 管理；session + CSRF；`apps/accounts/scoping.py` 隔离。
+- **权限分级**（`apps/accounts/permissions.py`）：
+  - **根管理员** `is_root_admin(user)` = `is_superuser` 且 username == `ROOT_ADMIN_USERNAME`；只有根可禁用/降权/重置**其他超管**，且根本身不可被禁用/删除。
+  - `can_manage_user(actor, target)` 统一裁决：非根员工不能动超管/彼此；禁止自我降权/自禁用。
+  - 权限类 `IsStaffUser` / `IsSuperUser` / `PublicOrLoginGated`（友邻闸门）。
+- **邮箱必填**：`UserSerializer.email` 在新建时 `required=True, allow_blank=False`（已有账号仍可 PATCH 留空）。
+- **账号自服务**（均需登录，校验当前密码）：`POST /auth/me/change-password|change-email|change-username/` + `/auth/me/avatar/`；`me` 返回 `is_root`。前端 `ProfilePage` 提供改密码/邮箱/用户名/头像 Tab。
 
-### 模块 13：AI 助手 ✅（新）
+### 模块 13：AI 助手 ✅（v0.9.7 多供应商全面增强）
 
 **架构**：前端永不持有 API key，所有调用走 `apps/ai/` 后端代理。
 
 ```
-浏览器 ──POST /api/v1/ai/stream/──► Django ──messages.stream──► Anthropic Claude
-       ◄──── SSE: data:{"delta":"..."} ─────────────────────────
+浏览器 ──/ai/stream|chat──► Django ──路由 provider──► Anthropic Claude SDK
+       ◄──SSE: data:{"delta":"…"}──         └────────► DashScope（通义千问 · OpenAI 兼容）
 ```
 
-**模型路由**：
+**模型路由 / 多供应商**：
 - 用户偏好存 localStorage (`jz-ai-model`)，每次调用带 `model` 字段
-- 后端校验 `AVAILABLE_MODELS` 白名单（Opus 4.7 / Sonnet 4.6 / Haiku 4.5），默认 `claude-opus-4-7`
-- Admin 在 `/admin/ai` 设全局默认 + 主开关 + `max_tokens`（经 `get_max_tokens()` 注入每次 SDK 调用）
+- `AVAILABLE_MODELS` 白名单：**Claude** Opus 4.7（默认）/ Sonnet 4.6 / Haiku 4.5 + **通义千问** Max / Plus / Turbo / VL-Max / VL-Plus；每项带 `provider`/`vision`/`thinking`
+- `provider_configured()` 独立检查 `ANTHROPIC_API_KEY` 与 `DASHSCOPE_API_KEY`；`/ai/capabilities` 回传各供应商配置状态，前端卡片分别显示
+- Admin 在 `/admin/ai` 设全局默认 + 主开关 + `max_tokens` + 扩展思考 + 每用户日预算 + 失败降级开关
 
-**操作集（8 种）**：续写 / 润色 / 扩写 / 纠错 / 总结 / 大纲 / 中英互译。所有 prompt 模板在 `apps/ai/prompts.py`。
+**操作集**：8 内置（续写 / 润色 / 扩写 / 纠错 / 总结 / 大纲 / 中英互译，`prompts.py`）+ 用户**自定义模板**（`AIPromptTemplate`，操作 id 形如 `tpl_<id>`，并入 capabilities）。
 
-**用量追踪**：每次调用写一行 `AIUsageLog`（含 token / 耗时 / 成功率）；`/admin/ai` 用量 Tab 按日聚合 + 按模型 / 操作分组。
+**进阶能力**：
+- **多轮对话**（`/ai/chat/` + `AIConversation`，messages JSON，UI 上限 50 轮）
+- **视觉输入**：`images`（`data:image/*;base64`）传给 Claude / Qwen-VL
+- **扩展思考**：`enable_thinking=True` 且模型支持时分配 `max_tokens//2` 思考预算
+- **失败降级**：首 token 前异常按 `FALLBACK_CHAIN` 自动降级，记 `fallback_from`
+- **日预算**：`check_daily_budget(user)` 超额 429；`pricing.py` 估算花费（Claude USD + Qwen CNY→USD）
+- **Prompt caching**：系统 prompt 标 `cache_control: ephemeral`（Anthropic）
 
-**前端入口**（统一在所有编辑模式 + 阅读端可用）：
-- 编辑器工具栏：`AIAssistantMenu`（含模型切换下拉）
-- 选中文字：`SelectionAI`（紫色 ✨ 浮按钮 → 操作菜单或自由提问）
-- 右下角：`DocAIPanel`（🤖 蓝色浮按钮 → 抽屉式全文 AI）
-- 斜杠命令：`/ai` 直接生成段落
-- 顶栏徽标：`AIModelBadge`（实时显示当前模型）
+**用量追踪**：每次调用写一行 `AIUsageLog`（token / 耗时 / 成功率 / 文档 / KB / 降级）；`/admin/ai` 用量 Tab 按日聚合 + 按模型/操作/KB 分组 + GitHub 风格日历热图 + CSV 导出。
+
+**前端入口**（所有编辑模式 + 阅读端）：编辑器工具栏 `AIAssistantMenu`（含模型切换）、选区 `SelectionAI`（✨）、右下角 `DocAIPanel`（🤖 抽屉）、斜杠 `/ai`、顶栏 `AIModelBadge`；AI 输出**实时 Markdown 渲染**。
 
 **限流**：30 req/min/user (`UserRateThrottle` scope=`ai_write`)。
 
@@ -432,6 +475,18 @@ class AIUsageLog(models.Model):
 - **Favicon**：朱砂印章 SVG（径向渐变印泥 + 颗粒滤镜 + 四角磨痕 + 双线印框 + 压痕「簡」）
 - **PWA**：`manifest.webmanifest` + apple-touch-icon + theme-color
 - **白边修复**：`html / body / #root` 全局 reset margin/padding，铺满整屏
+
+### 模块 15：首页 Hero 名句轮播 ✅（v0.9.5）
+
+- 单例 `HeroSettings`（`apps/accounts/models.py`）：`quotes` JSON（每条 text / dynasty / author / source）、`animation`（fade / slide / typewriter / ink-wash）、`rotation_seconds`、`enabled`。
+- 端点（`apps/accounts/hero.py`）：`GET /public/hero/`（匿名精简）、`GET|PATCH /auth/hero/`（员工读写）、`POST /auth/hero/batch/`（批量导入，`replace` / `append`）。
+- 批量解析：强分隔（`—`/`–`/`-`/` by `）优先于弱分隔（`·`/`•`），中文「苏轼 · 定风波」不被拆错；行首 `[朝代]〔朝代〕【朝代】(朝代)` 识别为朝代前缀。
+- 前端：`/admin/hero`（员工）管理页 + 博客首页轮播渲染；古风单行三色 `〔朝代〕作者〈篇名〉` + 「」角标 + 卷尾金线。
+
+### 模块 16：友邻闸门 + 生产部署 ✅（v0.9.8）
+
+- **友邻可见**：`SITE_REQUIRE_LOGIN`（settings）+ `PublicOrLoginGated` 权限类（逐请求判定）。`true` → 全部 `/public/*` 需登录；`session` 端点回传 `require_login` 供前端 `BlogLayout` 引导登录。
+- **腾讯云部署套件** `infra/`：`backend.Dockerfile`（Gunicorn）、`frontend.Dockerfile`、`docker-compose.prod.yml`（caddy + backend + celery + postgres + redis + backup）、`Caddyfile`（HTTPS 反代 + SPA fallback）、`deploy.sh`、`backup.sh`（每日 `pg_dump`）、`.env.example.prod`、`README.md`（含域名/备案/DNS 指南）。
 
 ---
 
@@ -476,7 +531,11 @@ class AIUsageLog(models.Model):
 | **v0.9.1 维护** | 搜索含标签/评论；链接租户边界；原子 version；AI max_tokens；编辑器竞态修复 | ✅ |
 | **v0.9.2 MD/图表 + 架构** | KaTeX 全链路渲染；Mermaid/PlantUML 默认渲染图 + 单击切源码；暗主题画布对比度；docN 链接重写；linking 锁修复；AI 服务端长度上限；exporter CSS 线程安全；prod SECRET_KEY 兜底 | ✅ |
 | **v0.9.3 HTML/Mermaid 体验 + 安全下载** | HtmlPostReader 懒加载 + 异步元数据 + sessionStorage LRU；renderMarkdownWithToc 模块级 LRU；Mermaid 全屏 Modal（滚轮缩放/拖拽/下载 PNG）；编辑器加全屏按钮；Mermaid 四主题适配（diagram surface 派生色 + 不透明 edgeLabel）；工具栏 hover 染色 + 胶囊缩放按钮；downloadExport 抛弃 fetch+blob 改原生 a href（消除 Chrome 不安全下载警告）；新 `pnpm dev:https` 用 @vitejs/plugin-basic-ssl 解决 LAN IP HTTP 下载告警；AI 用量日历热图（GitHub 风格 SVG + USD 估算）；apps/ai/pricing.py 模型价格表；重写开发指南 simple/detailed 两篇到 v0.9.3 真实状态；11 个新测试 | ✅ |
-| **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 回收站 UI / 超大 KB 树分页 / Yjs | 🔲 |
+| **v0.9.5 Hero + 组织** | 首页 Hero 名句轮播（朝代/作者/篇名 + fade/slide/typewriter/ink-wash 四动画 + 批量导入 + `/admin/hero`）；KB 大类分组、文档置顶、收藏夹、多种排序；回收站 UI；快速捕获 | ✅ |
+| **v0.9.7 AI 全面增强** | 多供应商（Anthropic Claude + 阿里通义千问，provider 路由 + 各自配置状态）；自定义操作模板；多轮对话；视觉图片输入；扩展思考；每用户日预算（429）；失败自动降级链；prompt caching；用量按 KB/文档归因 + CSV；AI 输出实时 Markdown 渲染；22 项优化 | ✅ |
+| **v0.9.8 部署 + 友邻闸门** | 腾讯云部署套件 `infra/`（Dockerfile + docker-compose.prod + Caddy HTTPS 反代 + deploy/backup.sh + 部署指南）；`SITE_REQUIRE_LOGIN` 友邻可见博客闸门（`PublicOrLoginGated`） | ✅ |
+| **v0.9.9 账号体系** | 根管理员分级（`ROOT_ADMIN_USERNAME`，不可被禁用/删除，统一 `can_manage_user` 裁决）；新建账号邮箱必填；用户自助改密码/邮箱/用户名/头像；KB 上传实时进度条 + 批量全选 + 可视化颜色选择器 | ✅ |
+| **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 超大 KB 树分页 / Yjs 协作 | 🔲 |
 
 ---
 
@@ -485,7 +544,7 @@ class AIUsageLog(models.Model):
 1. 复制 `.env.example` 为 `.env`，配置 DB / Redis / SECRET_KEY
 2. `docker compose up -d` 启动 Postgres + Redis
 3. 后端：`pip install -e .[dev]` + `python manage.py migrate` + `createsuperuser`
-4. （可选）启用 AI：`pip install anthropic` + 在 `.env` 加 `ANTHROPIC_API_KEY`
+4. （可选）启用 AI：`pip install anthropic` + 在 `.env` 加 `ANTHROPIC_API_KEY`；通义千问加 `DASHSCOPE_API_KEY`（OpenAI 兼容，无需额外依赖）。`createsuperuser` 时用户名设为 `JIANZHAI_ROOT_ADMIN_USERNAME` 即为根管理员
 5. （可选）种公开 KB：`python manage.py seed_architecture_kb`
 6. 启动后端：`python manage.py runserver 0.0.0.0:8002`
 7. 启动 Celery：`celery -A jianzhai worker -l info`
@@ -516,11 +575,18 @@ CSRF_TRUSTED_ORIGINS=http://localhost:3001,http://localhost:8002
 LANGUAGE_CODE=zh-hans
 TIME_ZONE=Asia/Shanghai
 
-# AI 助手（可选）
-ANTHROPIC_API_KEY=sk-ant-api03-...
+# 账号 / 博客形态（v0.9.8–0.9.9）
+JIANZHAI_ROOT_ADMIN_USERNAME=fengfujiang   # 根管理员账号（不可被禁用/删除）
+SITE_REQUIRE_LOGIN=False                    # True = 友邻可见（匿名访客需登录）
+
+# AI 助手（可选 · 多供应商，任配其一即可）
+ANTHROPIC_API_KEY=sk-ant-api03-...          # Anthropic Claude
+DASHSCOPE_API_KEY=sk-...                     # 阿里通义千问（DashScope OpenAI 兼容）
 CLAUDE_MODEL_DEFAULT=claude-opus-4-7
 CLAUDE_MAX_TOKENS=1024
 ```
+
+> 生产部署见 `infra/.env.example.prod`（域名、HTTPS、备份等）。
 
 ```env
 # frontend/.env
@@ -530,5 +596,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.3  
-**最后更新**：2026-05-30
+**文档版本**：v3.9（对应实现 v0.9.9）  
+**最后更新**：2026-06-02

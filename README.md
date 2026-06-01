@@ -2,9 +2,9 @@
 
 [![tests](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml)
 
-个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.2**）。
+个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.9**）。
 
-一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。支持多账号，普通用户按 `owner` 隔离数据；超级用户可跨租户管理。
+一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。支持多账号，普通用户按 `owner` 隔离数据；超级用户可跨租户管理；单一**根管理员**位于权限顶端。博客可切「全开放 / 友邻可见（需登录）」两种形态。附带**腾讯云生产部署套件**（见 [`infra/`](infra/)）。
 
 > 详细架构与开发指南见 [CLAUDE.md](./CLAUDE.md)。  
 > 超级管理员登录后台后，可在 **[架构总览](http://localhost:3001/admin/overview)** 查看实时统计、技术栈与系统架构图（简单版 Mermaid + 详细 SVG）。  
@@ -22,8 +22,10 @@
 | **搜索与标签** | PostgreSQL `tsvector` + jieba；索引 **标题 + 正文 + 标签名 + 评论**；全局 `⌘K` |
 | **评论** | 文档级 + 段落级（`block_id`） |
 | **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；Mermaid 等为静态代码块 |
-| **公开博客** | 匿名访问；4 套主题 + 纸张样式；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
-| **AI 助手** | Anthropic Claude 后端代理（`/admin/ai`）：8 种操作、SSE 流式、选区 AI + 全文抽屉；未配置 Key 时优雅降级 |
+| **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；4 套主题 + 纸张样式；首页 **Hero 名句轮播**（朝代/作者/篇名 + 4 种动画）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
+| **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
+| **账号** | 单一**根管理员**（不可禁用/删除）+ 超管 + 员工分级；新建账号**邮箱必填**；用户自助改密码/邮箱/用户名/头像 |
+| **组织** | KB **大类**分组、文档置顶、收藏夹、多种排序、回收站 UI |
 | **视觉** | 博客：宣纸朱砂古风；后台：玄黑·玻璃拟态 + 翡翠重音；自制 **JzIcon**（20 SVG）；PWA + 印章 favicon |
 
 ## 技术栈（摘要）
@@ -32,7 +34,9 @@
 |----|------|
 | 后端 | Python 3.12 · Django 5.2 · DRF · PostgreSQL · Redis · Celery · jieba |
 | 前端 | React 18 · TypeScript · Vite 5 · Ant Design 5 · Zustand · Tiptap 3 |
-| 可选 | `anthropic`（AI）· Playwright（PDF）· `python-docx`（Word） |
+| AI | `anthropic` SDK（Claude）· `openai` SDK 兼容模式（通义千问 DashScope） |
+| 可选 | Playwright（PDF）· `python-docx`（Word） |
+| 部署 | Docker Compose（prod）· Caddy（HTTPS 反代 + SPA fallback）· Gunicorn · pg_dump 备份（见 [`infra/`](infra/)） |
 
 ## 仓库结构
 
@@ -40,9 +44,9 @@
 jianzhai/
 ├── backend/                # Django 5 + DRF（:8002）
 │   └── apps/
-│       ├── accounts/       # 多用户 · Session · system-info
-│       ├── ai/             # Claude 代理 · 用量日志
-│       ├── knowledge/      # KB · Folder · Document
+│       ├── accounts/       # 多用户 · 根管理员 · 自助改密/邮箱/用户名 · Hero 名句 · 友邻闸门
+│       ├── ai/             # 多供应商代理（Claude + 通义千问）· 模板 · 对话 · 预算 · 用量日志
+│       ├── knowledge/      # KB · 大类 · Folder · Document · 置顶/收藏/排序
 │       ├── editor/         # 附件 · Word/MD 导入 · HTML 正文处理
 │       ├── versioning/     # 快照 · diff · 回滚
 │       ├── linking/        # 双向链接 · 反链 · 图谱 API
@@ -50,9 +54,10 @@ jianzhai/
 │       ├── tags/           # 标签（KB / Folder / Document）
 │       ├── comments/       # 文档级 + 段落级评论
 │       ├── exporter/       # 异步导出
-│       └── blog/           # 公开 API · RSS · slug 安全解析
+│       └── blog/           # 公开 API · RSS · slug 安全解析 · 友邻闸门
 ├── frontend/               # Vite + React 18 + TS + AntD 5 + Tiptap 3（:3001）
-└── docker-compose.yml      # PostgreSQL 16 + Redis 7
+├── infra/                  # 腾讯云部署套件：Dockerfile · docker-compose.prod · Caddyfile · deploy/backup.sh
+└── docker-compose.yml      # PostgreSQL 16 + Redis 7（本地开发）
 ```
 
 ## 快速开始
@@ -111,11 +116,13 @@ celery -A jianzhai worker -l info
 cd backend && python manage.py reindex_search
 ```
 
-### 5. AI 助手（可选）
+### 5. AI 助手（可选 · 多供应商）
 
-1. 在 [Anthropic Console](https://console.anthropic.com/settings/keys) 申请 API Key  
-2. `backend/.env` 增加：`ANTHROPIC_API_KEY=sk-ant-...`  
-3. 重启 Django，后台打开 **AI 助手**（`/admin/ai`）设置默认模型（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）
+任配置其一即可，互不依赖；两者皆未配置时 AI 端点优雅降级。
+
+1. **Anthropic Claude**：在 [Anthropic Console](https://console.anthropic.com/settings/keys) 申请 Key → `backend/.env` 加 `ANTHROPIC_API_KEY=sk-ant-...`（`pip install anthropic`）
+2. **阿里通义千问**：在 [DashScope](https://dashscope.console.aliyun.com/) 申请 Key → `.env` 加 `DASHSCOPE_API_KEY=sk-...`（走 OpenAI 兼容模式，无需额外 SDK 选项）
+3. 重启 Django，后台打开 **AI 助手**（`/admin/ai`）：选默认模型（Claude Opus/Sonnet/Haiku 或 通义 Max/Plus/Turbo/VL）、设 `max_tokens`、扩展思考、每用户**日预算**、失败降级开关；可建**自定义操作模板**、查看**用量热图**与多轮**对话**历史。
 
 ### 6. 种子数据（可选）
 
@@ -131,6 +138,8 @@ cd backend && python manage.py seed_architecture_kb
 | 后台登录 | http://localhost:3001/admin |
 | 架构总览（超管） | http://localhost:3001/admin/overview |
 | AI 管理（超管/员工） | http://localhost:3001/admin/ai |
+| Hero 名句管理（员工） | http://localhost:3001/admin/hero |
+| 账号设置（自助） | http://localhost:3001/admin/profile |
 | API 根路径 | http://localhost:8002/api/v1/ |
 | RSS | http://localhost:8002/feed.xml |
 
@@ -147,9 +156,27 @@ cd backend && python manage.py seed_architecture_kb
 |------|------|
 | v0.1–v0.5 | KB、编辑器、博客、搜索、导出、评论、标签、RSS |
 | v0.6–v0.8 | AI、Tiptap 扩展、玻璃后台、全屏编辑、大纲 |
-| **v0.9** | JzIcon、HTML 博客阅读、架构总览页、公开 slug 消歧 |
-| **v0.9.1** | 搜索含标签/评论；链接同租户校验；原子 `expected_version`；AI `max_tokens` 生效 |
-| v1.0 候选 | 回收站 UI、增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
+| v0.9 | JzIcon、HTML 博客阅读、架构总览页、公开 slug 消歧 |
+| v0.9.1–v0.9.3 | 搜索含标签/评论；KaTeX 全链路 + 语雀式 Mermaid/PlantUML（全屏/下载）；HTML 阅读懒加载；LAN HTTPS dev；AI 用量日历热图 |
+| v0.9.5 | Hero 名句轮播（朝代/作者/篇名 + 4 动画）、KB 大类/置顶/收藏/排序、回收站 UI、收藏夹 |
+| v0.9.7 | AI 全面增强：多供应商（Claude + 通义千问）、自定义模板、多轮对话、视觉输入、扩展思考、日预算、失败降级、实时 Markdown 渲染 |
+| **v0.9.8** | 腾讯云部署套件（Docker Compose + Caddy + 备份）+ 友邻可见博客闸门（`SITE_REQUIRE_LOGIN`） |
+| **v0.9.9** | 根管理员分级 + 新建账号邮箱必填 + 用户自助改密码/邮箱/用户名/头像；上传进度条 + 批量全选 + 可视化颜色选择器 |
+| v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
+
+## 生产部署（腾讯云）
+
+完整套件在 [`infra/`](infra/)，详见 [`infra/README.md`](infra/README.md)（含域名 / ICP 备案 / DNS / 启动流程）。
+
+```bash
+cd infra
+cp .env.example.prod .env          # 填 SECRET_KEY / 数据库 / 域名 / AI Key 等
+./deploy.sh                        # 构建并启动 6 容器：caddy · backend(gunicorn) · celery · postgres · redis · backup
+```
+
+- **Caddy** 自动签发 HTTPS 证书、反代后端、SPA 路由 fallback
+- `SITE_REQUIRE_LOGIN=true` 开启**友邻可见**：匿名访客被引导登录，仅白名单账号可读博客
+- `backup.sh` 每日 `pg_dump`；`JIANZHAI_ROOT_ADMIN_USERNAME` 指定根管理员账号
 
 ## 已知限制
 
