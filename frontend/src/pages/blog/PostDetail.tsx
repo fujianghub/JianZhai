@@ -5,18 +5,16 @@ import { isAxiosError } from 'axios';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
+  BookOutlined,
+  ClockCircleOutlined,
   EditOutlined,
   ExportOutlined,
   FormOutlined,
+  FolderOpenOutlined,
+  HomeOutlined,
+  TagOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
-import {
-  JzClockIcon,
-  JzFolderOpenIcon,
-  JzHomeIcon,
-  JzKbIcon,
-  JzOutlineIcon,
-  JzTagsIcon,
-} from '@/components/common/JzIcon';
 import * as blogApi from '@/api/blog';
 import * as docsApi from '@/api/docs';
 import * as kbsApi from '@/api/kbs';
@@ -528,7 +526,7 @@ export default function PostDetail() {
         <Breadcrumb
           style={{ marginBottom: 12 }}
           items={[
-            { title: <Link to="/"><JzHomeIcon size={14} style={{ verticalAlign: '-2px' }} /> 首页</Link> },
+            { title: <Link to="/"><HomeOutlined /> 首页</Link> },
             {
               title: (
                 <Link to={`/kb/${encodeURIComponent(post.knowledge_base.slug)}`}>
@@ -582,7 +580,7 @@ export default function PostDetail() {
                 aria-label={`知识库 ${post.knowledge_base.name}`}
                 title={`返回知识库 · ${post.knowledge_base.name}`}
               >
-                <JzKbIcon className="jz-meta-icon" />
+                <BookOutlined className="jz-meta-icon" />
                 <span className="jz-meta-pill-text">{post.knowledge_base.name}</span>
               </Link>
               <span className="jz-meta-format" aria-label={`文档格式 ${post.doc_format}`}>
@@ -593,7 +591,7 @@ export default function PostDetail() {
 
               {/* Date — read-only, ghost style with clock icon. */}
               <span className="jz-meta-date" title="发布时间">
-                <JzClockIcon className="jz-meta-icon" />
+                <ClockCircleOutlined className="jz-meta-icon" />
                 <time dateTime={post.published_at}>
                   {dayjs(post.published_at).format('YYYY-MM-DD HH:mm')}
                 </time>
@@ -617,7 +615,7 @@ export default function PostDetail() {
                 <>
                   <span className="jz-meta-sep" aria-hidden />
                   <span className="jz-meta-tags" aria-label="文章标签">
-                    <JzTagsIcon className="jz-meta-icon" />
+                    <TagOutlined className="jz-meta-icon" />
                     {post.tags.map((t) => (
                       <span
                         key={t.id}
@@ -888,7 +886,7 @@ export default function PostDetail() {
             type="default"
             shape="circle"
             size="large"
-            icon={<JzOutlineIcon size={18} />}
+            icon={<UnorderedListOutlined />}
             aria-label="显示目录"
             onClick={() => setTocOpen(true)}
             className="jz-toc-fab"
@@ -902,7 +900,7 @@ export default function PostDetail() {
             type="default"
             shape="circle"
             size="large"
-            icon={<JzFolderOpenIcon size={18} />}
+            icon={<FolderOpenOutlined />}
             aria-label="显示文档列表"
             onClick={() => setKbNavOpen(true)}
             className="jz-kbnav-fab"

@@ -536,12 +536,6 @@ h4.jz-post-card-title.ant-typography {
   font-size: 12px;
   opacity: 0.7;
 }
-/* JzIcon 线稿在 12px 下过细 — meta 行内提到 14px 并对齐基线 */
-.jz-post-meta .jz-meta-icon.jz-icon {
-  font-size: 14px;
-  vertical-align: -3px;
-  opacity: 0.85;
-}
 .jz-post-meta .jz-meta-sep {
   display: inline-block;
   width: 4px;
@@ -1020,20 +1014,12 @@ a.jz-meta-full-edit-btn:hover .anticon {
     transparent 55%
   );
 
-  /* JzIcon — 玉牌实底 + 朱砂点睛，派生自 --jz-icon-accent（默认翡翠 --jz-accent）。
-     grad-a/b 为实底渐变（92%→70%，AntD TwoTone 级饱满）；
-     carve = 留白雕刻（实底上的内部细节）；seal = 朱砂点睛；rim = 牌面自描边。 */
-  --jz-icon-accent: var(--jz-accent);
-  --jz-icon-stroke: color-mix(in srgb, var(--jz-accent) 28%, var(--glass-text-muted));
-  --jz-icon-stroke-active: var(--jz-icon-accent);
-  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent) 20%, transparent);
-  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent) 34%, transparent);
-  --jz-icon-spot: var(--jz-icon-accent);
-  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent) 92%, transparent);
-  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent) 70%, transparent);
-  --jz-icon-carve: rgba(255, 255, 255, 0.93);
-  --jz-icon-seal: #c0392b;
-  --jz-icon-rim: color-mix(in srgb, var(--jz-accent) 80%, #1a3a30);
+  /* JzIcon — 柔和双色，全部跟随 --jz-accent */
+  --jz-icon-stroke: var(--glass-text-muted);
+  --jz-icon-stroke-active: var(--jz-accent);
+  --jz-icon-fill: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  --jz-icon-spot: var(--jz-accent);
 }
 
 /* DARK GLASS（dark / starry / deepsea 都用同一套深色玻璃，仅光晕色调微调）*/
@@ -1050,11 +1036,6 @@ a.jz-meta-full-edit-btn:hover .anticon {
   --jz-accent-soft: #34d399;
   --jz-accent-glow: rgba(16, 185, 129, 0.35);
   --jz-gold: #94a3b8;
-
-  /* 玉牌实底 — 暗色玻璃配套（carve 蚀刻见底 / seal 提亮朱砂 / rim 深玉边） */
-  --jz-icon-carve: rgba(10, 14, 22, 0.75);
-  --jz-icon-seal: #e8635a;
-  --jz-icon-rim: color-mix(in srgb, var(--jz-accent) 85%, #052e22);
 
   --glass-bg-deep: #07090f;
   --glass-bg-mid:  #0e1320;
@@ -1274,15 +1255,15 @@ a.jz-meta-full-edit-btn:hover .anticon {
   display: block;
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot {
-  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 32%, var(--glass-border));
+  border-color: color-mix(in srgb, var(--jz-accent) 32%, var(--glass-border));
   color: var(--jz-icon-stroke-active);
   transform: scale(1.03);
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-menu-icon-slot {
-  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 48%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 16%, var(--glass-surface-strong));
+  border-color: color-mix(in srgb, var(--jz-accent) 48%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-accent) 16%, var(--glass-surface-strong));
   color: var(--jz-icon-stroke-active);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 18%, transparent);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-accent) 18%, transparent);
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item a {
   color: inherit !important;
@@ -1548,11 +1529,6 @@ a.jz-meta-full-edit-btn:hover .anticon {
 .jz-kb-tree-panel .ant-tree-switcher .anticon-caret-down {
   transition: transform 0.18s ease;
 }
-/* 树节点 JzIcon（函套/笺纸）— 固定 16px 并与文字垂直对齐 */
-.jz-kb-tree-panel .ant-tree-iconEle .jz-icon {
-  font-size: 16px;
-  vertical-align: -3px;
-}
 .jz-kb-tree-panel .ant-tree-treenode {
   border-radius: 6px;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
@@ -1718,8 +1694,8 @@ a.jz-meta-full-edit-btn:hover .anticon {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 10%, transparent);
-  color: var(--jz-icon-accent, var(--jz-accent));
+  background: rgba(16, 185, 129, 0.1);
+  color: var(--jz-accent);
   flex-shrink: 0;
 }
 .jz-admin-glass .jz-feature-card-title {
@@ -2206,25 +2182,25 @@ a.jz-meta-full-edit-btn:hover .anticon {
   display: block;
 }
 .jz-blog-glass .jz-nav-link:hover {
-  color: var(--jz-icon-accent, var(--jz-accent));
-  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 8%, transparent);
+  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
 }
 .jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon {
-  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 38%, var(--glass-border));
+  border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
   color: var(--jz-icon-stroke-active);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 16%, transparent);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-accent) 16%, transparent);
   transform: translateY(-1px);
 }
 .jz-blog-glass .jz-nav-link.active {
-  color: var(--jz-icon-accent, var(--jz-accent));
+  color: var(--jz-accent);
   font-weight: 600;
-  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 12%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
 }
 .jz-blog-glass .jz-nav-link.active .jz-nav-link-icon {
-  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 45%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 14%, var(--glass-surface-strong));
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-accent) 14%, var(--glass-surface-strong));
   color: var(--jz-icon-stroke-active);
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 20%, transparent);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-accent) 20%, transparent);
 }
 .jz-blog-glass .jz-blog-header-nav {
   display: flex;
@@ -2249,7 +2225,7 @@ a.jz-meta-full-edit-btn:hover .anticon {
   color: var(--jz-icon-stroke);
 }
 .jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon {
-  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 38%, var(--glass-border));
+  border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
   color: var(--jz-icon-stroke-active);
 }
 .jz-blog-glass .jz-user-menu-trigger {
@@ -2798,35 +2774,19 @@ a.jz-meta-full-edit-btn:hover .anticon {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   JzIcon — 内部填色/点缀跟随 --jz-icon-* 与 --jz-icon-accent
+   JzIcon — 内部填色/点缀跟随 --jz-icon-* 与 --jz-accent
    ════════════════════════════════════════════════════════════════════════ */
-
-/* 派生变量在槽位/图标层重新求值 — CSS 自定义属性在「声明处」求值后即冻结，
-   根层（.jz-glass）算出的是冻结值；这里重声明一遍，让玉石渐变与填色/彩点
-   在槽位/图标层正确求值（也支持个别使用点通过 tone prop 覆盖 --jz-icon-accent）。 */
-.jz-menu-icon-slot,
-.jz-nav-link,
-.jz-nav-link-icon,
-.jz-feature-card-icon,
-.jz-glass .jz-icon {
-  --jz-icon-stroke-active: var(--jz-icon-accent, var(--jz-accent));
-  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 20%, transparent);
-  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 34%, transparent);
-  --jz-icon-spot: var(--jz-icon-accent, var(--jz-accent));
-  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 92%, transparent);
-  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 70%, transparent);
-}
 
 .jz-glass .jz-icon {
   transition: transform 0.22s ease, filter 0.22s ease;
 }
 
 .jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-icon {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 30%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 30%, transparent));
 }
 
 .jz-blog-glass .jz-nav-link.active .jz-icon {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 28%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 28%, transparent));
 }
 
 /* AI 管理 Segmented */

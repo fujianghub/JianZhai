@@ -1,6 +1,8 @@
 import { useMemo } from 'react';
 import { Button, Tag, Tooltip, Tree } from 'antd';
 import {
+  FileTextOutlined,
+  FolderOutlined,
   PushpinFilled,
   PushpinOutlined,
   StarFilled,
@@ -9,7 +11,6 @@ import {
   ExportOutlined,
 } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
-import { JzDocIcon, JzFolderIcon, JzFolderOpenIcon } from '@/components/common/JzIcon';
 import type { KBTree, TreeDocument, TreeFolder } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import { resolveTagColor } from '@/utils/tagColor';
@@ -173,7 +174,7 @@ function docNode(
         <DocFormatTag format={d.doc_format} />
       </span>
     ),
-    icon: <JzDocIcon />,
+    icon: <FileTextOutlined />,
     isLeaf: true,
   };
 }
@@ -232,9 +233,7 @@ function folderNode(
         )}
       </span>
     ),
-    // AntD Tree 的 icon 支持函数形式，能拿到 expanded 状态 → 函套开/合两态
-    icon: (props: { expanded?: boolean }) =>
-      props.expanded ? <JzFolderOpenIcon /> : <JzFolderIcon />,
+    icon: <FolderOutlined />,
     selectable: false,
     children: [
       ...f.children.map((c) =>
