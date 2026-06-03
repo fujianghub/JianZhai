@@ -1020,15 +1020,20 @@ a.jz-meta-full-edit-btn:hover .anticon {
     transparent 55%
   );
 
-  /* JzIcon — 柔和双色 + 玉石渐变，全部派生自 --jz-icon-accent（默认翡翠 --jz-accent） */
+  /* JzIcon — 玉牌实底 + 朱砂点睛，派生自 --jz-icon-accent（默认翡翠 --jz-accent）。
+     grad-a/b 为实底渐变（92%→70%，AntD TwoTone 级饱满）；
+     carve = 留白雕刻（实底上的内部细节）；seal = 朱砂点睛；rim = 牌面自描边。 */
   --jz-icon-accent: var(--jz-accent);
-  --jz-icon-stroke: var(--glass-text-muted);
+  --jz-icon-stroke: color-mix(in srgb, var(--jz-accent) 28%, var(--glass-text-muted));
   --jz-icon-stroke-active: var(--jz-icon-accent);
-  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent) 14%, transparent);
-  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent) 22%, transparent);
+  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent) 20%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent) 34%, transparent);
   --jz-icon-spot: var(--jz-icon-accent);
-  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent) 28%, transparent);
-  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent) 7%, transparent);
+  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent) 92%, transparent);
+  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent) 70%, transparent);
+  --jz-icon-carve: rgba(255, 255, 255, 0.93);
+  --jz-icon-seal: #c0392b;
+  --jz-icon-rim: color-mix(in srgb, var(--jz-accent) 80%, #1a3a30);
 }
 
 /* DARK GLASS（dark / starry / deepsea 都用同一套深色玻璃，仅光晕色调微调）*/
@@ -1045,6 +1050,11 @@ a.jz-meta-full-edit-btn:hover .anticon {
   --jz-accent-soft: #34d399;
   --jz-accent-glow: rgba(16, 185, 129, 0.35);
   --jz-gold: #94a3b8;
+
+  /* 玉牌实底 — 暗色玻璃配套（carve 蚀刻见底 / seal 提亮朱砂 / rim 深玉边） */
+  --jz-icon-carve: rgba(10, 14, 22, 0.75);
+  --jz-icon-seal: #e8635a;
+  --jz-icon-rim: color-mix(in srgb, var(--jz-accent) 85%, #052e22);
 
   --glass-bg-deep: #07090f;
   --glass-bg-mid:  #0e1320;
@@ -2800,11 +2810,11 @@ a.jz-meta-full-edit-btn:hover .anticon {
 .jz-feature-card-icon,
 .jz-glass .jz-icon {
   --jz-icon-stroke-active: var(--jz-icon-accent, var(--jz-accent));
-  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 14%, transparent);
-  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 22%, transparent);
+  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 20%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 34%, transparent);
   --jz-icon-spot: var(--jz-icon-accent, var(--jz-accent));
-  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 28%, transparent);
-  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 7%, transparent);
+  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 92%, transparent);
+  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 70%, transparent);
 }
 
 .jz-glass .jz-icon {
