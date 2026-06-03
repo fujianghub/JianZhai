@@ -4,8 +4,7 @@
  * 颜色全部由 CSS 变量驱动（定义于 .jz-glass）：
  *   --jz-icon-fill / --jz-icon-fill-strong / --jz-icon-spot
  *   --jz-icon-grad-a / --jz-icon-grad-b（玉石渐变两端）
- * 全部派生自 --jz-icon-accent（默认 --jz-accent；槽位 data-tone 可逐图标
- * 覆盖为专属印泥色：朱砂/翡翠/暗金/青蓝/紫罗兰/橙/灰褐/青灰）。
+ * 全部派生自 --jz-icon-accent（默认翡翠 --jz-accent，全站统一）。
  * 描边用 currentColor，由父级槽位控制默认/hover/选中色。
  *
  * 图形：24×24，stroke 1.5，每图标 ≤1 渐变/浅填色面 + ≤2 点缀。
@@ -15,7 +14,7 @@ import type { CSSProperties, SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number | string;
-  /** 覆盖该图标的印泥色（--jz-icon-accent；一般由槽位 data-tone 控制） */
+  /** 覆盖 --jz-icon-accent（少用；默认跟主题翡翠走） */
   tone?: string;
 };
 
@@ -34,7 +33,7 @@ const ICON_SPOT = 'var(--jz-icon-spot)';
 /**
  * 玉石线性渐变 def — 每个图标实例独立 id，避免同页多实例冲突
  * （id 约定同 ArchitectureSVG：useId 去冒号）。
- * stop-color 走 CSS 变量，随槽位 data-tone / 主题自动变色。
+ * stop-color 走 CSS 变量，随主题自动变色。
  */
 function useJadeGrad() {
   const id = `jz-jade-${useId().replace(/:/g, '')}`;
@@ -818,6 +817,152 @@ export function JzProfileIcon(p: IconProps) {
   );
 }
 
+/* ═══════════════ KB 树节点 ═══════════════ */
+/* 树行高小（~16px 渲染），细节克制：1 渐变面 + 1-2 笔 + 1 大彩点（r≥1）。 */
+
+/** 函套（合）— 文件夹折叠态 */
+export function JzFolderIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <path
+        d="M4 7.5a1 1 0 0 1 1-1h4.2l1.8 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-11z"
+        fill={grad.url}
+      />
+      <path d="M4 7.5a1 1 0 0 1 1-1h4.2l1.8 2h8a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-11z" />
+      <path d="M4 11h16" opacity="0.45" />
+      <circle cx="17.3" cy="14.8" r="1" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 函套（开）— 文件夹展开态，前盖外翻 */
+export function JzFolderOpenIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <path d="M4 17.5V7.5a1 1 0 0 1 1-1h4.2l1.8 2h7a1 1 0 0 1 1 1V11" />
+      <path
+        d="M6.4 11h13.3a.7.7 0 0 1 .67.9l-1.85 6.4a1 1 0 0 1-.96.7H4.3a.7.7 0 0 1-.67-.9L5.4 11.8a1 1 0 0 1 1-.8z"
+        fill={grad.url}
+      />
+      <path d="M6.4 11h13.3a.7.7 0 0 1 .67.9l-1.85 6.4a1 1 0 0 1-.96.7H4.3a.7.7 0 0 1-.67-.9L5.4 11.8a1 1 0 0 1 1-.8z" />
+      <circle cx="16.6" cy="15" r="1" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 折角笺纸 — 树文档节点（浅填区别于书封 JzKbIcon） */
+export function JzDocIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M6.5 4H13l5 5v10a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"
+        fill={ICON_FILL}
+      />
+      <path d="M6.5 4H13l5 5v10a1 1 0 0 1-1 1H6.5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
+      <path d="M13 4v4.2a.8.8 0 0 0 .8.8H18" opacity="0.6" />
+      <path d="M8.5 13h7" opacity="0.5" />
+      <path d="M8.5 16h5" opacity="0.35" />
+      <circle cx="8.8" cy="8.3" r="1" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/* ═══════════════ 主题切换 ═══════════════ */
+
+/** 日轮 — 亮色主题 */
+export function JzSunIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <circle cx="12" cy="12" r="4" fill={grad.url} />
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 3.5v2M12 18.5v2M3.5 12h2M18.5 12h2M6 6l1.4 1.4M16.6 16.6L18 18M18 6l-1.4 1.4M7.4 16.6L6 18" />
+      <circle cx="12" cy="12" r="1" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 月牙 — 暗色主题 */
+export function JzMoonIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <path
+        d="M19.5 13A7.5 7.5 0 1 1 11 4.5a6 6 0 0 0 8.5 8.5z"
+        fill={grad.url}
+      />
+      <path d="M19.5 13A7.5 7.5 0 1 1 11 4.5a6 6 0 0 0 8.5 8.5z" />
+      <circle cx="17.5" cy="6.5" r="0.9" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 星空 — starry 主题（一大星 + 两小星点，区别于收藏星 JzStarIcon） */
+export function JzStarrySkyIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M12 5.5l1.5 3.4 3.7.5-2.7 2.6.7 3.7-3.2-1.8-3.2 1.8.7-3.7-2.7-2.6 3.7-.5L12 5.5z"
+        fill={ICON_FILL_STRONG}
+        stroke="none"
+      />
+      <path d="M12 5.5l1.5 3.4 3.7.5-2.7 2.6.7 3.7-3.2-1.8-3.2 1.8.7-3.7-2.7-2.6 3.7-.5L12 5.5z" />
+      <circle cx="18.7" cy="15.8" r="0.8" fill={ICON_SPOT} stroke="none" />
+      <circle cx="5.3" cy="13.2" r="0.7" fill={ICON_SPOT} stroke="none" />
+      <path d="M18 5.5v2M17 6.5h2" opacity="0.5" />
+    </Wrap>
+  );
+}
+
+/** 海波 — deepsea 主题（三道波浪，吸收原 ThemeSwitcher 本地 WaveIcon） */
+export function JzDeepseaIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M4 8.5c1.3-1.5 2.7-1.5 4 0s2.7 1.5 4 0 2.7-1.5 4 0 2.7 1.5 4 0" />
+      <path d="M4 13c1.3-1.5 2.7-1.5 4 0s2.7 1.5 4 0 2.7-1.5 4 0 2.7 1.5 4 0" opacity="0.6" />
+      <path d="M4 17.5c1.3-1.5 2.7-1.5 4 0s2.7 1.5 4 0 2.7-1.5 4 0 2.7 1.5 4 0" opacity="0.35" />
+      <circle cx="18.5" cy="5.2" r="0.9" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/* ═══════════════ 用户菜单 ═══════════════ */
+
+/** 收藏星 — 饱满居中五角星 */
+export function JzStarIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <path
+        d="M12 4.5l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7L12 4.5z"
+        fill={grad.url}
+      />
+      <path d="M12 4.5l2.2 4.6 5 .7-3.6 3.5.9 5-4.5-2.4-4.5 2.4.9-5-3.6-3.5 5-.7L12 4.5z" />
+      <circle cx="12" cy="11.5" r="1" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 退出登录 — 门扉 + 外向箭头 */
+export function JzLogoutIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M11.5 4H6.5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5" fill={ICON_FILL} />
+      <path d="M11.5 4H6.5a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h5" />
+      <path d="M13.5 12H20" />
+      <path d="M17.2 9.2L20 12l-2.8 2.8" />
+      <circle cx="9" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
 /* ═══════════════ 通用导出 ═══════════════ */
 export const JZ_ICONS = {
   kb: JzKbIcon,
@@ -847,6 +992,15 @@ export const JZ_ICONS = {
   dashboard: JzDashboardIcon,
   trash: JzTrashIcon,
   profile: JzProfileIcon,
+  folder: JzFolderIcon,
+  folderOpen: JzFolderOpenIcon,
+  doc: JzDocIcon,
+  sun: JzSunIcon,
+  moon: JzMoonIcon,
+  starrySky: JzStarrySkyIcon,
+  deepsea: JzDeepseaIcon,
+  star: JzStarIcon,
+  logout: JzLogoutIcon,
 } as const;
 
 export type JzIconName = keyof typeof JZ_ICONS;

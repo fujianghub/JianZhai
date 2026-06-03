@@ -12,10 +12,10 @@ import {
   JzExportIcon,
   JzGraphIcon,
   JzKbIcon,
+  JzStarIcon,
   JzTagsIcon,
   JzTrashIcon,
 } from '@/components/common/JzIcon';
-import { StarOutlined } from '@ant-design/icons';
 import { listKBs } from '@/api/kbs';
 import { useAuthStore } from '@/stores/auth';
 import type { KnowledgeBase } from '@/types';
@@ -37,8 +37,6 @@ interface QuickEntry {
   desc: string;
   icon: React.ReactNode;
   show: boolean;
-  /** 印泥色（data-tone → theme.css 映射到 --jz-icon-accent） */
-  tone?: string;
 }
 
 const JOURNAL_KB_KEY = 'jz-journal-kb';
@@ -122,14 +120,14 @@ export default function AdminDashboard() {
   );
 
   const entries: QuickEntry[] = [
-    { to: '/admin/kbs', title: '知识库', desc: '浏览与管理全部知识库', icon: <JzKbIcon />, show: true, tone: 'cinnabar' },
-    { to: '/admin/graph', title: '知识图谱', desc: '文档间的双向链接关系图', icon: <JzGraphIcon />, show: true, tone: 'azure' },
-    { to: '/admin/exports', title: '导出', desc: 'Markdown / PDF / HTML / 整站', icon: <JzExportIcon />, show: true, tone: 'jade' },
-    { to: '/tags', title: '标签', desc: '按标签浏览与归类内容', icon: <JzTagsIcon />, show: true, tone: 'violet' },
-    { to: '/admin/favorites', title: '收藏', desc: '我标星的文档', icon: <StarOutlined />, show: true, tone: 'amber' },
-    { to: '/admin/trash', title: '回收站', desc: '已删除内容的恢复与清理', icon: <JzTrashIcon />, show: true, tone: 'clay' },
-    { to: '/admin/ai', title: 'AI 助手', desc: '模型、用量与全局设置', icon: <JzAiIcon />, show: !!user?.is_staff, tone: 'violet' },
-    { to: '/admin/overview', title: '系统总览', desc: '架构、技术栈与实时统计', icon: <JzArchitectureIcon />, show: !!user?.is_superuser, tone: 'gold' },
+    { to: '/admin/kbs', title: '知识库', desc: '浏览与管理全部知识库', icon: <JzKbIcon />, show: true },
+    { to: '/admin/graph', title: '知识图谱', desc: '文档间的双向链接关系图', icon: <JzGraphIcon />, show: true },
+    { to: '/admin/exports', title: '导出', desc: 'Markdown / PDF / HTML / 整站', icon: <JzExportIcon />, show: true },
+    { to: '/tags', title: '标签', desc: '按标签浏览与归类内容', icon: <JzTagsIcon />, show: true },
+    { to: '/admin/favorites', title: '收藏', desc: '我标星的文档', icon: <JzStarIcon />, show: true },
+    { to: '/admin/trash', title: '回收站', desc: '已删除内容的恢复与清理', icon: <JzTrashIcon />, show: true },
+    { to: '/admin/ai', title: 'AI 助手', desc: '模型、用量与全局设置', icon: <JzAiIcon />, show: !!user?.is_staff },
+    { to: '/admin/overview', title: '系统总览', desc: '架构、技术栈与实时统计', icon: <JzArchitectureIcon />, show: !!user?.is_superuser },
   ];
 
   return (
@@ -184,7 +182,7 @@ export default function AdminDashboard() {
             <Col xs={12} sm={8} lg={6} key={e.to}>
               <Link to={e.to} className="jz-feature-card">
                 <div className="jz-feature-card-head">
-                  <span className="jz-feature-card-icon" data-tone={e.tone}>{e.icon}</span>
+                  <span className="jz-feature-card-icon">{e.icon}</span>
                   <span className="jz-feature-card-title">{e.title}</span>
                 </div>
                 <p className="jz-feature-card-desc">{e.desc}</p>

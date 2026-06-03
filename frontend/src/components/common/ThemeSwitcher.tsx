@@ -1,45 +1,18 @@
 import { Popover, Segmented, Space, Tooltip } from 'antd';
+import { BgColorsOutlined } from '@ant-design/icons';
 import {
-  BgColorsOutlined,
-  MoonOutlined,
-  StarOutlined,
-  SunOutlined,
-} from '@ant-design/icons';
+  JzDeepseaIcon,
+  JzMoonIcon,
+  JzStarrySkyIcon,
+  JzSunIcon,
+} from '@/components/common/JzIcon';
 import { ACCENT_PRESETS, useThemeStore, type ThemeMode } from '@/stores/theme';
 
-/** Inline wave SVG — antd has no first-class water/wave icon. */
-function WaveIcon() {
-  return (
-    <svg width="1em" height="1em" viewBox="0 0 16 16" fill="none" aria-hidden>
-      <path
-        d="M1 5c1.5 0 1.5-1.6 3-1.6S5.5 5 7 5s1.5-1.6 3-1.6S11.5 5 13 5s1.5-1.6 3-1.6"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-      />
-      <path
-        d="M1 9c1.5 0 1.5-1.6 3-1.6S5.5 9 7 9s1.5-1.6 3-1.6S11.5 9 13 9s1.5-1.6 3-1.6"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        opacity="0.65"
-      />
-      <path
-        d="M1 13c1.5 0 1.5-1.6 3-1.6s1.5 1.6 3 1.6 1.5-1.6 3-1.6 1.5 1.6 3 1.6 1.5-1.6 3-1.6"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        opacity="0.35"
-      />
-    </svg>
-  );
-}
-
 const MODE_OPTIONS = [
-  { value: 'light',   label: '亮色',   icon: <SunOutlined /> },
-  { value: 'dark',    label: '暗色',   icon: <MoonOutlined /> },
-  { value: 'starry',  label: '星空',   icon: <StarOutlined /> },
-  { value: 'deepsea', label: '深海',   icon: <WaveIcon /> },
+  { value: 'light',   label: '亮色',   icon: <JzSunIcon size={16} /> },
+  { value: 'dark',    label: '暗色',   icon: <JzMoonIcon size={16} /> },
+  { value: 'starry',  label: '星空',   icon: <JzStarrySkyIcon size={16} /> },
+  { value: 'deepsea', label: '深海',   icon: <JzDeepseaIcon size={16} /> },
 ] as const;
 
 export default function ThemeSwitcher() {

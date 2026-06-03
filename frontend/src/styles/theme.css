@@ -1014,18 +1014,7 @@ a.jz-meta-full-edit-btn:hover .anticon {
     transparent 55%
   );
 
-  /* 印泥色板 — 逐图标专属色（light 深饱和；槽位 data-tone 取用） */
-  --jz-tone-cinnabar: #c0392b;
-  --jz-tone-jade: #0f9b6c;
-  --jz-tone-gold: #b8860b;
-  --jz-tone-azure: #2563c9;
-  --jz-tone-violet: #7c5cd6;
-  --jz-tone-amber: #d9821a;
-  --jz-tone-clay: #9a6a4f;
-  --jz-tone-slate: #5b6b7c;
-
-  /* JzIcon — 柔和双色 + 玉石渐变，全部派生自 --jz-icon-accent
-     （默认翡翠 --jz-accent；槽位 data-tone 可逐图标覆盖为印泥色） */
+  /* JzIcon — 柔和双色 + 玉石渐变，全部派生自 --jz-icon-accent（默认翡翠 --jz-accent） */
   --jz-icon-accent: var(--jz-accent);
   --jz-icon-stroke: var(--glass-text-muted);
   --jz-icon-stroke-active: var(--jz-icon-accent);
@@ -1050,16 +1039,6 @@ a.jz-meta-full-edit-btn:hover .anticon {
   --jz-accent-soft: #34d399;
   --jz-accent-glow: rgba(16, 185, 129, 0.35);
   --jz-gold: #94a3b8;
-
-  /* 印泥色板 — 深色玻璃提亮版 */
-  --jz-tone-cinnabar: #e8635a;
-  --jz-tone-jade: #34d399;
-  --jz-tone-gold: #e0b34a;
-  --jz-tone-azure: #5b9cf0;
-  --jz-tone-violet: #a98bf0;
-  --jz-tone-amber: #f0a64a;
-  --jz-tone-clay: #c4977b;
-  --jz-tone-slate: #92a4b8;
 
   --glass-bg-deep: #07090f;
   --glass-bg-mid:  #0e1320;
@@ -1552,6 +1531,11 @@ a.jz-meta-full-edit-btn:hover .anticon {
 .jz-kb-tree-panel .ant-tree-switcher-icon,
 .jz-kb-tree-panel .ant-tree-switcher .anticon-caret-down {
   transition: transform 0.18s ease;
+}
+/* 树节点 JzIcon（函套/笺纸）— 固定 16px 并与文字垂直对齐 */
+.jz-kb-tree-panel .ant-tree-iconEle .jz-icon {
+  font-size: 16px;
+  vertical-align: -3px;
 }
 .jz-kb-tree-panel .ant-tree-treenode {
   border-radius: 6px;
@@ -2801,45 +2785,9 @@ a.jz-meta-full-edit-btn:hover .anticon {
    JzIcon — 内部填色/点缀跟随 --jz-icon-* 与 --jz-icon-accent
    ════════════════════════════════════════════════════════════════════════ */
 
-/* data-tone 印泥色映射 — 槽位（或导航链接）声明 data-tone 后，
-   其内 SVG 的填色/彩点/渐变与 hover/选中发光全部切到该印泥色；
-   未声明 data-tone 的使用点维持翡翠默认（--jz-icon-accent 回退 --jz-accent）。 */
-.jz-menu-icon-slot[data-tone='cinnabar'],
-.jz-nav-link[data-tone='cinnabar'],
-.jz-nav-link-icon[data-tone='cinnabar'],
-.jz-feature-card-icon[data-tone='cinnabar'] { --jz-icon-accent: var(--jz-tone-cinnabar); }
-.jz-menu-icon-slot[data-tone='jade'],
-.jz-nav-link[data-tone='jade'],
-.jz-nav-link-icon[data-tone='jade'],
-.jz-feature-card-icon[data-tone='jade'] { --jz-icon-accent: var(--jz-tone-jade); }
-.jz-menu-icon-slot[data-tone='gold'],
-.jz-nav-link[data-tone='gold'],
-.jz-nav-link-icon[data-tone='gold'],
-.jz-feature-card-icon[data-tone='gold'] { --jz-icon-accent: var(--jz-tone-gold); }
-.jz-menu-icon-slot[data-tone='azure'],
-.jz-nav-link[data-tone='azure'],
-.jz-nav-link-icon[data-tone='azure'],
-.jz-feature-card-icon[data-tone='azure'] { --jz-icon-accent: var(--jz-tone-azure); }
-.jz-menu-icon-slot[data-tone='violet'],
-.jz-nav-link[data-tone='violet'],
-.jz-nav-link-icon[data-tone='violet'],
-.jz-feature-card-icon[data-tone='violet'] { --jz-icon-accent: var(--jz-tone-violet); }
-.jz-menu-icon-slot[data-tone='amber'],
-.jz-nav-link[data-tone='amber'],
-.jz-nav-link-icon[data-tone='amber'],
-.jz-feature-card-icon[data-tone='amber'] { --jz-icon-accent: var(--jz-tone-amber); }
-.jz-menu-icon-slot[data-tone='clay'],
-.jz-nav-link[data-tone='clay'],
-.jz-nav-link-icon[data-tone='clay'],
-.jz-feature-card-icon[data-tone='clay'] { --jz-icon-accent: var(--jz-tone-clay); }
-.jz-menu-icon-slot[data-tone='slate'],
-.jz-nav-link[data-tone='slate'],
-.jz-nav-link-icon[data-tone='slate'],
-.jz-feature-card-icon[data-tone='slate'] { --jz-icon-accent: var(--jz-tone-slate); }
-
 /* 派生变量在槽位/图标层重新求值 — CSS 自定义属性在「声明处」求值后即冻结，
-   根层（.jz-glass）算出的永远是默认翡翠；这里重声明一遍，让 data-tone 覆盖的
-   --jz-icon-accent 真正传导到填色/彩点/渐变。未带 tone 时求值结果与根层相同。 */
+   根层（.jz-glass）算出的是冻结值；这里重声明一遍，让玉石渐变与填色/彩点
+   在槽位/图标层正确求值（也支持个别使用点通过 tone prop 覆盖 --jz-icon-accent）。 */
 .jz-menu-icon-slot,
 .jz-nav-link,
 .jz-nav-link-icon,

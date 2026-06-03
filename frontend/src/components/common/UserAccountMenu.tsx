@@ -2,12 +2,12 @@ import { useNavigate } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { Link } from 'react-router-dom';
 import {
-  DeleteOutlined,
-  LogoutOutlined,
-  SettingOutlined,
-  StarOutlined,
-  UserOutlined,
-} from '@ant-design/icons';
+  JzLogoutIcon,
+  JzSettingsIcon,
+  JzSpaceIcon,
+  JzStarIcon,
+  JzTrashIcon,
+} from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
 import type { SessionUser } from '@/types';
 import UserAvatar from './UserAvatar';
@@ -44,23 +44,23 @@ export default function UserAccountMenu({
       </div>
       <div className="jz-user-menu-actions">
         <Link to="/admin" className="jz-user-menu-item">
-          <UserOutlined />
+          <JzSpaceIcon size={16} />
           <span>个人空间</span>
         </Link>
         <Link to={favoritesTo} className="jz-user-menu-item">
-          <StarOutlined />
+          <JzStarIcon size={16} />
           <span>我的收藏</span>
         </Link>
         <Link to={trashTo} className="jz-user-menu-item">
-          <DeleteOutlined />
+          <JzTrashIcon size={16} />
           <span>回收站</span>
         </Link>
         <Link to="/admin/profile" className="jz-user-menu-item">
-          <SettingOutlined />
+          <JzSettingsIcon size={16} />
           <span>编辑头像</span>
         </Link>
         <button type="button" className="jz-user-menu-item" onClick={() => void handleLogout()}>
-          <LogoutOutlined />
+          <JzLogoutIcon size={16} />
           <span>退出登录</span>
         </button>
       </div>

@@ -23,14 +23,11 @@ function BlogNavItem({
   label,
   icon,
   external,
-  tone,
 }: {
   to: string;
   label: string;
   icon: ReactNode;
   external?: boolean;
-  /** 印泥色（data-tone → theme.css 映射到 --jz-icon-accent，染图标+hover/active） */
-  tone?: string;
 }) {
   const inner = (
     <>
@@ -42,17 +39,13 @@ function BlogNavItem({
   );
   if (external) {
     return (
-      <a href={to} target="_blank" rel="noreferrer" className="jz-nav-link" data-tone={tone}>
+      <a href={to} target="_blank" rel="noreferrer" className="jz-nav-link">
         {inner}
       </a>
     );
   }
   return (
-    <NavLink
-      to={to}
-      className={({ isActive }) => 'jz-nav-link' + (isActive ? ' active' : '')}
-      data-tone={tone}
-    >
+    <NavLink to={to} className={({ isActive }) => 'jz-nav-link' + (isActive ? ' active' : '')}>
       {inner}
     </NavLink>
   );
@@ -125,27 +118,24 @@ export default function BlogLayout() {
             to="/archive"
             label="归档"
             icon={<JzArchiveIcon size={NAV_ICON_SIZE} />}
-            tone="gold"
           />
           <BlogNavItem
             to="/tags"
             label="标签"
             icon={<JzTagsIcon size={NAV_ICON_SIZE} />}
-            tone="cinnabar"
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
             icon={<JzRssIcon size={NAV_ICON_SIZE} />}
             external
-            tone="amber"
           />
           <Tooltip title="搜索 (Ctrl+K)">
             <Button
               type="text"
               className="jz-nav-search-btn"
               icon={
-                <span className="jz-nav-link-icon" data-tone="azure" aria-hidden>
+                <span className="jz-nav-link-icon" aria-hidden>
                   <JzSearchIcon size={NAV_ICON_SIZE} />
                 </span>
               }

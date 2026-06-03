@@ -28,9 +28,8 @@ const { Header, Sider, Content } = Layout;
 
 const MENU_ICON_SIZE = 20;
 
-/** tone = 印泥色槽位（data-tone → theme.css 映射到 --jz-icon-accent） */
-function menuIcon(node: ReactNode, tone?: string) {
-  return <span className="jz-menu-icon-slot" data-tone={tone}>{node}</span>;
+function menuIcon(node: ReactNode) {
+  return <span className="jz-menu-icon-slot">{node}</span>;
 }
 
 export default function AdminLayout() {
@@ -130,38 +129,38 @@ export default function AdminLayout() {
           items={[
             {
               key: 'dashboard',
-              icon: menuIcon(<JzDashboardIcon size={MENU_ICON_SIZE} />, 'gold'),
+              icon: menuIcon(<JzDashboardIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin">工作台</Link>,
             },
             {
               key: 'kbs',
-              icon: menuIcon(<JzKbIcon size={MENU_ICON_SIZE} />, 'cinnabar'),
+              icon: menuIcon(<JzKbIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/kbs">知识库</Link>,
             },
             {
               key: 'graph',
-              icon: menuIcon(<JzGraphIcon size={MENU_ICON_SIZE} />, 'azure'),
+              icon: menuIcon(<JzGraphIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
             {
               key: 'exports',
-              icon: menuIcon(<JzExportIcon size={MENU_ICON_SIZE} />, 'jade'),
+              icon: menuIcon(<JzExportIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/exports">导出</Link>,
             },
             {
               key: 'trash',
-              icon: menuIcon(<JzTrashIcon size={MENU_ICON_SIZE} />, 'clay'),
+              icon: menuIcon(<JzTrashIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/trash">回收站</Link>,
             },
             {
               key: 'ai',
-              icon: menuIcon(<JzAiIcon size={MENU_ICON_SIZE} />, 'violet'),
+              icon: menuIcon(<JzAiIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
             ...(user?.is_staff
               ? [{
                   key: 'users',
-                  icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />, 'azure'),
+                  icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
                   label: <Link to="/admin/users">用户</Link>,
                 }]
               : []),
@@ -169,7 +168,7 @@ export default function AdminLayout() {
               ? [
                   {
                     key: 'overview',
-                    icon: menuIcon(<JzArchitectureIcon size={MENU_ICON_SIZE} />, 'gold'),
+                    icon: menuIcon(<JzArchitectureIcon size={MENU_ICON_SIZE} />),
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
                 ]
@@ -181,13 +180,13 @@ export default function AdminLayout() {
             ...(user?.is_staff
               ? [{
                   key: 'hero',
-                  icon: menuIcon(<JzQuoteIcon size={MENU_ICON_SIZE} />, 'cinnabar'),
+                  icon: menuIcon(<JzQuoteIcon size={MENU_ICON_SIZE} />),
                   label: <Link to="/admin/hero">首页题记</Link>,
                 }]
               : []),
             {
               key: 'profile',
-              icon: menuIcon(<JzProfileIcon size={MENU_ICON_SIZE} />, 'jade'),
+              icon: menuIcon(<JzProfileIcon size={MENU_ICON_SIZE} />),
               label: <Link to="/admin/profile">个人资料</Link>,
             },
             // 「查看博客」菜单项已删除（v0.9.4）；点击左上角「簡」logo 直返首页。
