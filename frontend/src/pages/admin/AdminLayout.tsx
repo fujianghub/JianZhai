@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-import { DeleteOutlined, HomeOutlined, MenuOutlined } from '@ant-design/icons';
+import { MenuOutlined } from '@ant-design/icons';
 import {
   JzKbIcon,
   JzGraphIcon,
@@ -10,6 +10,9 @@ import {
   JzArchitectureIcon,
   JzQuoteIcon,
   JzSearchIcon,
+  JzDashboardIcon,
+  JzTrashIcon,
+  JzProfileIcon,
 } from '@/components/common/JzIcon';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
@@ -25,8 +28,9 @@ const { Header, Sider, Content } = Layout;
 
 const MENU_ICON_SIZE = 20;
 
-function menuIcon(node: ReactNode) {
-  return <span className="jz-menu-icon-slot">{node}</span>;
+/** tone = 印泥色槽位（data-tone → theme.css 映射到 --jz-icon-accent） */
+function menuIcon(node: ReactNode, tone?: string) {
+  return <span className="jz-menu-icon-slot" data-tone={tone}>{node}</span>;
 }
 
 export default function AdminLayout() {
@@ -126,38 +130,38 @@ export default function AdminLayout() {
           items={[
             {
               key: 'dashboard',
-              icon: menuIcon(<HomeOutlined style={{ fontSize: MENU_ICON_SIZE }} />),
+              icon: menuIcon(<JzDashboardIcon size={MENU_ICON_SIZE} />, 'gold'),
               label: <Link to="/admin">工作台</Link>,
             },
             {
               key: 'kbs',
-              icon: menuIcon(<JzKbIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(<JzKbIcon size={MENU_ICON_SIZE} />, 'cinnabar'),
               label: <Link to="/admin/kbs">知识库</Link>,
             },
             {
               key: 'graph',
-              icon: menuIcon(<JzGraphIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(<JzGraphIcon size={MENU_ICON_SIZE} />, 'azure'),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
             {
               key: 'exports',
-              icon: menuIcon(<JzExportIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(<JzExportIcon size={MENU_ICON_SIZE} />, 'jade'),
               label: <Link to="/admin/exports">导出</Link>,
             },
             {
               key: 'trash',
-              icon: menuIcon(<DeleteOutlined style={{ fontSize: MENU_ICON_SIZE }} />),
+              icon: menuIcon(<JzTrashIcon size={MENU_ICON_SIZE} />, 'clay'),
               label: <Link to="/admin/trash">回收站</Link>,
             },
             {
               key: 'ai',
-              icon: menuIcon(<JzAiIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(<JzAiIcon size={MENU_ICON_SIZE} />, 'violet'),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
             ...(user?.is_staff
               ? [{
                   key: 'users',
-                  icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
+                  icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />, 'azure'),
                   label: <Link to="/admin/users">用户</Link>,
                 }]
               : []),
@@ -165,7 +169,7 @@ export default function AdminLayout() {
               ? [
                   {
                     key: 'overview',
-                    icon: menuIcon(<JzArchitectureIcon size={MENU_ICON_SIZE} />),
+                    icon: menuIcon(<JzArchitectureIcon size={MENU_ICON_SIZE} />, 'gold'),
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
                 ]
@@ -177,13 +181,13 @@ export default function AdminLayout() {
             ...(user?.is_staff
               ? [{
                   key: 'hero',
-                  icon: menuIcon(<JzQuoteIcon size={MENU_ICON_SIZE} />),
+                  icon: menuIcon(<JzQuoteIcon size={MENU_ICON_SIZE} />, 'cinnabar'),
                   label: <Link to="/admin/hero">首页题记</Link>,
                 }]
               : []),
             {
               key: 'profile',
-              icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(<JzProfileIcon size={MENU_ICON_SIZE} />, 'jade'),
               label: <Link to="/admin/profile">个人资料</Link>,
             },
             // 「查看博客」菜单项已删除（v0.9.4）；点击左上角「簡」logo 直返首页。

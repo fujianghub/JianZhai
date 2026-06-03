@@ -1,17 +1,21 @@
 /**
- * JianZhai 自制图标库 — 主题双色（柔和线稿 + accent 浅填色）。
+ * JianZhai 自制图标库 — 主题双色（柔和线稿 + accent 浅填色 + 玉石渐变）。
  *
  * 颜色全部由 CSS 变量驱动（定义于 .jz-glass）：
  *   --jz-icon-fill / --jz-icon-fill-strong / --jz-icon-spot
+ *   --jz-icon-grad-a / --jz-icon-grad-b（玉石渐变两端）
+ * 全部派生自 --jz-icon-accent（默认 --jz-accent；槽位 data-tone 可逐图标
+ * 覆盖为专属印泥色：朱砂/翡翠/暗金/青蓝/紫罗兰/橙/灰褐/青灰）。
  * 描边用 currentColor，由父级槽位控制默认/hover/选中色。
  *
- * 图形：24×24，stroke 1.5，每图标 ≤1 浅填色 + ≤1 点缀。
+ * 图形：24×24，stroke 1.5，每图标 ≤1 渐变/浅填色面 + ≤2 点缀。
  */
+import { useId } from 'react';
 import type { CSSProperties, SVGProps } from 'react';
 
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number | string;
-  /** 覆盖 --jz-icon-spot（少用；一般跟主题走） */
+  /** 覆盖该图标的印泥色（--jz-icon-accent；一般由槽位 data-tone 控制） */
   tone?: string;
 };
 
@@ -25,7 +29,23 @@ const baseProps = {
 
 const ICON_FILL = 'var(--jz-icon-fill)';
 const ICON_FILL_STRONG = 'var(--jz-icon-fill-strong)';
-const ICON_SPOT = 'var(--jz-icon-spot, var(--jz-icon-tone, var(--jz-accent)))';
+const ICON_SPOT = 'var(--jz-icon-spot)';
+
+/**
+ * 玉石线性渐变 def — 每个图标实例独立 id，避免同页多实例冲突
+ * （id 约定同 ArchitectureSVG：useId 去冒号）。
+ * stop-color 走 CSS 变量，随槽位 data-tone / 主题自动变色。
+ */
+function useJadeGrad() {
+  const id = `jz-jade-${useId().replace(/:/g, '')}`;
+  const def = (
+    <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stopColor="var(--jz-icon-grad-a)" />
+      <stop offset="100%" stopColor="var(--jz-icon-grad-b)" />
+    </linearGradient>
+  );
+  return { id, def, url: `url(#${id})` };
+}
 
 function Wrap({
   size = '1em',
@@ -37,7 +57,7 @@ function Wrap({
 }: IconProps & { children: React.ReactNode }) {
   const mergedStyle: CSSProperties = {
     ...style,
-    ['--jz-icon-tone' as string]: tone,
+    ['--jz-icon-accent' as string]: tone,
   };
   return (
     <svg
@@ -58,65 +78,87 @@ function Wrap({
 
 /* ═══════════════ 后台菜单 ═══════════════ */
 
-/** 线装书 — 知识库 */
+/** 线装书 — 知识库（书封玉石渐变 + 书脊三孔 + 右上书签垂带） */
 export function JzKbIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
+      <defs>{grad.def}</defs>
       <path
         d="M5 4h13a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"
-        fill={ICON_FILL}
+        fill={grad.url}
       />
       <path d="M5 4h13a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
       <path d="M8 5v14" />
+      <path d="M14.8 4v4.2l1.4-1.1 1.4 1.1V4" fill={ICON_FILL_STRONG} />
       <circle cx="8" cy="9" r="0.75" fill={ICON_SPOT} stroke="none" />
       <circle cx="8" cy="12" r="0.75" fill={ICON_SPOT} stroke="none" />
       <circle cx="8" cy="15" r="0.75" fill={ICON_SPOT} stroke="none" />
-      <line x1="11" y1="9" x2="15" y2="9" opacity="0.55" />
-      <line x1="11" y1="12" x2="14" y2="12" opacity="0.4" />
+      <line x1="11" y1="10.5" x2="16" y2="10.5" opacity="0.55" />
+      <line x1="11" y1="13.5" x2="15" y2="13.5" opacity="0.4" />
+      <line x1="11" y1="16.5" x2="13.5" y2="16.5" opacity="0.3" />
     </Wrap>
   );
 }
 
-/** 节点网络 — 知识图谱 */
+/** 节点网络 — 知识图谱（中心节点玉石渐变 + 外节点层次） */
 export function JzGraphIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <circle cx="6.5" cy="7.5" r="2" fill={ICON_FILL_STRONG} stroke="none" />
       <circle cx="6.5" cy="7.5" r="2" />
       <circle cx="17.5" cy="7.5" r="2" />
       <circle cx="12" cy="17.5" r="2" />
-      <line x1="8" y1="8.5" x2="11" y2="11.5" />
-      <line x1="16" y1="8.5" x2="13" y2="11.5" />
-      <line x1="12" y1="13" x2="12" y2="15.5" />
-      <circle cx="12" cy="12" r="2.2" fill={ICON_FILL_STRONG} stroke="none" />
+      <line x1="8" y1="8.6" x2="10.1" y2="10.2" />
+      <line x1="16" y1="8.6" x2="13.9" y2="10.2" />
+      <line x1="12" y1="14.7" x2="12" y2="15.4" />
+      <circle cx="12" cy="12" r="2.6" fill={grad.url} stroke="none" />
+      <circle cx="12" cy="12" r="2.6" />
       <circle cx="12" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
 }
 
-/** 文档导出 */
+/** 文档导出（折角文档玉石渐变 + 外送箭头） */
 export function JzExportIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
-      <rect x="4" y="6" width="10" height="12" rx="1" fill={ICON_FILL} />
-      <rect x="4" y="6" width="10" height="12" rx="1" />
-      <path d="M6.5 9h5M6.5 12h5M6.5 15h3" strokeLinecap="round" />
+      <defs>{grad.def}</defs>
+      <path
+        d="M4 7a1 1 0 0 1 1-1h6.5L14 8.5V17a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z"
+        fill={grad.url}
+      />
+      <path d="M4 7a1 1 0 0 1 1-1h6.5L14 8.5V17a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7z" />
+      <path d="M11.5 6v2.5H14" opacity="0.7" />
+      <path d="M6.5 11.5h5M6.5 14.5h3.5" strokeLinecap="round" opacity="0.55" />
       <path d="M15 12h4.5" />
       <path d="M17.2 10.2L19.5 12l-2.3 1.8" fill={ICON_SPOT} stroke={ICON_SPOT} />
     </Wrap>
   );
 }
 
-/** AI 助手 */
+/** AI 助手（六边宝石玉石渐变 + 内核 + 侧旁小星） */
 export function JzAiIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
+      <defs>{grad.def}</defs>
       <path
         d="M12 4l6.5 3.75v8.5L12 20l-6.5-3.75v-8.5L12 4z"
-        fill={ICON_FILL}
+        fill={grad.url}
       />
       <path d="M12 4l6.5 3.75v8.5L12 20l-6.5-3.75v-8.5L12 4z" />
       <circle cx="12" cy="12" r="2.5" fill={ICON_FILL_STRONG} stroke="none" />
       <circle cx="12" cy="12" r="1" fill={ICON_SPOT} stroke="none" />
+      <path
+        d="M15.9 7.1l.4 1.1 1.1.4-1.1.4-.4 1.1-.4-1.1-1.1-.4 1.1-.4.4-1.1z"
+        fill={ICON_SPOT}
+        stroke="none"
+        opacity="0.85"
+      />
     </Wrap>
   );
 }
@@ -262,12 +304,15 @@ export function JzTableIcon(p: IconProps) {
 }
 
 export function JzQuoteIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
-      <path d="M7.5 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5H7.5v-3.5z" fill={ICON_FILL} />
-      <path d="M13.3 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5h-3.2v-3.5z" fill={ICON_FILL} />
+      <defs>{grad.def}</defs>
+      <path d="M7.5 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5H7.5v-3.5z" fill={grad.url} />
+      <path d="M13.3 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5h-3.2v-3.5z" fill={grad.url} />
       <path d="M7.5 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5H7.5v-3.5z" />
       <path d="M13.3 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5h-3.2v-3.5z" />
+      <path d="M8.5 18.5h7" opacity="0.5" />
       <circle cx="12" cy="6.8" r="0.9" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
@@ -456,29 +501,36 @@ export function JzAiSparkIcon(p: IconProps) {
   );
 }
 
-/** 用户 */
+/** 用户（主头像玉石渐变 + 副人肩侧点缀） */
 export function JzUsersIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
-      <circle cx="9" cy="8" r="2.8" fill={ICON_FILL} />
+      <defs>{grad.def}</defs>
+      <circle cx="9" cy="8" r="2.8" fill={grad.url} />
       <circle cx="9" cy="8" r="2.8" />
       <path d="M3.5 19c0-2.8 2.5-5 5.5-5s5.5 2.2 5.5 5" />
+      <circle cx="17" cy="8.5" r="2.2" fill={ICON_FILL} />
       <circle cx="17" cy="8.5" r="2.2" />
       <path d="M14.5 14.5c2.2 0 4.5 1.8 4.5 4.5" />
+      <circle cx="19.8" cy="12.6" r="0.8" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
 }
 
-/** 架构总览 */
+/** 架构总览（顶层玉石渐变 + 底座纹理） */
 export function JzArchitectureIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
-      <path d="M8 6h8l-1.5 2H9.5Z" fill={ICON_FILL} />
+      <defs>{grad.def}</defs>
+      <path d="M8 6h8l-1.5 2H9.5Z" fill={grad.url} />
       <path d="M8 6h8l-1.5 2H9.5Z" />
       <path d="M7 10h10l-1.5 2H8.5Z" fill={ICON_FILL} />
       <path d="M7 10h10l-1.5 2H8.5Z" />
       <path d="M6 14h12l-1.5 2H7.5Z" />
       <rect x="6.5" y="16.5" width="11" height="4.5" rx="0.5" fill={ICON_FILL_STRONG} stroke="none" />
+      <path d="M9 18.7h6" opacity="0.45" />
       <circle cx="12" cy="4.5" r="0.9" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
@@ -500,35 +552,43 @@ export function JzBlogIcon(p: IconProps) {
 
 /* ═══════════════ 博客导航 ═══════════════ */
 
-/** 归档 */
+/** 归档（柜身玉石渐变 + 抽屉拉手 + 把钮点缀） */
 export function JzArchiveIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
+      <defs>{grad.def}</defs>
       <rect x="4" y="4" width="16" height="4.5" rx="0.8" fill={ICON_FILL_STRONG} stroke="none" />
-      <rect x="5" y="9.5" width="14" height="10" rx="0.8" fill={ICON_FILL} />
+      <rect x="4" y="4" width="16" height="4.5" rx="0.8" />
+      <rect x="5" y="9.5" width="14" height="10" rx="0.8" fill={grad.url} />
       <rect x="5" y="9.5" width="14" height="10" rx="0.8" />
-      <path d="M8.5 13h7M8.5 16h4.5" strokeLinecap="round" />
+      <path d="M10 13h4" strokeLinecap="round" />
+      <circle cx="12" cy="16.2" r="0.9" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
 }
 
-/** 标签 */
+/** 标签（牌面玉石渐变 + 系绳孔 + 斜纹） */
 export function JzTagsIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
-      <path d="M4 5h7l9 8.5-7.5 7.5L4 12.5V5z" fill={ICON_FILL} />
+      <defs>{grad.def}</defs>
+      <path d="M4 5h7l9 8.5-7.5 7.5L4 12.5V5z" fill={grad.url} />
       <path d="M4 5h7l9 8.5-7.5 7.5L4 12.5V5z" />
       <circle cx="7.5" cy="8.5" r="1.3" fill={ICON_SPOT} stroke="none" />
+      <path d="M11 12l3.5 3.3" opacity="0.45" />
     </Wrap>
   );
 }
 
-/** RSS */
+/** RSS（波纹三弧 + 信号源点） */
 export function JzRssIcon(p: IconProps) {
   return (
     <Wrap {...p}>
       <circle cx="5.5" cy="18.5" r="1.8" fill={ICON_SPOT} stroke="none" />
       <path d="M5.5 12.5A6 6 0 0 1 11.5 18.5" fill="none" />
+      <path d="M5.5 9.2A9.3 9.3 0 0 1 14.8 18.5" fill="none" opacity="0.45" />
       <path d="M5.5 6A12 12 0 0 1 17.5 18.5" fill="none" />
     </Wrap>
   );
@@ -566,12 +626,17 @@ export function JzSpaceIcon(p: IconProps) {
   );
 }
 
-/** 搜索 */
+/** 搜索（镜片玉石渐变 + 高光弧 + 柄端点缀） */
 export function JzSearchIcon(p: IconProps) {
+  const grad = useJadeGrad();
   return (
     <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <circle cx="10.5" cy="10.5" r="6" fill={grad.url} />
       <circle cx="10.5" cy="10.5" r="6" />
+      <path d="M7.6 8.6a3.6 3.6 0 0 1 2.2-1.7" opacity="0.55" />
       <path d="M15 15l4.5 4.5" />
+      <circle cx="19.2" cy="19.2" r="1" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
 }
@@ -698,6 +763,61 @@ export function JzCompressIcon(p: IconProps) {
 // JzQuoteIcon 已在上方定义（line ~264），无需重复。
 // 注册到 JZ_ICONS map 下方即可让侧栏菜单引用。
 
+/* ═══════════════ 后台菜单（专属新图标） ═══════════════ */
+
+/** 四宫格仪表盘 — 工作台 */
+export function JzDashboardIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <rect x="4" y="4" width="9" height="7" rx="1.5" fill={grad.url} />
+      <rect x="4" y="4" width="9" height="7" rx="1.5" />
+      <rect x="15" y="4" width="5" height="7" rx="1.5" />
+      <rect x="4" y="13" width="5" height="7" rx="1.5" />
+      <rect x="11" y="13" width="9" height="7" rx="1.5" fill={ICON_FILL} />
+      <rect x="11" y="13" width="9" height="7" rx="1.5" />
+      <path d="M13 17.6l2-2 1.5 1.2 2-2.4" />
+      <circle cx="18.5" cy="14.4" r="0.8" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 纸篓 — 回收站 */
+export function JzTrashIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <path
+        d="M6.5 8.5h11l-1 10.6a1.5 1.5 0 0 1-1.5 1.4H9a1.5 1.5 0 0 1-1.5-1.4l-1-10.6z"
+        fill={grad.url}
+      />
+      <path d="M6.5 8.5h11l-1 10.6a1.5 1.5 0 0 1-1.5 1.4H9a1.5 1.5 0 0 1-1.5-1.4l-1-10.6z" />
+      <path d="M5 8.5h14" />
+      <path d="M9.8 5.5h4.4a1 1 0 0 1 1 1v2H8.8v-2a1 1 0 0 1 1-1z" fill={ICON_FILL_STRONG} />
+      <path d="M10.4 11.5l.4 5.8M13.6 11.5l-.4 5.8" opacity="0.5" />
+      <circle cx="12" cy="7.2" r="0.8" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 人像 + 落款印 — 个人资料 */
+export function JzProfileIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <circle cx="11" cy="8.5" r="3.2" fill={ICON_FILL} />
+      <circle cx="11" cy="8.5" r="3.2" />
+      <path d="M4.5 19.5c.9-3 3.5-5 6.5-5s5.6 2 6.5 5" fill={grad.url} />
+      <path d="M4.5 19.5c.9-3 3.5-5 6.5-5s5.6 2 6.5 5" />
+      <rect x="16.2" y="4.8" width="4" height="4" rx="0.8" fill={ICON_SPOT} stroke="none" opacity="0.9" />
+      <path d="M17.4 6.8h1.6" stroke="#fff" strokeWidth={1.1} opacity="0.85" />
+    </Wrap>
+  );
+}
+
 /* ═══════════════ 通用导出 ═══════════════ */
 export const JZ_ICONS = {
   kb: JzKbIcon,
@@ -724,6 +844,9 @@ export const JZ_ICONS = {
   fullscreen: JzFullscreenIcon,
   compress: JzCompressIcon,
   quote: JzQuoteIcon,
+  dashboard: JzDashboardIcon,
+  trash: JzTrashIcon,
+  profile: JzProfileIcon,
 } as const;
 
 export type JzIconName = keyof typeof JZ_ICONS;

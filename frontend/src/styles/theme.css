@@ -1014,12 +1014,26 @@ a.jz-meta-full-edit-btn:hover .anticon {
     transparent 55%
   );
 
-  /* JzIcon — 柔和双色，全部跟随 --jz-accent */
+  /* 印泥色板 — 逐图标专属色（light 深饱和；槽位 data-tone 取用） */
+  --jz-tone-cinnabar: #c0392b;
+  --jz-tone-jade: #0f9b6c;
+  --jz-tone-gold: #b8860b;
+  --jz-tone-azure: #2563c9;
+  --jz-tone-violet: #7c5cd6;
+  --jz-tone-amber: #d9821a;
+  --jz-tone-clay: #9a6a4f;
+  --jz-tone-slate: #5b6b7c;
+
+  /* JzIcon — 柔和双色 + 玉石渐变，全部派生自 --jz-icon-accent
+     （默认翡翠 --jz-accent；槽位 data-tone 可逐图标覆盖为印泥色） */
+  --jz-icon-accent: var(--jz-accent);
   --jz-icon-stroke: var(--glass-text-muted);
-  --jz-icon-stroke-active: var(--jz-accent);
-  --jz-icon-fill: color-mix(in srgb, var(--jz-accent) 14%, transparent);
-  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-accent) 22%, transparent);
-  --jz-icon-spot: var(--jz-accent);
+  --jz-icon-stroke-active: var(--jz-icon-accent);
+  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent) 14%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent) 22%, transparent);
+  --jz-icon-spot: var(--jz-icon-accent);
+  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent) 28%, transparent);
+  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent) 7%, transparent);
 }
 
 /* DARK GLASS（dark / starry / deepsea 都用同一套深色玻璃，仅光晕色调微调）*/
@@ -1036,6 +1050,16 @@ a.jz-meta-full-edit-btn:hover .anticon {
   --jz-accent-soft: #34d399;
   --jz-accent-glow: rgba(16, 185, 129, 0.35);
   --jz-gold: #94a3b8;
+
+  /* 印泥色板 — 深色玻璃提亮版 */
+  --jz-tone-cinnabar: #e8635a;
+  --jz-tone-jade: #34d399;
+  --jz-tone-gold: #e0b34a;
+  --jz-tone-azure: #5b9cf0;
+  --jz-tone-violet: #a98bf0;
+  --jz-tone-amber: #f0a64a;
+  --jz-tone-clay: #c4977b;
+  --jz-tone-slate: #92a4b8;
 
   --glass-bg-deep: #07090f;
   --glass-bg-mid:  #0e1320;
@@ -1255,15 +1279,15 @@ a.jz-meta-full-edit-btn:hover .anticon {
   display: block;
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot {
-  border-color: color-mix(in srgb, var(--jz-accent) 32%, var(--glass-border));
+  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 32%, var(--glass-border));
   color: var(--jz-icon-stroke-active);
   transform: scale(1.03);
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-menu-icon-slot {
-  border-color: color-mix(in srgb, var(--jz-accent) 48%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-accent) 16%, var(--glass-surface-strong));
+  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 48%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 16%, var(--glass-surface-strong));
   color: var(--jz-icon-stroke-active);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-accent) 18%, transparent);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 18%, transparent);
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item a {
   color: inherit !important;
@@ -1694,8 +1718,8 @@ a.jz-meta-full-edit-btn:hover .anticon {
   width: 32px;
   height: 32px;
   border-radius: 10px;
-  background: rgba(16, 185, 129, 0.1);
-  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 10%, transparent);
+  color: var(--jz-icon-accent, var(--jz-accent));
   flex-shrink: 0;
 }
 .jz-admin-glass .jz-feature-card-title {
@@ -2182,25 +2206,25 @@ a.jz-meta-full-edit-btn:hover .anticon {
   display: block;
 }
 .jz-blog-glass .jz-nav-link:hover {
-  color: var(--jz-accent);
-  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+  color: var(--jz-icon-accent, var(--jz-accent));
+  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 8%, transparent);
 }
 .jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon {
-  border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
+  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 38%, var(--glass-border));
   color: var(--jz-icon-stroke-active);
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-accent) 16%, transparent);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 16%, transparent);
   transform: translateY(-1px);
 }
 .jz-blog-glass .jz-nav-link.active {
-  color: var(--jz-accent);
+  color: var(--jz-icon-accent, var(--jz-accent));
   font-weight: 600;
-  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 12%, transparent);
 }
 .jz-blog-glass .jz-nav-link.active .jz-nav-link-icon {
-  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-accent) 14%, var(--glass-surface-strong));
+  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 45%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 14%, var(--glass-surface-strong));
   color: var(--jz-icon-stroke-active);
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-accent) 20%, transparent);
+  box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 20%, transparent);
 }
 .jz-blog-glass .jz-blog-header-nav {
   display: flex;
@@ -2225,7 +2249,7 @@ a.jz-meta-full-edit-btn:hover .anticon {
   color: var(--jz-icon-stroke);
 }
 .jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon {
-  border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
+  border-color: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 38%, var(--glass-border));
   color: var(--jz-icon-stroke-active);
 }
 .jz-blog-glass .jz-user-menu-trigger {
@@ -2774,19 +2798,71 @@ a.jz-meta-full-edit-btn:hover .anticon {
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   JzIcon — 内部填色/点缀跟随 --jz-icon-* 与 --jz-accent
+   JzIcon — 内部填色/点缀跟随 --jz-icon-* 与 --jz-icon-accent
    ════════════════════════════════════════════════════════════════════════ */
+
+/* data-tone 印泥色映射 — 槽位（或导航链接）声明 data-tone 后，
+   其内 SVG 的填色/彩点/渐变与 hover/选中发光全部切到该印泥色；
+   未声明 data-tone 的使用点维持翡翠默认（--jz-icon-accent 回退 --jz-accent）。 */
+.jz-menu-icon-slot[data-tone='cinnabar'],
+.jz-nav-link[data-tone='cinnabar'],
+.jz-nav-link-icon[data-tone='cinnabar'],
+.jz-feature-card-icon[data-tone='cinnabar'] { --jz-icon-accent: var(--jz-tone-cinnabar); }
+.jz-menu-icon-slot[data-tone='jade'],
+.jz-nav-link[data-tone='jade'],
+.jz-nav-link-icon[data-tone='jade'],
+.jz-feature-card-icon[data-tone='jade'] { --jz-icon-accent: var(--jz-tone-jade); }
+.jz-menu-icon-slot[data-tone='gold'],
+.jz-nav-link[data-tone='gold'],
+.jz-nav-link-icon[data-tone='gold'],
+.jz-feature-card-icon[data-tone='gold'] { --jz-icon-accent: var(--jz-tone-gold); }
+.jz-menu-icon-slot[data-tone='azure'],
+.jz-nav-link[data-tone='azure'],
+.jz-nav-link-icon[data-tone='azure'],
+.jz-feature-card-icon[data-tone='azure'] { --jz-icon-accent: var(--jz-tone-azure); }
+.jz-menu-icon-slot[data-tone='violet'],
+.jz-nav-link[data-tone='violet'],
+.jz-nav-link-icon[data-tone='violet'],
+.jz-feature-card-icon[data-tone='violet'] { --jz-icon-accent: var(--jz-tone-violet); }
+.jz-menu-icon-slot[data-tone='amber'],
+.jz-nav-link[data-tone='amber'],
+.jz-nav-link-icon[data-tone='amber'],
+.jz-feature-card-icon[data-tone='amber'] { --jz-icon-accent: var(--jz-tone-amber); }
+.jz-menu-icon-slot[data-tone='clay'],
+.jz-nav-link[data-tone='clay'],
+.jz-nav-link-icon[data-tone='clay'],
+.jz-feature-card-icon[data-tone='clay'] { --jz-icon-accent: var(--jz-tone-clay); }
+.jz-menu-icon-slot[data-tone='slate'],
+.jz-nav-link[data-tone='slate'],
+.jz-nav-link-icon[data-tone='slate'],
+.jz-feature-card-icon[data-tone='slate'] { --jz-icon-accent: var(--jz-tone-slate); }
+
+/* 派生变量在槽位/图标层重新求值 — CSS 自定义属性在「声明处」求值后即冻结，
+   根层（.jz-glass）算出的永远是默认翡翠；这里重声明一遍，让 data-tone 覆盖的
+   --jz-icon-accent 真正传导到填色/彩点/渐变。未带 tone 时求值结果与根层相同。 */
+.jz-menu-icon-slot,
+.jz-nav-link,
+.jz-nav-link-icon,
+.jz-feature-card-icon,
+.jz-glass .jz-icon {
+  --jz-icon-stroke-active: var(--jz-icon-accent, var(--jz-accent));
+  --jz-icon-fill: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 14%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 22%, transparent);
+  --jz-icon-spot: var(--jz-icon-accent, var(--jz-accent));
+  --jz-icon-grad-a: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 28%, transparent);
+  --jz-icon-grad-b: color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 7%, transparent);
+}
 
 .jz-glass .jz-icon {
   transition: transform 0.22s ease, filter 0.22s ease;
 }
 
 .jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-icon {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 30%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 30%, transparent));
 }
 
 .jz-blog-glass .jz-nav-link.active .jz-icon {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 28%, transparent));
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-icon-accent, var(--jz-accent)) 28%, transparent));
 }
 
 /* AI 管理 Segmented */
