@@ -932,6 +932,40 @@ export function JzDeepseaIcon(p: IconProps) {
   );
 }
 
+/* ═══════════════ 博客阅读端 meta ═══════════════ */
+
+/** 钟面 — 发布时间 */
+export function JzClockIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <circle cx="12" cy="12" r="7.5" fill={grad.url} />
+      <circle cx="12" cy="12" r="7.5" />
+      <path d="M12 7.8V12l2.9 1.7" />
+      <circle cx="12" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
+/** 书斋小屋 — 面包屑首页 */
+export function JzHomeIcon(p: IconProps) {
+  const grad = useJadeGrad();
+  return (
+    <Wrap {...p}>
+      <defs>{grad.def}</defs>
+      <path
+        d="M6 10.5L12 5.5l6 5v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-8z"
+        fill={grad.url}
+      />
+      <path d="M6 10.5L12 5.5l6 5v8a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1v-8z" />
+      <path d="M4 12l8-6.7L20 12" opacity="0.55" />
+      <path d="M10.5 19.5V15h3v4.5" />
+      <circle cx="12" cy="9.7" r="0.8" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
 /* ═══════════════ 用户菜单 ═══════════════ */
 
 /** 收藏星 — 饱满居中五角星 */
@@ -1001,6 +1035,8 @@ export const JZ_ICONS = {
   deepsea: JzDeepseaIcon,
   star: JzStarIcon,
   logout: JzLogoutIcon,
+  clock: JzClockIcon,
+  home: JzHomeIcon,
 } as const;
 
 export type JzIconName = keyof typeof JZ_ICONS;
