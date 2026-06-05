@@ -23,7 +23,10 @@ services:
   caddy:
     build:
       context: ..
-      dockerfile: infra/frontend.Dockerfile
+      # Default: full multi-stage build (pnpm install + vite build).
+      # On low-RAM hosts set CADDY_DOCKERFILE=infra/frontend.prebuilt.Dockerfile
+      # in .env.prod and rsync a locally-built frontend/dist instead.
+      dockerfile: ${CADDY_DOCKERFILE:-infra/frontend.Dockerfile}
     image: jianzhai-caddy:latest
     container_name: jianzhai-caddy
     restart: unless-stopped
@@ -33,6 +36,9 @@ services:
     volumes:
       - caddy_data:/data
       - caddy_config:/config
+      # User uploads — caddy serves /media/* straight from the volume
+      # (see Caddyfile); Django only *writes* here.
+      - media_data:/srv-media:ro
     depends_on:
       - backend
     healthcheck:
@@ -87,18 +93,14 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
       - media_data:/app/media
-    command: >
-      sh -c "
-        python manage.py migrate --noinput &&
-        python manage.py collectstatic --noinput --clear &&
-        gunicorn jianzhai.wsgi:application
-          --bind 0.0.0.0:8002
-          --workers 3
-          --threads 2
-          --timeout 120
-          --access-logfile -
-          --error-logfile -
-      "
+    # NB: must stay on ONE logical line — a YAML folded block keeps the
+    # newlines of more-indented lines, and the shell then terminates the
+    # command at ``gunicorn jianzhai.wsgi:application`` and silently drops
+    # every --flag below it (gunicorn boots on its 127.0.0.1:8000 default).
+    command: >-
+      sh -c "python manage.py migrate --noinput &&
+      python manage.py collectstatic --noinput --clear &&
+      exec gunicorn jianzhai.wsgi:application --bind 0.0.0.0:8002 --workers 2 --threads 2 --timeout 120 --access-logfile - --error-logfile -"
     depends_on:
       postgres:
         condition: service_healthy

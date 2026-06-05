@@ -275,7 +275,7 @@ class AIUsageLog(models.Model):
 `backend/jianzhai/urls.py` 顶层挂载：
 
 ```
-/admin/                       Django admin
+/django-admin/                Django admin（/admin 留给前端 SPA；生产由 Caddy 代理 /django-admin/*）
 /api/v1/auth/                 登录 / 登出 / CSRF / session(含 require_login) / me / system-info / UserViewSet
 /api/v1/auth/me/avatar|change-password|change-email|change-username/   账号自服务
 /api/v1/auth/hero/  /hero/batch/   Hero 名句：员工读写 + 批量导入

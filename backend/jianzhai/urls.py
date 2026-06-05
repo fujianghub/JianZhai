@@ -25,7 +25,10 @@ api_v1_patterns = [
 ]
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    # ``django-admin/`` (not ``admin/``) — in production the React SPA owns
+    # /admin, and Caddy proxies /django-admin/* to this backend.  Dev uses
+    # http://localhost:8002/django-admin/ directly.
+    path("django-admin/", admin.site.urls),
     path("api/v1/", include((api_v1_patterns, "api_v1"))),
     path("feed.xml", rss_feed, name="feed"),
     path("sitemap.xml", sitemap_xml, name="sitemap"),
