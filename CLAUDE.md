@@ -15,7 +15,7 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9.9 — 根管理员分级 + 邮箱必填 + 账号自服务（叠加 v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商、v0.9.5 Hero 名句） |
+| 实现阶段 | v0.9.10 — 题记增强（随机播放 / 拖拽排序 / 导出 / 美化）（叠加 v0.9.9 根管理员 + 账号自服务、v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商） |
 | 多用户 | 支持。普通账号按 `owner` 隔离；`is_superuser` 跨租户可见；单一**根管理员**（`ROOT_ADMIN_USERNAME`）位于权限顶端，不可被禁用/删除 |
 | 博客形态 | 全开放（匿名）或**友邻可见**（`SITE_REQUIRE_LOGIN=true` → 需登录），由 `PublicOrLoginGated` 权限类逐请求判定 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
@@ -476,12 +476,14 @@ class AIUsageLog(models.Model):
 - **PWA**：`manifest.webmanifest` + apple-touch-icon + theme-color
 - **白边修复**：`html / body / #root` 全局 reset margin/padding，铺满整屏
 
-### 模块 15：首页 Hero 名句轮播 ✅（v0.9.5）
+### 模块 15：首页题记（Hero 名句轮播）✅（v0.9.5，v0.9.10 增强）
 
-- 单例 `HeroSettings`（`apps/accounts/models.py`）：`quotes` JSON（每条 text / dynasty / author / source）、`animation`（fade / slide / typewriter / ink-wash）、`rotation_seconds`、`enabled`。
-- 端点（`apps/accounts/hero.py`）：`GET /public/hero/`（匿名精简）、`GET|PATCH /auth/hero/`（员工读写）、`POST /auth/hero/batch/`（批量导入，`replace` / `append`）。
+- 单例 `HeroSettings`（`apps/accounts/models.py`）：`quotes` JSON（每条 text / dynasty / author / source）、`animation`（fade / slide / typewriter / ink-wash）、`play_order`（**random 默认** / sequential，迁移 0005）、`rotation_seconds`、`enabled`。
+- 端点（`apps/accounts/hero.py`）：`GET /public/hero/`（匿名精简，含 `play_order`）、`GET|PATCH /auth/hero/`（员工读写）、`POST /auth/hero/batch/`（批量导入，`replace` / `append`）。
 - 批量解析：强分隔（`—`/`–`/`-`/` by `）优先于弱分隔（`·`/`•`），中文「苏轼 · 定风波」不被拆错；行首 `[朝代]〔朝代〕【朝代】(朝代)` 识别为朝代前缀。
-- 前端：`/admin/hero`（员工）管理页 + 博客首页轮播渲染；古风单行三色 `〔朝代〕作者〈篇名〉` + 「」角标 + 卷尾金线。
+- 前端：`/admin/hero`（员工，菜单/标题名「**题记**」）管理页 + 博客首页轮播渲染；古风单行三色 `〔朝代〕作者〈篇名〉` + 「」角标 + 卷尾金线。
+- **随机播放**（v0.9.10）：`utils/heroPlayback.ts` 的 `buildPlayOrder`（Fisher-Yates）——random 模式每次页面打开重新洗牌，整轮不重复；**悬停暂停**轮播、**点击切下一条**（`.jz-hero-rotator-shell`）。
+- **管理页**（v0.9.10）：题记列表 **dnd-kit 整行拖拽排序**（把手列 ⠿，替代上移/下移）；预览卡 ‹ › 翻看任意条；「导出」Modal 反向生成批量导入格式文本（复制 / 下载 .txt，`quotesToBatchText`）；宣纸纹理预览框 + 水墨光晕美化。
 
 ### 模块 16：友邻闸门 + 生产部署 ✅（v0.9.8）
 
@@ -535,6 +537,7 @@ class AIUsageLog(models.Model):
 | **v0.9.7 AI 全面增强** | 多供应商（Anthropic Claude + 阿里通义千问，provider 路由 + 各自配置状态）；自定义操作模板；多轮对话；视觉图片输入；扩展思考；每用户日预算（429）；失败自动降级链；prompt caching；用量按 KB/文档归因 + CSV；AI 输出实时 Markdown 渲染；22 项优化 | ✅ |
 | **v0.9.8 部署 + 友邻闸门** | 腾讯云部署套件 `infra/`（Dockerfile + docker-compose.prod + Caddy HTTPS 反代 + deploy/backup.sh + 部署指南）；`SITE_REQUIRE_LOGIN` 友邻可见博客闸门（`PublicOrLoginGated`） | ✅ |
 | **v0.9.9 账号体系** | 根管理员分级（`ROOT_ADMIN_USERNAME`，不可被禁用/删除，统一 `can_manage_user` 裁决）；新建账号邮箱必填；用户自助改密码/邮箱/用户名/头像；KB 上传实时进度条 + 批量全选 + 可视化颜色选择器 | ✅ |
+| **v0.9.10 题记增强** | 播放顺序可配置（random 默认洗牌 / sequential）；悬停暂停 + 点击切换；题记列表 dnd-kit 拖拽排序；导出备份文本；首页 + 管理页样式打磨；「首页题记」改名「题记」 | ✅ |
 | **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 超大 KB 树分页 / Yjs 协作 | 🔲 |
 
 ---
@@ -596,5 +599,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.9（对应实现 v0.9.9）  
-**最后更新**：2026-06-02
+**文档版本**：v3.10（对应实现 v0.9.10）  
+**最后更新**：2026-06-06

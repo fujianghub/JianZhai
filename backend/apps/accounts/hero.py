@@ -16,7 +16,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.accounts.permissions import PublicOrLoginGated
 from rest_framework.response import Response
 
-from .models import HERO_ANIMATIONS, HeroSettings
+from .models import HERO_ANIMATIONS, HERO_PLAY_ORDERS, HeroSettings
 
 MAX_QUOTES = 100
 MAX_TEXT = 200
@@ -100,6 +100,8 @@ def _serialize_settings(obj: HeroSettings) -> dict:
         "rotation_seconds": obj.rotation_seconds,
         "animation": obj.animation,
         "animations": list(HERO_ANIMATIONS),
+        "play_order": obj.play_order,
+        "play_orders": list(HERO_PLAY_ORDERS),
         "quotes": [_serialize_quote(q) for q in (obj.quotes or [])],
         "updated_at": obj.updated_at.isoformat() if obj.updated_at else None,
     }
@@ -111,6 +113,7 @@ def _serialize_public(obj: HeroSettings) -> dict:
         "enabled": obj.enabled,
         "rotation_seconds": obj.rotation_seconds,
         "animation": obj.animation,
+        "play_order": obj.play_order,
         "quotes": [
             {
                 "id": q["id"],
@@ -194,7 +197,8 @@ def hero_settings(request):
 
     PATCH body accepts any subset of:
         enabled (bool), rotation_seconds (int 1..3600),
-        animation (str in ``HERO_ANIMATIONS``), quotes (list[dict]).
+        animation (str in ``HERO_ANIMATIONS``),
+        play_order (str in ``HERO_PLAY_ORDERS``), quotes (list[dict]).
     """
     obj = HeroSettings.load()
 
@@ -230,6 +234,18 @@ def hero_settings(request):
                     status=400,
                 )
             obj.animation = anim
+
+        if "play_order" in data:
+            order = str(data["play_order"]).strip()
+            if order not in HERO_PLAY_ORDERS:
+                return Response(
+                    {
+                        "detail": f"未知播放顺序 {order!r}",
+                        "supported": list(HERO_PLAY_ORDERS),
+                    },
+                    status=400,
+                )
+            obj.play_order = order
 
         if "quotes" in data:
             result = _validated_quotes(data["quotes"])

@@ -16,15 +16,20 @@ export interface HeroQuote {
 
 export type HeroAnimation = 'fade' | 'slide' | 'typewriter' | 'ink-wash';
 
+/** ``random`` reshuffles per page load; ``sequential`` follows list order. */
+export type HeroPlayOrder = 'random' | 'sequential';
+
 export interface HeroPublic {
   enabled: boolean;
   rotation_seconds: number;
   animation: HeroAnimation;
+  play_order: HeroPlayOrder;
   quotes: HeroQuote[];
 }
 
 export interface HeroSettings extends HeroPublic {
   animations: HeroAnimation[];
+  play_orders: HeroPlayOrder[];
   updated_at: string | null;
 }
 
@@ -43,7 +48,7 @@ export async function getHeroSettings(): Promise<HeroSettings> {
 
 /** Staff-only write. Accepts any partial of HeroSettings. */
 export async function patchHeroSettings(
-  patch: Partial<Pick<HeroSettings, 'enabled' | 'rotation_seconds' | 'animation' | 'quotes'>>,
+  patch: Partial<Pick<HeroSettings, 'enabled' | 'rotation_seconds' | 'animation' | 'play_order' | 'quotes'>>,
 ): Promise<HeroSettings> {
   await ensureCsrf();
   const { data } = await apiClient.patch<HeroSettings>('/auth/hero/', patch);

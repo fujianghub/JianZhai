@@ -2,10 +2,18 @@
  * Hero quote rotator for the blog homepage.
  *
  * Reads the singleton ``/api/v1/public/hero/`` (slim shape: enabled,
- * rotation_seconds, animation, quotes[] with split author / source).
- * Renders one quote at a time and advances on a timer with a real
- * two-stage transition: ``enter`` (0.7s) → hold (rotation_seconds) →
- * ``leave`` (0.5s) → swap index → ``enter`` (0.7s) → …
+ * rotation_seconds, animation, play_order, quotes[] with split author /
+ * source). Renders one quote at a time and advances on a timer with a
+ * real two-stage transition: ``enter`` (0.7s) → hold (rotation_seconds)
+ * → ``leave`` (0.5s) → swap index → ``enter`` (0.7s) → …
+ *
+ * Play order: ``random`` (default) shuffles a fresh permutation on every
+ * page load via ``buildPlayOrder`` — no repeats within one full cycle;
+ * ``sequential`` walks the list as authored.
+ *
+ * Interaction:
+ *   - hover  → pauses the hold countdown so long quotes can be finished
+ *   - click  → advances to the next quote immediately
  *
  * Fallbacks:
  *   - API unreachable     → renders the original 诸葛亮 quote so the
@@ -18,13 +26,15 @@
  *   2. Author    (medium + gold rules)
  *   3. Source    (small italic, prefixed with 〈〉 angle quotes)
  */
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPublicHero, type HeroAnimation, type HeroPublic, type HeroQuote } from '@/api/hero';
+import { buildPlayOrder } from '@/utils/heroPlayback';
 
 const FALLBACK: HeroPublic = {
   enabled: true,
   rotation_seconds: 8,
   animation: 'fade',
+  play_order: 'sequential',
   quotes: [
     {
       id: 'fallback-1',
@@ -48,21 +58,37 @@ interface Props {
 
 export default function HeroQuoteRotator({ preview }: Props) {
   const [data, setData] = useState<HeroPublic | null>(preview ?? null);
-  const [index, setIndex] = useState(0);
+  /** Index permutation built once per data load — identity for
+   *  ``sequential``, a fresh Fisher–Yates shuffle for ``random``. */
+  const [order, setOrder] = useState<number[]>([]);
+  /** Position within ``order`` (NOT a raw quote index). */
+  const [pos, setPos] = useState(0);
   /** Per-cycle re-mount key. Keyframe animations only re-run on mount; we
    *  bump this each time we want the entrance to replay. */
   const [tick, setTick] = useState(0);
   /** Drives the ``.is-leaving`` class — the wrapper plays the exit half
    *  of its animation, then we swap the quote and bump ``tick`` for entry. */
   const [leaving, setLeaving] = useState(false);
+  /** Hover pause — while true the hold timer never arms, so the current
+   *  quote stays up until the pointer leaves. */
+  const [paused, setPaused] = useState(false);
   const enterTimerRef = useRef<number | null>(null);
   const leaveTimerRef = useRef<number | null>(null);
+
+  /** Cancel a mid-flight leave swap — used when the data set changes
+   *  underneath the rotation so a stale timer can't advance the new list. */
+  const cancelLeave = useCallback(() => {
+    if (leaveTimerRef.current) window.clearTimeout(leaveTimerRef.current);
+    leaveTimerRef.current = null;
+  }, []);
 
   // Fetch once if not in preview mode. Public endpoint = no auth.
   useEffect(() => {
     if (preview) {
+      cancelLeave();
       setData(preview);
-      setIndex(0);
+      setOrder(buildPlayOrder(preview.quotes.length, preview.play_order));
+      setPos(0);
       setTick((n) => n + 1);
       setLeaving(false);
       return;
@@ -71,62 +97,88 @@ export default function HeroQuoteRotator({ preview }: Props) {
     getPublicHero()
       .then((d) => {
         if (cancelled) return;
+        cancelLeave();
         setData(d);
-        setIndex(0);
+        setOrder(buildPlayOrder(d.quotes.length, d.play_order));
+        setPos(0);
+        setLeaving(false);
       })
       .catch(() => {
         if (cancelled) return;
+        cancelLeave();
         setData(FALLBACK);
+        setOrder(buildPlayOrder(FALLBACK.quotes.length, FALLBACK.play_order));
+        setPos(0);
+        setLeaving(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [preview]);
+  }, [preview, cancelLeave]);
+
+  /** Play the exit half, then advance one step through ``order``. */
+  const advance = useCallback(() => {
+    if (!data || data.quotes.length <= 1) return;
+    setLeaving(true);
+    leaveTimerRef.current = window.setTimeout(() => {
+      setPos((p) => (p + 1) % Math.max(1, data.quotes.length));
+      setTick((n) => n + 1);
+      setLeaving(false);
+    }, LEAVE_MS);
+  }, [data]);
 
   // Two-stage rotation:
   //   1. After ``rotation_seconds`` of hold, switch to ``leaving=true``
   //      so CSS plays the exit half of the animation.
-  //   2. After ``LEAVE_MS``, bump the index, clear ``leaving``, and bump
-  //      ``tick`` so the new quote re-mounts and plays the entry half.
+  //   2. After ``LEAVE_MS``, bump the position, clear ``leaving``, and
+  //      bump ``tick`` so the new quote re-mounts and plays the entry half.
   //
-  // Cleanup is careful: clearing whichever timer was armed prevents a
-  // queued swap from firing after the user changes preview state or
-  // the data refetches.
+  // This effect arms (and on cleanup clears) ONLY the hold timer. The
+  // leave timer must survive effect re-runs — hovering mid-exit would
+  // otherwise cancel the pending swap and strand the quote in its
+  // ``is-leaving`` (invisible) state. While ``paused`` (hover) or
+  // ``leaving`` no hold timer is armed; un-hovering restarts a full
+  // hold period.
   useEffect(() => {
-    if (!data || data.quotes.length <= 1) {
-      if (enterTimerRef.current) window.clearTimeout(enterTimerRef.current);
-      if (leaveTimerRef.current) window.clearTimeout(leaveTimerRef.current);
-      enterTimerRef.current = null;
-      leaveTimerRef.current = null;
-      return;
-    }
+    if (!data || data.quotes.length <= 1 || paused || leaving) return;
     const delayMs = Math.max(1, data.rotation_seconds) * 1000;
-    enterTimerRef.current = window.setTimeout(() => {
-      setLeaving(true);
-      leaveTimerRef.current = window.setTimeout(() => {
-        setIndex((i) => (i + 1) % data.quotes.length);
-        setTick((n) => n + 1);
-        setLeaving(false);
-      }, LEAVE_MS);
-    }, delayMs);
+    enterTimerRef.current = window.setTimeout(() => advance(), delayMs);
     return () => {
       if (enterTimerRef.current) window.clearTimeout(enterTimerRef.current);
-      if (leaveTimerRef.current) window.clearTimeout(leaveTimerRef.current);
       enterTimerRef.current = null;
-      leaveTimerRef.current = null;
     };
-  }, [data, index]);
+  }, [data, pos, paused, leaving, advance]);
+
+  // Unmount-only: drop whatever leave swap is still queued.
+  useEffect(() => cancelLeave, [cancelLeave]);
+
+  // Click anywhere on the quote → skip the remaining hold and advance now.
+  // Guarded against double-fire while the exit animation is mid-flight.
+  const onClickNext = useCallback(() => {
+    if (!data || data.quotes.length <= 1 || leaving) return;
+    if (enterTimerRef.current) window.clearTimeout(enterTimerRef.current);
+    enterTimerRef.current = null;
+    advance();
+  }, [data, leaving, advance]);
 
   if (!data || !data.enabled || data.quotes.length === 0) return null;
-  const current = data.quotes[index];
-  if (!current) return null;
+  const current = data.quotes[order[pos] ?? 0] ?? data.quotes[0];
+  const interactive = data.quotes.length > 1;
   return (
-    <HeroQuoteCard
-      quote={current}
-      animation={data.animation}
-      animationKey={tick}
-      leaving={leaving}
-    />
+    <div
+      className={`jz-hero-rotator-shell${interactive ? ' is-interactive' : ''}`}
+      title={interactive ? '点击换一条 · 悬停暂停轮播' : undefined}
+      onMouseEnter={interactive ? () => setPaused(true) : undefined}
+      onMouseLeave={interactive ? () => setPaused(false) : undefined}
+      onClick={interactive ? onClickNext : undefined}
+    >
+      <HeroQuoteCard
+        quote={current}
+        animation={data.animation}
+        animationKey={tick}
+        leaving={leaving}
+      />
+    </div>
   );
 }
 

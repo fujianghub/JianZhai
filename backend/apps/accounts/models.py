@@ -46,6 +46,11 @@ DEFAULT_HERO_QUOTES = [
 # resolve.
 HERO_ANIMATIONS = ("fade", "slide", "typewriter", "ink-wash")
 
+# Play order for multi-quote rotation. ``random`` shuffles a fresh
+# permutation on every page load (no repeats within one full cycle);
+# ``sequential`` walks the list top-to-bottom as authored.
+HERO_PLAY_ORDERS = ("random", "sequential")
+
 
 class HeroSettings(models.Model):
     """Singleton row (pk forced to 1) holding the blog homepage hero quotes.
@@ -74,6 +79,12 @@ class HeroSettings(models.Model):
         default="fade",
         choices=[(a, a) for a in HERO_ANIMATIONS],
         help_text="切换动画样式。",
+    )
+    play_order = models.CharField(
+        max_length=16,
+        default="random",
+        choices=[(o, o) for o in HERO_PLAY_ORDERS],
+        help_text="播放顺序：random 每次打开页面随机洗牌；sequential 按列表顺序。",
     )
     updated_at = models.DateTimeField(auto_now=True)
 

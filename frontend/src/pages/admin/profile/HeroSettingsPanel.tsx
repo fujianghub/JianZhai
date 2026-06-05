@@ -1,18 +1,20 @@
 /**
- * 题记管理面板 — list / edit / reorder / batch-import.
+ * 题记管理面板 — list / edit / drag-reorder / batch-import / export.
  *
  * - Switch    : enabled (主开关；关闭后首页 hero 不显示题记)
  * - Slider    : rotation_seconds (1 – 60 秒)
- * - Radio     : animation (fade / slide / typewriter / zoom)
- * - Table     : per-quote text + attribution, inline-edit, drag-reorder, delete
+ * - Radio     : animation (fade / slide / typewriter / ink-wash)
+ * - Radio     : play_order (random / sequential，v0.9.10)
+ * - Table     : per-quote text + dynasty + author + source, inline-edit,
+ *               whole-row drag-reorder (dnd-kit handle column), delete
  * - Modal     : 批量导入（textarea, replace / append 模式）
- * - Preview   : live HeroQuoteCard with the current draft applied
+ * - Modal     : 导出（反向生成批量导入格式文本，复制 / 下载）
+ * - Preview   : live HeroQuoteCard，可 ‹ › 翻看任意一条的渲染效果
  *
  * Saves are debounced — every commit-able change (Slider release, Radio
- * click, row blur, sort) calls PATCH /auth/hero/. The Save button only
- * matters when the user makes inline edits and wants to commit early.
+ * click, row blur, drag drop) calls PATCH /auth/hero/.
  */
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
   Alert,
   AutoComplete,
@@ -31,15 +33,37 @@ import {
   Typography,
 } from 'antd';
 import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
+  CopyOutlined,
   DeleteOutlined,
+  DownloadOutlined,
+  ExportOutlined,
+  HolderOutlined,
   ImportOutlined,
+  LeftOutlined,
   PlusOutlined,
   ReloadOutlined,
+  RightOutlined,
 } from '@ant-design/icons';
 import {
+  DndContext,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import { restrictToVerticalAxis } from '@dnd-kit/modifiers';
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { SyntheticListenerMap } from '@dnd-kit/core/dist/hooks/utilities';
+import {
   type HeroAnimation,
+  type HeroPlayOrder,
   type HeroQuote,
   type HeroSettings,
   batchImportHero,
@@ -48,6 +72,7 @@ import {
 } from '@/api/hero';
 import { formatApiError } from '@/api/client';
 import { message } from '@/utils/notify';
+import { quotesToBatchText } from '@/utils/heroPlayback';
 import { HeroQuoteCard } from '@/components/blog/HeroQuoteRotator';
 
 const { Text } = Typography;
@@ -58,6 +83,11 @@ const ANIM_LABELS: Record<HeroAnimation, string> = {
   slide: '上滑',
   typewriter: '打字机',
   'ink-wash': '水墨',
+};
+
+const PLAY_ORDER_LABELS: Record<HeroPlayOrder, string> = {
+  random: '随机',
+  sequential: '顺序',
 };
 
 /** 常用朝代下拉候选 — 19 项，按时间顺序排列。
@@ -100,12 +130,81 @@ const SAMPLE_BATCH = `# 行首 # 开头为注释；空行忽略
 仰之弥高，钻之弥坚 · 论语
 `;
 
+// ── dnd-kit table row — drag activates only from the handle cell, so the
+//    inline <Input> fields keep normal text-selection behaviour. Same
+//    pattern as the AntD 5 "drag handle" sortable-table recipe.
+interface RowContextProps {
+  setActivatorNodeRef?: (element: HTMLElement | null) => void;
+  listeners?: SyntheticListenerMap;
+}
+
+const RowContext = createContext<RowContextProps>({});
+
+function DragHandle({ disabled }: { disabled: boolean }) {
+  const { setActivatorNodeRef, listeners } = useContext(RowContext);
+  return (
+    <Button
+      type="text"
+      size="small"
+      className="jz-hero-drag-handle"
+      icon={<HolderOutlined />}
+      disabled={disabled}
+      style={{ cursor: disabled ? 'not-allowed' : 'grab', touchAction: 'none' }}
+      ref={setActivatorNodeRef}
+      {...(disabled ? {} : listeners)}
+      aria-label="拖动排序"
+    />
+  );
+}
+
+interface DraggableRowProps extends React.HTMLAttributes<HTMLTableRowElement> {
+  'data-row-key': string;
+}
+
+function DraggableRow(props: DraggableRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    setActivatorNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: props['data-row-key'] });
+
+  const style: React.CSSProperties = {
+    ...props.style,
+    transform: CSS.Translate.toString(transform),
+    transition,
+    ...(isDragging ? { position: 'relative', zIndex: 9 } : {}),
+  };
+
+  const contextValue = useMemo<RowContextProps>(
+    () => ({ setActivatorNodeRef, listeners }),
+    [setActivatorNodeRef, listeners],
+  );
+
+  return (
+    <RowContext.Provider value={contextValue}>
+      <tr
+        {...props}
+        ref={setNodeRef}
+        style={style}
+        className={`${props.className ?? ''}${isDragging ? ' jz-hero-row-dragging' : ''}`}
+        {...attributes}
+      />
+    </RowContext.Provider>
+  );
+}
+
 export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
   const [data, setData] = useState<HeroSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [previewTick, setPreviewTick] = useState(0);
+  const [previewIdx, setPreviewIdx] = useState(0);
   const [batchOpen, setBatchOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -125,7 +224,11 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
 
   // ── Commit helpers ───────────────────────────────────────────────────
   const commit = useCallback(
-    async (patch: Partial<Pick<HeroSettings, 'enabled' | 'rotation_seconds' | 'animation' | 'quotes'>>) => {
+    async (
+      patch: Partial<
+        Pick<HeroSettings, 'enabled' | 'rotation_seconds' | 'animation' | 'play_order' | 'quotes'>
+      >,
+    ) => {
       if (!data) return;
       setSaving(true);
       try {
@@ -141,7 +244,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
     [data],
   );
 
-  // ── Quote edits — kept local then committed on blur / sort / delete.
+  // ── Quote edits — kept local then committed on blur / drop / delete.
   const setLocalQuotes = (next: HeroQuote[]) => {
     if (!data) return;
     setData({ ...data, quotes: next });
@@ -183,14 +286,18 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
     void commit({ quotes: draft });
   };
 
-  const onMove = (id: string, delta: -1 | 1) => {
-    if (!data) return;
-    const idx = data.quotes.findIndex((q) => q.id === id);
-    if (idx < 0) return;
-    const next = idx + delta;
-    if (next < 0 || next >= data.quotes.length) return;
-    const draft = [...data.quotes];
-    [draft[idx], draft[next]] = [draft[next], draft[idx]];
+  // ── Drag reorder — arrayMove between the dragged row and its drop slot,
+  //    then commit the whole list in one PATCH (same as the old 上移/下移).
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+  );
+
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
+    if (!data || !canEdit || !over || active.id === over.id) return;
+    const from = data.quotes.findIndex((q) => q.id === active.id);
+    const to = data.quotes.findIndex((q) => q.id === over.id);
+    if (from < 0 || to < 0) return;
+    const draft = arrayMove(data.quotes, from, to);
     setLocalQuotes(draft);
     void commit({ quotes: draft });
   };
@@ -214,11 +321,43 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
     }
   };
 
-  // ── Preview snapshot ─────────────────────────────────────────────────
+  // ── Export — reverse of the batch parser; copy or download as .txt.
+  const exportText = useMemo(() => (data ? quotesToBatchText(data.quotes) : ''), [data]);
+
+  const onCopyExport = async () => {
+    try {
+      await navigator.clipboard.writeText(exportText);
+      message.success('已复制到剪贴板');
+    } catch {
+      message.error('复制失败，请手动选择文本复制');
+    }
+  };
+
+  const onDownloadExport = () => {
+    const blob = new Blob([exportText], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `简斋题记备份-${new Date().toISOString().slice(0, 10)}.txt`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  };
+
+  // ── Preview snapshot — ‹ › steps through every quote so each one's
+  //    rendering (long lines, missing author, …) can be checked.
+  const quoteCount = data?.quotes.length ?? 0;
   const previewQuote = useMemo<HeroQuote | null>(() => {
-    if (!data || data.quotes.length === 0) return null;
-    return data.quotes[0];
-  }, [data]);
+    if (!data || quoteCount === 0) return null;
+    return data.quotes[((previewIdx % quoteCount) + quoteCount) % quoteCount];
+  }, [data, previewIdx, quoteCount]);
+
+  const stepPreview = (delta: -1 | 1) => {
+    if (quoteCount <= 1) return;
+    setPreviewIdx((i) => i + delta);
+    setPreviewTick((n) => n + 1);
+  };
 
   if (loading || !data) {
     return (
@@ -241,7 +380,46 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
 
       {/* ── Live preview — wrapped in a 宣纸-style frame so the admin
             sees roughly what the blog homepage will render. ─────────── */}
-      <Card title="实时预览" size="small" extra={<Text type="secondary">动画 / 题记顺序变更会立刻反映</Text>}>
+      <Card
+        title="实时预览"
+        size="small"
+        className="jz-hero-admin-card"
+        extra={
+          <Space size={4}>
+            <Tooltip title="上一条">
+              <Button
+                type="text"
+                size="small"
+                icon={<LeftOutlined />}
+                disabled={quoteCount <= 1}
+                onClick={() => stepPreview(-1)}
+              />
+            </Tooltip>
+            <Text type="secondary" style={{ fontSize: 12, minWidth: 64, textAlign: 'center' }}>
+              {quoteCount === 0
+                ? '无题记'
+                : `第 ${((previewIdx % quoteCount) + quoteCount) % quoteCount + 1} / ${quoteCount} 条`}
+            </Text>
+            <Tooltip title="下一条">
+              <Button
+                type="text"
+                size="small"
+                icon={<RightOutlined />}
+                disabled={quoteCount <= 1}
+                onClick={() => stepPreview(1)}
+              />
+            </Tooltip>
+            <Tooltip title="重播预览动画">
+              <Button
+                type="text"
+                size="small"
+                icon={<ReloadOutlined />}
+                onClick={() => setPreviewTick((n) => n + 1)}
+              />
+            </Tooltip>
+          </Space>
+        }
+      >
         {previewQuote ? (
           <div className="jz-hero-preview-frame">
             <HeroQuoteCard quote={previewQuote} animation={data.animation} animationKey={previewTick} />
@@ -252,7 +430,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
       </Card>
 
       {/* ── Master controls ─────────────────────────────────────────── */}
-      <Card size="small" title="主控">
+      <Card size="small" title="主控" className="jz-hero-admin-card">
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
             <Text strong>启用题记</Text>
@@ -285,8 +463,8 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             />
           </div>
 
-          <div>
-            <Text strong style={{ marginRight: 12 }}>动画样式</Text>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <Text strong>动画样式</Text>
             <Radio.Group
               value={data.animation}
               disabled={!canEdit || saving}
@@ -300,24 +478,40 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                 </Radio.Button>
               ))}
             </Radio.Group>
-            <Tooltip title="重播预览动画">
-              <Button
-                type="text"
-                icon={<ReloadOutlined />}
-                onClick={() => setPreviewTick((n) => n + 1)}
-                style={{ marginLeft: 8 }}
-              />
-            </Tooltip>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+            <Text strong>播放顺序</Text>
+            <Radio.Group
+              value={data.play_order}
+              disabled={!canEdit || saving}
+              onChange={(e) => void commit({ play_order: e.target.value as HeroPlayOrder })}
+              optionType="button"
+              buttonStyle="solid"
+            >
+              {(data.play_orders || (Object.keys(PLAY_ORDER_LABELS) as HeroPlayOrder[])).map((o) => (
+                <Radio.Button key={o} value={o}>
+                  {PLAY_ORDER_LABELS[o] ?? o}
+                </Radio.Button>
+              ))}
+            </Radio.Group>
+            <Text type="secondary" style={{ fontSize: 12 }}>
+              随机 = 每次打开页面重新洗牌，整轮不重复；顺序 = 按下方列表排列播放。
+            </Text>
           </div>
         </Space>
       </Card>
 
-      {/* ── Quote list ──────────────────────────────────────────────── */}
+      {/* ── Quote list — drag the ⠿ handle to reorder. ──────────────── */}
       <Card
         size="small"
+        className="jz-hero-admin-card"
         title={`题记列表（共 ${data.quotes.length} 条）`}
         extra={
           <Space>
+            <Button icon={<ExportOutlined />} onClick={() => setExportOpen(true)}>
+              导出
+            </Button>
             <Button
               icon={<ImportOutlined />}
               disabled={!canEdit}
@@ -336,123 +530,125 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
           </Space>
         }
       >
-        <Table<HeroQuote>
-          rowKey="id"
-          size="small"
-          pagination={false}
-          dataSource={data.quotes}
-          locale={{ emptyText: '无题记，点击右上角「新增」或「批量导入」' }}
-          columns={[
-            {
-              title: '#',
-              dataIndex: 'idx',
-              width: 44,
-              render: (_: unknown, _r, i: number) => <Text type="secondary">{i + 1}</Text>,
-            },
-            {
-              title: '题记正文',
-              dataIndex: 'text',
-              render: (v: string, r) => (
-                <Input
-                  value={v}
-                  placeholder="正文（最多 200 字）"
-                  disabled={!canEdit}
-                  onChange={(e) => onRowChange(r.id, 'text', e.target.value)}
-                  onBlur={() => onRowCommit()}
-                />
-              ),
-            },
-            {
-              title: '朝代',
-              dataIndex: 'dynasty',
-              width: 110,
-              render: (v: string, r) => (
-                <AutoComplete
-                  value={v}
-                  placeholder="如：三国"
-                  disabled={!canEdit}
-                  options={DYNASTY_OPTIONS}
-                  filterOption={(input, option) =>
-                    !input || (option?.value ?? '').includes(input)
-                  }
-                  onChange={(val) => onRowChange(r.id, 'dynasty', val)}
-                  onBlur={() => onRowCommit()}
-                  style={{ width: '100%' }}
-                />
-              ),
-            },
-            {
-              title: '作者',
-              dataIndex: 'author',
-              width: 130,
-              render: (v: string, r) => (
-                <Input
-                  value={v}
-                  placeholder="如：诸葛亮"
-                  disabled={!canEdit}
-                  onChange={(e) => onRowChange(r.id, 'author', e.target.value)}
-                  onBlur={() => onRowCommit()}
-                />
-              ),
-            },
-            {
-              title: '篇名',
-              dataIndex: 'source',
-              width: 150,
-              render: (v: string, r) => (
-                <Input
-                  value={v}
-                  placeholder="如：诫子书"
-                  disabled={!canEdit}
-                  onChange={(e) => onRowChange(r.id, 'source', e.target.value)}
-                  onBlur={() => onRowCommit()}
-                />
-              ),
-            },
-            {
-              title: '操作',
-              dataIndex: 'ops',
-              width: 130,
-              render: (_: unknown, r, i: number) => (
-                <Space size={2}>
-                  <Tooltip title="上移">
-                    <Button
-                      size="small"
-                      type="text"
-                      icon={<ArrowUpOutlined />}
-                      disabled={!canEdit || i === 0}
-                      onClick={() => onMove(r.id, -1)}
-                    />
-                  </Tooltip>
-                  <Tooltip title="下移">
-                    <Button
-                      size="small"
-                      type="text"
-                      icon={<ArrowDownOutlined />}
-                      disabled={!canEdit || i === data.quotes.length - 1}
-                      onClick={() => onMove(r.id, 1)}
-                    />
-                  </Tooltip>
-                  <Popconfirm
-                    title="删除该题记？"
-                    okText="删除"
-                    cancelText="取消"
-                    onConfirm={() => onDelete(r.id)}
-                    disabled={!canEdit}
-                  >
-                    <Button
-                      size="small"
-                      type="text"
-                      danger
-                      icon={<DeleteOutlined />}
+        <DndContext
+          sensors={sensors}
+          modifiers={[restrictToVerticalAxis]}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+        >
+          <SortableContext
+            items={data.quotes.map((q) => q.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <Table<HeroQuote>
+              rowKey="id"
+              size="small"
+              pagination={false}
+              dataSource={data.quotes}
+              components={{ body: { row: DraggableRow } }}
+              locale={{ emptyText: '无题记，点击右上角「新增」或「批量导入」' }}
+              columns={[
+                {
+                  title: '',
+                  dataIndex: 'sort',
+                  width: 40,
+                  render: () => <DragHandle disabled={!canEdit} />,
+                },
+                {
+                  title: '#',
+                  dataIndex: 'idx',
+                  width: 44,
+                  render: (_: unknown, _r, i: number) => <Text type="secondary">{i + 1}</Text>,
+                },
+                {
+                  title: '题记正文',
+                  dataIndex: 'text',
+                  render: (v: string, r) => (
+                    <Input
+                      value={v}
+                      placeholder="正文（最多 200 字）"
                       disabled={!canEdit}
+                      onChange={(e) => onRowChange(r.id, 'text', e.target.value)}
+                      onBlur={() => onRowCommit()}
                     />
-                  </Popconfirm>
-                </Space>
-              ),
-            },
-          ]}
-        />
+                  ),
+                },
+                {
+                  title: '朝代',
+                  dataIndex: 'dynasty',
+                  width: 110,
+                  render: (v: string, r) => (
+                    <AutoComplete
+                      value={v}
+                      placeholder="如：三国"
+                      disabled={!canEdit}
+                      options={DYNASTY_OPTIONS}
+                      filterOption={(input, option) =>
+                        !input || (option?.value ?? '').includes(input)
+                      }
+                      onChange={(val) => onRowChange(r.id, 'dynasty', val)}
+                      onBlur={() => onRowCommit()}
+                      style={{ width: '100%' }}
+                    />
+                  ),
+                },
+                {
+                  title: '作者',
+                  dataIndex: 'author',
+                  width: 130,
+                  render: (v: string, r) => (
+                    <Input
+                      value={v}
+                      placeholder="如：诸葛亮"
+                      disabled={!canEdit}
+                      onChange={(e) => onRowChange(r.id, 'author', e.target.value)}
+                      onBlur={() => onRowCommit()}
+                    />
+                  ),
+                },
+                {
+                  title: '篇名',
+                  dataIndex: 'source',
+                  width: 150,
+                  render: (v: string, r) => (
+                    <Input
+                      value={v}
+                      placeholder="如：诫子书"
+                      disabled={!canEdit}
+                      onChange={(e) => onRowChange(r.id, 'source', e.target.value)}
+                      onBlur={() => onRowCommit()}
+                    />
+                  ),
+                },
+                {
+                  title: '操作',
+                  dataIndex: 'ops',
+                  width: 56,
+                  render: (_: unknown, r) => (
+                    <Popconfirm
+                      title="删除该题记？"
+                      okText="删除"
+                      cancelText="取消"
+                      onConfirm={() => onDelete(r.id)}
+                      disabled={!canEdit}
+                    >
+                      <Button
+                        size="small"
+                        type="text"
+                        danger
+                        icon={<DeleteOutlined />}
+                        disabled={!canEdit}
+                      />
+                    </Popconfirm>
+                  ),
+                },
+              ]}
+            />
+          </SortableContext>
+        </DndContext>
+        <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
+          按住行首 ⠿ 拖动可调整顺序（「顺序」播放模式按此排列）。
+        </Text>
       </Card>
 
       {/* ── Batch import modal ──────────────────────────────────────── */}
@@ -481,6 +677,39 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
           <TextArea
             value={batchText}
             onChange={(e) => setBatchText(e.target.value)}
+            autoSize={{ minRows: 8, maxRows: 16 }}
+            spellCheck={false}
+            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+          />
+        </Space>
+      </Modal>
+
+      {/* ── Export modal — same line format the batch importer accepts,
+            so the file doubles as a backup that re-imports cleanly. ──── */}
+      <Modal
+        title="导出题记"
+        open={exportOpen}
+        onCancel={() => setExportOpen(false)}
+        footer={
+          <Space>
+            <Button icon={<CopyOutlined />} onClick={() => void onCopyExport()}>
+              复制
+            </Button>
+            <Button type="primary" icon={<DownloadOutlined />} onClick={onDownloadExport}>
+              下载 .txt
+            </Button>
+          </Space>
+        }
+        width={680}
+      >
+        <Space direction="vertical" style={{ width: '100%' }}>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            共 {data.quotes.length} 条，格式与「批量导入」一致——保存为文本即可作为备份，
+            之后用「批量导入 · 替换全部」一键还原。
+          </Text>
+          <TextArea
+            value={exportText}
+            readOnly
             autoSize={{ minRows: 8, maxRows: 16 }}
             spellCheck={false}
             style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}

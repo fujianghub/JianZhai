@@ -3045,6 +3045,144 @@ a.jz-meta-full-edit-btn:hover .anticon {
   opacity: 0.9;
 }
 
+/* ── v0.9.10 题记打磨 ────────────────────────────────────────────────
+   1. Rotator shell — the interactive wrapper (hover = pause, click =
+      next). A soft ink-wash halo breathes behind the quote; the cursor
+      and the gold rules tell the visitor it responds to touch.
+   2. Admin polish — drag-handle tinting + dragging-row lift for the
+      dnd-kit sortable table, plus a calmer card title treatment. */
+.jz-hero-rotator-shell {
+  position: relative;
+  display: block;
+  width: 100%;
+  -webkit-tap-highlight-color: transparent;
+}
+.jz-hero-rotator-shell.is-interactive {
+  cursor: pointer;
+}
+/* Ink-wash halo — an elliptical wash of gold-tinted ink centred behind
+   the quote. Sits under the text (z-index -1) and stays decorative:
+   pointer-events none, very low opacity, slightly stronger on hover so
+   the pause state reads as "lit up". */
+.jz-hero-rotator-shell::before {
+  content: '';
+  position: absolute;
+  inset: -18px -8% -10px;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(
+    ellipse 60% 70% at 50% 42%,
+    color-mix(in srgb, var(--jz-gold) 9%, transparent) 0%,
+    color-mix(in srgb, var(--jz-gold) 4%, transparent) 45%,
+    transparent 72%
+  );
+  opacity: 0.85;
+  pointer-events: none;
+  transition: opacity 0.45s ease;
+}
+.jz-hero-rotator-shell.is-interactive:hover::before {
+  opacity: 1;
+}
+[data-theme='dark'] .jz-hero-rotator-shell::before,
+[data-theme='starry'] .jz-hero-rotator-shell::before,
+[data-theme='deepsea'] .jz-hero-rotator-shell::before {
+  opacity: 0.45;
+}
+[data-theme='dark'] .jz-hero-rotator-shell.is-interactive:hover::before,
+[data-theme='starry'] .jz-hero-rotator-shell.is-interactive:hover::before,
+[data-theme='deepsea'] .jz-hero-rotator-shell.is-interactive:hover::before {
+  opacity: 0.7;
+}
+/* Hover affordance — the flanking gold rules stretch a little while the
+   rotation is paused, a quiet "I'm listening" cue. */
+.jz-hero-attr-rule {
+  transition: width 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.jz-hero-rotator-shell.is-interactive:hover .jz-hero-attr-rule {
+  width: 72px;
+}
+/* The quote ink deepens a touch on hover — like fresh ink over dried. */
+.jz-hero-rotator-shell.is-interactive .jz-hero-quote {
+  transition: text-shadow 0.45s ease;
+}
+.jz-hero-rotator-shell.is-interactive:hover .jz-hero-quote {
+  text-shadow: 0 0 14px color-mix(in srgb, var(--jz-text) 14%, transparent);
+}
+/* Narrow screens: the wide tracking that looks stately on desktop
+   crowds small viewports — tighten it and let lines breathe. */
+@media (max-width: 560px) {
+  .jz-hero-quote {
+    letter-spacing: 3px;
+    gap: 10px;
+  }
+  .jz-hero-cite-inner {
+    letter-spacing: 2px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .jz-hero-quote-wrap {
+    padding: 0 22px;
+  }
+}
+
+/* ── /admin/hero 管理页质感 ── */
+.jz-hero-admin-card .ant-card-head-title {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  letter-spacing: 2px;
+  font-weight: 600;
+}
+/* Drag handle — muted at rest, jade on hover, grabbing while held. */
+.jz-hero-drag-handle {
+  color: var(--jz-text-muted);
+}
+.jz-hero-drag-handle:hover:not(:disabled) {
+  color: var(--jz-accent);
+}
+.jz-hero-drag-handle:active:not(:disabled) {
+  cursor: grabbing !important;
+}
+/* Row mid-drag — lift it off the table so it reads as "picked up". */
+.jz-hero-row-dragging {
+  box-shadow:
+    0 6px 20px -8px rgba(0, 0, 0, 0.35),
+    0 0 0 1px color-mix(in srgb, var(--jz-accent) 35%, transparent);
+}
+.jz-hero-row-dragging > td {
+  background: color-mix(in srgb, var(--jz-surface) 92%, var(--jz-accent) 8%) !important;
+}
+/* Paper-grain warmth for the preview frame — fine horizontal laid lines
+   like 宣纸, behind the existing gold corner accents. */
+.jz-hero-preview-frame {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 7px,
+      color-mix(in srgb, var(--jz-gold) 3%, transparent) 7px 8px
+    ),
+    radial-gradient(
+      circle at top center,
+      color-mix(in srgb, var(--jz-gold) 5%, transparent) 0%,
+      transparent 70%
+    ),
+    color-mix(in srgb, var(--jz-surface) 88%, #f5e9c8 12%);
+}
+[data-theme='dark'] .jz-hero-preview-frame,
+[data-theme='starry'] .jz-hero-preview-frame,
+[data-theme='deepsea'] .jz-hero-preview-frame {
+  background:
+    repeating-linear-gradient(
+      0deg,
+      transparent 0 7px,
+      color-mix(in srgb, var(--jz-gold) 4%, transparent) 7px 8px
+    ),
+    radial-gradient(
+      circle at top center,
+      color-mix(in srgb, var(--jz-gold) 10%, transparent) 0%,
+      transparent 70%
+    ),
+    color-mix(in srgb, var(--jz-surface) 92%, transparent);
+}
+
 /* ── fade — letter-spacing micro-shift gives the line a 落笔 feel ─── */
 .jz-hero-anim-fade {
   animation: jz-hero-fade-in 0.7s ease-out both;

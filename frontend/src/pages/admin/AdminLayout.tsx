@@ -170,7 +170,7 @@ export default function AdminLayout() {
                   },
                 ]
               : []),
-            // 首页题记 — staff-only management of the homepage banner. Sits
+            // 题记 — staff-only management of the homepage banner. Sits
             // between 架构总览 and 个人资料 because it's "site content"
             // category alongside 架构总览, but its visibility scope
             // (is_staff) matches users management above.
@@ -178,7 +178,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'hero',
                   icon: menuIcon(<JzQuoteIcon size={MENU_ICON_SIZE} />),
-                  label: <Link to="/admin/hero">首页题记</Link>,
+                  label: <Link to="/admin/hero">题记</Link>,
                 }]
               : []),
             {

@@ -1,5 +1,5 @@
 /**
- * /admin/hero — 首页题记设置（独立页面）。
+ * /admin/hero — 题记设置（独立页面）。
  *
  * 在 v0.9.3 是 ProfilePage 的一个 Tab，v0.9.4 拆出来与「架构总览」、
  * 「个人资料」同级，方便从侧栏一键直达。实际控制面板仍复用
@@ -15,7 +15,7 @@ export default function HeroPage() {
   return (
     <div>
       <AdminPageHeader
-        title="首页题记"
+        title="题记"
         backTo="/admin"
         backLabel="工作台"
       />

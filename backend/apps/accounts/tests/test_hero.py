@@ -394,3 +394,49 @@ def test_batch_endpoint_member_forbidden(member_client):
         "/api/v1/auth/hero/batch/", {"text": "x"}, format="json"
     )
     assert r.status_code == 403
+
+
+# ── Play order (v0.9.10) ───────────────────────────────────────────────
+
+
+@pytest.mark.django_db
+def test_play_order_defaults_to_random():
+    assert HeroSettings.load().play_order == "random"
+
+
+def test_public_hero_includes_play_order(anon_client, db):
+    body = anon_client.get("/api/v1/public/hero/").json()
+    assert body["play_order"] == "random"
+    # The enum list stays admin-only, same policy as ``animations``.
+    assert "play_orders" not in body
+
+
+def test_admin_get_includes_play_orders_enum(staff_client):
+    body = staff_client.get("/api/v1/auth/hero/").json()
+    assert body["play_order"] == "random"
+    assert body["play_orders"] == ["random", "sequential"]
+
+
+def test_admin_patch_play_order_sequential(staff_client):
+    r = staff_client.patch(
+        "/api/v1/auth/hero/", {"play_order": "sequential"}, format="json"
+    )
+    assert r.status_code == 200
+    assert r.json()["play_order"] == "sequential"
+    assert HeroSettings.load().play_order == "sequential"
+
+
+def test_admin_patch_rejects_unknown_play_order(staff_client):
+    r = staff_client.patch(
+        "/api/v1/auth/hero/", {"play_order": "shuffle-forever"}, format="json"
+    )
+    assert r.status_code == 400
+    assert r.json()["supported"] == ["random", "sequential"]
+    assert HeroSettings.load().play_order == "random"
+
+
+def test_member_cannot_patch_play_order(member_client):
+    r = member_client.patch(
+        "/api/v1/auth/hero/", {"play_order": "sequential"}, format="json"
+    )
+    assert r.status_code == 403
