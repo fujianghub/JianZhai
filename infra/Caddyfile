@@ -13,10 +13,15 @@
     # Global options.  ``email`` is used by Let's Encrypt for expiry
     # notifications — put a mailbox you actually read.
     email fujiangfeng28@gmail.com
+    # IP-only deployment — no domain yet, so no auto-HTTPS.  When a
+    # 备案'd domain is ready: delete the next line and switch the site
+    # address below from ``:80`` back to the domain.
+    auto_https off
 }
 
 # ─── Main site ───────────────────────────────────────────────────────
-fujiang.jianzhai.cn {
+# fujiang.jianzhai.cn {   ← restore this (replacing ``:80``) once a domain exists
+:80 {
     # Reverse-proxy Django API.  ``backend`` is the docker-compose
     # service name; docker's internal DNS resolves it.
     @api {

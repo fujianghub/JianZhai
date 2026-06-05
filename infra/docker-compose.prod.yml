@@ -93,7 +93,7 @@ services:
         python manage.py collectstatic --noinput --clear &&
         gunicorn jianzhai.wsgi:application
           --bind 0.0.0.0:8002
-          --workers 3
+          --workers 2
           --threads 2
           --timeout 120
           --access-logfile -
@@ -124,7 +124,7 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
       - media_data:/app/media
-    command: celery -A jianzhai worker --loglevel=info --concurrency=2
+    command: celery -A jianzhai worker --loglevel=info --concurrency=1
     depends_on:
       backend:
         condition: service_healthy

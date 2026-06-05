@@ -12,11 +12,15 @@ FROM python:3.12-slim AS base
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1 \
-    PIP_DISABLE_PIP_VERSION_CHECK=1
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    # CN mirror — building on a mainland host can't reach pypi.org reliably.
+    PIP_INDEX_URL=https://pypi.tuna.tsinghua.edu.cn/simple
 
 # psycopg2 needs libpq + a C compiler.  build-essential is removed
 # from the final layer to keep the image lean (~180 MB instead of 450).
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Debian apt also goes through a CN mirror for the same reason.
+RUN sed -i 's|deb.debian.org|mirrors.cloud.tencent.com|g' /etc/apt/sources.list.d/debian.sources && \
+    apt-get update && apt-get install -y --no-install-recommends \
         build-essential libpq-dev gcc curl \
     && rm -rf /var/lib/apt/lists/*
 

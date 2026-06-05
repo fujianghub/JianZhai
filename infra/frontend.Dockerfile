@@ -18,14 +18,21 @@ FROM node:20-alpine AS builder
 WORKDIR /app
 
 # pnpm via corepack — pins to the version recorded in package.json.
+# COREPACK_NPM_REGISTRY: corepack fetches pnpm itself from npm; on a
+# mainland build host registry.npmjs.org is unreachable, npmmirror is.
+ENV COREPACK_NPM_REGISTRY=https://registry.npmmirror.com
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 
 # Cache layer for deps.
 COPY frontend/package.json frontend/pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm config set registry https://registry.npmmirror.com && \
+    pnpm install --frozen-lockfile
 
-# Now the actual sources.
+# Now the actual sources.  ``docs/`` rides along because vite.config.ts
+# aliases ``@dev-guide`` → ``../docs/dev-guide`` (SystemOverviewPage
+# imports the architecture .mmd diagrams from there as ?raw assets).
 COPY frontend/ ./
+COPY docs/ /docs/
 
 # Type-check then build.  Build sets VITE_API_BASE_URL to a relative
 # path so the SPA hits the same origin as itself (Caddy then proxies

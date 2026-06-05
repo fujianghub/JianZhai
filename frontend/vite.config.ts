@@ -8,7 +8,13 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const apiBase = env.VITE_API_BASE_URL ?? 'http://localhost:8002/api/v1';
-  const apiOrigin = new URL(apiBase).origin;
+  // Production builds set a *relative* VITE_API_BASE_URL (``/api/v1`` —
+  // same-origin via Caddy), which ``new URL()`` rejects.  The origin is
+  // only used as the dev-server proxy target, so fall back to the local
+  // backend instead of crashing the build.
+  const apiOrigin = /^https?:\/\//.test(apiBase)
+    ? new URL(apiBase).origin
+    : 'http://localhost:8002';
   // Opt-in HTTPS for LAN access: Chrome treats LAN-IP HTTP origins as
   // insecure context and pops the "this file may have been tampered with"
   // warning on **every** download (PDF / HTML / ZIP / …) regardless of MIME
