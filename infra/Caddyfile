@@ -51,10 +51,14 @@
         reverse_proxy backend:8002
     }
 
-    # User-uploaded media (avatars, attachments, etc).  Same backend
-    # serves these via Django's ``static`` URL helper.
-    handle /media/* {
-        reverse_proxy backend:8002
+    # User-uploaded media (avatars, attachments, etc).  Served straight
+    # from the shared ``media_data`` volume (mounted read-only at
+    # /srv-media in docker-compose.prod.yml) — Django's dev-only
+    # ``static()`` URL helper is disabled when DEBUG=False, so proxying
+    # /media/* to the backend would just 404.
+    handle_path /media/* {
+        root * /srv-media
+        file_server
     }
 
     # SPA fallback — anything else hits the React build.  ``try_files``

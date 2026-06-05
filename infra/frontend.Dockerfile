@@ -38,7 +38,10 @@ COPY docs/ /docs/
 # path so the SPA hits the same origin as itself (Caddy then proxies
 # /api/* to the django container).
 ENV VITE_API_BASE_URL=/api/v1 \
-    VITE_MEDIA_BASE_URL=/media
+    VITE_MEDIA_BASE_URL=/media \
+    # tsc + vite need ~2.5 GB heap; let Node spill into swap on small
+    # hosts instead of OOMing at the default cap.
+    NODE_OPTIONS=--max-old-space-size=3072
 RUN pnpm tsc --noEmit && pnpm build
 
 # ── Stage 2: caddy serves /srv + reverse-proxies /api ─────────────────

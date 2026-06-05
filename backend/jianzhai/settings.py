@@ -115,6 +115,20 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# WhiteNoise serves /static/* (Django admin, DRF assets) behind Gunicorn in
+# production — without it DEBUG=False returns 404 for every static file.
+# The package is only installed in the production image (infra/backend.Dockerfile);
+# dev keeps runserver's built-in static handling.
+try:
+    import whitenoise  # noqa: F401
+except ImportError:
+    pass
+else:
+    MIDDLEWARE.insert(
+        MIDDLEWARE.index("django.middleware.security.SecurityMiddleware") + 1,
+        "whitenoise.middleware.WhiteNoiseMiddleware",
+    )
+
 ROOT_URLCONF = "jianzhai.urls"
 WSGI_APPLICATION = "jianzhai.wsgi.application"
 ASGI_APPLICATION = "jianzhai.asgi.application"
