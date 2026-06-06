@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
 import { DeleteOutlined, HomeOutlined, MenuOutlined } from '@ant-design/icons';
 import {
-  JzKbIcon,
-  JzGraphIcon,
   JzExportIcon,
   JzAiIcon,
   JzUsersIcon,
@@ -11,6 +9,7 @@ import {
   JzQuoteIcon,
   JzSearchIcon,
 } from '@/components/common/JzIcon';
+import { Books, Graph } from '@phosphor-icons/react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
@@ -25,8 +24,16 @@ const { Header, Sider, Content } = Layout;
 
 const MENU_ICON_SIZE = 20;
 
-function menuIcon(node: ReactNode) {
-  return <span className="jz-menu-icon-slot">{node}</span>;
+function menuIcon(node: ReactNode, tone?: string) {
+  return (
+    <span
+      className={
+        'jz-menu-icon-slot' + (tone ? ` jz-chip-toned jz-chip-tone-${tone}` : '')
+      }
+    >
+      {node}
+    </span>
+  );
 }
 
 export default function AdminLayout() {
@@ -131,12 +138,18 @@ export default function AdminLayout() {
             },
             {
               key: 'kbs',
-              icon: menuIcon(<JzKbIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(
+                <Books weight="duotone" size={MENU_ICON_SIZE} />,
+                'kb',
+              ),
               label: <Link to="/admin/kbs">知识库</Link>,
             },
             {
               key: 'graph',
-              icon: menuIcon(<JzGraphIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(
+                <Graph weight="duotone" size={MENU_ICON_SIZE} />,
+                'graph',
+              ),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
             {

@@ -7,11 +7,11 @@ import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
-  JzArchiveIcon,
   JzTagsIcon,
   JzRssIcon,
   JzSearchIcon,
 } from '@/components/common/JzIcon';
+import { Scroll } from '@phosphor-icons/react';
 import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
@@ -23,15 +23,23 @@ function BlogNavItem({
   label,
   icon,
   external,
+  tone,
 }: {
   to: string;
   label: string;
   icon: ReactNode;
   external?: boolean;
+  tone?: string;
 }) {
   const inner = (
     <>
-      <span className="jz-nav-link-icon" aria-hidden>
+      <span
+        className={
+          'jz-nav-link-icon' +
+          (tone ? ` jz-chip-toned jz-chip-tone-${tone}` : '')
+        }
+        aria-hidden
+      >
         {icon}
       </span>
       <span className="jz-nav-link-label">{label}</span>
@@ -117,7 +125,8 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<JzArchiveIcon size={NAV_ICON_SIZE} />}
+            icon={<Scroll weight="duotone" size={NAV_ICON_SIZE} />}
+            tone="archive"
           />
           <BlogNavItem
             to="/tags"
