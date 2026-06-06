@@ -6,12 +6,12 @@ import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
-  RssIcon,
-  Search01Icon,
-  Tag01Icon,
-  User02Icon,
-} from 'hugeicons-react';
-import { JzArchiveBoxIcon } from '@/components/common/JzIcon';
+  JzArchiveBoxIcon,
+  JzRssIcon,
+  JzSearchIcon,
+  JzTagIcon,
+  JzUserIcon,
+} from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
@@ -122,12 +122,12 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/tags"
             label="标签"
-            icon={<Tag01Icon size={NAV_ICON_SIZE} />}
+            icon={<JzTagIcon size={NAV_ICON_SIZE} />}
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<RssIcon size={NAV_ICON_SIZE} />}
+            icon={<JzRssIcon size={NAV_ICON_SIZE} />}
             external
           />
           <Tooltip title="搜索 (Ctrl+K)">
@@ -136,7 +136,7 @@ export default function BlogLayout() {
               className="jz-nav-search-btn"
               icon={
                 <span className="jz-nav-link-icon" aria-hidden>
-                  <Search01Icon size={NAV_ICON_SIZE} />
+                  <JzSearchIcon size={NAV_ICON_SIZE} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}
@@ -152,7 +152,7 @@ export default function BlogLayout() {
             />
           ) : (
             <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
-              <User02Icon size={16} strokeWidth={2} />
+              <JzUserIcon size={16} />
               <span className="jz-nav-link-label">登录</span>
             </Link>
           )}

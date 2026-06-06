@@ -493,12 +493,12 @@ export function JzTagsIcon(p: IconProps) {
 
 /** 个人空间（人形 + 册页） */
 
-/** 搜索 */
+/** 搜索 — 放大镜（SF 分层：镜片次层填充 + 粗握柄） */
 export function JzSearchIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      <circle cx="10.5" cy="10.5" r="6" />
-      <path d="M15 15l4.5 4.5" />
+      <circle cx="10.5" cy="10.5" r="6" fill="currentColor" fillOpacity={0.28} />
+      <path d="M15.2 15.2 19.4 19.4" strokeWidth={2.2} />
     </Wrap>
   );
 }
@@ -509,6 +509,51 @@ export function JzSearchIcon(p: IconProps) {
    次层随槽位状态梯度（35%→70%→100%）自动同步明暗。
    准则：≤5 元素、剪影优先、最小特征 ≥2.5px、几何圆润留白大。 */
 const HIER_OPACITY = 0.28;
+
+/** 标签 — 斜角签牌（SF 分层：签身次层填充 + 实心签孔） */
+export function JzTagIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M4 5.6A1.6 1.6 0 0 1 5.6 4h5.5a2 2 0 0 1 1.4.6l6.9 6.9a2 2 0 0 1 0 2.8l-5.5 5.5a2 2 0 0 1-2.8 0L4.6 13a2 2 0 0 1-.6-1.4z"
+        fill="currentColor"
+        fillOpacity={0.28}
+      />
+      <circle cx="8.7" cy="8.7" r="1.5" fill="currentColor" stroke="none" />
+    </Wrap>
+  );
+}
+
+/** RSS — 同心波（SF 分层：信号扇面次层填充 + 实心源点） */
+export function JzRssIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M4.5 11.4a8.1 8.1 0 0 1 8.1 8.1H4.5z"
+        fill="currentColor"
+        opacity={HIER_OPACITY}
+        stroke="none"
+      />
+      <circle cx="6.3" cy="17.7" r="1.9" fill="currentColor" stroke="none" />
+      <path d="M4.5 11.4a8.1 8.1 0 0 1 8.1 8.1" />
+      <path d="M4.5 5.3a14.2 14.2 0 0 1 14.2 14.2" />
+    </Wrap>
+  );
+}
+
+/** 用户 — 头肩人形（SF 分层：头与肩双层填充） */
+export function JzUserIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <circle cx="12" cy="8.3" r="3.5" fill="currentColor" fillOpacity={0.28} />
+      <path
+        d="M5 19.6a7 7 0 0 1 14 0z"
+        fill="currentColor"
+        fillOpacity={0.28}
+      />
+    </Wrap>
+  );
+}
 
 /** 归档箱 — 归档（SF 分层 v4，市场标准 archivebox 形） */
 export function JzArchiveBoxIcon(p: IconProps) {
