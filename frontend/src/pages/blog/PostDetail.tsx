@@ -4,16 +4,18 @@ import { Alert, Breadcrumb, Button, Result, Spin, Tag, Tooltip, Typography } fro
 import { isAxiosError } from 'axios';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
+/* 小尺寸（13-14px）用 bold 做笔画补偿，与 20px regular 视觉等粗 */
 import {
-  EditOutlined,
-  ExportOutlined,
-  FormOutlined,
-  FolderOpenOutlined,
-  HomeOutlined,
-  UnorderedListOutlined,
-} from '@ant-design/icons';
-/* meta 行小图标走 Phosphor（14px 用 bold 做笔画补偿，与 20px regular 视觉等粗） */
-import { Book, Clock, Tag as TagIcon } from '@phosphor-icons/react';
+  Book,
+  Clock,
+  Export,
+  FolderOpen,
+  House,
+  ListBullets,
+  NotePencil,
+  PencilSimple,
+  Tag as TagIcon,
+} from '@phosphor-icons/react';
 import * as blogApi from '@/api/blog';
 import * as docsApi from '@/api/docs';
 import * as kbsApi from '@/api/kbs';
@@ -525,7 +527,7 @@ export default function PostDetail() {
         <Breadcrumb
           style={{ marginBottom: 12 }}
           items={[
-            { title: <Link to="/"><HomeOutlined /> 首页</Link> },
+            { title: <Link to="/"><House size={13} weight="bold" style={{ verticalAlign: '-0.125em' }} /> 首页</Link> },
             {
               title: (
                 <Link to={`/kb/${encodeURIComponent(post.knowledge_base.slug)}`}>
@@ -655,7 +657,7 @@ export default function PostDetail() {
                   <Tooltip title="在新标签页打开原 HTML 文件（浏览器原生体验）">
                     <Button
                       size="small"
-                      icon={<ExportOutlined />}
+                      icon={<Export size={14} weight="bold" />}
                       href={htmlOriginalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -677,7 +679,7 @@ export default function PostDetail() {
                           size="small"
                           type="primary"
                           ghost
-                          icon={<EditOutlined />}
+                          icon={<PencilSimple size={14} weight="bold" />}
                           className="jz-edit-btn jz-meta-edit-btn"
                           onClick={() => void enterEditMode()}
                         >
@@ -712,7 +714,7 @@ export default function PostDetail() {
                     >
                       <span className="jz-tooltip-trigger-wrap">
                         <Link to={editHref} className="jz-meta-full-edit-btn">
-                          <FormOutlined aria-hidden />
+                          <NotePencil size={13} weight="bold" aria-hidden />
                           <span>完整编辑</span>
                         </Link>
                       </span>
@@ -858,7 +860,7 @@ export default function PostDetail() {
             type="default"
             shape="circle"
             size="large"
-            icon={<UnorderedListOutlined />}
+            icon={<ListBullets size={20} weight="regular" />}
             aria-label="显示目录"
             onClick={() => setTocOpen(true)}
             className="jz-toc-fab"
@@ -872,7 +874,7 @@ export default function PostDetail() {
             type="default"
             shape="circle"
             size="large"
-            icon={<FolderOpenOutlined />}
+            icon={<FolderOpen size={20} weight="regular" />}
             aria-label="显示文档列表"
             onClick={() => setKbNavOpen(true)}
             className="jz-kbnav-fab"

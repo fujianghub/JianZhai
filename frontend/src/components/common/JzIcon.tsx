@@ -122,21 +122,6 @@ export function JzAiIcon(p: IconProps) {
 }
 
 /** 工具栏 AI 图标（更克制的圆角方 + sparkle）。 */
-export function JzAiToolbarIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <rect x="5.5" y="5.5" width="13" height="13" rx="3.2" fill={ICON_FILL} />
-      <rect x="5.5" y="5.5" width="13" height="13" rx="3.2" />
-      <path
-        d="M12 8.3l.7 2.9 2.9.7-2.9.8L12 15.7l-.7-2.9-2.9-.7 2.9-.8L12 8.3z"
-        fill={ICON_FILL_STRONG}
-        stroke="none"
-      />
-      <path d="M12 8.3l.7 2.9 2.9.7-2.9.8L12 15.7l-.7-2.9-2.9-.7 2.9-.8L12 8.3z" />
-      <circle cx="16.9" cy="7.1" r="0.9" fill={ICON_SPOT} stroke="none" />
-    </Wrap>
-  );
-}
 
 /* ═══════════════ AI 助手操作菜单 ═══════════════ */
 
@@ -457,17 +442,6 @@ export function JzAiSparkIcon(p: IconProps) {
 }
 
 /** 用户 */
-export function JzUsersIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <circle cx="9" cy="8" r="2.8" fill={ICON_FILL} />
-      <circle cx="9" cy="8" r="2.8" />
-      <path d="M3.5 19c0-2.8 2.5-5 5.5-5s5.5 2.2 5.5 5" />
-      <circle cx="17" cy="8.5" r="2.2" />
-      <path d="M14.5 14.5c2.2 0 4.5 1.8 4.5 4.5" />
-    </Wrap>
-  );
-}
 
 /** 架构总览 */
 export function JzArchitectureIcon(p: IconProps) {
@@ -501,16 +475,6 @@ export function JzBlogIcon(p: IconProps) {
 /* ═══════════════ 博客导航 ═══════════════ */
 
 /** 归档 */
-export function JzArchiveIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <rect x="4" y="4" width="16" height="4.5" rx="0.8" fill={ICON_FILL_STRONG} stroke="none" />
-      <rect x="5" y="9.5" width="14" height="10" rx="0.8" fill={ICON_FILL} />
-      <rect x="5" y="9.5" width="14" height="10" rx="0.8" />
-      <path d="M8.5 13h7M8.5 16h4.5" strokeLinecap="round" />
-    </Wrap>
-  );
-}
 
 /** 标签 */
 export function JzTagsIcon(p: IconProps) {
@@ -524,47 +488,10 @@ export function JzTagsIcon(p: IconProps) {
 }
 
 /** RSS */
-export function JzRssIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <circle cx="5.5" cy="18.5" r="1.8" fill={ICON_SPOT} stroke="none" />
-      <path d="M5.5 12.5A6 6 0 0 1 11.5 18.5" fill="none" />
-      <path d="M5.5 6A12 12 0 0 1 17.5 18.5" fill="none" />
-    </Wrap>
-  );
-}
 
 /** 后台入口 */
-export function JzAdminIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <rect x="4" y="4" width="9" height="9" rx="1" fill={ICON_FILL} />
-      <rect x="4" y="4" width="9" height="9" rx="1" />
-      <circle cx="8.5" cy="8.5" r="1.5" fill={ICON_SPOT} stroke="none" />
-      <path d="M13.5 13.5l5.5 5.5" />
-      <circle cx="18.5" cy="18.5" r="2" fill={ICON_FILL} />
-      <circle cx="18.5" cy="18.5" r="2" />
-    </Wrap>
-  );
-}
 
 /** 个人空间（人形 + 册页） */
-export function JzSpaceIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <path
-        d="M12 12c2.2 0 4-1.6 4-3.6S14.2 4.8 12 4.8 8 6.4 8 8.4s1.8 3.6 4 3.6z"
-        fill={ICON_FILL}
-      />
-      <path d="M12 12c2.2 0 4-1.6 4-3.6S14.2 4.8 12 4.8 8 6.4 8 8.4s1.8 3.6 4 3.6z" />
-      <path d="M6.5 19.2c.8-2.6 3-4.4 5.5-4.4s4.7 1.8 5.5 4.4" fill="none" />
-      <rect x="15" y="6" width="6" height="8" rx="1" fill={ICON_FILL} />
-      <rect x="15" y="6" width="6" height="8" rx="1" />
-      <path d="M16.5 8.5h3M16.5 11h2.2" strokeWidth={1.2} />
-      <circle cx="17.5" cy="13.5" r="0.8" fill={ICON_SPOT} stroke="none" />
-    </Wrap>
-  );
-}
 
 /** 搜索 */
 export function JzSearchIcon(p: IconProps) {
@@ -704,14 +631,9 @@ export const JZ_ICONS = {
   graph: JzGraphIcon,
   export: JzExportIcon,
   ai: JzAiIcon,
-  users: JzUsersIcon,
   architecture: JzArchitectureIcon,
   blog: JzBlogIcon,
-  archive: JzArchiveIcon,
   tags: JzTagsIcon,
-  rss: JzRssIcon,
-  admin: JzAdminIcon,
-  space: JzSpaceIcon,
   search: JzSearchIcon,
   overview: JzOverviewIcon,
   model: JzModelIcon,

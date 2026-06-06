@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-import { MenuOutlined } from '@ant-design/icons';
-import { JzSearchIcon } from '@/components/common/JzIcon';
 import {
   Books,
   Export,
   Graph,
+  List,
+  MagnifyingGlass,
   Quotes,
   Robot,
   SquaresFour,
@@ -218,14 +218,14 @@ export default function AdminLayout() {
           <Button
             className="jz-admin-mobile-menu-btn"
             type="text"
-            icon={<MenuOutlined />}
+            icon={<List size={18} weight="regular" />}
             onClick={() => setSiderCollapsed((c) => !c)}
             aria-label={siderCollapsed ? '展开菜单' : '收起菜单'}
           />
           <Tooltip title="搜索 (⌘/Ctrl + K)">
             <Button
               shape="round"
-              icon={<JzSearchIcon size={18} />}
+              icon={<MagnifyingGlass size={18} weight="regular" />}
               onClick={() => setSearchOpen(true)}
               className="jz-admin-search"
             >
