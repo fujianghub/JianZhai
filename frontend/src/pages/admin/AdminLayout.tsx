@@ -178,7 +178,7 @@ export default function AdminLayout() {
             {
               key: 'ai',
               icon: menuIcon(
-                <Robot weight="duotone" size={MENU_ICON_SIZE} />,
+                <Robot weight="regular" size={MENU_ICON_SIZE} />,
                 'jade',
               ),
               label: <Link to="/admin/ai">AI 助手</Link>,
@@ -187,7 +187,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'users',
                   icon: menuIcon(
-                    <UsersThree weight="duotone" size={MENU_ICON_SIZE} />,
+                    <UsersThree weight="regular" size={MENU_ICON_SIZE} />,
                     'jade',
                   ),
                   label: <Link to="/admin/users">用户管理</Link>,
@@ -198,7 +198,7 @@ export default function AdminLayout() {
                   {
                     key: 'overview',
                     icon: menuIcon(
-                      <TreeStructure weight="duotone" size={MENU_ICON_SIZE} />,
+                      <TreeStructure weight="regular" size={MENU_ICON_SIZE} />,
                       'jade',
                     ),
                     label: <Link to="/admin/overview">架构总览</Link>,
@@ -213,7 +213,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'hero',
                   icon: menuIcon(
-                    <Quotes weight="duotone" size={MENU_ICON_SIZE} />,
+                    <Quotes weight="regular" size={MENU_ICON_SIZE} />,
                     'jade',
                   ),
                   label: <Link to="/admin/hero">题记</Link>,
@@ -222,7 +222,7 @@ export default function AdminLayout() {
             {
               key: 'profile',
               icon: menuIcon(
-                <UserCircle weight="duotone" size={MENU_ICON_SIZE} />,
+                <UserCircle weight="regular" size={MENU_ICON_SIZE} />,
                 'jade',
               ),
               label: <Link to="/admin/profile">个人资料</Link>,
