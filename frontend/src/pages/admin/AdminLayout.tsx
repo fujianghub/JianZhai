@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-import {
-  List,
-  MagnifyingGlass,
-  Quotes,
-  TreeStructure,
-  UserCircle,
-  UsersThree,
-} from '@phosphor-icons/react';
-/* 图标库三段对比样品：前3 Hugeicons / 中3 Tabler / 后4 Phosphor */
+/* 全站图标统一 Hugeicons（双线细节风，2026-06-06 定稿） */
 import {
   Books01Icon,
   DashboardSquare01Icon,
+  Delete02Icon,
+  FileExportIcon,
+  HierarchySquare01Icon,
+  Menu01Icon,
   NeuralNetworkIcon,
+  QuotesIcon,
+  Robot01Icon,
+  Search01Icon,
+  UserCircleIcon,
+  UserGroupIcon,
 } from 'hugeicons-react';
-import { IconFileExport, IconRobot, IconTrash } from '@tabler/icons-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
@@ -152,21 +152,21 @@ export default function AdminLayout() {
             {
               key: 'exports',
               icon: menuIcon(
-                <IconFileExport size={MENU_ICON_SIZE} stroke={1.7} />,
+                <FileExportIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/exports">导出</Link>,
             },
             {
               key: 'trash',
               icon: menuIcon(
-                <IconTrash size={MENU_ICON_SIZE} stroke={1.7} />,
+                <Delete02Icon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/trash">回收站</Link>,
             },
             {
               key: 'ai',
               icon: menuIcon(
-                <IconRobot size={MENU_ICON_SIZE} stroke={1.7} />,
+                <Robot01Icon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
@@ -174,7 +174,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'users',
                   icon: menuIcon(
-                    <UsersThree weight="regular" size={MENU_ICON_SIZE} />,
+                    <UserGroupIcon size={MENU_ICON_SIZE} />,
                   ),
                   label: <Link to="/admin/users">用户管理</Link>,
                 }]
@@ -184,7 +184,7 @@ export default function AdminLayout() {
                   {
                     key: 'overview',
                     icon: menuIcon(
-                      <TreeStructure weight="regular" size={MENU_ICON_SIZE} />,
+                      <HierarchySquare01Icon size={MENU_ICON_SIZE} />,
                     ),
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
@@ -198,7 +198,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'hero',
                   icon: menuIcon(
-                    <Quotes weight="regular" size={MENU_ICON_SIZE} />,
+                    <QuotesIcon size={MENU_ICON_SIZE} />,
                   ),
                   label: <Link to="/admin/hero">题记</Link>,
                 }]
@@ -206,7 +206,7 @@ export default function AdminLayout() {
             {
               key: 'profile',
               icon: menuIcon(
-                <UserCircle weight="regular" size={MENU_ICON_SIZE} />,
+                <UserCircleIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/profile">个人资料</Link>,
             },
@@ -219,14 +219,14 @@ export default function AdminLayout() {
           <Button
             className="jz-admin-mobile-menu-btn"
             type="text"
-            icon={<List size={18} weight="regular" />}
+            icon={<Menu01Icon size={18} />}
             onClick={() => setSiderCollapsed((c) => !c)}
             aria-label={siderCollapsed ? '展开菜单' : '收起菜单'}
           />
           <Tooltip title="搜索 (⌘/Ctrl + K)">
             <Button
               shape="round"
-              icon={<MagnifyingGlass size={18} weight="regular" />}
+              icon={<Search01Icon size={18} />}
               onClick={() => setSearchOpen(true)}
               className="jz-admin-search"
             >

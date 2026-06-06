@@ -6,12 +6,12 @@ import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
-  Archive,
-  MagnifyingGlass,
-  RssSimple,
-  Tag,
-  User,
-} from '@phosphor-icons/react';
+  Archive01Icon,
+  RssIcon,
+  Search01Icon,
+  Tag01Icon,
+  User02Icon,
+} from 'hugeicons-react';
 import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
@@ -117,17 +117,17 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<Archive weight="regular" size={NAV_ICON_SIZE} />}
+            icon={<Archive01Icon size={NAV_ICON_SIZE} />}
           />
           <BlogNavItem
             to="/tags"
             label="标签"
-            icon={<Tag weight="regular" size={NAV_ICON_SIZE} />}
+            icon={<Tag01Icon size={NAV_ICON_SIZE} />}
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<RssSimple weight="regular" size={NAV_ICON_SIZE} />}
+            icon={<RssIcon size={NAV_ICON_SIZE} />}
             external
           />
           <Tooltip title="搜索 (Ctrl+K)">
@@ -136,7 +136,7 @@ export default function BlogLayout() {
               className="jz-nav-search-btn"
               icon={
                 <span className="jz-nav-link-icon" aria-hidden>
-                  <MagnifyingGlass weight="regular" size={NAV_ICON_SIZE} />
+                  <Search01Icon size={NAV_ICON_SIZE} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}
@@ -152,7 +152,7 @@ export default function BlogLayout() {
             />
           ) : (
             <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
-              <User weight="regular" size={16} />
+              <User02Icon size={16} strokeWidth={2} />
               <span className="jz-nav-link-label">登录</span>
             </Link>
           )}
