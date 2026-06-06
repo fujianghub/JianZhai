@@ -3497,6 +3497,18 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-ico-tone-hero,      [data-theme='starry'] .jz-ico-tone-hero,      [data-theme='deepsea'] .jz-ico-tone-hero      { --jz-ico-c: #de8273; }
 [data-theme='dark'] .jz-ico-tone-profile,   [data-theme='starry'] .jz-ico-tone-profile,   [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #2dd4bf; }
 
+/* 博客顶栏 5 枚专属色（别名复用同一调色板；RSS 沿市场橙红惯例取朱砂） */
+.jz-ico-tone-archive { --jz-ico-c: #d97706; }  /* 赭金 */
+.jz-ico-tone-tags    { --jz-ico-c: #059669; }  /* 翡翠 */
+.jz-ico-tone-rss     { --jz-ico-c: #b94a3b; }  /* 朱砂 */
+.jz-ico-tone-search  { --jz-ico-c: #0891b2; }  /* 青瓷 */
+.jz-ico-tone-login   { --jz-ico-c: #64748b; }  /* 玄青 */
+[data-theme='dark'] .jz-ico-tone-archive, [data-theme='starry'] .jz-ico-tone-archive, [data-theme='deepsea'] .jz-ico-tone-archive { --jz-ico-c: #e8b04b; }
+[data-theme='dark'] .jz-ico-tone-tags,    [data-theme='starry'] .jz-ico-tone-tags,    [data-theme='deepsea'] .jz-ico-tone-tags    { --jz-ico-c: #34d399; }
+[data-theme='dark'] .jz-ico-tone-rss,     [data-theme='starry'] .jz-ico-tone-rss,     [data-theme='deepsea'] .jz-ico-tone-rss     { --jz-ico-c: #de8273; }
+[data-theme='dark'] .jz-ico-tone-search,  [data-theme='starry'] .jz-ico-tone-search,  [data-theme='deepsea'] .jz-ico-tone-search  { --jz-ico-c: #22d3ee; }
+[data-theme='dark'] .jz-ico-tone-login,   [data-theme='starry'] .jz-ico-tone-login,   [data-theme='deepsea'] .jz-ico-tone-login   { --jz-ico-c: #94a3b8; }
+
 /* 多彩三态：静止 = 专属色微降（78% 混次要灰）；hover/选中 = 专属色全亮，
    底座描边/底/光晕也跟随专属色（覆盖默认翡翠 accent 规则）。 */
 .jz-admin-glass .jz-menu-icon-slot.jz-ico-toned {
@@ -3512,6 +3524,30 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: color-mix(in srgb, var(--jz-ico-c) 12%, var(--glass-surface-strong));
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
     0 3px 12px color-mix(in srgb, var(--jz-ico-c) 26%, transparent);
+}
+
+/* 博客顶栏多彩三态 */
+.jz-blog-glass .jz-nav-link-icon.jz-ico-toned {
+  color: color-mix(in srgb, var(--jz-ico-c) 78%, var(--jz-icon-stroke));
+}
+.jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon.jz-ico-toned,
+.jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon.jz-ico-toned {
+  color: var(--jz-ico-c);
+  border-color: color-mix(in srgb, var(--jz-ico-c) 36%, var(--glass-border));
+}
+.jz-blog-glass .jz-nav-link.active .jz-nav-link-icon.jz-ico-toned {
+  color: var(--jz-ico-c);
+  border-color: color-mix(in srgb, var(--jz-ico-c) 50%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-ico-c) 12%, var(--glass-surface-strong));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 12px color-mix(in srgb, var(--jz-ico-c) 26%, transparent);
+}
+/* 登录链接是裸图标（无底座），单独跟色 */
+.jz-blog-glass .jz-nav-link--login .jz-ico-toned {
+  color: color-mix(in srgb, var(--jz-ico-c) 78%, var(--jz-icon-stroke));
+}
+.jz-blog-glass .jz-nav-link--login:hover .jz-ico-toned {
+  color: var(--jz-ico-c);
 }
 
 /* ── 图标"活化包"：光与动（零新增颜色）──

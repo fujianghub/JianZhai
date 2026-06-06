@@ -23,15 +23,22 @@ function BlogNavItem({
   label,
   icon,
   external,
+  tone,
 }: {
   to: string;
   label: string;
   icon: ReactNode;
   external?: boolean;
+  tone?: string;
 }) {
   const inner = (
     <>
-      <span className="jz-nav-link-icon" aria-hidden>
+      <span
+        className={
+          'jz-nav-link-icon' + (tone ? ` jz-ico-toned jz-ico-tone-${tone}` : '')
+        }
+        aria-hidden
+      >
         {icon}
       </span>
       <span className="jz-nav-link-label">{label}</span>
@@ -118,16 +125,19 @@ export default function BlogLayout() {
             to="/archive"
             label="归档"
             icon={<JzArchiveBoxIcon size={NAV_ICON_SIZE} />}
+            tone="archive"
           />
           <BlogNavItem
             to="/tags"
             label="标签"
             icon={<JzTagIcon size={NAV_ICON_SIZE} />}
+            tone="tags"
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
             icon={<JzRssIcon size={NAV_ICON_SIZE} />}
+            tone="rss"
             external
           />
           <Tooltip title="搜索 (Ctrl+K)">
@@ -135,7 +145,10 @@ export default function BlogLayout() {
               type="text"
               className="jz-nav-search-btn"
               icon={
-                <span className="jz-nav-link-icon" aria-hidden>
+                <span
+                  className="jz-nav-link-icon jz-ico-toned jz-ico-tone-search"
+                  aria-hidden
+                >
                   <JzSearchIcon size={NAV_ICON_SIZE} />
                 </span>
               }
@@ -152,7 +165,7 @@ export default function BlogLayout() {
             />
           ) : (
             <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
-              <JzUserIcon size={16} />
+              <JzUserIcon size={16} className="jz-ico-toned jz-ico-tone-login" />
               <span className="jz-nav-link-label">登录</span>
             </Link>
           )}
