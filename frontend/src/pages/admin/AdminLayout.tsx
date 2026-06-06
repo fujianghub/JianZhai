@@ -4,12 +4,11 @@ import { DeleteOutlined, HomeOutlined, MenuOutlined } from '@ant-design/icons';
 import {
   JzExportIcon,
   JzAiIcon,
-  JzUsersIcon,
   JzArchitectureIcon,
   JzQuoteIcon,
   JzSearchIcon,
 } from '@/components/common/JzIcon';
-import { Books, Graph } from '@phosphor-icons/react';
+import { Books, Graph, UserCircle, UsersThree } from '@phosphor-icons/react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
@@ -140,7 +139,7 @@ export default function AdminLayout() {
               key: 'kbs',
               icon: menuIcon(
                 <Books weight="duotone" size={MENU_ICON_SIZE} />,
-                'kb',
+                'jade',
               ),
               label: <Link to="/admin/kbs">知识库</Link>,
             },
@@ -148,7 +147,7 @@ export default function AdminLayout() {
               key: 'graph',
               icon: menuIcon(
                 <Graph weight="duotone" size={MENU_ICON_SIZE} />,
-                'graph',
+                'jade',
               ),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
@@ -170,8 +169,11 @@ export default function AdminLayout() {
             ...(user?.is_staff
               ? [{
                   key: 'users',
-                  icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
-                  label: <Link to="/admin/users">用户</Link>,
+                  icon: menuIcon(
+                    <UsersThree weight="duotone" size={MENU_ICON_SIZE} />,
+                    'jade',
+                  ),
+                  label: <Link to="/admin/users">用户管理</Link>,
                 }]
               : []),
             ...(user?.is_superuser
@@ -196,7 +198,10 @@ export default function AdminLayout() {
               : []),
             {
               key: 'profile',
-              icon: menuIcon(<JzUsersIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(
+                <UserCircle weight="duotone" size={MENU_ICON_SIZE} />,
+                'jade',
+              ),
               label: <Link to="/admin/profile">个人资料</Link>,
             },
             // 「查看博客」菜单项已删除（v0.9.4）；点击左上角「簡」logo 直返首页。

@@ -126,7 +126,7 @@ export default function BlogLayout() {
             to="/archive"
             label="归档"
             icon={<Scroll weight="duotone" size={NAV_ICON_SIZE} />}
-            tone="archive"
+            tone="jade"
           />
           <BlogNavItem
             to="/tags"
