@@ -8,6 +8,7 @@ import {
   Form,
   Input,
   Modal,
+  Progress,
   Radio,
   Result,
   Space,
@@ -60,6 +61,7 @@ export default function KBPostsPage() {
   const [newDocOpen, setNewDocOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [docForm] = Form.useForm<{ title: string; content_kind: NewDocContentKind }>();
   const singleInputRef = useRef<HTMLInputElement | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
@@ -123,14 +125,20 @@ export default function KBPostsPage() {
   async function handleSingleUpload(file: File) {
     if (!tree) return;
     setUploading(true);
+    setUploadProgress({ loaded: 0, total: 1 });
     try {
-      const doc = await attApi.importFileAsDoc(file, tree.id, null);
+      const doc = await attApi.importFileAsDoc(file, tree.id, null, (loaded, total) =>
+        setUploadProgress({ loaded, total })
+      );
       message.success(`已导入 ${file.name}`);
       navigate(`/admin/kbs/${tree.id}/docs/${doc.id}?return=${encodeURIComponent(`/kb/${slug}`)}`);
     } catch (err) {
       message.error(formatApiError(err, '导入失败'));
+      // The server may still have created the document before the error.
+      reload();
     } finally {
       setUploading(false);
+      setUploadProgress(null);
     }
   }
 
@@ -139,6 +147,7 @@ export default function KBPostsPage() {
     const arr = Array.from(files);
     if (arr.length === 0) return;
     setUploading(true);
+    setUploadProgress({ loaded: 0, total: 1 });
     try {
       const items: attApi.BatchImportItem[] = arr.map((f) => ({
         file: f,
@@ -146,7 +155,9 @@ export default function KBPostsPage() {
           ? (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name
           : '',
       }));
-      const result = await attApi.importBatch(items, tree.id, null);
+      const result = await attApi.importBatch(items, tree.id, null, (loaded, total) =>
+        setUploadProgress({ loaded, total })
+      );
       const msg = `已导入 ${result.created.length} 个文件` +
         (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
         (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
@@ -156,6 +167,7 @@ export default function KBPostsPage() {
       message.error(formatApiError(err, '批量上传失败'));
     } finally {
       setUploading(false);
+      setUploadProgress(null);
       // Refresh even on failure — the server creates documents one by one, so
       // a timeout / partial error may still have produced new docs.
       reload();
@@ -270,7 +282,11 @@ export default function KBPostsPage() {
               }}
             >
               <Button icon={<CloudUploadOutlined />} loading={uploading}>
-                上传 ▾
+                {uploadProgress
+                  ? uploadProgress.loaded >= uploadProgress.total
+                    ? '服务器处理中…'
+                    : `上传中 ${Math.round((uploadProgress.loaded / uploadProgress.total) * 100)}%`
+                  : '上传 ▾'}
               </Button>
             </Dropdown>
             <Link to={`/admin/kbs/${tree.id}`}>
@@ -318,6 +334,34 @@ export default function KBPostsPage() {
           </Space>
         )}
       </header>
+
+      {uploadProgress && (
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '10px 14px',
+            marginBottom: 16,
+            borderRadius: 12,
+            border: '1px solid var(--jz-border, rgba(0,0,0,0.08))',
+            background: 'var(--jz-card-bg, rgba(255,255,255,0.6))',
+          }}
+        >
+          <CloudUploadOutlined style={{ color: accent }} />
+          <Typography.Text style={{ whiteSpace: 'nowrap' }}>
+            {uploadProgress.loaded >= uploadProgress.total
+              ? '已上传，服务器解析中…'
+              : '上传中…'}
+          </Typography.Text>
+          <Progress
+            style={{ flex: 1, margin: 0 }}
+            percent={Math.round((uploadProgress.loaded / uploadProgress.total) * 100)}
+            status="active"
+            strokeColor={accent}
+          />
+        </div>
+      )}
 
       <Modal
         open={newDocOpen}
