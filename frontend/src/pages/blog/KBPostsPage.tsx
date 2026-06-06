@@ -34,12 +34,19 @@ import {
 import { message } from '@/utils/notify';
 import * as kbsApi from '@/api/kbs';
 import * as docsApi from '@/api/docs';
-import * as attApi from '@/api/attachments';
 import { formatApiError } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
 import type { PublicFolder, PublicKBTree, PublicPost } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import BlogKbNavPanel from '@/components/common/BlogKbNavPanel';
+import UploadDropZone from '@/components/common/UploadDropZone';
+import {
+  collectPickedFiles,
+  runChunkedImport,
+  skippedSummary,
+  UPLOAD_ACCEPT,
+  type CollectedUploads,
+} from '@/utils/uploadBatch';
 import { resolveTagColor } from '@/utils/tagColor';
 import {
   NEW_HTML_DOCUMENT_TEMPLATE,
@@ -63,7 +70,6 @@ export default function KBPostsPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [docForm] = Form.useForm<{ title: string; content_kind: NewDocContentKind }>();
-  const singleInputRef = useRef<HTMLInputElement | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -122,54 +128,40 @@ export default function KBPostsPage() {
     }
   }
 
-  async function handleSingleUpload(file: File) {
+  /**
+   * 统一上传入口（与个人空间同一套规则）：文件选择器（单/多）、文件夹选择器、
+   * 拖拽混合上传全部走这里。客户端先过滤（类型/大小/隐藏文件），再分片顺序
+   * 上传 —— 每片完成立即 reload，文章渐进出现。
+   * ``openSingle`` 为 true 且恰好导入 1 篇时保留旧行为：直接进编辑器。
+   */
+  async function handleUpload(collected: CollectedUploads, openSingle = false) {
     if (!tree) return;
-    setUploading(true);
-    setUploadProgress({ loaded: 0, total: 1 });
-    try {
-      const doc = await attApi.importFileAsDoc(file, tree.id, null, (loaded, total) =>
-        setUploadProgress({ loaded, total })
-      );
-      message.success(`已导入 ${file.name}`);
-      navigate(`/admin/kbs/${tree.id}/docs/${doc.id}?return=${encodeURIComponent(`/kb/${slug}`)}`);
-    } catch (err) {
-      message.error(formatApiError(err, '导入失败'));
-      // The server may still have created the document before the error.
-      reload();
-    } finally {
-      setUploading(false);
-      setUploadProgress(null);
+    if (collected.skipped.length) message.warning(skippedSummary(collected.skipped));
+    if (collected.items.length === 0) {
+      if (!collected.skipped.length) message.info('没有可上传的文件');
+      return;
     }
-  }
-
-  async function handleBatchUpload(files: FileList | File[], preserveTree: boolean) {
-    if (!tree) return;
-    const arr = Array.from(files);
-    if (arr.length === 0) return;
     setUploading(true);
     setUploadProgress({ loaded: 0, total: 1 });
     try {
-      const items: attApi.BatchImportItem[] = arr.map((f) => ({
-        file: f,
-        relativePath: preserveTree
-          ? (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name
-          : '',
-      }));
-      const result = await attApi.importBatch(items, tree.id, null, (loaded, total) =>
-        setUploadProgress({ loaded, total })
-      );
+      const result = await runChunkedImport(collected.items, tree.id, null, {
+        onProgress: (loaded, total) => setUploadProgress({ loaded, total }),
+        onChunkDone: () => reload(),
+      });
       const msg = `已导入 ${result.created.length} 个文件` +
         (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
         (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
       if (result.errors.length) message.warning(msg);
       else message.success(msg);
-    } catch (err) {
-      message.error(formatApiError(err, '批量上传失败'));
+      if (openSingle && collected.items.length === 1 && result.created.length === 1) {
+        navigate(
+          `/admin/kbs/${tree.id}/docs/${result.created[0].id}?return=${encodeURIComponent(`/kb/${slug}`)}`
+        );
+      }
     } finally {
       setUploading(false);
       setUploadProgress(null);
-      // Refresh even on failure — the server creates documents one by one, so
-      // a timeout / partial error may still have produced new docs.
+      // 兜底再刷一次 —— 分片中途异常也能看到已落库的文档。
       reload();
     }
   }
@@ -261,22 +253,25 @@ export default function KBPostsPage() {
               menu={{
                 items: [
                   {
-                    key: 'single',
+                    key: 'files',
                     icon: <FileAddOutlined />,
-                    label: '上传单个文件',
-                    onClick: () => singleInputRef.current?.click(),
-                  },
-                  {
-                    key: 'batch',
-                    icon: <CloudUploadOutlined />,
-                    label: '批量上传文件',
+                    label: '上传文件（单个或多选）',
                     onClick: () => batchInputRef.current?.click(),
                   },
                   {
                     key: 'folder',
                     icon: <FolderAddOutlined />,
-                    label: '上传整个文件夹',
+                    label: '上传文件夹（保留目录结构）',
                     onClick: () => folderInputRef.current?.click(),
+                  },
+                  {
+                    key: 'hint',
+                    disabled: true,
+                    label: (
+                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                        也可直接拖拽文件 / 多个文件夹到文章列表
+                      </Typography.Text>
+                    ),
                   },
                 ],
               }}
@@ -293,25 +288,18 @@ export default function KBPostsPage() {
               <Button>个人空间</Button>
             </Link>
             <input
-              ref={singleInputRef}
-              type="file"
-              accept=".pdf,.doc,.docx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
-              style={{ display: 'none' }}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void handleSingleUpload(f);
-                e.target.value = '';
-              }}
-            />
-            <input
               ref={batchInputRef}
               type="file"
               multiple
-              accept=".pdf,.doc,.docx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
+              accept={UPLOAD_ACCEPT}
               style={{ display: 'none' }}
               onChange={(e) => {
                 if (e.target.files && e.target.files.length) {
-                  void handleBatchUpload(e.target.files, false);
+                  // 恰好选 1 个文件时沿用旧行为：导入完成直接进编辑器。
+                  void handleUpload(
+                    collectPickedFiles(e.target.files, false),
+                    e.target.files.length === 1
+                  );
                 }
                 e.target.value = '';
               }}
@@ -326,7 +314,7 @@ export default function KBPostsPage() {
               style={{ display: 'none' }}
               onChange={(e) => {
                 if (e.target.files && e.target.files.length) {
-                  void handleBatchUpload(e.target.files, true);
+                  void handleUpload(collectPickedFiles(e.target.files, true));
                 }
                 e.target.value = '';
               }}
@@ -388,7 +376,13 @@ export default function KBPostsPage() {
         </Form>
       </Modal>
 
-      <KbBody tree={tree} onTreeChange={setTree} />
+      <UploadDropZone
+        disabled={!canManage}
+        accent={accent}
+        onDropFiles={(c) => void handleUpload(c)}
+      >
+        <KbBody tree={tree} onTreeChange={setTree} />
+      </UploadDropZone>
     </div>
   );
 }
