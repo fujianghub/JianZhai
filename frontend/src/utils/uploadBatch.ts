@@ -240,18 +240,3 @@ export function skippedSummary(skipped: string[]): string {
   const head = skipped.slice(0, 3).join('、');
   return `已跳过 ${skipped.length} 个文件：${head}${skipped.length > 3 ? ' …' : ''}`;
 }
-
-/** 取文件夹选择器一次结果的根文件夹名（webkitRelativePath 首段）。 */
-export function pickedRootFolderName(files: ArrayLike<File>): string {
-  const f = files[0] as (File & { webkitRelativePath?: string }) | undefined;
-  const rel = f?.webkitRelativePath || '';
-  return rel.split('/')[0] || '未命名文件夹';
-}
-
-/** 合并多次收集结果（多文件夹累积上传用）。 */
-export function mergeCollected(list: CollectedUploads[]): CollectedUploads {
-  return {
-    items: list.flatMap((c) => c.items),
-    skipped: list.flatMap((c) => c.skipped),
-  };
-}

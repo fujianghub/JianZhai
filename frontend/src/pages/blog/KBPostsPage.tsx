@@ -40,7 +40,6 @@ import type { PublicFolder, PublicKBTree, PublicPost } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import BlogKbNavPanel from '@/components/common/BlogKbNavPanel';
 import UploadDropZone from '@/components/common/UploadDropZone';
-import FolderUploadModal from '@/components/common/FolderUploadModal';
 import {
   collectPickedFiles,
   runChunkedImport,
@@ -72,7 +71,7 @@ export default function KBPostsPage() {
   const [uploadProgress, setUploadProgress] = useState<{ loaded: number; total: number } | null>(null);
   const [docForm] = Form.useForm<{ title: string; content_kind: NewDocContentKind }>();
   const batchInputRef = useRef<HTMLInputElement | null>(null);
-  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
 
   /** The blog frontend lazy-loads auth so anonymous readers stay anonymous;
    * but once known, super-admins get inline create/upload affordances. */
@@ -262,8 +261,8 @@ export default function KBPostsPage() {
                   {
                     key: 'folder',
                     icon: <FolderAddOutlined />,
-                    label: '上传文件夹（单个或多个）',
-                    onClick: () => setFolderModalOpen(true),
+                    label: '上传文件夹（保留目录结构）',
+                    onClick: () => folderInputRef.current?.click(),
                   },
                   {
                     key: 'hint',
@@ -301,6 +300,21 @@ export default function KBPostsPage() {
                     collectPickedFiles(e.target.files, false),
                     e.target.files.length === 1
                   );
+                }
+                e.target.value = '';
+              }}
+            />
+            <input
+              ref={folderInputRef}
+              type="file"
+              multiple
+              // @ts-expect-error — webkitdirectory is non-standard but widely supported.
+              webkitdirectory="true"
+              directory="true"
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                if (e.target.files && e.target.files.length) {
+                  void handleUpload(collectPickedFiles(e.target.files, true));
                 }
                 e.target.value = '';
               }}
@@ -361,16 +375,6 @@ export default function KBPostsPage() {
           </Typography.Text>
         </Form>
       </Modal>
-
-      <FolderUploadModal
-        open={folderModalOpen}
-        accent={accent}
-        onCancel={() => setFolderModalOpen(false)}
-        onConfirm={(c) => {
-          setFolderModalOpen(false);
-          void handleUpload(c);
-        }}
-      />
 
       <UploadDropZone
         disabled={!canManage}

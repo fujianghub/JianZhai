@@ -326,7 +326,7 @@ class AIUsageLog(models.Model):
 - 树形目录拖拽排序：`POST /tree/reorder/` 批量提交
 - 折叠 / 展开状态本地持久化
 - KB 大类分组、文档置顶、收藏夹（`FavoritesPage`，后台侧栏「收藏」入口位于知识图谱与导出之间）、多种排序
-- **统一上传体系**（个人空间 KBWorkspace + 博客端 KBPostsPage 共用）：文件选择器（单/多选）、文件夹上传 Modal（累积「添加文件夹」突破选择器单选限制，单个/多个皆可，`FolderUploadModal`）、**拖拽混合上传**（多文件 + 多文件夹，`UploadDropZone` 递归遍历 webkitGetAsEntry）；客户端按后端规则预过滤（18 种扩展名 / 50MB / 跳过隐藏文件）；**分片上传**（8 文件/请求，`utils/uploadBatch.ts`，每片完成即刷新列表渐进出现）；导入请求超时独立放宽（单 5min / 批 30min，全局 axios 仍 30s）
+- **统一上传体系**（个人空间 KBWorkspace + 博客端 KBPostsPage 共用）：文件选择器（单/多选）、文件夹选择器（保留目录结构）、**拖拽混合上传**（多文件 + 多文件夹，`UploadDropZone` 递归遍历 webkitGetAsEntry）；客户端按后端规则预过滤（18 种扩展名 / 50MB / 跳过隐藏文件）；**分片上传**（8 文件/请求，`utils/uploadBatch.ts`，每片完成即刷新列表渐进出现）；导入请求超时独立放宽（单 5min / 批 30min，全局 axios 仍 30s）
 
 ### 模块 2：文档与编辑器 ✅
 

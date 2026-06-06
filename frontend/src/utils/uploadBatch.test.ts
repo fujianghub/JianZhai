@@ -9,8 +9,6 @@ import {
   checkUploadFile,
   collectDroppedItems,
   collectPickedFiles,
-  mergeCollected,
-  pickedRootFolderName,
   runChunkedImport,
   skippedSummary,
   UPLOAD_ACCEPT,
@@ -218,22 +216,5 @@ describe('skippedSummary', () => {
   it('最多列 3 个名字', () => {
     expect(skippedSummary(['a', 'b'])).toBe('已跳过 2 个文件：a、b');
     expect(skippedSummary(['a', 'b', 'c', 'd'])).toMatch('…');
-  });
-});
-
-describe('multi-folder helpers', () => {
-  it('pickedRootFolderName 取 webkitRelativePath 首段', () => {
-    const f = makeFile('a.md');
-    Object.defineProperty(f, 'webkitRelativePath', { value: 'MyDir/sub/a.md' });
-    expect(pickedRootFolderName([f])).toBe('MyDir');
-    expect(pickedRootFolderName([])).toBe('未命名文件夹');
-  });
-
-  it('mergeCollected 合并多个文件夹的收集结果', () => {
-    const a = collectPickedFiles([makeFile('a.md')], false);
-    const b = collectPickedFiles([makeFile('b.md'), makeFile('c.exe')], false);
-    const merged = mergeCollected([a, b]);
-    expect(merged.items).toHaveLength(2);
-    expect(merged.skipped).toHaveLength(1);
   });
 });

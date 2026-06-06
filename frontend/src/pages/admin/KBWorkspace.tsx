@@ -41,7 +41,6 @@ import * as tagsApi from '@/api/tags';
 import { formatApiError } from '@/api/client';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import UploadDropZone from '@/components/common/UploadDropZone';
-import FolderUploadModal from '@/components/common/FolderUploadModal';
 import {
   collectPickedFiles,
   runChunkedImport,
@@ -72,7 +71,7 @@ export default function KBWorkspace() {
   const [importing, setImporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ loaded: number; total: number } | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
-  const [folderModalOpen, setFolderModalOpen] = useState(false);
+  const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [docForm] = Form.useForm<{
     title: string;
     folder?: number | null;
@@ -463,8 +462,8 @@ export default function KBWorkspace() {
                 {
                   key: 'import-folder',
                   icon: <FolderAddOutlined />,
-                  label: '上传文件夹（单个或多个）',
-                  onClick: () => setFolderModalOpen(true),
+                  label: '上传文件夹（保留目录结构）',
+                  onClick: () => folderInputRef.current?.click(),
                 },
                 {
                   key: 'import-hint',
@@ -495,6 +494,21 @@ export default function KBWorkspace() {
             onChange={(e) => {
               if (e.target.files && e.target.files.length) {
                 void handleUpload(collectPickedFiles(e.target.files, false));
+              }
+              e.target.value = '';
+            }}
+          />
+          <input
+            ref={folderInputRef}
+            type="file"
+            multiple
+            // @ts-expect-error — webkitdirectory is a non-standard but widely supported attribute.
+            webkitdirectory="true"
+            directory="true"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length) {
+                void handleUpload(collectPickedFiles(e.target.files, true));
               }
               e.target.value = '';
             }}
@@ -655,16 +669,6 @@ export default function KBWorkspace() {
           />
         )}
       </div>
-
-      <FolderUploadModal
-        open={folderModalOpen}
-        accent={kb.accent_color || undefined}
-        onCancel={() => setFolderModalOpen(false)}
-        onConfirm={(c) => {
-          setFolderModalOpen(false);
-          void handleUpload(c);
-        }}
-      />
 
       <UploadDropZone
         accent={kb.accent_color || undefined}
