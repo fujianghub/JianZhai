@@ -40,6 +40,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
+from apps.accounts.scoping import scope_queryset
+from apps.knowledge.models import Document, KnowledgeBase
+
 from .models import AIConversation, AIPromptTemplate, AISettings, AIUsageLog
 from .pricing import MODEL_PRICES_USD, estimate_cost_usd, estimate_input_tokens_from_chars
 from .prompts import OPERATION_INSTRUCTIONS
@@ -77,6 +80,41 @@ class AIWriteThrottle(UserRateThrottle):
     scope = "ai_write"
 
 
+class AIReadThrottle(UserRateThrottle):
+    """Read/management AI endpoints. The global default throttle only covers
+    anonymous users, so without this an authenticated user could hammer the
+    usage aggregations / CSV export / estimate endpoint without limit."""
+
+    scope = "ai_read"
+
+
+def _owned_fk_id(model, user, raw, *, owner_field: str = "knowledge_base__owner"):
+    """Validate an attribution FK id from the request body.
+
+    Returns the int pk only when the object exists AND is visible to ``user``
+    under tenant scoping; otherwise ``None`` (attribution is optional
+    metadata, so unowned/garbage ids are silently dropped rather than 4xx-ing
+    the whole AI call). Prevents cross-tenant usage-attribution pollution.
+    """
+    if not raw:
+        return None
+    try:
+        pk = int(raw)
+    except (TypeError, ValueError):
+        return None
+    qs = scope_queryset(model.objects.all(), user, field=owner_field)
+    return pk if qs.filter(pk=pk).exists() else None
+
+
+# data:image/<subtype>;base64 — only raster formats the providers accept.
+ALLOWED_IMAGE_DATA_PREFIXES = tuple(
+    f"data:image/{sub};base64," for sub in ("png", "jpeg", "jpg", "webp", "gif")
+)
+# ~7.5MB binary per image once base64-decoded; well within provider limits
+# and keeps an 8-image payload under the global 50MB body cap.
+MAX_IMAGE_DATA_CHARS = 10_000_000
+
+
 # ── Payload parsing ─────────────────────────────────────────────────────
 
 
@@ -99,8 +137,13 @@ def _parse_payload(request) -> tuple | Response:
     images = request.data.get("images") or []
     thinking_raw = request.data.get("thinking", None)
     thinking = None if thinking_raw is None else bool(thinking_raw)
-    document_id = request.data.get("document_id") or None
-    knowledge_base_id = request.data.get("knowledge_base_id") or None
+    # Attribution ids must belong to the caller — otherwise any user could
+    # pollute admin usage stats by billing calls to someone else's doc/KB.
+    document_id = _owned_fk_id(Document, request.user, request.data.get("document_id"))
+    knowledge_base_id = _owned_fk_id(
+        KnowledgeBase, request.user, request.data.get("knowledge_base_id"),
+        owner_field="owner",
+    )
     template_instruction = ""
 
     # Operation can be built-in OR ``tpl_<id>`` for user templates.
@@ -139,11 +182,16 @@ def _parse_payload(request) -> tuple | Response:
             {"detail": "images 必须是数组且最多 8 张"},
             status=status.HTTP_400_BAD_REQUEST,
         )
-    # Validate each image is a data: URL.
+    # Validate each image is a data: URL of an accepted raster type and size.
     for img in images:
-        if not (isinstance(img, str) and img.startswith("data:image/")):
+        if not (isinstance(img, str) and img.startswith(ALLOWED_IMAGE_DATA_PREFIXES)):
             return Response(
-                {"detail": "images 元素必须是 data:image/* base64 URL"},
+                {"detail": "images 元素必须是 data:image/(png|jpeg|webp|gif);base64 URL"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(img) > MAX_IMAGE_DATA_CHARS:
+            return Response(
+                {"detail": "单张图片超过大小上限（约 7MB）"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
@@ -308,6 +356,7 @@ def _save_chat_turn(user, conversation_id, user_message: str, reply: str, model:
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def capabilities(request):
     """Tell the frontend which operations + models + user templates are available."""
     from .services import providers_configured
@@ -355,6 +404,7 @@ def _usage_qs(request, days_param: str | None = None, model_param: str | None = 
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def usage(request):
     """Aggregated usage stats. Admin sees everyone; others only their own."""
     qs, days = _usage_qs(request)
@@ -495,6 +545,7 @@ def usage(request):
 
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def usage_csv(request):
     """CSV export of usage rows (admin gets all, users get own)."""
     qs, _days = _usage_qs(request)
@@ -533,6 +584,7 @@ def usage_csv(request):
 
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def settings_view(request):
     if not request.user.is_staff:
         return Response({"detail": "需要管理员权限"}, status=status.HTTP_403_FORBIDDEN)
@@ -600,6 +652,7 @@ def _template_serialize(t: AIPromptTemplate) -> dict:
 
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def templates_list(request):
     if request.method == "GET":
         items = AIPromptTemplate.objects.filter(owner=request.user)
@@ -631,6 +684,7 @@ def templates_list(request):
 
 @api_view(["GET", "PATCH", "DELETE"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def template_detail(request, pk):
     t = get_object_or_404(AIPromptTemplate, pk=pk, owner=request.user)
     if request.method == "GET":
@@ -686,6 +740,7 @@ def _conv_serialize(c: AIConversation, *, with_messages: bool = False) -> dict:
 
 @api_view(["GET", "DELETE"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def conversations_list(request):
     if request.method == "DELETE":
         # Clear all conversations for this user.
@@ -697,6 +752,7 @@ def conversations_list(request):
 
 @api_view(["GET", "DELETE"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def conversation_detail(request, pk):
     c = get_object_or_404(AIConversation, pk=pk, user=request.user)
     if request.method == "DELETE":
@@ -710,6 +766,7 @@ def conversation_detail(request, pk):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@throttle_classes([AIReadThrottle])
 def estimate(request):
     """Pre-call token + cost preview. Body: { content, extra?, model? }.
 
@@ -720,6 +777,10 @@ def estimate(request):
     data = request.data if isinstance(request.data, dict) else {}
     content = data.get("content") or ""
     extra = data.get("extra") or ""
+    # Same hard cap as run/stream — the estimator is O(n) per char and this
+    # endpoint must not become a CPU amplification vector for huge bodies.
+    if len(content) + len(extra) > 60_000:
+        return Response({"detail": "内容超过估算长度上限"}, status=400)
     model = (data.get("model") or "").strip() or get_default_model()
     in_tok = estimate_input_tokens_from_chars(content + extra)
     out_tok = AISettings.load().max_tokens
