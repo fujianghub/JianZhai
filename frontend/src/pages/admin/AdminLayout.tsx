@@ -1,14 +1,19 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-import { DeleteOutlined, HomeOutlined, MenuOutlined } from '@ant-design/icons';
+import { MenuOutlined } from '@ant-design/icons';
+import { JzSearchIcon } from '@/components/common/JzIcon';
 import {
-  JzExportIcon,
-  JzAiIcon,
-  JzArchitectureIcon,
-  JzQuoteIcon,
-  JzSearchIcon,
-} from '@/components/common/JzIcon';
-import { Books, Graph, UserCircle, UsersThree } from '@phosphor-icons/react';
+  Books,
+  Export,
+  Graph,
+  Quotes,
+  Robot,
+  SquaresFour,
+  Trash,
+  TreeStructure,
+  UserCircle,
+  UsersThree,
+} from '@phosphor-icons/react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
@@ -132,7 +137,10 @@ export default function AdminLayout() {
           items={[
             {
               key: 'dashboard',
-              icon: menuIcon(<HomeOutlined style={{ fontSize: MENU_ICON_SIZE }} />),
+              icon: menuIcon(
+                <SquaresFour weight="duotone" size={MENU_ICON_SIZE} />,
+                'jade',
+              ),
               label: <Link to="/admin">工作台</Link>,
             },
             {
@@ -153,17 +161,26 @@ export default function AdminLayout() {
             },
             {
               key: 'exports',
-              icon: menuIcon(<JzExportIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(
+                <Export weight="duotone" size={MENU_ICON_SIZE} />,
+                'jade',
+              ),
               label: <Link to="/admin/exports">导出</Link>,
             },
             {
               key: 'trash',
-              icon: menuIcon(<DeleteOutlined style={{ fontSize: MENU_ICON_SIZE }} />),
+              icon: menuIcon(
+                <Trash weight="duotone" size={MENU_ICON_SIZE} />,
+                'jade',
+              ),
               label: <Link to="/admin/trash">回收站</Link>,
             },
             {
               key: 'ai',
-              icon: menuIcon(<JzAiIcon size={MENU_ICON_SIZE} />),
+              icon: menuIcon(
+                <Robot weight="duotone" size={MENU_ICON_SIZE} />,
+                'jade',
+              ),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
             ...(user?.is_staff
@@ -180,7 +197,10 @@ export default function AdminLayout() {
               ? [
                   {
                     key: 'overview',
-                    icon: menuIcon(<JzArchitectureIcon size={MENU_ICON_SIZE} />),
+                    icon: menuIcon(
+                      <TreeStructure weight="duotone" size={MENU_ICON_SIZE} />,
+                      'jade',
+                    ),
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
                 ]
@@ -192,7 +212,10 @@ export default function AdminLayout() {
             ...(user?.is_staff
               ? [{
                   key: 'hero',
-                  icon: menuIcon(<JzQuoteIcon size={MENU_ICON_SIZE} />),
+                  icon: menuIcon(
+                    <Quotes weight="duotone" size={MENU_ICON_SIZE} />,
+                    'jade',
+                  ),
                   label: <Link to="/admin/hero">题记</Link>,
                 }]
               : []),

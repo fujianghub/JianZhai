@@ -1,17 +1,17 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { Button, Layout, Space, Spin, Tooltip } from 'antd';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
-import { UserOutlined } from '@ant-design/icons';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
-  JzTagsIcon,
-  JzRssIcon,
-  JzSearchIcon,
-} from '@/components/common/JzIcon';
-import { Scroll } from '@phosphor-icons/react';
+  Archive,
+  MagnifyingGlass,
+  RssSimple,
+  Tag,
+  User,
+} from '@phosphor-icons/react';
 import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
@@ -125,18 +125,20 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<Scroll weight="duotone" size={NAV_ICON_SIZE} />}
+            icon={<Archive weight="duotone" size={NAV_ICON_SIZE} />}
             tone="jade"
           />
           <BlogNavItem
             to="/tags"
             label="标签"
-            icon={<JzTagsIcon size={NAV_ICON_SIZE} />}
+            icon={<Tag weight="duotone" size={NAV_ICON_SIZE} />}
+            tone="jade"
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<JzRssIcon size={NAV_ICON_SIZE} />}
+            icon={<RssSimple weight="duotone" size={NAV_ICON_SIZE} />}
+            tone="jade"
             external
           />
           <Tooltip title="搜索 (Ctrl+K)">
@@ -144,8 +146,11 @@ export default function BlogLayout() {
               type="text"
               className="jz-nav-search-btn"
               icon={
-                <span className="jz-nav-link-icon" aria-hidden>
-                  <JzSearchIcon size={NAV_ICON_SIZE} />
+                <span
+                  className="jz-nav-link-icon jz-chip-toned jz-chip-tone-jade"
+                  aria-hidden
+                >
+                  <MagnifyingGlass weight="duotone" size={NAV_ICON_SIZE} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}
@@ -161,7 +166,7 @@ export default function BlogLayout() {
             />
           ) : (
             <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
-              <UserOutlined />
+              <User weight="duotone" size={16} />
               <span className="jz-nav-link-label">登录</span>
             </Link>
           )}
