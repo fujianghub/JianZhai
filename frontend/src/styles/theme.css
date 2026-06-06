@@ -3471,6 +3471,49 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: color-mix(in srgb, var(--jz-accent) 85%, var(--jz-icon-stroke));
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   同明度多彩（2026-06-06 样品）——每枚图标一个专属色相，
+   饱和度/明度统一在同一平面（macOS 设置 / Notion 同源做法）。
+   暗主题整组提亮一档。色值挂元素自身，消费规则只做 color-mix。
+   ════════════════════════════════════════════════════════════════════════ */
+.jz-ico-tone-dashboard { --jz-ico-c: #0891b2; }  /* 青瓷 */
+.jz-ico-tone-kb        { --jz-ico-c: #059669; }  /* 翡翠（锚点） */
+.jz-ico-tone-graph     { --jz-ico-c: #2563eb; }  /* 黛蓝 */
+.jz-ico-tone-exports   { --jz-ico-c: #d97706; }  /* 赭金 */
+.jz-ico-tone-trash     { --jz-ico-c: #c0564e; }  /* 绛红 */
+.jz-ico-tone-ai        { --jz-ico-c: #7c3aed; }  /* 紫藤 */
+.jz-ico-tone-users     { --jz-ico-c: #0284c7; }  /* 湖蓝 */
+.jz-ico-tone-overview  { --jz-ico-c: #64748b; }  /* 玄青 */
+.jz-ico-tone-hero      { --jz-ico-c: #b94a3b; }  /* 朱砂（呼应博客品牌） */
+.jz-ico-tone-profile   { --jz-ico-c: #0d9488; }  /* 松石 */
+[data-theme='dark'] .jz-ico-tone-dashboard, [data-theme='starry'] .jz-ico-tone-dashboard, [data-theme='deepsea'] .jz-ico-tone-dashboard { --jz-ico-c: #22d3ee; }
+[data-theme='dark'] .jz-ico-tone-kb,        [data-theme='starry'] .jz-ico-tone-kb,        [data-theme='deepsea'] .jz-ico-tone-kb        { --jz-ico-c: #34d399; }
+[data-theme='dark'] .jz-ico-tone-graph,     [data-theme='starry'] .jz-ico-tone-graph,     [data-theme='deepsea'] .jz-ico-tone-graph     { --jz-ico-c: #60a5fa; }
+[data-theme='dark'] .jz-ico-tone-exports,   [data-theme='starry'] .jz-ico-tone-exports,   [data-theme='deepsea'] .jz-ico-tone-exports   { --jz-ico-c: #e8b04b; }
+[data-theme='dark'] .jz-ico-tone-trash,     [data-theme='starry'] .jz-ico-tone-trash,     [data-theme='deepsea'] .jz-ico-tone-trash     { --jz-ico-c: #d97b74; }
+[data-theme='dark'] .jz-ico-tone-ai,        [data-theme='starry'] .jz-ico-tone-ai,        [data-theme='deepsea'] .jz-ico-tone-ai        { --jz-ico-c: #a78bfa; }
+[data-theme='dark'] .jz-ico-tone-users,     [data-theme='starry'] .jz-ico-tone-users,     [data-theme='deepsea'] .jz-ico-tone-users     { --jz-ico-c: #38bdf8; }
+[data-theme='dark'] .jz-ico-tone-overview,  [data-theme='starry'] .jz-ico-tone-overview,  [data-theme='deepsea'] .jz-ico-tone-overview  { --jz-ico-c: #94a3b8; }
+[data-theme='dark'] .jz-ico-tone-hero,      [data-theme='starry'] .jz-ico-tone-hero,      [data-theme='deepsea'] .jz-ico-tone-hero      { --jz-ico-c: #de8273; }
+[data-theme='dark'] .jz-ico-tone-profile,   [data-theme='starry'] .jz-ico-tone-profile,   [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #2dd4bf; }
+
+/* 多彩三态：静止 = 专属色微降（78% 混次要灰）；hover/选中 = 专属色全亮，
+   底座描边/底/光晕也跟随专属色（覆盖默认翡翠 accent 规则）。 */
+.jz-admin-glass .jz-menu-icon-slot.jz-ico-toned {
+  color: color-mix(in srgb, var(--jz-ico-c) 78%, var(--jz-icon-stroke));
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot.jz-ico-toned {
+  color: var(--jz-ico-c);
+  border-color: color-mix(in srgb, var(--jz-ico-c) 36%, var(--glass-border));
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-menu-icon-slot.jz-ico-toned {
+  color: var(--jz-ico-c);
+  border-color: color-mix(in srgb, var(--jz-ico-c) 50%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-ico-c) 12%, var(--glass-surface-strong));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 12px color-mix(in srgb, var(--jz-ico-c) 26%, transparent);
+}
+
 /* ── 图标"活化包"：光与动（零新增颜色）──
    ① 悬停玻璃光泽扫过 ② 图标微跳（弹簧）③ 选中底座上缘玻璃棱线 */
 .jz-admin-glass .jz-menu-icon-slot,
