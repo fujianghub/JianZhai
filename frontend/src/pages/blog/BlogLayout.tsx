@@ -16,7 +16,7 @@ import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
 
-const NAV_ICON_SIZE = 20;
+const NAV_ICON_SIZE = 22;
 
 function BlogNavItem({
   to,
@@ -136,7 +136,7 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<JzRssIcon size={NAV_ICON_SIZE} />}
+            icon={<JzRssIcon size={NAV_ICON_SIZE} strokeWidth={1.8} />}
             tone="rss"
             external
           />
@@ -149,7 +149,7 @@ export default function BlogLayout() {
                   className="jz-nav-link-icon jz-ico-toned jz-ico-tone-search"
                   aria-hidden
                 >
-                  <JzSearchIcon size={NAV_ICON_SIZE} />
+                  <JzSearchIcon size={NAV_ICON_SIZE} strokeWidth={1.8} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}

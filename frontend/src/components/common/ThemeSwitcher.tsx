@@ -9,10 +9,10 @@ import {
 import { ACCENT_PRESETS, useThemeStore, type ThemeMode } from '@/stores/theme';
 
 const MODE_OPTIONS = [
-  { value: 'light',   label: '亮色',   icon: <JzThemeLightIcon /> },
-  { value: 'dark',    label: '暗色',   icon: <JzThemeDarkIcon /> },
-  { value: 'starry',  label: '星空',   icon: <JzThemeStarryIcon /> },
-  { value: 'deepsea', label: '深海',   icon: <JzThemeDeepseaIcon /> },
+  { value: 'light',   label: '亮色',   icon: <JzThemeLightIcon size={16} /> },
+  { value: 'dark',    label: '暗色',   icon: <JzThemeDarkIcon size={16} /> },
+  { value: 'starry',  label: '星空',   icon: <JzThemeStarryIcon size={16} /> },
+  { value: 'deepsea', label: '深海',   icon: <JzThemeDeepseaIcon size={16} /> },
 ] as const;
 
 export default function ThemeSwitcher() {
