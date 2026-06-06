@@ -5,16 +5,15 @@ import { isAxiosError } from 'axios';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
-  BookOutlined,
-  ClockCircleOutlined,
   EditOutlined,
   ExportOutlined,
   FormOutlined,
   FolderOpenOutlined,
   HomeOutlined,
-  TagOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
+/* meta 行小图标走 Phosphor（14px 用 bold 做笔画补偿，与 20px regular 视觉等粗） */
+import { Book, Clock, Tag as TagIcon } from '@phosphor-icons/react';
 import * as blogApi from '@/api/blog';
 import * as docsApi from '@/api/docs';
 import * as kbsApi from '@/api/kbs';
@@ -580,7 +579,7 @@ export default function PostDetail() {
                 aria-label={`知识库 ${post.knowledge_base.name}`}
                 title={`返回知识库 · ${post.knowledge_base.name}`}
               >
-                <BookOutlined className="jz-meta-icon" />
+                <Book weight="bold" size={14} className="jz-meta-icon" />
                 <span className="jz-meta-pill-text">{post.knowledge_base.name}</span>
               </Link>
               <span className="jz-meta-format" aria-label={`文档格式 ${post.doc_format}`}>
@@ -591,7 +590,7 @@ export default function PostDetail() {
 
               {/* Date — read-only, ghost style with clock icon. */}
               <span className="jz-meta-date" title="发布时间">
-                <ClockCircleOutlined className="jz-meta-icon" />
+                <Clock weight="bold" size={14} className="jz-meta-icon" />
                 <time dateTime={post.published_at}>
                   {dayjs(post.published_at).format('YYYY-MM-DD HH:mm')}
                 </time>
@@ -615,7 +614,7 @@ export default function PostDetail() {
                 <>
                   <span className="jz-meta-sep" aria-hidden />
                   <span className="jz-meta-tags" aria-label="文章标签">
-                    <TagOutlined className="jz-meta-icon" />
+                    <TagIcon weight="bold" size={14} className="jz-meta-icon" />
                     {post.tags.map((t) => (
                       <span
                         key={t.id}

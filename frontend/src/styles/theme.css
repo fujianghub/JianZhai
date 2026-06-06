@@ -1354,7 +1354,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: color-mix(in srgb, var(--glass-surface-strong) 90%, transparent);
   box-shadow: var(--glass-shadow-soft);
   color: var(--jz-icon-stroke);
-  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease, background 0.22s ease, color 0.22s ease;
+  /* 动效 token：颜色类 120ms / 位移类 200ms（全站图标统一两档） */
+  transition: transform 200ms ease, box-shadow 120ms ease, border-color 120ms ease, background 120ms ease, color 120ms ease;
 }
 .jz-admin-glass .jz-menu-icon-slot .jz-icon {
   display: block;
@@ -2281,7 +2282,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--jz-icon-stroke);
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
-  transition: transform 0.22s cubic-bezier(.34, 1.56, .64, 1), box-shadow 0.22s ease, border-color 0.22s ease, color 0.22s ease, background 0.22s ease;
+  /* 动效 token：颜色类 120ms / 位移类 200ms（弹簧曲线保留给位移） */
+  transition: transform 200ms cubic-bezier(.34, 1.56, .64, 1), box-shadow 120ms ease, border-color 120ms ease, color 120ms ease, background 120ms ease;
 }
 .jz-blog-glass .jz-nav-link-icon .jz-icon {
   display: block;
@@ -3443,9 +3445,26 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: block;
 }
 
-/* 图标线条轻微着色：静止态在浅灰里隐约透 28% 翡翠（底座不动），
-   hover / 选中仍由既有规则升到全翡翠，形成淡→浓的状态过渡。 */
+/* 图标线条轻微着色（状态梯度：静止 35% → hover 70% → 选中 100%）。
+   底座保持中性玻璃；颜色是唯一的状态语言。 */
 .jz-admin-glass .jz-menu-icon-slot,
 .jz-blog-glass .jz-nav-link-icon {
   color: color-mix(in srgb, var(--jz-accent) 35%, var(--jz-icon-stroke));
+}
+/* 暗主题感知校准：暗底吃色，静止态混入比例升至 45%，亮暗两侧观感一致 */
+[data-theme='dark'] .jz-admin-glass .jz-menu-icon-slot,
+[data-theme='starry'] .jz-admin-glass .jz-menu-icon-slot,
+[data-theme='deepsea'] .jz-admin-glass .jz-menu-icon-slot,
+[data-theme='dark'] .jz-blog-glass .jz-nav-link-icon,
+[data-theme='starry'] .jz-blog-glass .jz-nav-link-icon,
+[data-theme='deepsea'] .jz-blog-glass .jz-nav-link-icon {
+  color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-icon-stroke));
+}
+/* hover 中间档 70% —— 与选中态（100%，沿用既有 stroke-active 规则）拉开区分度 */
+.jz-admin-glass .jz-admin-menu .ant-menu-item:hover:not(.ant-menu-item-selected) .jz-menu-icon-slot {
+  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-icon-stroke));
+}
+.jz-blog-glass .jz-nav-link:hover:not(.active) .jz-nav-link-icon,
+.jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon {
+  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-icon-stroke));
 }
