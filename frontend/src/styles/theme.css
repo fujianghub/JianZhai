@@ -3614,6 +3614,145 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--jz-ico-c);
 }
 
+/* ── 架构总览二轮打磨（2026-06-06 深夜）────────────────────────────────
+   色彩从图标延伸到区块：hero 色谱线 / 统计卡 tone 顶线 /
+   区块标题小图标 / 技术栈头部色系底线 / 阶梯入场。 */
+
+/* ① 页头：12 模块色谱细线（与功能模块 tone 色相同源，点题多彩体系） */
+.jz-admin-glass .jz-overview-hero::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    #059669, #0d9488, #0891b2, #0284c7, #2563eb, #4f46e5,
+    #7c3aed, #b94a3b, #c0564e, #d97706, #ca8a04, #65a30d
+  );
+  opacity: 0.6;
+  pointer-events: none;
+}
+/* 运行时信息 Tag → 圆角玻璃胶囊（彩色语义 Tag 仅圆角，保留自身配色） */
+.jz-admin-glass .jz-overview-hero .ant-tag {
+  border-radius: 999px;
+  padding-inline: 10px;
+  line-height: 20px;
+}
+.jz-admin-glass .jz-overview-hero .ant-tag:not([class*='ant-tag-']) {
+  background: var(--glass-surface-strong, rgba(255, 255, 255, 0.45));
+  border-color: var(--glass-border);
+  color: var(--glass-text-muted);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* ② 统计小卡：顶部专属色 hairline（静止微透 → hover 满亮）+ 上浮 + 等宽数字 */
+.jz-admin-glass .jz-overview-stat {
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+.jz-admin-glass .jz-overview-stat::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--jz-ico-c, var(--jz-accent));
+  opacity: 0.38;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+.jz-admin-glass .jz-overview-stat:hover::before {
+  opacity: 0.95;
+}
+.jz-admin-glass .jz-overview-page .jz-overview-stat:hover {
+  transform: translateY(-1px);
+}
+.jz-admin-glass .jz-overview-stat .ant-statistic-content-value {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ③ 功能模块卡：hover 标题染专属色 + 图标背后浮现极淡环境光（静止不出现） */
+.jz-admin-glass .jz-overview-page .jz-feature-card-title {
+  transition: color 0.2s ease;
+}
+.jz-admin-glass .jz-overview-page .jz-feature-card:hover .jz-feature-card-title {
+  color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 78%, var(--glass-text));
+}
+.jz-admin-glass .jz-overview-page .jz-feature-card-icon {
+  position: relative;
+}
+.jz-admin-glass .jz-overview-page .jz-feature-card-icon::after {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 24%, transparent) 0%,
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.22s ease;
+  pointer-events: none;
+}
+.jz-admin-glass .jz-overview-page .jz-feature-card:hover .jz-feature-card-icon::after {
+  opacity: 1;
+}
+
+/* ④ 区块标题：小图标 + 满色 */
+.jz-admin-glass .jz-overview-page .jz-overview-section-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.jz-admin-glass .jz-overview-page .jz-overview-section-ico {
+  display: inline-flex;
+  align-items: center;
+  color: var(--jz-ico-c);
+}
+
+/* ⑤ 技术栈子卡：标题底边线染各自色系；标签胶囊 hover 微浮 */
+.jz-admin-glass .jz-overview-stack-card > .ant-card-head {
+  border-bottom-color: color-mix(in srgb, var(--jz-ico-c) 38%, var(--glass-border)) !important;
+}
+.jz-admin-glass .jz-stack-tag {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.jz-admin-glass .jz-stack-tag:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* ⑥ 阶梯入场：六个区块依次 fade-up */
+@keyframes jz-overview-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.jz-admin-glass .jz-overview-page > .ant-space > .ant-space-item {
+  animation: jz-overview-rise 0.4s ease both;
+}
+.jz-admin-glass .jz-overview-page > .ant-space > .ant-space-item:nth-child(2) { animation-delay: 50ms; }
+.jz-admin-glass .jz-overview-page > .ant-space > .ant-space-item:nth-child(3) { animation-delay: 100ms; }
+.jz-admin-glass .jz-overview-page > .ant-space > .ant-space-item:nth-child(4) { animation-delay: 150ms; }
+.jz-admin-glass .jz-overview-page > .ant-space > .ant-space-item:nth-child(5) { animation-delay: 200ms; }
+.jz-admin-glass .jz-overview-page > .ant-space > .ant-space-item:nth-child(6) { animation-delay: 250ms; }
+@media (prefers-reduced-motion: reduce) {
+  .jz-admin-glass .jz-overview-page > .ant-space > .ant-space-item {
+    animation: none;
+  }
+}
+
 /* ── 图标"活化包"：光与动（零新增颜色）──
    ① 悬停玻璃光泽扫过 ② 图标微跳（弹簧）③ 选中底座上缘玻璃棱线 */
 .jz-blog-glass .jz-nav-link-icon {

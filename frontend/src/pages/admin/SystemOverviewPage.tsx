@@ -23,8 +23,11 @@ import {
   JzFolderOpenIcon,
   JzGraphIcon,
   JzKbIcon,
+  JzModelIcon,
+  JzOverviewIcon,
   JzSearchIcon,
   JzTagIcon,
+  JzUsageIcon,
   JzUserGroupIcon,
 } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
@@ -286,6 +289,24 @@ const STATS: StatItem[] = [
 const SAVE_FLOW_DIAGRAM = saveFlowDiagram.trim();
 const SIMPLE_ARCH_DIAGRAM = simpleArchDiagram.trim();
 
+/** 区块标题：自制小图标 + 专属色，与卡内 tone 体系同语言 */
+function SectionTitle({
+  icon,
+  tone,
+  children,
+}: {
+  icon: React.ReactNode;
+  tone: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <span className="jz-overview-section-title">
+      <span className={`jz-overview-section-ico jz-ico-toned jz-ico-tone-${tone}`}>{icon}</span>
+      {children}
+    </span>
+  );
+}
+
 export default function SystemOverviewPage() {
   const { user } = useAuthStore();
   const [info, setInfo] = useState<SystemInfo | null>(null);
@@ -377,7 +398,11 @@ export default function SystemOverviewPage() {
         </Card>
 
         <Card
-          title="实时数据"
+          title={
+            <SectionTitle icon={<JzUsageIcon size={17} />} tone="dashboard">
+              实时数据
+            </SectionTitle>
+          }
           size="small"
           extra={
             <Text type="secondary" style={{ fontSize: 12 }}>
@@ -402,7 +427,14 @@ export default function SystemOverviewPage() {
           </Row>
         </Card>
 
-        <Card title="功能模块" size="small">
+        <Card
+          title={
+            <SectionTitle icon={<JzOverviewIcon size={17} />} tone="kb">
+              功能模块
+            </SectionTitle>
+          }
+          size="small"
+        >
           <Row gutter={[12, 12]}>
             {FEATURE_MODULES.map((m) => (
               <Col xs={24} sm={12} md={8} lg={6} key={m.title}>
@@ -419,12 +451,20 @@ export default function SystemOverviewPage() {
           </Row>
         </Card>
 
-        <Card title="技术栈" size="small">
+        <Card
+          title={
+            <SectionTitle icon={<JzModelIcon size={17} />} tone="ai">
+              技术栈
+            </SectionTitle>
+          }
+          size="small"
+        >
           <Row gutter={[16, 16]}>
             {STACK.map((layer) => (
               <Col xs={24} md={8} key={layer.title}>
                 <Card
                   size="small"
+                  className={`jz-overview-stack-card jz-ico-tone-${layer.tone}`}
                   title={
                     <Space size={6}>
                       <span className={`jz-stack-head-icon jz-ico-toned jz-ico-tone-${layer.tone}`}>
@@ -457,7 +497,14 @@ export default function SystemOverviewPage() {
 
         <ArchitectureSection />
 
-        <Card title="自动保存请求时序" size="small">
+        <Card
+          title={
+            <SectionTitle icon={<JzClockIcon size={17} />} tone="version">
+              自动保存请求时序
+            </SectionTitle>
+          }
+          size="small"
+        >
           <Paragraph type="secondary">
             编辑器到 PostgreSQL 的完整链路。<code>expected_version</code> 冲突返回 409 并拉取最新；
             <code>transaction.on_commit</code> 确保 Celery 任务在提交后入队，客户端不必等待索引更新。
@@ -473,7 +520,11 @@ function ArchitectureSection() {
   const [mode, setMode] = useState<'simple' | 'detailed'>('simple');
   return (
     <Card
-      title="系统架构图"
+      title={
+        <SectionTitle icon={<JzArchitectureIcon size={17} />} tone="overview">
+          系统架构图
+        </SectionTitle>
+      }
       size="small"
       extra={
         <Radio.Group value={mode} onChange={(e) => setMode(e.target.value)} size="small">
