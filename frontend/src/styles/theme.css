@@ -3497,6 +3497,14 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-ico-tone-hero,      [data-theme='starry'] .jz-ico-tone-hero,      [data-theme='deepsea'] .jz-ico-tone-hero      { --jz-ico-c: #de8273; }
 [data-theme='dark'] .jz-ico-tone-profile,   [data-theme='starry'] .jz-ico-tone-profile,   [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #2dd4bf; }
 
+/* 主题环境光校准：starry 的银河是紫粉雾（紫藤会融进去）、
+   deepsea 的水光是青蓝系（冷色图标会沉底）——同色相再提亮一档跳出环境。 */
+[data-theme='starry'] .jz-ico-tone-ai { --jz-ico-c: #bfa9ff; }
+[data-theme='deepsea'] .jz-ico-tone-dashboard { --jz-ico-c: #45e2f5; }
+[data-theme='deepsea'] .jz-ico-tone-graph     { --jz-ico-c: #85b8ff; }
+[data-theme='deepsea'] .jz-ico-tone-users     { --jz-ico-c: #57cdff; }
+[data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #3fe0cb; }
+
 /* 博客顶栏 5 枚专属色（别名复用同一调色板；RSS 沿市场橙红惯例取朱砂） */
 .jz-ico-tone-archive { --jz-ico-c: #d97706; }  /* 赭金 */
 .jz-ico-tone-tags    { --jz-ico-c: #059669; }  /* 翡翠 */
@@ -3506,7 +3514,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-ico-tone-archive, [data-theme='starry'] .jz-ico-tone-archive, [data-theme='deepsea'] .jz-ico-tone-archive { --jz-ico-c: #e8b04b; }
 [data-theme='dark'] .jz-ico-tone-tags,    [data-theme='starry'] .jz-ico-tone-tags,    [data-theme='deepsea'] .jz-ico-tone-tags    { --jz-ico-c: #34d399; }
 [data-theme='dark'] .jz-ico-tone-rss,     [data-theme='starry'] .jz-ico-tone-rss,     [data-theme='deepsea'] .jz-ico-tone-rss     { --jz-ico-c: #de8273; }
-[data-theme='dark'] .jz-ico-tone-search,  [data-theme='starry'] .jz-ico-tone-search,  [data-theme='deepsea'] .jz-ico-tone-search  { --jz-ico-c: #22d3ee; }
+[data-theme='dark'] .jz-ico-tone-search,  [data-theme='starry'] .jz-ico-tone-search  { --jz-ico-c: #22d3ee; }
+[data-theme='deepsea'] .jz-ico-tone-search { --jz-ico-c: #45e2f5; }  /* 跳出水光 */
 [data-theme='dark'] .jz-ico-tone-login,   [data-theme='starry'] .jz-ico-tone-login,   [data-theme='deepsea'] .jz-ico-tone-login   { --jz-ico-c: #94a3b8; }
 
 /* 多彩三态：静止 = 专属色微降（78% 混次要灰）；hover/选中 = 专属色全亮，
