@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
+import { StarOutlined } from '@ant-design/icons';
 /* 自制 SF 分层系列（市场标准字形 + 单色双层渲染，2026-06-06 定稿） */
 import {
   JzAiIcon,
@@ -159,6 +160,14 @@ export default function AdminLayout() {
                 'graph',
               ),
               label: <Link to="/admin/graph">知识图谱</Link>,
+            },
+            {
+              key: 'favorites',
+              icon: menuIcon(
+                <StarOutlined style={{ fontSize: MENU_ICON_SIZE }} />,
+                'star',
+              ),
+              label: <Link to="/admin/favorites">收藏</Link>,
             },
             {
               key: 'exports',
