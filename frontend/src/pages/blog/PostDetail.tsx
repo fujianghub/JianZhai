@@ -801,37 +801,20 @@ export default function PostDetail() {
           />
 
           {adjacent && (adjacent.prev || adjacent.next) && (
-            <nav className="jz-post-nav" aria-label="前后文章导航" style={{ marginTop: 48 }}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: adjacent.prev && adjacent.next ? '1fr 1fr' : '1fr',
-                  gap: 16,
-                  borderTop: '1px solid var(--jz-border)',
-                  paddingTop: 24,
-                }}
-              >
+            <nav className="jz-post-nav" aria-label="前后文章导航">
+              <div className="jz-post-nav-grid">
                 {adjacent.prev && (
                   <Link
                     to={postHref(
                       adjacent.prev.slug,
                       kbSlug ?? post.knowledge_base.slug,
                     )}
-                    style={{ textDecoration: 'none' }}
+                    className="jz-post-nav-card jz-post-nav-card--prev"
                   >
-                    <div
-                      style={{
-                        padding: '12px 16px',
-                        border: '1px solid var(--jz-border)',
-                        borderRadius: 8,
-                        transition: 'border-color 0.15s, background 0.15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--jz-accent)')}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--jz-border)')}
-                    >
-                      <div style={{ fontSize: 11, color: 'var(--jz-text-muted)', marginBottom: 4 }}>← 上一篇</div>
-                      <div style={{ fontWeight: 500, color: 'var(--jz-text)', lineHeight: 1.4 }}>{adjacent.prev.title}</div>
-                    </div>
+                    <span className="jz-post-nav-dir">
+                      <span className="jz-post-nav-arrow">←</span> 上一篇
+                    </span>
+                    <span className="jz-post-nav-title">{adjacent.prev.title}</span>
                   </Link>
                 )}
                 {adjacent.next && (
@@ -840,22 +823,12 @@ export default function PostDetail() {
                       adjacent.next.slug,
                       kbSlug ?? post.knowledge_base.slug,
                     )}
-                    style={{ textDecoration: 'none', gridColumn: adjacent.prev ? 'auto' : '1 / -1' }}
+                    className="jz-post-nav-card jz-post-nav-card--next"
                   >
-                    <div
-                      style={{
-                        padding: '12px 16px',
-                        border: '1px solid var(--jz-border)',
-                        borderRadius: 8,
-                        textAlign: 'right',
-                        transition: 'border-color 0.15s, background 0.15s',
-                      }}
-                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--jz-accent)')}
-                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--jz-border)')}
-                    >
-                      <div style={{ fontSize: 11, color: 'var(--jz-text-muted)', marginBottom: 4 }}>下一篇 →</div>
-                      <div style={{ fontWeight: 500, color: 'var(--jz-text)', lineHeight: 1.4 }}>{adjacent.next.title}</div>
-                    </div>
+                    <span className="jz-post-nav-dir">
+                      下一篇 <span className="jz-post-nav-arrow">→</span>
+                    </span>
+                    <span className="jz-post-nav-title">{adjacent.next.title}</span>
                   </Link>
                 )}
               </div>

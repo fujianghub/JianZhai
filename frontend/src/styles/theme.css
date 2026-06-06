@@ -535,6 +535,14 @@ h4.jz-post-card-title.ant-typography {
 .jz-post-meta .jz-meta-icon {
   font-size: 12px;
   opacity: 0.7;
+  transition: opacity 140ms ease, color 140ms ease, transform 140ms ease;
+}
+/* Pill hover lights its icon up — tiny pop, colour follows the pill text. */
+.jz-meta-pill-kb:hover .jz-meta-icon,
+.jz-post-meta .jz-meta-tags:hover .jz-meta-icon,
+.jz-post-meta .jz-meta-date:hover .jz-meta-icon {
+  opacity: 1;
+  transform: scale(1.12);
 }
 .jz-post-meta .jz-meta-sep {
   display: inline-block;
@@ -766,6 +774,25 @@ a.jz-meta-full-edit-btn:hover .anticon {
   color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 85%, #fff);
 }
 
+/* Edit-button family — pressed feedback + keyboard focus ring. */
+.ant-btn.jz-edit-btn.ant-btn-background-ghost,
+.ant-btn.jz-meta-done-btn,
+a.jz-meta-full-edit-btn {
+  transition: transform 120ms ease, background-color 140ms ease, color 140ms ease,
+    border-color 140ms ease, box-shadow 160ms ease !important;
+}
+.ant-btn.jz-edit-btn.ant-btn-background-ghost:active,
+.ant-btn.jz-meta-done-btn:active,
+a.jz-meta-full-edit-btn:active {
+  transform: scale(0.97);
+}
+.ant-btn.jz-edit-btn.ant-btn-background-ghost:focus-visible,
+.ant-btn.jz-meta-done-btn:focus-visible,
+a.jz-meta-full-edit-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 55%, transparent);
+  outline-offset: 2px;
+}
+
 /* Card list still uses the legacy ``.jz-post-tag`` class on antd Tag.
    Keep a compatibility rule so KBPostsPage's flat list inherits the same
    look as the meta-bar chips. */
@@ -778,6 +805,84 @@ a.jz-meta-full-edit-btn:hover .anticon {
 [data-theme='deepsea'] .ant-tag.jz-post-tag {
   background: color-mix(in srgb, currentColor 22%, var(--jz-surface-2)) !important;
   border-color: color-mix(in srgb, currentColor 45%, transparent);
+}
+
+/* ── Prev / next post navigation — glass cards ──
+   Tier-c of the blog button language: glass surface + lift on hover +
+   springy arrow nudge. Accent follows the document's KB colour via
+   ``--jz-doc-accent`` (set inline on the article container). */
+.jz-post-nav {
+  margin-top: 48px;
+}
+.jz-post-nav-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  border-top: 1px solid var(--jz-border);
+  padding-top: 24px;
+}
+.jz-post-nav-grid:has(> :only-child) {
+  grid-template-columns: 1fr;
+}
+.jz-post-nav-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px 18px;
+  border-radius: var(--glass-radius, 14px);
+  border: 1px solid var(--glass-border, var(--jz-border));
+  background: var(--glass-surface, var(--jz-surface));
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: var(--glass-shadow-soft, 0 2px 10px rgba(0, 0, 0, 0.05));
+  text-decoration: none;
+  transition: transform 140ms ease, background-color 140ms ease,
+    border-color 140ms ease, box-shadow 160ms ease;
+}
+.jz-post-nav-card--next {
+  text-align: right;
+  align-items: flex-end;
+}
+.jz-post-nav-card:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 40%, var(--glass-border, var(--jz-border)));
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 6%, var(--glass-surface, var(--jz-surface)));
+  box-shadow: var(--glass-shadow-card, 0 8px 24px rgba(0, 0, 0, 0.08));
+  text-decoration: none;
+}
+.jz-post-nav-card:active {
+  transform: translateY(0) scale(0.99);
+}
+.jz-post-nav-card:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 55%, transparent);
+  outline-offset: 2px;
+}
+.jz-post-nav-dir {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+}
+.jz-post-nav-arrow {
+  display: inline-block;
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.jz-post-nav-card--prev:hover .jz-post-nav-arrow {
+  transform: translateX(-3px);
+}
+.jz-post-nav-card--next:hover .jz-post-nav-arrow {
+  transform: translateX(3px);
+}
+.jz-post-nav-title {
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--glass-text, var(--jz-text));
+  transition: color 140ms ease;
+}
+.jz-post-nav-card:hover .jz-post-nav-title {
+  color: var(--jz-doc-accent, var(--jz-accent));
 }
 
 /* ── Home page hero: classical Chinese epigraph ──
