@@ -3449,31 +3449,3 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-blog-glass .jz-nav-link-icon {
   color: color-mix(in srgb, var(--jz-accent) 35%, var(--jz-icon-stroke));
 }
-
-/* ── 双权重图标：选中/悬停 = 实心（形变层级，不加色）──
-   regular 与 fill 两层同位叠放，150ms 交叉淡入。 */
-.jz-blog-glass .jz-nav-link-icon {
-  display: inline-grid;
-  place-items: center;
-}
-.jz-blog-glass .jz-nav-link-icon > svg {
-  grid-area: 1 / 1;
-}
-.jz-blog-glass .jz-nav-link-icon .jz-ico-line {
-  opacity: 1;
-  transition: opacity 150ms ease;
-}
-.jz-blog-glass .jz-nav-link-icon .jz-ico-fill {
-  opacity: 0;
-  transition: opacity 150ms ease;
-}
-.jz-blog-glass .jz-nav-link:hover .jz-ico-line,
-.jz-blog-glass .jz-nav-link.active .jz-ico-line,
-.jz-blog-glass .jz-nav-search-btn:hover .jz-ico-line {
-  opacity: 0;
-}
-.jz-blog-glass .jz-nav-link:hover .jz-ico-fill,
-.jz-blog-glass .jz-nav-link.active .jz-ico-fill,
-.jz-blog-glass .jz-nav-search-btn:hover .jz-ico-fill {
-  opacity: 1;
-}
