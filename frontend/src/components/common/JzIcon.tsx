@@ -503,24 +503,18 @@ export function JzSearchIcon(p: IconProps) {
   );
 }
 
-/** 手卷卷轴 + 玉印 — 归档（古风定制样品，2026-06-06）
- *  左右轴杆带轴头、纸面浅染、两行手书、右下方寸玉印点睛。 */
+/** 手卷卷轴 — 归档（古风定制 v2：剪影优先，小尺寸可读）
+ *  粗轴杆×2 + 大块纸面（浅染）+ 一枚实心印。≤5 元素，最小特征 ≥2.5px。 */
 export function JzScrollArchiveIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      {/* 纸面浅染 */}
-      <path d="M6.9 6.1h10.2v11.8H6.9z" fill={ICON_FILL} stroke="none" />
-      {/* 左右轴杆 */}
-      <path d="M5.1 4.4v15.2" />
-      <path d="M18.9 4.4v15.2" />
-      {/* 轴头（上下出头） */}
-      <path d="M3.9 4.4h2.4M3.9 19.6h2.4M17.7 4.4h2.4M17.7 19.6h2.4" />
-      {/* 纸面上下缘 */}
-      <path d="M6.9 6.1h10.2M6.9 17.9h10.2" />
-      {/* 两行手书（次行短，呼吸感） */}
-      <path d="M9.3 9.8h5.4M9.3 12.4h3.4" />
-      {/* 方寸玉印 */}
-      <rect x="13.5" y="14.1" width="2.7" height="2.7" rx="0.6" fill={ICON_SPOT} stroke="none" opacity="0.85" />
+      {/* 纸面：描边 + 浅染（小尺寸下色块比线条易读） */}
+      <rect x="6.6" y="5.5" width="10.8" height="13" rx="1" fill={ICON_FILL} />
+      {/* 左右轴杆：加粗成体量 */}
+      <path d="M4.2 4.5v15" strokeWidth={2.2} />
+      <path d="M19.8 4.5v15" strokeWidth={2.2} />
+      {/* 印：放大的实心点睛 */}
+      <rect x="10.5" y="10.4" width="3.2" height="3.2" rx="0.7" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
 }
