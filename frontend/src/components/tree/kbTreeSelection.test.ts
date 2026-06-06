@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectVisibleSelection } from './KBTreeNav';
+import { collectVisibleSelection, pruneCascadedSelection } from './KBTreeNav';
 import type { KBTree, TreeDocument, TreeFolder } from '@/types';
 
 function doc(id: number, title: string, status: 'draft' | 'published'): TreeDocument {
@@ -55,5 +55,29 @@ describe('collectVisibleSelection', () => {
     const sel = collectVisibleSelection(tree, 'gamma', 'all');
     expect(sel.docIds).toEqual([3]);
     expect(sel.folderIds.sort()).toEqual([10, 11]);
+  });
+});
+
+describe('pruneCascadedSelection', () => {
+  it('勾中文件夹时剔除其下被级联勾选的文档与子文件夹', () => {
+    // 全选场景：folder 10 已勾 → doc 2、subfolder 11、doc 3 全部由级联覆盖
+    const pruned = pruneCascadedSelection(tree, {
+      docIds: [1, 2, 3],
+      folderIds: [10, 11],
+    });
+    expect(pruned.folderIds).toEqual([10]);
+    expect(pruned.docIds).toEqual([1]); // 根文档不受任何文件夹覆盖
+  });
+
+  it('只勾子文件夹时保留它，父级未勾不剪', () => {
+    const pruned = pruneCascadedSelection(tree, { docIds: [3], folderIds: [11] });
+    expect(pruned.folderIds).toEqual([11]);
+    expect(pruned.docIds).toEqual([]); // doc 3 在已勾的 11 里 → 剔除
+  });
+
+  it('无文件夹勾选时原样返回文档集', () => {
+    const pruned = pruneCascadedSelection(tree, { docIds: [1, 2], folderIds: [] });
+    expect(pruned.docIds.sort()).toEqual([1, 2]);
+    expect(pruned.folderIds).toEqual([]);
   });
 });

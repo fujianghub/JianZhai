@@ -48,7 +48,11 @@ import {
   UPLOAD_ACCEPT,
   type CollectedUploads,
 } from '@/utils/uploadBatch';
-import KBTreeNav, { collectVisibleSelection, type CheckedSelection } from '@/components/tree/KBTreeNav';
+import KBTreeNav, {
+  collectVisibleSelection,
+  pruneCascadedSelection,
+  type CheckedSelection,
+} from '@/components/tree/KBTreeNav';
 import ExportDialog from '@/components/common/ExportDialog';
 import type { DocSortMode, KBTree, KnowledgeBase, TreeDocument, TreeFolder } from '@/types';
 import type { Tag as ApiTag } from '@/api/tags';
@@ -275,9 +279,13 @@ export default function KBWorkspace() {
 
   async function handleBatchDelete() {
     try {
+      // 级联勾选会把已勾文件夹下的子文件夹/文档一起带进选择集，而后端删除
+      // 文件夹本身就级联整棵子树 —— 不剪枝会让后代请求 404（"No Folder
+      // matches the given query"）。只发「最顶层」的 id。
+      const effective = tree ? pruneCascadedSelection(tree, checked) : checked;
       await Promise.all([
-        ...checked.docIds.map((id) => docsApi.deleteDocument(id)),
-        ...checked.folderIds.map((id) => foldersApi.deleteFolder(id)),
+        ...effective.docIds.map((id) => docsApi.deleteDocument(id)),
+        ...effective.folderIds.map((id) => foldersApi.deleteFolder(id)),
       ]);
       message.success(`已删除 ${selectionCount} 项`);
       setChecked({ docIds: [], folderIds: [] });
@@ -290,11 +298,14 @@ export default function KBWorkspace() {
   async function handleBatchMove() {
     if (checked.docIds.length === 0 && checked.folderIds.length === 0) return;
     try {
+      // 同删除：已勾文件夹整体搬迁即可，其下被级联勾中的文档/子文件夹
+      // 不能单独改 parent —— 否则会被平移出原文件夹、拍扁目录结构。
+      const effective = tree ? pruneCascadedSelection(tree, checked) : checked;
       await Promise.all([
-        ...checked.docIds.map((id) =>
+        ...effective.docIds.map((id) =>
           docsApi.updateDocument(id, { folder: moveTarget ?? null })
         ),
-        ...checked.folderIds.map((id) =>
+        ...effective.folderIds.map((id) =>
           foldersApi.updateFolder(id, { parent: moveTarget ?? null })
         ),
       ]);

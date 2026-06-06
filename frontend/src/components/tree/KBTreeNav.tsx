@@ -89,6 +89,41 @@ export function collectVisibleSelection(
   return { docIds, folderIds };
 }
 
+/**
+ * 把级联勾选出来的选择集剪成「最顶层」集合：祖先文件夹已勾选的后代
+ * （子文件夹/文档）全部剔除。
+ *
+ * AntD Tree 默认 checkStrictly=false，勾文件夹会连带勾中其下所有节点；
+ * 而后端 Folder.soft_delete() 本身就级联删除子树 —— 若把整套 id 并行发给
+ * 删除接口，父文件夹先落地后，后代的请求会 404（"No Folder matches the
+ * given query"）。批量移动同理：后代不剪枝会被平移出父级、拍扁结构。
+ */
+export function pruneCascadedSelection(
+  tree: KBTree,
+  checked: CheckedSelection
+): CheckedSelection {
+  const folderSet = new Set(checked.folderIds);
+  const docSet = new Set(checked.docIds);
+  const folderIds: number[] = [];
+  const docIds: number[] = [];
+  const walk = (folders: TreeFolder[], underChecked: boolean) => {
+    for (const f of folders) {
+      const isChecked = folderSet.has(f.id);
+      if (isChecked && !underChecked) folderIds.push(f.id);
+      const covered = underChecked || isChecked;
+      for (const d of f.documents) {
+        if (docSet.has(d.id) && !covered) docIds.push(d.id);
+      }
+      walk(f.children, covered);
+    }
+  };
+  walk(tree.folders, false);
+  for (const d of tree.documents) {
+    if (docSet.has(d.id)) docIds.push(d.id);
+  }
+  return { docIds, folderIds };
+}
+
 function collectFolderKeys(folders: TreeFolder[]): React.Key[] {
   const keys: React.Key[] = [];
   function walk(list: TreeFolder[]) {
