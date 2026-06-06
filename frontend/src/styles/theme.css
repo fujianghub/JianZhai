@@ -1318,16 +1318,19 @@ a.jz-meta-full-edit-btn:focus-visible {
   position: relative;
   overflow: hidden;
 }
-/* 2026-06-06 用户反馈：撤掉整行"长圆角条"高亮——状态表达收进
-   每枚图标自己的圆角方块（与首页顶栏同一语言），行上只变文字色。 */
 .jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item:hover {
-  background: transparent !important;
+  background: var(--glass-surface-strong) !important;
   color: var(--glass-text) !important;
 }
 .jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item-selected {
-  background: transparent !important;
+  background: linear-gradient(135deg,
+              rgba(16, 185, 129, 0.18) 0%,
+              rgba(16, 185, 129, 0.06) 100%) !important;
   color: var(--jz-accent) !important;
   font-weight: 600;
+  box-shadow:
+    0 4px 14px rgba(16, 185, 129, 0.15),
+    0 0 0 1px rgba(16, 185, 129, 0.25) inset;
 }
 .jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item-selected::after {
   border-right-color: transparent !important;
@@ -1348,7 +1351,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 50%;  /* 2026-06-06 用户要求：正圆底座 */
   border: 1px solid var(--glass-border);
   background: color-mix(in srgb, var(--glass-surface-strong) 90%, transparent);
   box-shadow: var(--glass-shadow-soft);
