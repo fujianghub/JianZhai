@@ -3447,5 +3447,5 @@ a.jz-meta-full-edit-btn:focus-visible {
    hover / 选中仍由既有规则升到全翡翠，形成淡→浓的状态过渡。 */
 .jz-admin-glass .jz-menu-icon-slot,
 .jz-blog-glass .jz-nav-link-icon {
-  color: color-mix(in srgb, var(--jz-accent) 28%, var(--jz-icon-stroke));
+  color: color-mix(in srgb, var(--jz-accent) 35%, var(--jz-icon-stroke));
 }
