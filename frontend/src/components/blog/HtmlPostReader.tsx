@@ -210,9 +210,20 @@ function HtmlPostReader({
   const [cspFallback, setCspFallback] = useState(false);
 
   const useDirectSrc = !!attachmentUrl;
-  /** Cross-origin attachment? Same-origin policy prevents reading scrollHeight,
-   *  so don't even attempt — and don't arm the fallback warning. */
-  const crossOrigin = useDirectSrc && isCrossOrigin(attachmentUrl);
+  /** src-mode iframes are sandboxed WITHOUT ``allow-same-origin`` (see the
+   *  sandbox attribute below), so the document is always an opaque origin to
+   *  us — scrollHeight/headings are unreadable regardless of the URL's actual
+   *  origin. Route every src embed through the cross-origin presentation path
+   *  (viewport-default height + internal scrolling, no warning).
+   *
+   *  Security: author-uploaded HTML runs scripts. In production /media/ is
+   *  same-origin with the SPA and the API; with ``allow-same-origin`` a
+   *  malicious document could read the CSRF cookie and fire authenticated
+   *  API calls as whoever is reading it — stored XSS, in effect. The sandbox
+   *  opaque origin severs that. (``isCrossOrigin`` is kept for potential
+   *  future use where the distinction matters again.) */
+  const crossOrigin = useDirectSrc;
+  void isCrossOrigin;
   const srcDoc = useMemo(
     () => (useDirectSrc ? '' : injectHtmlReaderBootstrap(html)),
     [html, useDirectSrc],
@@ -446,7 +457,12 @@ function HtmlPostReader({
           ref={setRef}
           title={title || 'HTML 文档'}
           src={attachmentUrl}
-          sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+          // NO ``allow-same-origin``: combined with ``allow-scripts`` it would
+          // let author HTML escape the sandbox entirely and (in production,
+          // where /media/ shares the SPA/API origin) read the CSRF cookie and
+          // act as the logged-in viewer. Opaque origin keeps author JS running
+          // but walled off from cookies, storage, and the parent page.
+          sandbox="allow-scripts allow-popups allow-forms"
           scrolling={innerScrolling}
           onLoad={handleSameOriginLoad}
           // ``loading="lazy"`` defers the fetch + parse until the iframe is

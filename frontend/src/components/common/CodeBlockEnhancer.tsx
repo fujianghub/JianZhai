@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { renderMermaid } from '@/utils/mermaid';
+import { sanitizeHtml } from '@/utils/markdown';
 import { fetchPlantumlSvg } from '@/utils/plantuml';
 import {
   attachCodeCopyHandler,
@@ -123,7 +124,10 @@ async function hydrateMermaid(block: HTMLElement) {
   }
   try {
     const svg = await renderMermaid(source);
-    canvas.innerHTML = svg;
+    // Mermaid's securityLevel:'strict' already sanitizes, but that guarantee
+    // lives in a config far from this injection point — re-sanitize here so a
+    // future config change can't silently reopen an innerHTML XSS.
+    canvas.innerHTML = sanitizeHtml(svg);
   } catch (err) {
     const msg = (err as Error)?.message ?? '渲染失败';
     canvas.innerHTML =
@@ -146,7 +150,10 @@ async function hydratePlantuml(block: HTMLElement) {
   }
   try {
     const svg = await fetchPlantumlSvg(source);
-    canvas.innerHTML = svg;
+    // The SVG comes from an external PlantUML server — if that server (or the
+    // VITE_PLANTUML_BASE_URL override) is ever compromised, raw innerHTML
+    // would execute its scripts in our origin. Sanitize before injecting.
+    canvas.innerHTML = sanitizeHtml(svg);
   } catch (err) {
     const msg = (err as Error)?.message ?? '渲染失败';
     canvas.innerHTML =

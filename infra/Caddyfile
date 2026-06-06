@@ -49,6 +49,12 @@ fujiang.jianzhai.cn {
     # User-uploaded media (avatars, attachments, etc).  Same backend
     # serves these via Django's ``static`` URL helper.
     handle /media/* {
+        # Uploaded SVGs can embed <script>; opened as a top-level document
+        # they would execute in the site origin (stored XSS — nosniff does
+        # NOT stop a correctly-typed SVG). CSP sandbox neuters scripts in
+        # that case while <img src="...svg"> rendering is unaffected.
+        @svg path *.svg
+        header @svg Content-Security-Policy "sandbox"
         reverse_proxy backend:8002
     }
 
@@ -71,7 +77,9 @@ fujiang.jianzhai.cn {
         Referrer-Policy "strict-origin-when-cross-origin"
         # Permissions-Policy explicitly disables features we don't use.
         Permissions-Policy "geolocation=(), camera=(), microphone=()"
-        # HSTS — only enable after you've confirmed Let's Encrypt works.
+        # HSTS is sent by Django (settings.py enables SECURE_HSTS_SECONDS
+        # whenever the public origin is https), so it's not duplicated here.
+        # If you ever serve static files without proxying Django, uncomment:
         # Strict-Transport-Security "max-age=31536000; includeSubDomains"
         -Server
     }
