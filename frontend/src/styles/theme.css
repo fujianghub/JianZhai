@@ -4013,3 +4013,19 @@ a.jz-meta-full-edit-btn:focus-visible {
   caret-color: var(--glass-text);
   transition: background-color 9999s ease-in-out 0s;
 }
+
+/* ============ ColorPicker 弹层防截断（知识库/大类标题色等） ============ */
+/* AntD ColorPicker 弹层只会上下翻转，面板（取色区 + 滑条 + 预设）约 360px，
+ * 低矮视口（如 1366×768 笔记本）上下两侧都放不下时会被屏幕截断且无法滚动。
+ * 上限设为半屏：翻转后必有一侧容得下；内容超出时面板内部滚动兜底。 */
+.ant-popover.ant-color-picker .ant-popover-inner {
+  max-height: calc(50vh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+/* 低矮视口再压缩取色渐变区（默认 min-height 160px），尽量免去内部滚动 */
+@media (max-height: 820px) {
+  .ant-popover.ant-color-picker .ant-color-picker-select .ant-color-picker-palette {
+    min-height: 112px;
+  }
+}

@@ -37,6 +37,10 @@ interface Props {
  * palette, while keeping the bound form value a plain hex string (AntD's
  * ColorPicker otherwise hands back a Color object). Drop-in for `<Input />`
  * inside a `<Form.Item name="accent_color">`.
+ *
+ * `disabledAlpha`: accent colors are stored as 6-digit hex, and dropping the
+ * alpha slider keeps the popup panel short enough to fit low viewports
+ * (theme.css additionally caps the popup at half the viewport height).
  */
 export default function ColorField({ value, onChange }: Props) {
   return (
@@ -47,6 +51,7 @@ export default function ColorField({ value, onChange }: Props) {
       format="hex"
       showText
       allowClear
+      disabledAlpha
     />
   );
 }
