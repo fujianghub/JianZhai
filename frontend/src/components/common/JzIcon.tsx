@@ -8,6 +8,34 @@
  * 图形：24×24，stroke 1.5，每图标 ≤1 浅填色 + ≤1 点缀。
  */
 import type { CSSProperties, SVGProps } from 'react';
+import {
+  JzAiIcon,
+  JzArchitectureIcon,
+  JzArchiveBoxIcon,
+  JzDashboardIcon,
+  JzExportIcon,
+  JzGraphIcon,
+  JzKbIcon,
+  JzProfileIcon,
+  JzTagIcon,
+  JzTrashIcon,
+  JzUserGroupIcon,
+} from './JzIconKit';
+
+/* 用户自选设计稿系列（/icon）经 JzIconKit 接入，这里转一手保持旧引用路径 */
+export {
+  JzAiIcon,
+  JzArchitectureIcon,
+  JzArchiveBoxIcon,
+  JzDashboardIcon,
+  JzExportIcon,
+  JzGraphIcon,
+  JzKbIcon,
+  JzProfileIcon,
+  JzTagIcon,
+  JzTrashIcon,
+  JzUserGroupIcon,
+};
 
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number | string;
@@ -58,66 +86,10 @@ function Wrap({
 
 /* ═══════════════ 后台菜单 ═══════════════ */
 
-/** 线装书 — 知识库 */
-export function JzKbIcon(p: IconProps) {
-  /* 竖排书堆（SF 分层）：两本立书 + 一本斜倚，中册实心为焦点 */
-  return (
-    <Wrap {...p}>
-      <rect x="4" y="4.5" width="4.2" height="15" rx="1" fill="currentColor" fillOpacity={0.28} />
-      <rect x="9.7" y="4.5" width="4.2" height="15" rx="1" fill="currentColor" stroke="none" />
-      <path d="M15 6.3l3.8-1 3.4 13-3.8 1z" fill="currentColor" fillOpacity={0.28} />
-    </Wrap>
-  );
-}
 
-/** 节点网络 — 知识图谱 */
-export function JzGraphIcon(p: IconProps) {
-  /* 节点网 v2（SF 分层）：边止于节点边缘留呼吸，枢纽次层填充 + 四实心卫星 */
-  return (
-    <Wrap {...p}>
-      <path d="M9.9 10 7.8 8.2M14.1 10l2.2-2.2M10 14.1 8.2 16M14.5 13.4l1.5.9" />
-      <circle cx="12" cy="12" r="2.9" fill="currentColor" fillOpacity={0.28} />
-      <circle cx="6.2" cy="6.7" r="2" fill="currentColor" stroke="none" />
-      <circle cx="17.9" cy="6.3" r="2" fill="currentColor" stroke="none" />
-      <circle cx="6.7" cy="17.6" r="2" fill="currentColor" stroke="none" />
-      <circle cx="17.5" cy="15.1" r="1.5" fill="currentColor" stroke="none" />
-    </Wrap>
-  );
-}
 
-/** 文档导出 */
-export function JzExportIcon(p: IconProps) {
-  /* 托盘上箭头（SF square.and.arrow.up 形，分层）：托盘次层填充 + 粗箭头 */
-  return (
-    <Wrap {...p}>
-      <rect x="4.2" y="10.6" width="15.6" height="9" rx="1.8" fill="currentColor" fillOpacity={0.28} />
-      <path d="M12 15V4.2" strokeWidth={2} />
-      <path d="M8.6 7.4 12 4l3.4 3.4" strokeWidth={2} />
-    </Wrap>
-  );
-}
 
-/** AI 助手 */
-export function JzAiIcon(p: IconProps) {
-  /* 星芒 v2（市场 AI 通用形，SF 分层）：收紧凹弧让四角更尖；
-     主星次层填充居中偏左下，小星实心落右上空位。 */
-  return (
-    <Wrap {...p}>
-      <path
-        d="M11.2 4.6c.4 3.7 3 6.3 6.7 6.7-3.7.4-6.3 3-6.7 6.7-.4-3.7-3-6.3-6.7-6.7 3.7-.4 6.3-3 6.7-6.7Z"
-        fill="currentColor"
-        fillOpacity={0.28}
-      />
-      <path
-        d="M18.6 13.9c.25 1.55 1.25 2.55 2.8 2.8-1.55.25-2.55 1.25-2.8 2.8-.25-1.55-1.25-2.55-2.8-2.8 1.55-.25 2.55-1.25 2.8-2.8Z"
-        fill="currentColor"
-        stroke="none"
-      />
-    </Wrap>
-  );
-}
 
-/** 工具栏 AI 图标（更克制的圆角方 + sparkle）。 */
 
 /* ═══════════════ AI 助手操作菜单 ═══════════════ */
 
@@ -447,18 +419,6 @@ export function JzAiSparkIcon(p: IconProps) {
 /** 用户 */
 
 /** 架构总览 */
-export function JzArchitectureIcon(p: IconProps) {
-  /* 层级组织图 v2（SF 分层）：节点收一圈留白，连接线圆角肘弯 */
-  return (
-    <Wrap {...p}>
-      <rect x="8.8" y="3.6" width="6.4" height="4.8" rx="1.4" fill="currentColor" stroke="none" />
-      <path d="M12 8.4V13" />
-      <path d="M7 15.4v-.9a1.5 1.5 0 0 1 1.5-1.5h7a1.5 1.5 0 0 1 1.5 1.5v.9" />
-      <rect x="3.8" y="15.4" width="6.4" height="4.8" rx="1.4" fill="currentColor" fillOpacity={0.28} />
-      <rect x="13.8" y="15.4" width="6.4" height="4.8" rx="1.4" fill="currentColor" fillOpacity={0.28} />
-    </Wrap>
-  );
-}
 
 /** 查看博客 */
 export function JzBlogIcon(p: IconProps) {
@@ -512,19 +472,6 @@ export function JzSearchIcon(p: IconProps) {
    准则：≤5 元素、剪影优先、最小特征 ≥2.5px、几何圆润留白大。 */
 const HIER_OPACITY = 0.28;
 
-/** 标签 — 斜角签牌（SF 分层：签身次层填充 + 实心签孔） */
-export function JzTagIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <path
-        d="M4 5.6A1.6 1.6 0 0 1 5.6 4h5.5a2 2 0 0 1 1.4.6l6.9 6.9a2 2 0 0 1 0 2.8l-5.5 5.5a2 2 0 0 1-2.8 0L4.6 13a2 2 0 0 1-.6-1.4z"
-        fill="currentColor"
-        fillOpacity={0.28}
-      />
-      <circle cx="8.7" cy="8.7" r="1.5" fill="currentColor" stroke="none" />
-    </Wrap>
-  );
-}
 
 /** RSS — 同心波（SF 分层：信号扇面次层填充 + 实心源点） */
 export function JzRssIcon(p: IconProps) {
@@ -557,55 +504,9 @@ export function JzUserIcon(p: IconProps) {
   );
 }
 
-/** 工作台 — 四宫格（市场标准 dashboard 形）：首格实心为焦点 */
-export function JzDashboardIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <rect x="4" y="4" width="7" height="7" rx="1.6" fill="currentColor" stroke="none" />
-      <rect x="13" y="4" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity={0.28} />
-      <rect x="4" y="13" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity={0.28} />
-      <rect x="13" y="13" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity={0.28} />
-    </Wrap>
-  );
-}
 
-/** 回收站 — 垃圾桶（市场标准 trash 形）：桶身次层填充 + 粗桶沿 */
-export function JzTrashIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <path d="M9.6 7V5.6A1.6 1.6 0 0 1 11.2 4h1.6a1.6 1.6 0 0 1 1.6 1.6V7" />
-      <path d="M4.8 7.2h14.4" strokeWidth={2} />
-      <path
-        d="M6.4 7.2l.8 10.9a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9l.8-10.9z"
-        fill="currentColor"
-        fillOpacity={0.28}
-      />
-    </Wrap>
-  );
-}
 
-/** 用户组 — 双人形（市场标准 users 形）：前者双层填充，后者描边示意 */
-export function JzUserGroupIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <circle cx="9.2" cy="8.8" r="3.2" fill="currentColor" fillOpacity={0.28} />
-      <path d="M3.4 19.6a6.1 6.1 0 0 1 11.6 0z" fill="currentColor" fillOpacity={0.28} />
-      <circle cx="16.8" cy="9.6" r="2.5" />
-      <path d="M16.6 14.9a5.2 5.2 0 0 1 4.2 4.6" />
-    </Wrap>
-  );
-}
 
-/** 个人资料 — 圆环人形（市场标准 person.circle 形） */
-export function JzProfileIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <circle cx="12" cy="12" r="8.4" />
-      <circle cx="12" cy="9.7" r="2.7" fill="currentColor" fillOpacity={0.28} />
-      <path d="M6.9 18.1a6.6 6.6 0 0 1 10.2 0" />
-    </Wrap>
-  );
-}
 
 /** 单册书 — 文章所属知识库（meta 行小尺寸用）：书皮填充 + 粗书脊 */
 export function JzBookIcon(p: IconProps) {
@@ -692,26 +593,6 @@ export function JzMenuIcon(p: IconProps) {
   );
 }
 
-/** 归档箱 — 归档（SF 分层 v4，市场标准 archivebox 形） */
-export function JzArchiveBoxIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      {/* 次层：箱体填充 */}
-      <path
-        d="M5.2 9h13.6v8.2a1.8 1.8 0 0 1-1.8 1.8H7a1.8 1.8 0 0 1-1.8-1.8z"
-        fill="currentColor"
-        opacity={HIER_OPACITY}
-        stroke="none"
-      />
-      {/* 主层：箱盖 */}
-      <rect x="3.6" y="4.6" width="16.8" height="4.4" rx="1.1" />
-      {/* 主层：箱体轮廓 */}
-      <path d="M5.2 9v8.2A1.8 1.8 0 0 0 7 19h10a1.8 1.8 0 0 0 1.8-1.8V9" />
-      {/* 主层：提手槽 */}
-      <path d="M10 12.7h4" strokeWidth={2} />
-    </Wrap>
-  );
-}
 
 /* ═══════════════ AI 管理 Tab ═══════════════ */
 
