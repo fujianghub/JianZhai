@@ -23,23 +23,15 @@ function BlogNavItem({
   label,
   icon,
   external,
-  tone,
 }: {
   to: string;
   label: string;
   icon: ReactNode;
   external?: boolean;
-  tone?: string;
 }) {
   const inner = (
     <>
-      <span
-        className={
-          'jz-nav-link-icon' +
-          (tone ? ` jz-chip-toned jz-chip-tone-${tone}` : '')
-        }
-        aria-hidden
-      >
+      <span className="jz-nav-link-icon" aria-hidden>
         {icon}
       </span>
       <span className="jz-nav-link-label">{label}</span>
@@ -126,19 +118,16 @@ export default function BlogLayout() {
             to="/archive"
             label="归档"
             icon={<Archive weight="regular" size={NAV_ICON_SIZE} />}
-            tone="jade"
           />
           <BlogNavItem
             to="/tags"
             label="标签"
             icon={<Tag weight="regular" size={NAV_ICON_SIZE} />}
-            tone="jade"
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
             icon={<RssSimple weight="regular" size={NAV_ICON_SIZE} />}
-            tone="jade"
             external
           />
           <Tooltip title="搜索 (Ctrl+K)">
@@ -146,10 +135,7 @@ export default function BlogLayout() {
               type="text"
               className="jz-nav-search-btn"
               icon={
-                <span
-                  className="jz-nav-link-icon jz-chip-toned jz-chip-tone-jade"
-                  aria-hidden
-                >
+                <span className="jz-nav-link-icon" aria-hidden>
                   <MagnifyingGlass weight="regular" size={NAV_ICON_SIZE} />
                 </span>
               }

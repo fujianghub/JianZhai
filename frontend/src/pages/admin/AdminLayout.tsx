@@ -28,16 +28,8 @@ const { Header, Sider, Content } = Layout;
 
 const MENU_ICON_SIZE = 20;
 
-function menuIcon(node: ReactNode, tone?: string) {
-  return (
-    <span
-      className={
-        'jz-menu-icon-slot' + (tone ? ` jz-chip-toned jz-chip-tone-${tone}` : '')
-      }
-    >
-      {node}
-    </span>
-  );
+function menuIcon(node: ReactNode) {
+  return <span className="jz-menu-icon-slot">{node}</span>;
 }
 
 export default function AdminLayout() {
@@ -139,7 +131,6 @@ export default function AdminLayout() {
               key: 'dashboard',
               icon: menuIcon(
                 <SquaresFour weight="regular" size={MENU_ICON_SIZE} />,
-                'jade',
               ),
               label: <Link to="/admin">工作台</Link>,
             },
@@ -147,7 +138,6 @@ export default function AdminLayout() {
               key: 'kbs',
               icon: menuIcon(
                 <Books weight="regular" size={MENU_ICON_SIZE} />,
-                'jade',
               ),
               label: <Link to="/admin/kbs">知识库</Link>,
             },
@@ -155,7 +145,6 @@ export default function AdminLayout() {
               key: 'graph',
               icon: menuIcon(
                 <Graph weight="regular" size={MENU_ICON_SIZE} />,
-                'jade',
               ),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
@@ -163,7 +152,6 @@ export default function AdminLayout() {
               key: 'exports',
               icon: menuIcon(
                 <Export weight="regular" size={MENU_ICON_SIZE} />,
-                'jade',
               ),
               label: <Link to="/admin/exports">导出</Link>,
             },
@@ -171,7 +159,6 @@ export default function AdminLayout() {
               key: 'trash',
               icon: menuIcon(
                 <Trash weight="regular" size={MENU_ICON_SIZE} />,
-                'jade',
               ),
               label: <Link to="/admin/trash">回收站</Link>,
             },
@@ -179,7 +166,6 @@ export default function AdminLayout() {
               key: 'ai',
               icon: menuIcon(
                 <Robot weight="regular" size={MENU_ICON_SIZE} />,
-                'jade',
               ),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
@@ -188,7 +174,6 @@ export default function AdminLayout() {
                   key: 'users',
                   icon: menuIcon(
                     <UsersThree weight="regular" size={MENU_ICON_SIZE} />,
-                    'jade',
                   ),
                   label: <Link to="/admin/users">用户管理</Link>,
                 }]
@@ -199,7 +184,6 @@ export default function AdminLayout() {
                     key: 'overview',
                     icon: menuIcon(
                       <TreeStructure weight="regular" size={MENU_ICON_SIZE} />,
-                      'jade',
                     ),
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
@@ -214,7 +198,6 @@ export default function AdminLayout() {
                   key: 'hero',
                   icon: menuIcon(
                     <Quotes weight="regular" size={MENU_ICON_SIZE} />,
-                    'jade',
                   ),
                   label: <Link to="/admin/hero">题记</Link>,
                 }]
@@ -223,7 +206,6 @@ export default function AdminLayout() {
               key: 'profile',
               icon: menuIcon(
                 <UserCircle weight="regular" size={MENU_ICON_SIZE} />,
-                'jade',
               ),
               label: <Link to="/admin/profile">个人资料</Link>,
             },
