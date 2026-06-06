@@ -6,10 +6,10 @@ import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
-  JzArchiveBoxIcon,
+  JzArchiveIcon,
   JzRssIcon,
   JzSearchIcon,
-  JzTagIcon,
+  JzTagsIcon,
   JzUserIcon,
 } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
@@ -124,14 +124,12 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<JzArchiveBoxIcon size={NAV_ICON_SIZE} />}
-            tone="archive"
+            icon={<JzArchiveIcon size={NAV_ICON_SIZE} />}
           />
           <BlogNavItem
             to="/tags"
             label="标签"
-            icon={<JzTagIcon size={NAV_ICON_SIZE} />}
-            tone="tags"
+            icon={<JzTagsIcon size={NAV_ICON_SIZE} />}
           />
           <BlogNavItem
             to="/feed.xml"

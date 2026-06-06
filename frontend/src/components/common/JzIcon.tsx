@@ -465,6 +465,18 @@ export function JzSearchIcon(p: IconProps) {
   );
 }
 
+/** 归档 — 最初版（v0.9）：实底盖板 + 浅染箱体 + 文档线，颜色走主题变量 */
+export function JzArchiveIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <rect x="4" y="4" width="16" height="4.5" rx="0.8" fill={ICON_FILL_STRONG} stroke="none" />
+      <rect x="5" y="9.5" width="14" height="10" rx="0.8" fill={ICON_FILL} />
+      <rect x="5" y="9.5" width="14" height="10" rx="0.8" />
+      <path d="M8.5 13h7M8.5 16h4.5" strokeLinecap="round" />
+    </Wrap>
+  );
+}
+
 /* ── SF Symbols 分层渲染系列（2026-06-06 定稿基准）──
    单色双层：主层 = currentColor 全色（描边/实心点睛），
    次层 = currentColor 透明填充（HIER_OPACITY）。
