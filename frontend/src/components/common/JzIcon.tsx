@@ -503,18 +503,24 @@ export function JzSearchIcon(p: IconProps) {
   );
 }
 
-/** 手卷卷轴 — 归档（古风定制 v2：剪影优先，小尺寸可读）
- *  粗轴杆×2 + 大块纸面（浅染）+ 一枚实心印。≤5 元素，最小特征 ≥2.5px。 */
+/* ── SF Symbols 分层渲染系列（2026-06-06 定稿基准）──
+   单色双层：主层 = currentColor 全色（描边/实心点睛），
+   次层 = currentColor 透明填充（HIER_OPACITY）。
+   次层随槽位状态梯度（35%→70%→100%）自动同步明暗。
+   准则：≤5 元素、剪影优先、最小特征 ≥2.5px、几何圆润留白大。 */
+const HIER_OPACITY = 0.28;
+
+/** 手卷卷轴 — 归档（SF 分层 v3） */
 export function JzScrollArchiveIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      {/* 纸面：描边 + 浅染（小尺寸下色块比线条易读） */}
-      <rect x="6.6" y="5.5" width="10.8" height="13" rx="1" fill={ICON_FILL} />
-      {/* 左右轴杆：加粗成体量 */}
+      {/* 次层：纸面（同色透明填充，无描边） */}
+      <rect x="6.7" y="5.6" width="10.6" height="12.8" rx="1.6" fill="currentColor" opacity={HIER_OPACITY} stroke="none" />
+      {/* 主层：左右轴杆 */}
       <path d="M4.2 4.5v15" strokeWidth={2.2} />
       <path d="M19.8 4.5v15" strokeWidth={2.2} />
-      {/* 印：放大的实心点睛 */}
-      <rect x="10.5" y="10.4" width="3.2" height="3.2" rx="0.7" fill={ICON_SPOT} stroke="none" />
+      {/* 主层：实心印 */}
+      <rect x="10.4" y="10.2" width="3.2" height="3.4" rx="0.8" fill="currentColor" stroke="none" />
     </Wrap>
   );
 }
