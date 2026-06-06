@@ -60,63 +60,58 @@ function Wrap({
 
 /** 线装书 — 知识库 */
 export function JzKbIcon(p: IconProps) {
+  /* 竖排书堆（SF 分层）：两本立书 + 一本斜倚，中册实心为焦点 */
   return (
     <Wrap {...p}>
-      <path
-        d="M5 4h13a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z"
-        fill={ICON_FILL}
-      />
-      <path d="M5 4h13a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" />
-      <path d="M8 5v14" />
-      <circle cx="8" cy="9" r="0.75" fill={ICON_SPOT} stroke="none" />
-      <circle cx="8" cy="12" r="0.75" fill={ICON_SPOT} stroke="none" />
-      <circle cx="8" cy="15" r="0.75" fill={ICON_SPOT} stroke="none" />
-      <line x1="11" y1="9" x2="15" y2="9" opacity="0.55" />
-      <line x1="11" y1="12" x2="14" y2="12" opacity="0.4" />
+      <rect x="4" y="4.5" width="4.2" height="15" rx="1" fill="currentColor" fillOpacity={0.28} />
+      <rect x="9.7" y="4.5" width="4.2" height="15" rx="1" fill="currentColor" stroke="none" />
+      <path d="M15 6.3l3.8-1 3.4 13-3.8 1z" fill="currentColor" fillOpacity={0.28} />
     </Wrap>
   );
 }
 
 /** 节点网络 — 知识图谱 */
 export function JzGraphIcon(p: IconProps) {
+  /* 节点网（SF 分层）：中心枢纽次层填充，四枚实心卫星节点 */
   return (
     <Wrap {...p}>
-      <circle cx="6.5" cy="7.5" r="2" />
-      <circle cx="17.5" cy="7.5" r="2" />
-      <circle cx="12" cy="17.5" r="2" />
-      <line x1="8" y1="8.5" x2="11" y2="11.5" />
-      <line x1="16" y1="8.5" x2="13" y2="11.5" />
-      <line x1="12" y1="13" x2="12" y2="15.5" />
-      <circle cx="12" cy="12" r="2.2" fill={ICON_FILL_STRONG} stroke="none" />
-      <circle cx="12" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
+      <path d="M12 12 6.4 6.8M12 12l5.6-5.4M12 12l-5.4 5.4M12 12l5.6 5.2" />
+      <circle cx="12" cy="12" r="2.7" fill="currentColor" fillOpacity={0.28} />
+      <circle cx="6.4" cy="6.8" r="1.8" fill="currentColor" stroke="none" />
+      <circle cx="17.6" cy="6.6" r="1.8" fill="currentColor" stroke="none" />
+      <circle cx="6.6" cy="17.4" r="1.8" fill="currentColor" stroke="none" />
+      <circle cx="17.6" cy="17.2" r="1.8" fill="currentColor" stroke="none" />
     </Wrap>
   );
 }
 
 /** 文档导出 */
 export function JzExportIcon(p: IconProps) {
+  /* 托盘上箭头（SF square.and.arrow.up 形，分层）：托盘次层填充 + 粗箭头 */
   return (
     <Wrap {...p}>
-      <rect x="4" y="6" width="10" height="12" rx="1" fill={ICON_FILL} />
-      <rect x="4" y="6" width="10" height="12" rx="1" />
-      <path d="M6.5 9h5M6.5 12h5M6.5 15h3" strokeLinecap="round" />
-      <path d="M15 12h4.5" />
-      <path d="M17.2 10.2L19.5 12l-2.3 1.8" fill={ICON_SPOT} stroke={ICON_SPOT} />
+      <rect x="4.2" y="10.6" width="15.6" height="9" rx="1.8" fill="currentColor" fillOpacity={0.28} />
+      <path d="M12 15V4.2" strokeWidth={2} />
+      <path d="M8.6 7.4 12 4l3.4 3.4" strokeWidth={2} />
     </Wrap>
   );
 }
 
 /** AI 助手 */
 export function JzAiIcon(p: IconProps) {
+  /* 星芒（市场 AI 通用形，SF 分层）：主星次层填充 + 小星实心 */
   return (
     <Wrap {...p}>
       <path
-        d="M12 4l6.5 3.75v8.5L12 20l-6.5-3.75v-8.5L12 4z"
-        fill={ICON_FILL}
+        d="M12 4.2C12.7 8 15 10.3 18.8 11 15 11.7 12.7 14 12 17.8 11.3 14 9 11.7 5.2 11 9 10.3 11.3 8 12 4.2Z"
+        fill="currentColor"
+        fillOpacity={0.28}
       />
-      <path d="M12 4l6.5 3.75v8.5L12 20l-6.5-3.75v-8.5L12 4z" />
-      <circle cx="12" cy="12" r="2.5" fill={ICON_FILL_STRONG} stroke="none" />
-      <circle cx="12" cy="12" r="1" fill={ICON_SPOT} stroke="none" />
+      <path
+        d="M18.3 14.6c.3 1.7 1.4 2.8 3.1 3.1-1.7.3-2.8 1.4-3.1 3.1-.3-1.7-1.4-2.8-3.1-3.1 1.7-.3 2.8-1.4 3.1-3.1Z"
+        fill="currentColor"
+        stroke="none"
+      />
     </Wrap>
   );
 }
@@ -247,13 +242,20 @@ export function JzTableIcon(p: IconProps) {
 }
 
 export function JzQuoteIcon(p: IconProps) {
+  /* 双引号（市场标准 quote 形，SF 分层）：首引实心 + 次引次层填充 */
   return (
     <Wrap {...p}>
-      <path d="M7.5 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5H7.5v-3.5z" fill={ICON_FILL} />
-      <path d="M13.3 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5h-3.2v-3.5z" fill={ICON_FILL} />
-      <path d="M7.5 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5H7.5v-3.5z" />
-      <path d="M13.3 12.5c0-2 1.1-3.6 3-4.5v1.9c-1 .6-1.4 1.3-1.4 2.6h1.6v3.5h-3.2v-3.5z" />
-      <circle cx="12" cy="6.8" r="0.9" fill={ICON_SPOT} stroke="none" />
+      <path
+        d="M11 7.2C7.9 8.3 6 10.7 6 13.6c0 2.1 1.4 3.6 3.3 3.6 1.7 0 3-1.2 3-2.9 0-1.6-1.2-2.8-2.8-2.8h-.5c.3-1.4 1.3-2.5 2.8-3.2z"
+        fill="currentColor"
+        stroke="none"
+      />
+      <path
+        d="M19 7.2c-3.1 1.1-5 3.5-5 6.4 0 2.1 1.4 3.6 3.3 3.6 1.7 0 3-1.2 3-2.9 0-1.6-1.2-2.8-2.8-2.8H17c.3-1.4 1.3-2.5 2.8-3.2z"
+        fill="currentColor"
+        opacity={HIER_OPACITY}
+        stroke="none"
+      />
     </Wrap>
   );
 }
@@ -445,15 +447,13 @@ export function JzAiSparkIcon(p: IconProps) {
 
 /** 架构总览 */
 export function JzArchitectureIcon(p: IconProps) {
+  /* 层级组织图（市场标准 org-chart 形，SF 分层）：顶节点实心 + 双子节点次层 */
   return (
     <Wrap {...p}>
-      <path d="M8 6h8l-1.5 2H9.5Z" fill={ICON_FILL} />
-      <path d="M8 6h8l-1.5 2H9.5Z" />
-      <path d="M7 10h10l-1.5 2H8.5Z" fill={ICON_FILL} />
-      <path d="M7 10h10l-1.5 2H8.5Z" />
-      <path d="M6 14h12l-1.5 2H7.5Z" />
-      <rect x="6.5" y="16.5" width="11" height="4.5" rx="0.5" fill={ICON_FILL_STRONG} stroke="none" />
-      <circle cx="12" cy="4.5" r="0.9" fill={ICON_SPOT} stroke="none" />
+      <rect x="8.7" y="3.8" width="6.6" height="5" rx="1.2" fill="currentColor" stroke="none" />
+      <path d="M12 8.8V14M6.75 15.2V14h10.5v1.2" />
+      <rect x="3.6" y="15.2" width="6.3" height="5" rx="1.2" fill="currentColor" fillOpacity={0.28} />
+      <rect x="14.1" y="15.2" width="6.3" height="5" rx="1.2" fill="currentColor" fillOpacity={0.28} />
     </Wrap>
   );
 }
@@ -551,6 +551,65 @@ export function JzUserIcon(p: IconProps) {
         fill="currentColor"
         fillOpacity={0.28}
       />
+    </Wrap>
+  );
+}
+
+/** 工作台 — 四宫格（市场标准 dashboard 形）：首格实心为焦点 */
+export function JzDashboardIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <rect x="4" y="4" width="7" height="7" rx="1.6" fill="currentColor" stroke="none" />
+      <rect x="13" y="4" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity={0.28} />
+      <rect x="4" y="13" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity={0.28} />
+      <rect x="13" y="13" width="7" height="7" rx="1.6" fill="currentColor" fillOpacity={0.28} />
+    </Wrap>
+  );
+}
+
+/** 回收站 — 垃圾桶（市场标准 trash 形）：桶身次层填充 + 粗桶沿 */
+export function JzTrashIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M9.6 7V5.6A1.6 1.6 0 0 1 11.2 4h1.6a1.6 1.6 0 0 1 1.6 1.6V7" />
+      <path d="M4.8 7.2h14.4" strokeWidth={2} />
+      <path
+        d="M6.4 7.2l.8 10.9a2 2 0 0 0 2 1.9h5.6a2 2 0 0 0 2-1.9l.8-10.9z"
+        fill="currentColor"
+        fillOpacity={0.28}
+      />
+    </Wrap>
+  );
+}
+
+/** 用户组 — 双人形（市场标准 users 形）：前者双层填充，后者描边示意 */
+export function JzUserGroupIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <circle cx="9.2" cy="8.8" r="3.2" fill="currentColor" fillOpacity={0.28} />
+      <path d="M3.4 19.6a6.1 6.1 0 0 1 11.6 0z" fill="currentColor" fillOpacity={0.28} />
+      <circle cx="16.8" cy="9.6" r="2.5" />
+      <path d="M16.6 14.9a5.2 5.2 0 0 1 4.2 4.6" />
+    </Wrap>
+  );
+}
+
+/** 个人资料 — 圆环人形（市场标准 person.circle 形） */
+export function JzProfileIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <circle cx="12" cy="12" r="8.4" />
+      <circle cx="12" cy="9.7" r="2.7" fill="currentColor" fillOpacity={0.28} />
+      <path d="M6.9 18.1a6.6 6.6 0 0 1 10.2 0" />
+    </Wrap>
+  );
+}
+
+/** 汉堡菜单 — 三横线 */
+export function JzMenuIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M4.5 7h15M4.5 12h15M4.5 17h15" strokeWidth={2} />
     </Wrap>
   );
 }

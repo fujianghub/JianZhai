@@ -1,20 +1,20 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
-/* 全站图标统一 Hugeicons（双线细节风，2026-06-06 定稿） */
+/* 自制 SF 分层系列（市场标准字形 + 单色双层渲染，2026-06-06 定稿） */
 import {
-  Books01Icon,
-  DashboardSquare01Icon,
-  Delete02Icon,
-  FileExportIcon,
-  HierarchySquare01Icon,
-  Menu01Icon,
-  NeuralNetworkIcon,
-  QuotesIcon,
-  Robot01Icon,
-  Search01Icon,
-  UserCircleIcon,
-  UserGroupIcon,
-} from 'hugeicons-react';
+  JzAiIcon,
+  JzArchitectureIcon,
+  JzDashboardIcon,
+  JzExportIcon,
+  JzGraphIcon,
+  JzKbIcon,
+  JzMenuIcon,
+  JzProfileIcon,
+  JzQuoteIcon,
+  JzSearchIcon,
+  JzTrashIcon,
+  JzUserGroupIcon,
+} from '@/components/common/JzIcon';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
@@ -131,42 +131,42 @@ export default function AdminLayout() {
             {
               key: 'dashboard',
               icon: menuIcon(
-                <DashboardSquare01Icon size={MENU_ICON_SIZE} />,
+                <JzDashboardIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin">工作台</Link>,
             },
             {
               key: 'kbs',
               icon: menuIcon(
-                <Books01Icon size={MENU_ICON_SIZE} />,
+                <JzKbIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/kbs">知识库</Link>,
             },
             {
               key: 'graph',
               icon: menuIcon(
-                <NeuralNetworkIcon size={MENU_ICON_SIZE} />,
+                <JzGraphIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
             {
               key: 'exports',
               icon: menuIcon(
-                <FileExportIcon size={MENU_ICON_SIZE} />,
+                <JzExportIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/exports">导出</Link>,
             },
             {
               key: 'trash',
               icon: menuIcon(
-                <Delete02Icon size={MENU_ICON_SIZE} />,
+                <JzTrashIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/trash">回收站</Link>,
             },
             {
               key: 'ai',
               icon: menuIcon(
-                <Robot01Icon size={MENU_ICON_SIZE} />,
+                <JzAiIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
@@ -174,7 +174,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'users',
                   icon: menuIcon(
-                    <UserGroupIcon size={MENU_ICON_SIZE} />,
+                    <JzUserGroupIcon size={MENU_ICON_SIZE} />,
                   ),
                   label: <Link to="/admin/users">用户管理</Link>,
                 }]
@@ -184,7 +184,7 @@ export default function AdminLayout() {
                   {
                     key: 'overview',
                     icon: menuIcon(
-                      <HierarchySquare01Icon size={MENU_ICON_SIZE} />,
+                      <JzArchitectureIcon size={MENU_ICON_SIZE} />,
                     ),
                     label: <Link to="/admin/overview">架构总览</Link>,
                   },
@@ -198,7 +198,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'hero',
                   icon: menuIcon(
-                    <QuotesIcon size={MENU_ICON_SIZE} />,
+                    <JzQuoteIcon size={MENU_ICON_SIZE} />,
                   ),
                   label: <Link to="/admin/hero">题记</Link>,
                 }]
@@ -206,7 +206,7 @@ export default function AdminLayout() {
             {
               key: 'profile',
               icon: menuIcon(
-                <UserCircleIcon size={MENU_ICON_SIZE} />,
+                <JzProfileIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/profile">个人资料</Link>,
             },
@@ -219,14 +219,14 @@ export default function AdminLayout() {
           <Button
             className="jz-admin-mobile-menu-btn"
             type="text"
-            icon={<Menu01Icon size={18} />}
+            icon={<JzMenuIcon size={18} />}
             onClick={() => setSiderCollapsed((c) => !c)}
             aria-label={siderCollapsed ? '展开菜单' : '收起菜单'}
           />
           <Tooltip title="搜索 (⌘/Ctrl + K)">
             <Button
               shape="round"
-              icon={<Search01Icon size={18} />}
+              icon={<JzSearchIcon size={18} />}
               onClick={() => setSearchOpen(true)}
               className="jz-admin-search"
             >
