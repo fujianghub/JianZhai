@@ -3499,16 +3499,17 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #3fe0cb; }
 
 /* 博客顶栏 5 枚专属色（别名复用同一调色板；RSS 沿市场橙红惯例取朱砂） */
-.jz-ico-tone-archive { --jz-ico-c: #d97706; }  /* 赭金 */
-.jz-ico-tone-tags    { --jz-ico-c: #7c3aed; }  /* 紫藤（2026-06-06 换色） */
-.jz-ico-tone-rss     { --jz-ico-c: #b94a3b; }  /* 朱砂 */
-.jz-ico-tone-search  { --jz-ico-c: #059669; }  /* 翡翠（2026-06-06 换色） */
+.jz-ico-tone-archive { --jz-ico-c: #059669; }  /* 翡翠（2026-06-06 换色） */
+.jz-ico-tone-tags    { --jz-ico-c: #d97706; }  /* 古风赭金（2026-06-06 换色） */
+.jz-ico-tone-rss     { --jz-ico-c: #0891b2; }  /* 青瓷（2026-06-06 换色） */
+.jz-ico-tone-search  { --jz-ico-c: #2563eb; }  /* 黛蓝（2026-06-06 换色） */
 .jz-ico-tone-login   { --jz-ico-c: #64748b; }  /* 玄青 */
-[data-theme='dark'] .jz-ico-tone-archive, [data-theme='starry'] .jz-ico-tone-archive, [data-theme='deepsea'] .jz-ico-tone-archive { --jz-ico-c: #e8b04b; }
-[data-theme='dark'] .jz-ico-tone-tags,    [data-theme='starry'] .jz-ico-tone-tags,    [data-theme='deepsea'] .jz-ico-tone-tags    { --jz-ico-c: #a78bfa; }
-[data-theme='starry'] .jz-ico-tone-tags { --jz-ico-c: #bfa9ff; }  /* 跳出银河紫雾 */
-[data-theme='dark'] .jz-ico-tone-rss,     [data-theme='starry'] .jz-ico-tone-rss,     [data-theme='deepsea'] .jz-ico-tone-rss     { --jz-ico-c: #de8273; }
-[data-theme='dark'] .jz-ico-tone-search,  [data-theme='starry'] .jz-ico-tone-search,  [data-theme='deepsea'] .jz-ico-tone-search  { --jz-ico-c: #34d399; }
+[data-theme='dark'] .jz-ico-tone-archive, [data-theme='starry'] .jz-ico-tone-archive, [data-theme='deepsea'] .jz-ico-tone-archive { --jz-ico-c: #34d399; }
+[data-theme='dark'] .jz-ico-tone-tags,    [data-theme='starry'] .jz-ico-tone-tags,    [data-theme='deepsea'] .jz-ico-tone-tags    { --jz-ico-c: #e8b04b; }
+[data-theme='dark'] .jz-ico-tone-rss,     [data-theme='starry'] .jz-ico-tone-rss     { --jz-ico-c: #22d3ee; }
+[data-theme='deepsea'] .jz-ico-tone-rss { --jz-ico-c: #45e2f5; }  /* 跳出水光 */
+[data-theme='dark'] .jz-ico-tone-search,  [data-theme='starry'] .jz-ico-tone-search  { --jz-ico-c: #60a5fa; }
+[data-theme='deepsea'] .jz-ico-tone-search { --jz-ico-c: #85b8ff; }  /* 跳出水光 */
 [data-theme='dark'] .jz-ico-tone-login,   [data-theme='starry'] .jz-ico-tone-login,   [data-theme='deepsea'] .jz-ico-tone-login   { --jz-ico-c: #94a3b8; }
 
 /* 多彩三态：静止 = 专属色微降（78% 混次要灰）；hover/选中 = 专属色全亮，
