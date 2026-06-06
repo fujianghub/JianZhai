@@ -3672,6 +3672,16 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .jz-overview-page .jz-overview-stat:hover {
   transform: translateY(-1px);
 }
+/* 数字排版：全局 28px/600 纯墨色在彩色图标旁太重——
+   缩一档 + 往各卡专属色轻混（静止 30% → hover 48%），融入多彩体系而不抢眼 */
+.jz-admin-glass .jz-overview-stat .ant-statistic-content {
+  font-size: 24px !important;
+  color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 30%, var(--glass-text));
+  transition: color 0.2s ease;
+}
+.jz-admin-glass .jz-overview-stat:hover .ant-statistic-content {
+  color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 48%, var(--glass-text));
+}
 .jz-admin-glass .jz-overview-stat .ant-statistic-content-value {
   font-variant-numeric: tabular-nums;
 }
