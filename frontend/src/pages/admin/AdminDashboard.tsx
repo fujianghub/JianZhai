@@ -222,7 +222,7 @@ export default function AdminDashboard() {
                   <div className="jz-feature-card-head">
                     <span
                       className="jz-feature-card-icon"
-                      style={kb.accent_color ? { background: `${kb.accent_color}1f`, color: kb.accent_color } : undefined}
+                      style={kb.accent_color ? { color: kb.accent_color } : undefined}
                     >
                       <JzKbIcon />
                     </span>
