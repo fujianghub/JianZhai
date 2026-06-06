@@ -6,12 +6,12 @@ import LiveClock from '@/components/common/LiveClock';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
-  Archive01Icon,
   RssIcon,
   Search01Icon,
   Tag01Icon,
   User02Icon,
 } from 'hugeicons-react';
+import { JzScrollArchiveIcon } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
@@ -117,7 +117,7 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<Archive01Icon size={NAV_ICON_SIZE} />}
+            icon={<JzScrollArchiveIcon size={NAV_ICON_SIZE} />}
           />
           <BlogNavItem
             to="/tags"

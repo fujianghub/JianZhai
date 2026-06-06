@@ -503,6 +503,28 @@ export function JzSearchIcon(p: IconProps) {
   );
 }
 
+/** 手卷卷轴 + 玉印 — 归档（古风定制样品，2026-06-06）
+ *  左右轴杆带轴头、纸面浅染、两行手书、右下方寸玉印点睛。 */
+export function JzScrollArchiveIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      {/* 纸面浅染 */}
+      <path d="M6.9 6.1h10.2v11.8H6.9z" fill={ICON_FILL} stroke="none" />
+      {/* 左右轴杆 */}
+      <path d="M5.1 4.4v15.2" />
+      <path d="M18.9 4.4v15.2" />
+      {/* 轴头（上下出头） */}
+      <path d="M3.9 4.4h2.4M3.9 19.6h2.4M17.7 4.4h2.4M17.7 19.6h2.4" />
+      {/* 纸面上下缘 */}
+      <path d="M6.9 6.1h10.2M6.9 17.9h10.2" />
+      {/* 两行手书（次行短，呼吸感） */}
+      <path d="M9.3 9.8h5.4M9.3 12.4h3.4" />
+      {/* 方寸玉印 */}
+      <rect x="13.5" y="14.1" width="2.7" height="2.7" rx="0.6" fill={ICON_SPOT} stroke="none" opacity="0.85" />
+    </Wrap>
+  );
+}
+
 /* ═══════════════ AI 管理 Tab ═══════════════ */
 
 export function JzOverviewIcon(p: IconProps) {
