@@ -1788,14 +1788,14 @@ a.jz-meta-full-edit-btn:focus-visible {
   gap: 10px;
   margin-bottom: 8px;
 }
+/* 2026-06-06 用户要求：快捷入口图标裸放（无底框）并放大 */
 .jz-admin-glass .jz-feature-card-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  background: rgba(16, 185, 129, 0.1);
+  width: 36px;
+  height: 36px;
+  font-size: 30px;
   color: var(--jz-accent);
   flex-shrink: 0;
 }
