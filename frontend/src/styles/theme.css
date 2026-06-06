@@ -3470,3 +3470,59 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon {
   color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-icon-stroke));
 }
+
+/* ── 图标"活化包"：光与动（零新增颜色）──
+   ① 悬停玻璃光泽扫过 ② 图标微跳（弹簧）③ 选中底座上缘玻璃棱线 */
+.jz-admin-glass .jz-menu-icon-slot,
+.jz-blog-glass .jz-nav-link-icon {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.jz-admin-glass .jz-menu-icon-slot::after,
+.jz-blog-glass .jz-nav-link-icon::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.4) 50%, transparent 65%);
+  transform: translateX(-130%);
+  pointer-events: none;
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot::after,
+.jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon::after,
+.jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon::after {
+  animation: jz-icon-sheen 650ms ease;
+}
+@keyframes jz-icon-sheen {
+  from { transform: translateX(-130%); }
+  to { transform: translateX(130%); }
+}
+/* 图标微跳：轻提 + 微倾 + 放大，弹簧曲线 */
+.jz-admin-glass .jz-menu-icon-slot svg,
+.jz-blog-glass .jz-nav-link-icon svg {
+  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot svg,
+.jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon svg,
+.jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon svg {
+  transform: translateY(-1.5px) rotate(-4deg) scale(1.05);
+}
+/* 选中态：底座上缘一条玻璃棱线高光，立体感 */
+.jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-menu-icon-slot {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 12px var(--jz-accent-glow);
+}
+.jz-blog-glass .jz-nav-link.active .jz-nav-link-icon {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 3px 12px var(--jz-accent-glow);
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-admin-glass .jz-menu-icon-slot::after,
+  .jz-blog-glass .jz-nav-link-icon::after {
+    animation: none !important;
+  }
+  .jz-admin-glass .jz-menu-icon-slot svg,
+  .jz-blog-glass .jz-nav-link-icon svg {
+    transition: none;
+  }
+}
