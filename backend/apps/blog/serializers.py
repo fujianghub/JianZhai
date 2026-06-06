@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from rest_framework import serializers
 
-from apps.knowledge.html_content import resolve_html_body
+from apps.knowledge.html_content import resolve_published_html_body
 from apps.knowledge.models import Document, KnowledgeBase
 from apps.knowledge.serializers import detect_doc_format
 
@@ -124,9 +124,12 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
         return detect_doc_format(obj)
 
     def get_published_content(self, obj: Document) -> str:
-        """HTML posts may have body only in ``raw_content`` or a ``.html`` attachment."""
+        """HTML posts may have body only in a ``.html`` attachment (legacy docs).
+
+        Never falls back to ``raw_content`` — that's the private working copy.
+        """
         if detect_doc_format(obj) == "html":
-            return resolve_html_body(obj)
+            return resolve_published_html_body(obj)
         return obj.published_content or ""
 
 

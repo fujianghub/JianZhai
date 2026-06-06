@@ -64,3 +64,20 @@ def resolve_html_body(doc: Document) -> str:
     if att and _is_html_attachment(att):
         return decode_attachment(att) or ""
     return ""
+
+
+def resolve_published_html_body(doc: Document) -> str:
+    """HTML source for the PUBLIC blog reader — never falls back to raw_content.
+
+    ``raw_content`` is the private working copy; an author who edits it after
+    publishing (or who clears the published snapshot) must not have the draft
+    leak through public endpoints. Legacy docs published before publish()
+    started snapshotting are still served via the immutable original ``.html``
+    attachment, which is what was on screen when they hit publish.
+    """
+    if (doc.published_content or "").strip():
+        return doc.published_content
+    att = _primary_attachment(doc)
+    if att and _is_html_attachment(att):
+        return decode_attachment(att) or ""
+    return ""
