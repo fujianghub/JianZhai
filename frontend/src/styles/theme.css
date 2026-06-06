@@ -3447,28 +3447,28 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: block;
 }
 
-/* 图标线条轻微着色（状态梯度：静止 35% → hover 70% → 选中 100%）。
-   底座保持中性玻璃；颜色是唯一的状态语言。 */
+/* 图标着色（状态梯度：静止 55% 玉色 → hover 85% → 选中 100%）。
+   底座保持中性玻璃；静止即有清晰可辨的翡翠味，交互时再升满。 */
 .jz-admin-glass .jz-menu-icon-slot,
 .jz-blog-glass .jz-nav-link-icon {
-  color: color-mix(in srgb, var(--jz-accent) 35%, var(--jz-icon-stroke));
+  color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-icon-stroke));
 }
-/* 暗主题感知校准：暗底吃色，静止态混入比例升至 45%，亮暗两侧观感一致 */
+/* 暗主题感知校准：暗底吃色，静止态混入比例升至 62%，亮暗两侧观感一致 */
 [data-theme='dark'] .jz-admin-glass .jz-menu-icon-slot,
 [data-theme='starry'] .jz-admin-glass .jz-menu-icon-slot,
 [data-theme='deepsea'] .jz-admin-glass .jz-menu-icon-slot,
 [data-theme='dark'] .jz-blog-glass .jz-nav-link-icon,
 [data-theme='starry'] .jz-blog-glass .jz-nav-link-icon,
 [data-theme='deepsea'] .jz-blog-glass .jz-nav-link-icon {
-  color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-icon-stroke));
+  color: color-mix(in srgb, var(--jz-accent) 62%, var(--jz-icon-stroke));
 }
-/* hover 中间档 70% —— 与选中态（100%，沿用既有 stroke-active 规则）拉开区分度 */
+/* hover 中间档 85% —— 与选中态（100%，沿用既有 stroke-active 规则）拉开区分度 */
 .jz-admin-glass .jz-admin-menu .ant-menu-item:hover:not(.ant-menu-item-selected) .jz-menu-icon-slot {
-  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-icon-stroke));
+  color: color-mix(in srgb, var(--jz-accent) 85%, var(--jz-icon-stroke));
 }
 .jz-blog-glass .jz-nav-link:hover:not(.active) .jz-nav-link-icon,
 .jz-blog-glass .jz-nav-search-btn:hover .jz-nav-link-icon {
-  color: color-mix(in srgb, var(--jz-accent) 70%, var(--jz-icon-stroke));
+  color: color-mix(in srgb, var(--jz-accent) 85%, var(--jz-icon-stroke));
 }
 
 /* ── 图标"活化包"：光与动（零新增颜色）──
