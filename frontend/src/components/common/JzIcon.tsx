@@ -510,17 +510,23 @@ export function JzSearchIcon(p: IconProps) {
    准则：≤5 元素、剪影优先、最小特征 ≥2.5px、几何圆润留白大。 */
 const HIER_OPACITY = 0.28;
 
-/** 手卷卷轴 — 归档（SF 分层 v3） */
-export function JzScrollArchiveIcon(p: IconProps) {
+/** 归档箱 — 归档（SF 分层 v4，市场标准 archivebox 形） */
+export function JzArchiveBoxIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      {/* 次层：纸面（同色透明填充，无描边） */}
-      <rect x="6.7" y="5.6" width="10.6" height="12.8" rx="1.6" fill="currentColor" opacity={HIER_OPACITY} stroke="none" />
-      {/* 主层：左右轴杆 */}
-      <path d="M4.2 4.5v15" strokeWidth={2.2} />
-      <path d="M19.8 4.5v15" strokeWidth={2.2} />
-      {/* 主层：实心印 */}
-      <rect x="10.4" y="10.2" width="3.2" height="3.4" rx="0.8" fill="currentColor" stroke="none" />
+      {/* 次层：箱体填充 */}
+      <path
+        d="M5.2 9h13.6v8.2a1.8 1.8 0 0 1-1.8 1.8H7a1.8 1.8 0 0 1-1.8-1.8z"
+        fill="currentColor"
+        opacity={HIER_OPACITY}
+        stroke="none"
+      />
+      {/* 主层：箱盖 */}
+      <rect x="3.6" y="4.6" width="16.8" height="4.4" rx="1.1" />
+      {/* 主层：箱体轮廓 */}
+      <path d="M5.2 9v8.2A1.8 1.8 0 0 0 7 19h10a1.8 1.8 0 0 0 1.8-1.8V9" />
+      {/* 主层：提手槽 */}
+      <path d="M10 12.7h4" strokeWidth={2} />
     </Wrap>
   );
 }

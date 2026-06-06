@@ -11,7 +11,7 @@ import {
   Tag01Icon,
   User02Icon,
 } from 'hugeicons-react';
-import { JzScrollArchiveIcon } from '@/components/common/JzIcon';
+import { JzArchiveBoxIcon } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
@@ -117,7 +117,7 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<JzScrollArchiveIcon size={NAV_ICON_SIZE} />}
+            icon={<JzArchiveBoxIcon size={NAV_ICON_SIZE} />}
           />
           <BlogNavItem
             to="/tags"
