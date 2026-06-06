@@ -317,7 +317,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
         now = timezone.now()
         first_line = next((line.strip() for line in text.splitlines() if line.strip()), "")
         title = (first_line[:40] or now.strftime("速记 %Y-%m-%d %H:%M"))
-        slug = "quick-" + str(int(now.timestamp() * 1000))
+        # Millisecond timestamp alone collides under burst (alive-scoped unique
+        # constraint → IntegrityError 500); a short random suffix removes that.
+        import secrets
+
+        slug = f"quick-{int(now.timestamp() * 1000)}-{secrets.token_hex(3)}"
 
         doc = Document.objects.create(
             knowledge_base=kb,
@@ -629,6 +633,28 @@ def reorder_tree(request):
                 if "parent_folder_id" in item:
                     obj.folder_id = item["parent_folder_id"]
                 docs_to_update.append(obj)
+
+        # Cycle guard: overlay the batch's parent changes on the KB's folder
+        # tree and walk each touched folder's ancestor chain. A self/descendant
+        # parent would make Folder.soft_delete() recurse forever and silently
+        # orphan the subtree in build_tree.
+        if folders_to_update:
+            parent_map: dict[int, int | None] = dict(
+                Folder.objects.filter(knowledge_base=kb).values_list("id", "parent_id")
+            )
+            for f in folders_to_update:
+                parent_map[f.pk] = f.parent_id
+            for f in folders_to_update:
+                seen: set[int] = set()
+                node = f.pk
+                while node is not None:
+                    if node in seen:
+                        return Response(
+                            {"detail": "检测到文件夹父子环，已拒绝本次排序", "folder_id": f.pk},
+                            status=status.HTTP_400_BAD_REQUEST,
+                        )
+                    seen.add(node)
+                    node = parent_map.get(node)
 
         if folders_to_update:
             Folder.objects.bulk_update(folders_to_update, ["order", "parent"])

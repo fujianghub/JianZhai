@@ -26,6 +26,11 @@ dependencies = [
     "jieba>=0.42.1",
     "Pillow>=10.4",
     "Jinja2>=3.1",
+    # AI providers — services.py degrades gracefully without API keys, but the
+    # SDKs themselves must ship in the production image (the Dockerfile runs a
+    # plain `pip install -e .`); without these the AI feature ImportErrors in prod.
+    "anthropic>=0.39",
+    "openai>=1.50",
     # Misc
     "python-dotenv>=1.0",
 ]

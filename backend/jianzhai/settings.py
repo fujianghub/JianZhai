@@ -182,6 +182,8 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "120/min",
         "ai_write": "30/min",
+        "ai_read": "120/min",
+        "login": "10/min",
     },
 }
 
@@ -240,6 +242,20 @@ if _derived_public_origin:
     _public_host = urlparse(_derived_public_origin).hostname
     if _public_host:
         ALLOWED_HOSTS = _merge_unique(ALLOWED_HOSTS, _public_host)
+
+# Production TLS hardening. Caddy terminates HTTPS, so Django must trust
+# X-Forwarded-Proto to know a request was secure; Secure cookies + HSTS are
+# only enabled when the public origin actually serves https — the temporary
+# IP+HTTP deployment shape must keep them off or session cookies stop being
+# sent and login breaks. SECURE_SSL_REDIRECT stays off: Caddy already
+# redirects 80→443, and doing it in Django too risks redirect loops.
+_site_uses_https = (_derived_public_origin or SITE_PUBLIC_URL).startswith("https://")
+if not DEBUG and _site_uses_https:
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
 # Upload limits (matches non-functional requirements: 50MB)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024

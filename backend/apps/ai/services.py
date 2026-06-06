@@ -16,6 +16,7 @@ key is missing — endpoints will return a friendly error instead of 500-ing.
 from __future__ import annotations
 
 import os
+from contextlib import contextmanager
 from typing import Iterator
 
 from .prompts import SYSTEM_PROMPT, build_messages
@@ -220,8 +221,94 @@ def check_daily_budget(user) -> None:
         spent += estimate_cost_usd(r["model"], r["input_tokens"], r["output_tokens"])
     if spent >= budget:
         raise AIBudgetExceeded(
-            f"已超过今日预算（{spent:.2f} / {budget:.2f} USD），请明天再用或联系管理员"
+            f"已超过近 24 小时预算（{spent:.2f} / {budget:.2f} USD），请稍后再用或联系管理员"
         )
+
+
+# In-flight budget reservations live in Redis so concurrent requests see each
+# other before any AIUsageLog row exists (the classic check-then-act window).
+# TTL keeps a crashed worker from leaking a reservation forever.
+_BUDGET_RESERVE_TTL = 600
+_BUDGET_RESERVE_SCALE = 1_000_000  # store USD as integer micro-dollars (cache.incr needs ints)
+
+
+def _budget_limit_for(user) -> float:
+    """The active per-user daily budget, or 0 when quota doesn't apply."""
+    if user is None or not getattr(user, "is_authenticated", False):
+        return 0.0
+    if getattr(user, "is_staff", False):
+        return 0.0
+    try:
+        return float(_settings().daily_budget_usd_per_user or 0)
+    except Exception:
+        return 0.0
+
+
+@contextmanager
+def budget_reservation(user, model: str, prompt_chars: int, max_tokens: int):
+    """Reserve the worst-case cost of one call while it is in flight.
+
+    ``check_daily_budget`` alone is check-then-act: usage rows are written
+    only after a call completes, so N concurrent requests all read the same
+    "spent" and all pass. This context manager atomically adds a worst-case
+    estimate (input from chars + full max_tokens output) to a per-user Redis
+    counter BEFORE the provider call, and compares spent + other in-flight
+    reservations against the budget. Our own reservation is excluded from the
+    comparison so single-request behaviour is identical to before — only the
+    concurrent flood gets blocked. The reservation is always released in
+    ``finally``; the real spend lands in AIUsageLog instead.
+    """
+    budget = _budget_limit_for(user)
+    if budget <= 0:
+        yield
+        return
+
+    from django.core.cache import cache
+
+    from .pricing import estimate_cost_usd, estimate_input_tokens_from_chars
+
+    est_in = estimate_input_tokens_from_chars("x" * max(0, prompt_chars))
+    est_cost = estimate_cost_usd(model, est_in, max_tokens)
+    amount = max(1, int(est_cost * _BUDGET_RESERVE_SCALE))
+    key = f"ai-budget-reserved:{user.pk}"
+
+    try:
+        cache.add(key, 0, _BUDGET_RESERVE_TTL)
+        total_reserved = cache.incr(key, amount)
+    except Exception:
+        # Cache down — degrade to the plain (racy) check rather than
+        # breaking the AI feature outright.
+        yield
+        return
+
+    try:
+        others_usd = max(0, total_reserved - amount) / _BUDGET_RESERVE_SCALE
+        if others_usd > 0:
+            from datetime import timedelta
+
+            from django.utils import timezone
+
+            from .models import AIUsageLog
+
+            cutoff = timezone.now() - timedelta(hours=24)
+            rows = AIUsageLog.objects.filter(user=user, created_at__gte=cutoff).values(
+                "model", "input_tokens", "output_tokens"
+            )
+            spent = sum(
+                estimate_cost_usd(r["model"], r["input_tokens"], r["output_tokens"])
+                for r in rows
+            )
+            if spent + others_usd >= budget:
+                raise AIBudgetExceeded(
+                    f"并发请求已占满近 24 小时预算（{spent:.2f} + 进行中 {others_usd:.2f} "
+                    f"/ {budget:.2f} USD），请稍后再试"
+                )
+        yield
+    finally:
+        try:
+            cache.decr(key, amount)
+        except Exception:
+            pass
 
 
 # ── Usage log helper ────────────────────────────────────────────────────
@@ -319,46 +406,47 @@ def run_once(
     prompt_chars = len(content or "") + len(extra or "")
     last_exc: Exception | None = None
 
-    for attempt_model in chain:
-        provider = _provider_for(attempt_model)
-        token_limit = _resolved_max_tokens(max_tokens)
-        started = time.monotonic()
-        fallback_from = "" if attempt_model == resolved else resolved
-        try:
-            if provider == "anthropic":
-                text, in_tok, out_tok = _run_once_anthropic(
-                    operation, content, extra, attempt_model, token_limit,
-                    images=images,
-                    thinking=(thinking if thinking is not None else is_thinking_enabled()),
+    with budget_reservation(user, resolved, prompt_chars, _resolved_max_tokens(max_tokens)):
+        for attempt_model in chain:
+            provider = _provider_for(attempt_model)
+            token_limit = _resolved_max_tokens(max_tokens)
+            started = time.monotonic()
+            fallback_from = "" if attempt_model == resolved else resolved
+            try:
+                if provider == "anthropic":
+                    text, in_tok, out_tok = _run_once_anthropic(
+                        operation, content, extra, attempt_model, token_limit,
+                        images=images,
+                        thinking=(thinking if thinking is not None else is_thinking_enabled()),
+                    )
+                else:
+                    text, in_tok, out_tok = _run_once_qwen(
+                        operation, content, extra, attempt_model, token_limit,
+                        images=images,
+                    )
+            except Exception as e:
+                last_exc = e
+                _log_usage(
+                    user=user, operation=operation, model=attempt_model, streaming=False,
+                    duration_ms=int((time.monotonic() - started) * 1000),
+                    succeeded=False, error=str(e),
+                    document_id=document_id, knowledge_base_id=knowledge_base_id,
+                    fallback_from=fallback_from, prompt_chars=prompt_chars,
                 )
-            else:
-                text, in_tok, out_tok = _run_once_qwen(
-                    operation, content, extra, attempt_model, token_limit,
-                    images=images,
-                )
-        except Exception as e:
-            last_exc = e
+                # Don't fall back from AIUnavailable (config error) — that's
+                # not transient, the next model has the same key gap.
+                if isinstance(e, AIUnavailable):
+                    raise
+                continue
             _log_usage(
                 user=user, operation=operation, model=attempt_model, streaming=False,
+                input_tokens=in_tok, output_tokens=out_tok,
                 duration_ms=int((time.monotonic() - started) * 1000),
-                succeeded=False, error=str(e),
+                succeeded=True,
                 document_id=document_id, knowledge_base_id=knowledge_base_id,
                 fallback_from=fallback_from, prompt_chars=prompt_chars,
             )
-            # Don't fall back from AIUnavailable (config error) — that's
-            # not transient, the next model has the same key gap.
-            if isinstance(e, AIUnavailable):
-                raise
-            continue
-        _log_usage(
-            user=user, operation=operation, model=attempt_model, streaming=False,
-            input_tokens=in_tok, output_tokens=out_tok,
-            duration_ms=int((time.monotonic() - started) * 1000),
-            succeeded=True,
-            document_id=document_id, knowledge_base_id=knowledge_base_id,
-            fallback_from=fallback_from, prompt_chars=prompt_chars,
-        )
-        return text
+            return text
 
     # Exhausted the chain.
     raise last_exc if last_exc else AIUnavailable("AI 调用失败且无备用模型")
@@ -478,66 +566,79 @@ def run_stream(
     prompt_chars = len(content or "") + len(extra or "")
     last_exc: Exception | None = None
 
-    for attempt_model in chain:
-        provider = _provider_for(attempt_model)
-        token_limit = _resolved_max_tokens(max_tokens)
-        started = time.monotonic()
-        final_usage = {"in": 0, "out": 0}
-        err = ""
-        fallback_from = "" if attempt_model == resolved else resolved
-        delivered_any = False
-        try:
-            iter_ = (
-                _run_stream_anthropic(
-                    operation, content, extra, attempt_model, token_limit, final_usage,
-                    images=images,
-                    thinking=(thinking if thinking is not None else is_thinking_enabled()),
+    with budget_reservation(user, resolved, prompt_chars, _resolved_max_tokens(max_tokens)):
+        for attempt_model in chain:
+            provider = _provider_for(attempt_model)
+            token_limit = _resolved_max_tokens(max_tokens)
+            started = time.monotonic()
+            final_usage = {"in": 0, "out": 0}
+            err = ""
+            fallback_from = "" if attempt_model == resolved else resolved
+            delivered_any = False
+            try:
+                iter_ = (
+                    _run_stream_anthropic(
+                        operation, content, extra, attempt_model, token_limit, final_usage,
+                        images=images,
+                        thinking=(thinking if thinking is not None else is_thinking_enabled()),
+                    )
+                    if provider == "anthropic"
+                    else _run_stream_qwen(
+                        operation, content, extra, attempt_model, token_limit, final_usage,
+                        images=images,
+                    )
                 )
-                if provider == "anthropic"
-                else _run_stream_qwen(
-                    operation, content, extra, attempt_model, token_limit, final_usage,
-                    images=images,
-                )
-            )
-            for chunk in iter_:
-                delivered_any = True
-                yield chunk
-        except Exception as e:
-            err = str(e)
-            last_exc = e
-            if delivered_any:
-                # Already streaming — can't switch models without confusing
-                # the client. Surface this failure.
+                for chunk in iter_:
+                    delivered_any = True
+                    yield chunk
+            except GeneratorExit:
+                # Client disconnected mid-stream. Tokens were already consumed
+                # upstream — record them so budget/audit don't silently leak.
                 _log_usage(
                     user=user, operation=operation, model=attempt_model, streaming=True,
                     input_tokens=final_usage["in"], output_tokens=final_usage["out"],
+                    duration_ms=int((time.monotonic() - started) * 1000),
+                    succeeded=False, error="client disconnected",
+                    document_id=document_id, knowledge_base_id=knowledge_base_id,
+                    fallback_from=fallback_from, prompt_chars=prompt_chars,
+                )
+                raise
+            except Exception as e:
+                err = str(e)
+                last_exc = e
+                if delivered_any:
+                    # Already streaming — can't switch models without confusing
+                    # the client. Surface this failure.
+                    _log_usage(
+                        user=user, operation=operation, model=attempt_model, streaming=True,
+                        input_tokens=final_usage["in"], output_tokens=final_usage["out"],
+                        duration_ms=int((time.monotonic() - started) * 1000),
+                        succeeded=False, error=err,
+                        document_id=document_id, knowledge_base_id=knowledge_base_id,
+                        fallback_from=fallback_from, prompt_chars=prompt_chars,
+                    )
+                    raise
+                # First-byte failure: log it and walk to the next model.
+                _log_usage(
+                    user=user, operation=operation, model=attempt_model, streaming=True,
                     duration_ms=int((time.monotonic() - started) * 1000),
                     succeeded=False, error=err,
                     document_id=document_id, knowledge_base_id=knowledge_base_id,
                     fallback_from=fallback_from, prompt_chars=prompt_chars,
                 )
-                raise
-            # First-byte failure: log it and walk to the next model.
+                if isinstance(e, AIUnavailable):
+                    raise
+                continue
+            # Success — log usage and return.
             _log_usage(
                 user=user, operation=operation, model=attempt_model, streaming=True,
+                input_tokens=final_usage["in"], output_tokens=final_usage["out"],
                 duration_ms=int((time.monotonic() - started) * 1000),
-                succeeded=False, error=err,
+                succeeded=True,
                 document_id=document_id, knowledge_base_id=knowledge_base_id,
                 fallback_from=fallback_from, prompt_chars=prompt_chars,
             )
-            if isinstance(e, AIUnavailable):
-                raise
-            continue
-        # Success — log usage and return.
-        _log_usage(
-            user=user, operation=operation, model=attempt_model, streaming=True,
-            input_tokens=final_usage["in"], output_tokens=final_usage["out"],
-            duration_ms=int((time.monotonic() - started) * 1000),
-            succeeded=True,
-            document_id=document_id, knowledge_base_id=knowledge_base_id,
-            fallback_from=fallback_from, prompt_chars=prompt_chars,
-        )
-        return
+            return
 
     raise last_exc if last_exc else AIUnavailable("AI 流式调用失败")
 
@@ -583,18 +684,31 @@ def _run_stream_qwen(
         stream=True,
         stream_options={"include_usage": True},
     )
-    for chunk in stream:
-        usage = getattr(chunk, "usage", None)
-        if usage is not None:
-            final_usage["in"] = int(getattr(usage, "prompt_tokens", 0) or 0)
-            final_usage["out"] = int(getattr(usage, "completion_tokens", 0) or 0)
-        choices = getattr(chunk, "choices", None) or []
-        if not choices:
-            continue
-        delta = getattr(choices[0], "delta", None)
-        text = getattr(delta, "content", None) if delta else None
-        if text:
-            yield text
+    yield from _iter_qwen_stream(stream, final_usage)
+
+
+def _iter_qwen_stream(stream, final_usage) -> Iterator[str]:
+    """Drain a Qwen (OpenAI-compatible) stream, always releasing the HTTP
+    connection — the SDK stream doesn't close itself promptly on GC, so an
+    early consumer exit (client disconnect / fallback) would leak it."""
+    try:
+        for chunk in stream:
+            usage = getattr(chunk, "usage", None)
+            if usage is not None:
+                final_usage["in"] = int(getattr(usage, "prompt_tokens", 0) or 0)
+                final_usage["out"] = int(getattr(usage, "completion_tokens", 0) or 0)
+            choices = getattr(chunk, "choices", None) or []
+            if not choices:
+                continue
+            delta = getattr(choices[0], "delta", None)
+            text = getattr(delta, "content", None) if delta else None
+            if text:
+                yield text
+    finally:
+        try:
+            stream.close()
+        except Exception:
+            pass
 
 
 # ── Multi-turn chat ─────────────────────────────────────────────────────
@@ -628,53 +742,43 @@ def run_chat_stream(
     err = ""
     prompt_chars = sum(len(m.get("content", "")) for m in history) + len(user_message or "")
 
-    try:
-        messages = build_messages_multiturn(history, instruction=user_message)
-        if provider == "anthropic":
-            client = _client()
-            with client.messages.stream(
-                model=resolved,
-                max_tokens=token_limit,
-                system=_system_blocks_anthropic(),
-                messages=messages,
-            ) as stream:
-                for text in stream.text_stream:
-                    if text:
-                        yield text
-                final = stream.get_final_message()
-                usage = getattr(final, "usage", None)
-                final_usage["in"] = int(getattr(usage, "input_tokens", 0) or 0)
-                final_usage["out"] = int(getattr(usage, "output_tokens", 0) or 0)
-        else:
-            client = _qwen_client()
-            stream = client.chat.completions.create(
-                model=resolved,
-                max_tokens=token_limit,
-                messages=[{"role": "system", "content": SYSTEM_PROMPT}, *messages],
-                stream=True,
-                stream_options={"include_usage": True},
+    with budget_reservation(user, resolved, prompt_chars, token_limit):
+        try:
+            messages = build_messages_multiturn(history, instruction=user_message)
+            if provider == "anthropic":
+                client = _client()
+                with client.messages.stream(
+                    model=resolved,
+                    max_tokens=token_limit,
+                    system=_system_blocks_anthropic(),
+                    messages=messages,
+                ) as stream:
+                    for text in stream.text_stream:
+                        if text:
+                            yield text
+                    final = stream.get_final_message()
+                    usage = getattr(final, "usage", None)
+                    final_usage["in"] = int(getattr(usage, "input_tokens", 0) or 0)
+                    final_usage["out"] = int(getattr(usage, "output_tokens", 0) or 0)
+            else:
+                client = _qwen_client()
+                stream = client.chat.completions.create(
+                    model=resolved,
+                    max_tokens=token_limit,
+                    messages=[{"role": "system", "content": SYSTEM_PROMPT}, *messages],
+                    stream=True,
+                    stream_options={"include_usage": True},
+                )
+                yield from _iter_qwen_stream(stream, final_usage)
+        except Exception as e:
+            err = str(e)
+            raise
+        finally:
+            _log_usage(
+                user=user, operation="chat", model=resolved, streaming=True,
+                input_tokens=final_usage["in"], output_tokens=final_usage["out"],
+                duration_ms=int((time.monotonic() - started) * 1000),
+                succeeded=not err, error=err,
+                document_id=document_id, knowledge_base_id=knowledge_base_id,
+                prompt_chars=prompt_chars,
             )
-            for chunk in stream:
-                usage = getattr(chunk, "usage", None)
-                if usage is not None:
-                    final_usage["in"] = int(getattr(usage, "prompt_tokens", 0) or 0)
-                    final_usage["out"] = int(getattr(usage, "completion_tokens", 0) or 0)
-                choices = getattr(chunk, "choices", None) or []
-                if not choices:
-                    continue
-                delta = getattr(choices[0], "delta", None)
-                text = getattr(delta, "content", None) if delta else None
-                if text:
-                    yield text
-    except Exception as e:
-        err = str(e)
-        raise
-    finally:
-        _log_usage(
-            user=user, operation="chat", model=resolved, streaming=True,
-            input_tokens=final_usage["in"], output_tokens=final_usage["out"],
-            duration_ms=int((time.monotonic() - started) * 1000),
-            succeeded=not err, error=err,
-            document_id=document_id, knowledge_base_id=knowledge_base_id,
-            prompt_chars=prompt_chars,
-        )

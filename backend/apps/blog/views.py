@@ -342,8 +342,25 @@ class PublicArchiveView(APIView):
         return Response(buckets)
 
 
+def _friend_gate_response(request):
+    """Mirror PublicOrLoginGated for the plain Django views (feed/sitemap).
+
+    These live outside /api/v1/public/ so the DRF permission class never runs;
+    without this check they would leak published titles/content to anonymous
+    visitors even when the site is in friends-only mode.
+    """
+    from django.conf import settings as dj_settings
+
+    if getattr(dj_settings, "SITE_REQUIRE_LOGIN", False) and not request.user.is_authenticated:
+        return HttpResponse(status=403)
+    return None
+
+
 def rss_feed(request):
     """Top-level RSS endpoint at /feed.xml (not under /api/v1/)."""
+    gated = _friend_gate_response(request)
+    if gated is not None:
+        return gated
     site_url = request.build_absolute_uri("/")
     feed = Rss201rev2Feed(
         title="简斋 / JianZhai",
@@ -457,6 +474,9 @@ def robots_txt(request):
 
 def sitemap_xml(request):
     """Top-level sitemap for published public posts and static blog pages."""
+    gated = _friend_gate_response(request)
+    if gated is not None:
+        return gated
     site = request.build_absolute_uri("/").rstrip("/")
     urls = [
         f"  <url><loc>{xml_escape(site + '/')}</loc><changefreq>daily</changefreq></url>",

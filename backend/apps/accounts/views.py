@@ -7,15 +7,36 @@ from datetime import timedelta
 
 import django
 from django.conf import settings
-from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.contrib.auth import (
+    authenticate,
+    get_user_model,
+    login,
+    logout,
+    update_session_auth_hash,
+)
 from django.db.models import Sum
 from django.middleware.csrf import get_token
 from django.utils import timezone
 from rest_framework import serializers, status, viewsets
-from rest_framework.decorators import action, api_view, parser_classes, permission_classes
+from rest_framework.decorators import (
+    action,
+    api_view,
+    parser_classes,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.parsers import MultiPartParser
 from rest_framework.permissions import AllowAny, BasePermission, IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle
+
+
+class LoginThrottle(AnonRateThrottle):
+    """Dedicated login limiter (10/min/IP). The global anon throttle is a
+    shared 120/min pool across every anonymous endpoint — far too generous
+    for online password guessing against a single endpoint."""
+
+    scope = "login"
 
 from .avatar import avatar_storage_name, process_avatar_image
 from .models import UserProfile
@@ -82,6 +103,7 @@ def session(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([LoginThrottle])
 def login_view(request):
     username = request.data.get("username", "").strip()
     password = request.data.get("password", "")
@@ -182,7 +204,11 @@ def change_password_me(request):
         return Response({"detail": " ".join(msgs)}, status=400)
     request.user.set_password(new)
     request.user.save(update_fields=["password"])
-    return Response({"ok": True, "detail": "密码已更新，请重新登录后下次生效"})
+    # Keep THIS session alive (rotate its auth hash) while every other
+    # session — including a hijacked one — is invalidated by the password
+    # change. Without this the user themselves got logged out immediately.
+    update_session_auth_hash(request, request.user)
+    return Response({"ok": True, "detail": "密码已更新"})
 
 
 @api_view(["POST"])
@@ -222,6 +248,18 @@ def change_username_me(request):
         return Response({"detail": "用户名只能含字母、数字、下划线、点和连字符"}, status=400)
     if not request.user.check_password(password):
         return Response({"detail": "当前密码错误"}, status=400)
+    # The root-admin identity is "is_superuser AND username == ROOT_ADMIN_USERNAME".
+    # If the root slot is vacant, a non-root superuser could self-promote by
+    # simply renaming — reserve the name for whoever is already root.
+    from .permissions import is_root_admin
+
+    root_name = getattr(settings, "ROOT_ADMIN_USERNAME", "") or ""
+    if (
+        root_name
+        and new_username == root_name
+        and not is_root_admin(request.user)
+    ):
+        return Response({"detail": "该用户名为保留账号，不能使用"}, status=400)
     if (
         User.objects.exclude(pk=request.user.pk)
         .filter(username=new_username)
@@ -454,6 +492,13 @@ class UserViewSet(viewsets.ModelViewSet):
         new = (request.data.get("new_password") or "").strip()
         if not new or len(new) < 8:
             return Response({"detail": "新密码至少 8 个字符"}, status=400)
+        # Same validator chain as self-service change_password_me — an
+        # admin reset shouldn't be the loophole that lets "12345678" in.
+        try:
+            validate_password(new, user=target)
+        except Exception as e:  # noqa: BLE001
+            msgs = getattr(e, "messages", None) or [str(e)]
+            return Response({"detail": " ".join(msgs)}, status=400)
         target.set_password(new)
         target.save(update_fields=["password"])
         return Response({"ok": True, "detail": f"已重置 {target.username} 的密码"})

@@ -180,7 +180,21 @@ class FolderSerializer(serializers.ModelSerializer):
     def validate_parent(self, value: Folder | None) -> Folder | None:
         if value is None:
             return value
-        return _assert_owned(self, value, value.knowledge_base.owner_id)
+        value = _assert_owned(self, value, value.knowledge_base.owner_id)
+        # Reject self/descendant targets: a parent cycle makes soft_delete()
+        # recurse forever and drops the whole subtree out of build_tree.
+        instance = getattr(self, "instance", None)
+        if instance is not None and instance.pk is not None:
+            seen: set[int] = set()
+            node: Folder | None = value
+            while node is not None:
+                if node.pk == instance.pk or node.pk in seen:
+                    raise serializers.ValidationError(
+                        "不能把文件夹移动到自己或其子文件夹内"
+                    )
+                seen.add(node.pk)
+                node = node.parent
+        return value
 
     def get_tags(self, obj: Folder) -> list[dict]:
         return [

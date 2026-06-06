@@ -13,6 +13,9 @@ from .services import segment
 
 MAX_RESULTS = 50
 SNIPPET_RADIUS = 60
+# Hard cap on the query string before jieba segmentation — segmentation is
+# synchronous CPU work per request, and no legitimate search needs more.
+MAX_QUERY_CHARS = 256
 
 
 def _document_snippet(doc: Document, tokens: list[str]) -> str:
@@ -50,7 +53,7 @@ def _snippet(text: str, tokens: list[str]) -> str:
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def search(request):
-    raw_q = (request.query_params.get("q") or "").strip()
+    raw_q = (request.query_params.get("q") or "").strip()[:MAX_QUERY_CHARS]
     if not raw_q:
         return Response({"query": "", "results": []})
 
