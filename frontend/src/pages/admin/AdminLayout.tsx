@@ -171,7 +171,7 @@ export default function AdminLayout() {
             {
               key: 'trash',
               icon: menuIcon(
-                <JzTrashIcon size={34} />, // 原稿字形含圆徽内边距，+50% 补偿
+                <JzTrashIcon size={21} />, // viewBox 已裁至字形边界，21px 满框居中
                 'trash',
               ),
               label: <Link to="/admin/trash">回收站</Link>,
@@ -179,7 +179,7 @@ export default function AdminLayout() {
             {
               key: 'ai',
               icon: menuIcon(
-                <JzAiIcon size={MENU_ICON_SIZE} />,
+                <JzAiIcon size={25} />,
                 'ai',
               ),
               label: <Link to="/admin/ai">AI 助手</Link>,
@@ -188,7 +188,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'users',
                   icon: menuIcon(
-                    <JzUserGroupIcon size={28} />, // +20%
+                    <JzUserGroupIcon size={31} />, // +30%，源稿叠 14 描边轻微加粗
                 'users',
                   ),
                   label: <Link to="/admin/users">用户管理</Link>,
