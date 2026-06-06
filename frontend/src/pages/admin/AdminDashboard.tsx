@@ -12,9 +12,10 @@ import {
   JzExportIcon,
   JzGraphIcon,
   JzKbIcon,
-  JzTagsIcon,
+  JzTagIcon,
+  JzTrashIcon,
 } from '@/components/common/JzIcon';
-import { DeleteOutlined, StarOutlined } from '@ant-design/icons';
+import { StarOutlined } from '@ant-design/icons';
 import { listKBs } from '@/api/kbs';
 import { useAuthStore } from '@/stores/auth';
 import type { KnowledgeBase } from '@/types';
@@ -122,9 +123,9 @@ export default function AdminDashboard() {
     { to: '/admin/kbs', title: '知识库', desc: '浏览与管理全部知识库', icon: <JzKbIcon />, show: true },
     { to: '/admin/graph', title: '知识图谱', desc: '文档间的双向链接关系图', icon: <JzGraphIcon />, show: true },
     { to: '/admin/exports', title: '导出', desc: 'Markdown / PDF / HTML / 整站', icon: <JzExportIcon />, show: true },
-    { to: '/tags', title: '标签', desc: '按标签浏览与归类内容', icon: <JzTagsIcon />, show: true },
+    { to: '/tags', title: '标签', desc: '按标签浏览与归类内容', icon: <JzTagIcon />, show: true },
     { to: '/admin/favorites', title: '收藏', desc: '我标星的文档', icon: <StarOutlined />, show: true },
-    { to: '/admin/trash', title: '回收站', desc: '已删除内容的恢复与清理', icon: <DeleteOutlined />, show: true },
+    { to: '/admin/trash', title: '回收站', desc: '已删除内容的恢复与清理', icon: <JzTrashIcon />, show: true },
     { to: '/admin/ai', title: 'AI 助手', desc: '模型、用量与全局设置', icon: <JzAiIcon />, show: !!user?.is_staff },
     { to: '/admin/overview', title: '系统总览', desc: '架构、技术栈与实时统计', icon: <JzArchitectureIcon />, show: !!user?.is_superuser },
   ];

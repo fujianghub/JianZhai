@@ -27,7 +27,7 @@ import {
   JzKbIcon,
   JzOutlineIcon,
   JzSearchIcon,
-  JzTagsIcon,
+  JzTagIcon,
 } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
 import { getSystemInfo, type SystemInfo } from '@/api/admin';
@@ -148,7 +148,7 @@ const FEATURE_MODULES: FeatureModule[] = [
   {
     title: '标签与评论',
     desc: '标签挂 KB / 文件夹 / 文档；Markdown 评论 + block_id 段落定位',
-    icon: <JzTagsIcon size={18} />,
+    icon: <JzTagIcon size={18} />,
   },
   {
     title: '导出',
