@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, Layout, Space, Spin, Tooltip } from 'antd';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
@@ -11,12 +11,24 @@ import {
   RssSimple,
   Tag,
   User,
+  type Icon,
 } from '@phosphor-icons/react';
 import { useAuthStore } from '@/stores/auth';
 
 const { Header, Content, Footer } = Layout;
 
 const NAV_ICON_SIZE = 20;
+
+/* 双权重叠放：regular 与 fill 两层同位渲染，CSS 在 hover / 路由选中时
+   交叉淡入实心层 —— 「选中 = 形变」而非加色（iOS Tab Bar 模式）。 */
+function DualWeightIcon({ icon: IconComp }: { icon: Icon }) {
+  return (
+    <>
+      <IconComp weight="regular" size={NAV_ICON_SIZE} className="jz-ico-line" />
+      <IconComp weight="fill" size={NAV_ICON_SIZE} className="jz-ico-fill" />
+    </>
+  );
+}
 
 function BlogNavItem({
   to,
@@ -26,13 +38,13 @@ function BlogNavItem({
 }: {
   to: string;
   label: string;
-  icon: ReactNode;
+  icon: Icon;
   external?: boolean;
 }) {
   const inner = (
     <>
       <span className="jz-nav-link-icon" aria-hidden>
-        {icon}
+        <DualWeightIcon icon={icon} />
       </span>
       <span className="jz-nav-link-label">{label}</span>
     </>
@@ -117,17 +129,17 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<Archive weight="regular" size={NAV_ICON_SIZE} />}
+            icon={Archive}
           />
           <BlogNavItem
             to="/tags"
             label="标签"
-            icon={<Tag weight="regular" size={NAV_ICON_SIZE} />}
+            icon={Tag}
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<RssSimple weight="regular" size={NAV_ICON_SIZE} />}
+            icon={RssSimple}
             external
           />
           <Tooltip title="搜索 (Ctrl+K)">
@@ -136,7 +148,7 @@ export default function BlogLayout() {
               className="jz-nav-search-btn"
               icon={
                 <span className="jz-nav-link-icon" aria-hidden>
-                  <MagnifyingGlass weight="regular" size={NAV_ICON_SIZE} />
+                  <DualWeightIcon icon={MagnifyingGlass} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}
