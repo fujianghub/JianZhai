@@ -473,17 +473,11 @@ export function JzSearchIcon(p: IconProps) {
 const HIER_OPACITY = 0.28;
 
 
-/** RSS — 同心波（SF 分层：信号扇面次层填充 + 实心源点） */
+/** RSS — 同心波（纯线稿：双弧 + 空心源点，2026-06-06 去填充） */
 export function JzRssIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      <path
-        d="M4.5 11.4a8.1 8.1 0 0 1 8.1 8.1H4.5z"
-        fill="currentColor"
-        opacity={HIER_OPACITY}
-        stroke="none"
-      />
-      <circle cx="6.3" cy="17.7" r="1.9" fill="currentColor" stroke="none" />
+      <circle cx="6.3" cy="17.7" r="1.6" />
       <path d="M4.5 11.4a8.1 8.1 0 0 1 8.1 8.1" />
       <path d="M4.5 5.3a14.2 14.2 0 0 1 14.2 14.2" />
     </Wrap>
