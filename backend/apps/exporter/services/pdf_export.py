@@ -5,9 +5,12 @@ Playwright/Chromium isn't installed (single-doc HTML/MD/DOCX exports still work)
 """
 from __future__ import annotations
 
+import ipaddress
 import logging
+import socket
 import tempfile
 from pathlib import Path
+from urllib.parse import urlparse
 
 from ..scope import ExportScope
 from . import common, html_export
@@ -27,6 +30,59 @@ CHROMIUM_LAUNCH_ARGS = (
 
 # Large HTML-format exports can hit slow/offline subresources — stay above Playwright defaults.
 _DEFAULT_GOTO_TIMEOUT_MS = 120_000
+
+
+def _is_private_host(host: str) -> bool:
+    """True when ``host`` resolves to a non-public address (or doesn't resolve).
+
+    Used to keep the headless Chromium from being steered at loopback, LAN,
+    link-local (cloud metadata 169.254.169.254) or other internal targets by
+    user-authored document HTML."""
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except OSError:
+        return True
+    for info in infos:
+        try:
+            ip = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return True
+        if (
+            ip.is_private
+            or ip.is_loopback
+            or ip.is_link_local
+            or ip.is_reserved
+            or ip.is_multicast
+            or ip.is_unspecified
+        ):
+            return True
+    return False
+
+
+def _make_request_guard(allowed_file_uri: str):
+    """Playwright route handler: document bodies are user-authored HTML, so the
+    browser must not be allowed to read local files (``file:///etc/passwd`` as
+    an <img> would round-trip into the exported PDF) or probe internal hosts.
+    Public http(s) subresources stay allowed so external images keep rendering
+    exactly as before; local media is already inlined as data: URIs upstream."""
+
+    def guard(route):
+        url = route.request.url
+        if url == allowed_file_uri or url.startswith(("data:", "about:", "blob:")):
+            route.continue_()
+            return
+        parsed = urlparse(url)
+        if (
+            parsed.scheme in ("http", "https")
+            and parsed.hostname
+            and not _is_private_host(parsed.hostname)
+        ):
+            route.continue_()
+            return
+        log.warning("pdf_export: blocked subresource %s", url[:200])
+        route.abort()
+
+    return guard
 
 
 def export(scope: ExportScope) -> tuple[Path, str, str]:
@@ -70,6 +126,7 @@ def _render_pdf(html: str) -> bytes:
             browser = pw.chromium.launch(args=list(CHROMIUM_LAUNCH_ARGS))
             try:
                 page = browser.new_page()
+                page.route("**/*", _make_request_guard(uri))
                 page.set_default_timeout(_DEFAULT_GOTO_TIMEOUT_MS)
                 # Keep screen styling in the PDF — our print layout is driven by the
                 # ``.is-print`` class (always-on page breaks), not @media print.
