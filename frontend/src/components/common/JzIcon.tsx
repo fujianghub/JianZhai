@@ -72,15 +72,15 @@ export function JzKbIcon(p: IconProps) {
 
 /** 节点网络 — 知识图谱 */
 export function JzGraphIcon(p: IconProps) {
-  /* 节点网（SF 分层）：中心枢纽次层填充，四枚实心卫星节点 */
+  /* 节点网 v2（SF 分层）：边止于节点边缘留呼吸，枢纽次层填充 + 四实心卫星 */
   return (
     <Wrap {...p}>
-      <path d="M12 12 6.4 6.8M12 12l5.6-5.4M12 12l-5.4 5.4M12 12l5.6 5.2" />
-      <circle cx="12" cy="12" r="2.7" fill="currentColor" fillOpacity={0.28} />
-      <circle cx="6.4" cy="6.8" r="1.8" fill="currentColor" stroke="none" />
-      <circle cx="17.6" cy="6.6" r="1.8" fill="currentColor" stroke="none" />
-      <circle cx="6.6" cy="17.4" r="1.8" fill="currentColor" stroke="none" />
-      <circle cx="17.6" cy="17.2" r="1.8" fill="currentColor" stroke="none" />
+      <path d="M9.9 10 7.8 8.2M14.1 10l2.2-2.2M10 14.1 8.2 16M14.5 13.4l1.5.9" />
+      <circle cx="12" cy="12" r="2.9" fill="currentColor" fillOpacity={0.28} />
+      <circle cx="6.2" cy="6.7" r="2" fill="currentColor" stroke="none" />
+      <circle cx="17.9" cy="6.3" r="2" fill="currentColor" stroke="none" />
+      <circle cx="6.7" cy="17.6" r="2" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="15.1" r="1.5" fill="currentColor" stroke="none" />
     </Wrap>
   );
 }
@@ -99,16 +99,17 @@ export function JzExportIcon(p: IconProps) {
 
 /** AI 助手 */
 export function JzAiIcon(p: IconProps) {
-  /* 星芒（市场 AI 通用形，SF 分层）：主星次层填充 + 小星实心 */
+  /* 星芒 v2（市场 AI 通用形，SF 分层）：收紧凹弧让四角更尖；
+     主星次层填充居中偏左下，小星实心落右上空位。 */
   return (
     <Wrap {...p}>
       <path
-        d="M12 4.2C12.7 8 15 10.3 18.8 11 15 11.7 12.7 14 12 17.8 11.3 14 9 11.7 5.2 11 9 10.3 11.3 8 12 4.2Z"
+        d="M11.2 4.6c.4 3.7 3 6.3 6.7 6.7-3.7.4-6.3 3-6.7 6.7-.4-3.7-3-6.3-6.7-6.7 3.7-.4 6.3-3 6.7-6.7Z"
         fill="currentColor"
         fillOpacity={0.28}
       />
       <path
-        d="M18.3 14.6c.3 1.7 1.4 2.8 3.1 3.1-1.7.3-2.8 1.4-3.1 3.1-.3-1.7-1.4-2.8-3.1-3.1 1.7-.3 2.8-1.4 3.1-3.1Z"
+        d="M18.6 13.9c.25 1.55 1.25 2.55 2.8 2.8-1.55.25-2.55 1.25-2.8 2.8-.25-1.55-1.25-2.55-2.8-2.8 1.55-.25 2.55-1.25 2.8-2.8Z"
         fill="currentColor"
         stroke="none"
       />
@@ -447,13 +448,14 @@ export function JzAiSparkIcon(p: IconProps) {
 
 /** 架构总览 */
 export function JzArchitectureIcon(p: IconProps) {
-  /* 层级组织图（市场标准 org-chart 形，SF 分层）：顶节点实心 + 双子节点次层 */
+  /* 层级组织图 v2（SF 分层）：节点收一圈留白，连接线圆角肘弯 */
   return (
     <Wrap {...p}>
-      <rect x="8.7" y="3.8" width="6.6" height="5" rx="1.2" fill="currentColor" stroke="none" />
-      <path d="M12 8.8V14M6.75 15.2V14h10.5v1.2" />
-      <rect x="3.6" y="15.2" width="6.3" height="5" rx="1.2" fill="currentColor" fillOpacity={0.28} />
-      <rect x="14.1" y="15.2" width="6.3" height="5" rx="1.2" fill="currentColor" fillOpacity={0.28} />
+      <rect x="8.8" y="3.6" width="6.4" height="4.8" rx="1.4" fill="currentColor" stroke="none" />
+      <path d="M12 8.4V13" />
+      <path d="M7 15.4v-.9a1.5 1.5 0 0 1 1.5-1.5h7a1.5 1.5 0 0 1 1.5 1.5v.9" />
+      <rect x="3.8" y="15.4" width="6.4" height="4.8" rx="1.4" fill="currentColor" fillOpacity={0.28} />
+      <rect x="13.8" y="15.4" width="6.4" height="4.8" rx="1.4" fill="currentColor" fillOpacity={0.28} />
     </Wrap>
   );
 }
