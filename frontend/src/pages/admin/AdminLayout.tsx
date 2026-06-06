@@ -138,7 +138,7 @@ export default function AdminLayout() {
             {
               key: 'dashboard',
               icon: menuIcon(
-                <SquaresFour weight="duotone" size={MENU_ICON_SIZE} />,
+                <SquaresFour weight="regular" size={MENU_ICON_SIZE} />,
                 'jade',
               ),
               label: <Link to="/admin">工作台</Link>,
@@ -146,7 +146,7 @@ export default function AdminLayout() {
             {
               key: 'kbs',
               icon: menuIcon(
-                <Books weight="duotone" size={MENU_ICON_SIZE} />,
+                <Books weight="regular" size={MENU_ICON_SIZE} />,
                 'jade',
               ),
               label: <Link to="/admin/kbs">知识库</Link>,
@@ -154,7 +154,7 @@ export default function AdminLayout() {
             {
               key: 'graph',
               icon: menuIcon(
-                <Graph weight="duotone" size={MENU_ICON_SIZE} />,
+                <Graph weight="regular" size={MENU_ICON_SIZE} />,
                 'jade',
               ),
               label: <Link to="/admin/graph">知识图谱</Link>,
@@ -162,7 +162,7 @@ export default function AdminLayout() {
             {
               key: 'exports',
               icon: menuIcon(
-                <Export weight="duotone" size={MENU_ICON_SIZE} />,
+                <Export weight="regular" size={MENU_ICON_SIZE} />,
                 'jade',
               ),
               label: <Link to="/admin/exports">导出</Link>,
@@ -170,7 +170,7 @@ export default function AdminLayout() {
             {
               key: 'trash',
               icon: menuIcon(
-                <Trash weight="duotone" size={MENU_ICON_SIZE} />,
+                <Trash weight="regular" size={MENU_ICON_SIZE} />,
                 'jade',
               ),
               label: <Link to="/admin/trash">回收站</Link>,

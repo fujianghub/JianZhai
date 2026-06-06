@@ -125,19 +125,19 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/archive"
             label="归档"
-            icon={<Archive weight="duotone" size={NAV_ICON_SIZE} />}
+            icon={<Archive weight="regular" size={NAV_ICON_SIZE} />}
             tone="jade"
           />
           <BlogNavItem
             to="/tags"
             label="标签"
-            icon={<Tag weight="duotone" size={NAV_ICON_SIZE} />}
+            icon={<Tag weight="regular" size={NAV_ICON_SIZE} />}
             tone="jade"
           />
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<RssSimple weight="duotone" size={NAV_ICON_SIZE} />}
+            icon={<RssSimple weight="regular" size={NAV_ICON_SIZE} />}
             tone="jade"
             external
           />
@@ -150,7 +150,7 @@ export default function BlogLayout() {
                   className="jz-nav-link-icon jz-chip-toned jz-chip-tone-jade"
                   aria-hidden
                 >
-                  <MagnifyingGlass weight="duotone" size={NAV_ICON_SIZE} />
+                  <MagnifyingGlass weight="regular" size={NAV_ICON_SIZE} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}
@@ -166,7 +166,7 @@ export default function BlogLayout() {
             />
           ) : (
             <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
-              <User weight="duotone" size={16} />
+              <User weight="regular" size={16} />
               <span className="jz-nav-link-label">登录</span>
             </Link>
           )}
