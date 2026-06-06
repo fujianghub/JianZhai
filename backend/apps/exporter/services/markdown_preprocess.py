@@ -55,9 +55,42 @@ def map_outside_fenced_code_blocks(src: str, fn) -> str:
     return "\n".join(out)
 
 
+def _inside_inline_code_span(src: str, index: int) -> bool:
+    """Odd number of backtick *runs* between line start and ``index`` means an
+    inline code span is still open there (runs, not chars, so ````code````
+    double-backtick delimiters count once each)."""
+    line_start = src.rfind("\n", 0, index) + 1
+    runs = 0
+    i = line_start
+    while i < index:
+        if src[i] == "`":
+            runs += 1
+            while i + 1 < index and src[i + 1] == "`":
+                i += 1
+        i += 1
+    return runs % 2 == 1
+
+
 def unglue_container_fences(src: str) -> str:
-    out = re.sub(r"([^\n])(:::[a-zA-Z][\w-]*)", r"\1\n\n\2", src)
-    return re.sub(r"([^\n]):::(\s*\n|$)", r"\1\n\n:::\2", out)
+    """Insert missing blank lines before/after ``:::`` fences glued onto text
+    (Yuque export quirk) — but leave literal ``:::`` inside inline code spans
+    alone (e.g. a docs table cell showing ``` `:::details 标题` ```), else the
+    split breaks the table and spawns a runaway container. Fenced code blocks
+    are excluded at the call site via ``map_outside_fenced_code_blocks``."""
+
+    def _opener(m: re.Match) -> str:
+        if _inside_inline_code_span(m.string, m.start(2)):
+            return m.group(0)
+        return f"{m.group(1)}\n\n{m.group(2)}"
+
+    out = re.sub(r"([^\n])(:::[a-zA-Z][\w-]*)", _opener, src)
+
+    def _closer(m: re.Match) -> str:
+        if _inside_inline_code_span(m.string, m.start(1) + 1):
+            return m.group(0)
+        return f"{m.group(1)}\n\n:::{m.group(2)}"
+
+    return re.sub(r"([^\n]):::(\s*\n|$)", _closer, out)
 
 
 def unwrap_backticked_emphasis(src: str) -> str:
@@ -135,6 +168,6 @@ def apply_yuque_compat_mode(src: str) -> str:
 
 def preprocess_markdown(src: str) -> str:
     out = _HTML_COMMENT.sub("", src or "")
-    out = unglue_container_fences(out)
+    out = map_outside_fenced_code_blocks(out, unglue_container_fences)
     out = map_outside_fenced_code_blocks(out, apply_yuque_compat_mode)
     return out

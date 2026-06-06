@@ -47,6 +47,34 @@ describe('preprocessMarkdown', () => {
     expect(out).toContain('\n\n:::info');
   });
 
+  it('leaves literal ::: inside inline code spans alone (docs table cell)', () => {
+    // dev-guide detailed.md §6.2 — `:::details 标题` shown as inline code in a
+    // table row must not be split into a real container (it broke the table).
+    const row = '| 折叠块 | `:::details 标题` ↔ `<details>` | `DetailsBlock.ts` |';
+    const src = `| 节点 | 语法 | 文件 |\n| --- | --- | --- |\n${row}\n| 分栏 | \`:::cols-2\` / \`:::tabs\` | \`Columns.ts\` |`;
+    const out = preprocessMarkdown(src);
+    expect(out).not.toContain('\n\n:::details');
+    expect(out).not.toContain('\n\n:::cols-2');
+    expect(out).not.toContain('\n\n:::tabs');
+  });
+
+  it('renderMarkdown keeps a docs table with inline-code ::: intact', () => {
+    const src =
+      '| 节点 | 语法 |\n| --- | --- |\n| 折叠块 | `:::details 标题` |\n| 分栏 | `:::cols-2` |';
+    const html = renderMarkdown(src);
+    expect(html).toContain('<table');
+    expect(html).toContain(':::details 标题');
+    expect(html).not.toContain('jz-callout');
+    expect(html).not.toContain('<details');
+  });
+
+  it('does not unglue ::: inside fenced code blocks', () => {
+    const src = '```\nfoo:::info glued in code\n```\nafter';
+    const out = preprocessMarkdown(src);
+    expect(out).toContain('foo:::info glued in code');
+    expect(out).not.toContain('foo\n\n:::info');
+  });
+
   it('renderMarkdown does not leak literal font tags after preprocess', () => {
     const src = '| 示例 |\n| --- |\n| <font style="color:rgb(245,158,11);">code</font> |';
     const html = renderMarkdown(src);

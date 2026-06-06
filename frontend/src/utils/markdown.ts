@@ -613,13 +613,13 @@ export function mapOutsideFencedCodeBlocks(src: string, fn: (s: string) => strin
  *
  * Stage ordering matters:
  *   1. Strip HTML comments (Yuque puts editor metadata in them).
- *   2. Unglue container fences glued to surrounding text.
+ *   2. Unglue container fences glued to surrounding text (fence-external only).
  *   3. {@link applyYuqueCompatMode} — Yuque bold/colour/image quirks (fence-external only).
  *   4. GFM pipe tables → HTML (fence-external only).
  */
 export function preprocessMarkdown(src: string): string {
   let out = (src ?? '').replace(/<!--[\s\S]*?-->/g, '');
-  out = unglueContainerFences(out);
+  out = mapOutsideFencedCodeBlocks(out, unglueContainerFences);
   out = mapOutsideFencedCodeBlocks(out, applyYuqueCompatMode);
   out = mapOutsideFencedCodeBlocks(out, convertGfmPipeTables);
   return out;
@@ -732,16 +732,44 @@ export function convertGfmPipeTables(src: string): string {
  *
  * Same treatment is applied to a glued *closing* ``:::`` so e.g. trailing
  * text right after the fence doesn't kill the close.
+ *
+ * Literal ``:::`` inside an inline code span (e.g. a docs table cell showing
+ * `` `:::details 标题` ``) must NOT be unglued — splitting there breaks the
+ * table and spawns a runaway container. {@link isInsideInlineCodeSpan} guards
+ * every match; fenced code blocks are excluded at the call site via
+ * {@link mapOutsideFencedCodeBlocks}.
  */
+function isInsideInlineCodeSpan(src: string, index: number): boolean {
+  // Count backtick *runs* between the line start and `index`: an odd count
+  // means an inline code span is still open at that position. Runs (not raw
+  // chars) so double-backtick delimiters (``code``) count once each.
+  const lineStart = src.lastIndexOf('\n', index - 1) + 1;
+  let runs = 0;
+  for (let i = lineStart; i < index; i++) {
+    if (src[i] === '`') {
+      runs++;
+      while (i + 1 < index && src[i + 1] === '`') i++;
+    }
+  }
+  return runs % 2 === 1;
+}
+
 function unglueContainerFences(src: string): string {
   // Opener: ``...text:::info`` → ``...text\n\n:::info``.
   // Anchor on a non-newline char before ``:::`` and a word char after, so
   // we never split a literal ``::: separator (no following word)``.
-  let out = src.replace(/([^\n])(:::[a-zA-Z][\w-]*)/g, '$1\n\n$2');
+  const out = src.replace(
+    /([^\n])(:::[a-zA-Z][\w-]*)/g,
+    (match, pre: string, fence: string, offset: number, whole: string) =>
+      isInsideInlineCodeSpan(whole, offset + pre.length) ? match : `${pre}\n\n${fence}`,
+  );
   // Closing: ``content:::`` → ``content\n\n:::``. Bare ``:::`` followed by
   // line-end or another fence, glued after non-newline content.
-  out = out.replace(/([^\n]):::(\s*\n|$)/g, '$1\n\n:::$2');
-  return out;
+  return out.replace(
+    /([^\n]):::(\s*\n|$)/g,
+    (match, pre: string, tail: string, offset: number, whole: string) =>
+      isInsideInlineCodeSpan(whole, offset + pre.length) ? match : `${pre}\n\n:::${tail}`,
+  );
 }
 
 /**
