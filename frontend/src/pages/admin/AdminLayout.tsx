@@ -171,7 +171,7 @@ export default function AdminLayout() {
             {
               key: 'trash',
               icon: menuIcon(
-                <JzTrashIcon size={MENU_ICON_SIZE} />,
+                <JzTrashIcon size={34} />,  {/* 原稿字形内边距大，+50% 补偿 */}
                 'trash',
               ),
               label: <Link to="/admin/trash">回收站</Link>,
@@ -188,7 +188,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'users',
                   icon: menuIcon(
-                    <JzUserGroupIcon size={MENU_ICON_SIZE} />,
+                    <JzUserGroupIcon size={28} />,  {/* +20% */}
                 'users',
                   ),
                   label: <Link to="/admin/users">用户管理</Link>,
@@ -223,7 +223,7 @@ export default function AdminLayout() {
             {
               key: 'profile',
               icon: menuIcon(
-                <JzProfileIcon size={MENU_ICON_SIZE} />,
+                <JzProfileIcon size={28} />,  {/* +20%，源稿已叠描边加粗 */}
                 'profile',
               ),
               label: <Link to="/admin/profile">个人资料</Link>,

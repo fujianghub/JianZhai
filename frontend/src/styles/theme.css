@@ -3476,7 +3476,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-ico-tone-trash     { --jz-ico-c: #c0564e; }  /* 绛红 */
 .jz-ico-tone-ai        { --jz-ico-c: #7c3aed; }  /* 紫藤 */
 .jz-ico-tone-users     { --jz-ico-c: #0284c7; }  /* 湖蓝 */
-.jz-ico-tone-overview  { --jz-ico-c: #64748b; }  /* 玄青 */
+.jz-ico-tone-overview  { --jz-ico-c: #65a30d; }  /* 草绿（双叶幼苗） */
 .jz-ico-tone-hero      { --jz-ico-c: #b94a3b; }  /* 朱砂（呼应博客品牌） */
 .jz-ico-tone-profile   { --jz-ico-c: #0d9488; }  /* 松石 */
 [data-theme='dark'] .jz-ico-tone-dashboard, [data-theme='starry'] .jz-ico-tone-dashboard, [data-theme='deepsea'] .jz-ico-tone-dashboard { --jz-ico-c: #22d3ee; }
@@ -3486,7 +3486,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-ico-tone-trash,     [data-theme='starry'] .jz-ico-tone-trash,     [data-theme='deepsea'] .jz-ico-tone-trash     { --jz-ico-c: #d97b74; }
 [data-theme='dark'] .jz-ico-tone-ai,        [data-theme='starry'] .jz-ico-tone-ai,        [data-theme='deepsea'] .jz-ico-tone-ai        { --jz-ico-c: #a78bfa; }
 [data-theme='dark'] .jz-ico-tone-users,     [data-theme='starry'] .jz-ico-tone-users,     [data-theme='deepsea'] .jz-ico-tone-users     { --jz-ico-c: #38bdf8; }
-[data-theme='dark'] .jz-ico-tone-overview,  [data-theme='starry'] .jz-ico-tone-overview,  [data-theme='deepsea'] .jz-ico-tone-overview  { --jz-ico-c: #94a3b8; }
+[data-theme='dark'] .jz-ico-tone-overview,  [data-theme='starry'] .jz-ico-tone-overview,  [data-theme='deepsea'] .jz-ico-tone-overview  { --jz-ico-c: #a3e635; }
 [data-theme='dark'] .jz-ico-tone-hero,      [data-theme='starry'] .jz-ico-tone-hero,      [data-theme='deepsea'] .jz-ico-tone-hero      { --jz-ico-c: #de8273; }
 [data-theme='dark'] .jz-ico-tone-profile,   [data-theme='starry'] .jz-ico-tone-profile,   [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #2dd4bf; }
 
