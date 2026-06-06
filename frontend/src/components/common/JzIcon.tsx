@@ -455,11 +455,11 @@ export function JzTagsIcon(p: IconProps) {
 
 /** 个人空间（人形 + 册页） */
 
-/** 搜索 — 放大镜（SF 分层：镜片次层填充 + 粗握柄） */
+/** 搜索 — 放大镜（纯线稿：镜片无填充 + 粗握柄，2026-06-06 去实心） */
 export function JzSearchIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      <circle cx="10.5" cy="10.5" r="6" fill="currentColor" fillOpacity={0.28} />
+      <circle cx="10.5" cy="10.5" r="6" />
       <path d="M15.2 15.2 19.4 19.4" strokeWidth={2.2} />
     </Wrap>
   );
