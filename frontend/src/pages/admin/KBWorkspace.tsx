@@ -37,10 +37,17 @@ import * as docsApi from '@/api/docs';
 import { listDocumentTemplates, applyTemplatePlaceholders, type DocTemplate } from '@/api/templates';
 import { useAuthStore } from '@/stores/auth';
 import * as foldersApi from '@/api/folders';
-import * as attApi from '@/api/attachments';
 import * as tagsApi from '@/api/tags';
 import { formatApiError } from '@/api/client';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import UploadDropZone from '@/components/common/UploadDropZone';
+import {
+  collectPickedFiles,
+  runChunkedImport,
+  skippedSummary,
+  UPLOAD_ACCEPT,
+  type CollectedUploads,
+} from '@/utils/uploadBatch';
 import KBTreeNav, { collectVisibleSelection, type CheckedSelection } from '@/components/tree/KBTreeNav';
 import ExportDialog from '@/components/common/ExportDialog';
 import type { DocSortMode, KBTree, KnowledgeBase, TreeDocument, TreeFolder } from '@/types';
@@ -63,7 +70,6 @@ export default function KBWorkspace() {
   const [newFolderModal, setNewFolderModal] = useState(false);
   const [importing, setImporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ loaded: number; total: number } | null>(null);
-  const importInputRef = useRef<HTMLInputElement | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const [docForm] = Form.useForm<{
@@ -189,46 +195,26 @@ export default function KBWorkspace() {
     }
   }
 
-  async function handleImportFile(file: File) {
-    setImporting(true);
-    setBatchProgress({ loaded: 0, total: 1 });
-    try {
-      await attApi.importFileAsDoc(file, kbId, null, (loaded, total) =>
-        setBatchProgress({ loaded, total })
-      );
-      message.success(`已导入 ${file.name}`);
-    } catch (err) {
-      message.error(formatApiError(err, '导入失败'));
-    } finally {
-      setImporting(false);
-      setBatchProgress(null);
-      // Refresh even on failure — the server creates documents one by one, so
-      // a timeout / partial error may still have produced new docs.
-      await refreshTree();
-    }
-  }
-
   /**
-   * Upload many files (and optionally a whole directory tree) into the KB.
-   * When ``preserveTree`` is true we send each file's ``webkitRelativePath``
-   * so the backend can recreate the directory structure with auto-created
-   * folders. Otherwise the files land directly under the KB root.
+   * 统一上传入口：文件选择器（单个/多个）、文件夹选择器、拖拽（文件 + 文件夹
+   * 混合）全部走这里。客户端先按规则过滤（类型/大小/隐藏文件），再分片
+   * 顺序上传 —— 每片服务端响应后立即刷新树，文档渐进出现。
    */
-  async function handleBatchImport(files: FileList | File[], preserveTree: boolean) {
-    const arr = Array.from(files);
-    if (arr.length === 0) return;
+  async function handleUpload(collected: CollectedUploads) {
+    if (collected.skipped.length) message.warning(skippedSummary(collected.skipped));
+    if (collected.items.length === 0) {
+      if (!collected.skipped.length) message.info('没有可上传的文件');
+      return;
+    }
     setImporting(true);
     setBatchProgress({ loaded: 0, total: 1 });
     try {
-      const items: attApi.BatchImportItem[] = arr.map((f) => ({
-        file: f,
-        relativePath: preserveTree
-          ? (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name
-          : '',
-      }));
-      const result = await attApi.importBatch(items, kbId, null, (loaded, total) =>
-        setBatchProgress({ loaded, total })
-      );
+      const result = await runChunkedImport(collected.items, kbId, null, {
+        onProgress: (loaded, total) => setBatchProgress({ loaded, total }),
+        onChunkDone: async () => {
+          await refreshTree();
+        },
+      });
       const msg = `已导入 ${result.created.length} 个文件` +
         (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
         (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
@@ -239,13 +225,10 @@ export default function KBWorkspace() {
       } else {
         message.success(msg);
       }
-    } catch (err) {
-      message.error(formatApiError(err, '批量上传失败'));
     } finally {
       setImporting(false);
       setBatchProgress(null);
-      // Refresh even on failure — the server creates documents one by one, so
-      // a timeout / partial error may still have produced new docs.
+      // 兜底再刷一次 —— 分片中途异常也能看到已落库的文档。
       await refreshTree();
     }
   }
@@ -471,22 +454,25 @@ export default function KBWorkspace() {
                 },
                 { type: 'divider' as const },
                 {
-                  key: 'import',
+                  key: 'import-files',
                   icon: <CloudUploadOutlined />,
-                  label: '上传单个文件 (md/pdf/docx/html…)',
-                  onClick: () => importInputRef.current?.click(),
-                },
-                {
-                  key: 'import-batch',
-                  icon: <CloudUploadOutlined />,
-                  label: '批量上传文件',
+                  label: '上传文件（单个或多选）',
                   onClick: () => batchInputRef.current?.click(),
                 },
                 {
                   key: 'import-folder',
                   icon: <FolderAddOutlined />,
-                  label: '上传整个文件夹（保留目录结构）',
+                  label: '上传文件夹（保留目录结构）',
                   onClick: () => folderInputRef.current?.click(),
+                },
+                {
+                  key: 'import-hint',
+                  disabled: true,
+                  label: (
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      也可直接拖拽文件 / 多个文件夹到文档列表
+                    </Text>
+                  ),
                 },
               ],
             }}
@@ -500,25 +486,14 @@ export default function KBWorkspace() {
             </Button>
           </Dropdown>
           <input
-            ref={importInputRef}
-            type="file"
-            accept=".pdf,.doc,.docx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
-            style={{ display: 'none' }}
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void handleImportFile(f);
-              e.target.value = '';
-            }}
-          />
-          <input
             ref={batchInputRef}
             type="file"
             multiple
-            accept=".pdf,.doc,.docx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
+            accept={UPLOAD_ACCEPT}
             style={{ display: 'none' }}
             onChange={(e) => {
               if (e.target.files && e.target.files.length) {
-                void handleBatchImport(e.target.files, false);
+                void handleUpload(collectPickedFiles(e.target.files, false));
               }
               e.target.value = '';
             }}
@@ -533,7 +508,7 @@ export default function KBWorkspace() {
             style={{ display: 'none' }}
             onChange={(e) => {
               if (e.target.files && e.target.files.length) {
-                void handleBatchImport(e.target.files, true);
+                void handleUpload(collectPickedFiles(e.target.files, true));
               }
               e.target.value = '';
             }}
@@ -695,6 +670,10 @@ export default function KBWorkspace() {
         )}
       </div>
 
+      <UploadDropZone
+        accent={kb.accent_color || undefined}
+        onDropFiles={(c) => void handleUpload(c)}
+      >
       <div
         className={'jz-kb-tree-panel' + (kb.accent_color ? ' has-kb-accent' : '')}
         style={
@@ -706,14 +685,14 @@ export default function KBWorkspace() {
         {tree.folders.length === 0 && tree.documents.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="空知识库，先建一个文档或上传文件"
+            description="空知识库 — 新建文档、上传，或直接拖入文件 / 文件夹"
             style={{ padding: '48px 0' }}
           >
             <Space>
               <Button type="primary" icon={<FileAddOutlined />} onClick={() => setNewDocModal(true)}>
                 新建文档
               </Button>
-              <Button icon={<CloudUploadOutlined />} onClick={() => importInputRef.current?.click()}>
+              <Button icon={<CloudUploadOutlined />} onClick={() => batchInputRef.current?.click()}>
                 上传文件
               </Button>
             </Space>
@@ -747,6 +726,7 @@ export default function KBWorkspace() {
           />
         )}
       </div>
+      </UploadDropZone>
 
       {tree.folders.length === 0 && tree.documents.length === 0 && (
         <Alert
