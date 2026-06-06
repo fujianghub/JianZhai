@@ -196,13 +196,15 @@ export default function KBWorkspace() {
       await attApi.importFileAsDoc(file, kbId, null, (loaded, total) =>
         setBatchProgress({ loaded, total })
       );
-      await refreshTree();
       message.success(`已导入 ${file.name}`);
     } catch (err) {
       message.error(formatApiError(err, '导入失败'));
     } finally {
       setImporting(false);
       setBatchProgress(null);
+      // Refresh even on failure — the server creates documents one by one, so
+      // a timeout / partial error may still have produced new docs.
+      await refreshTree();
     }
   }
 
@@ -227,7 +229,6 @@ export default function KBWorkspace() {
       const result = await attApi.importBatch(items, kbId, null, (loaded, total) =>
         setBatchProgress({ loaded, total })
       );
-      await refreshTree();
       const msg = `已导入 ${result.created.length} 个文件` +
         (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
         (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
@@ -243,6 +244,9 @@ export default function KBWorkspace() {
     } finally {
       setImporting(false);
       setBatchProgress(null);
+      // Refresh even on failure — the server creates documents one by one, so
+      // a timeout / partial error may still have produced new docs.
+      await refreshTree();
     }
   }
 
@@ -489,7 +493,9 @@ export default function KBWorkspace() {
           >
             <Button type="primary" loading={importing}>
               {batchProgress
-                ? `上传中 ${Math.round((batchProgress.loaded / batchProgress.total) * 100)}%`
+                ? batchProgress.loaded >= batchProgress.total
+                  ? '服务器处理中…'
+                  : `上传中 ${Math.round((batchProgress.loaded / batchProgress.total) * 100)}%`
                 : '新建 ▾'}
             </Button>
           </Dropdown>
@@ -561,7 +567,9 @@ export default function KBWorkspace() {
         >
           <CloudUploadOutlined style={{ color: 'var(--jz-accent)' }} />
           <Text style={{ whiteSpace: 'nowrap' }}>
-            {batchProgress.loaded >= batchProgress.total ? '处理中…' : '上传中…'}
+            {batchProgress.loaded >= batchProgress.total
+              ? '已上传，服务器解析中…'
+              : '上传中…'}
           </Text>
           <Progress
             style={{ flex: 1, margin: 0 }}
