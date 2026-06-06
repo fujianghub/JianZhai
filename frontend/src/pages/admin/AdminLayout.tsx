@@ -1,19 +1,20 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
 import {
-  Books,
-  Export,
-  Graph,
   List,
   MagnifyingGlass,
   Quotes,
-  Robot,
-  SquaresFour,
-  Trash,
   TreeStructure,
   UserCircle,
   UsersThree,
 } from '@phosphor-icons/react';
+/* 图标库三段对比样品：前3 Hugeicons / 中3 Tabler / 后4 Phosphor */
+import {
+  Books01Icon,
+  DashboardSquare01Icon,
+  NeuralNetworkIcon,
+} from 'hugeicons-react';
+import { IconFileExport, IconRobot, IconTrash } from '@tabler/icons-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
@@ -130,42 +131,42 @@ export default function AdminLayout() {
             {
               key: 'dashboard',
               icon: menuIcon(
-                <SquaresFour weight="regular" size={MENU_ICON_SIZE} />,
+                <DashboardSquare01Icon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin">工作台</Link>,
             },
             {
               key: 'kbs',
               icon: menuIcon(
-                <Books weight="regular" size={MENU_ICON_SIZE} />,
+                <Books01Icon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/kbs">知识库</Link>,
             },
             {
               key: 'graph',
               icon: menuIcon(
-                <Graph weight="regular" size={MENU_ICON_SIZE} />,
+                <NeuralNetworkIcon size={MENU_ICON_SIZE} />,
               ),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
             {
               key: 'exports',
               icon: menuIcon(
-                <Export weight="regular" size={MENU_ICON_SIZE} />,
+                <IconFileExport size={MENU_ICON_SIZE} stroke={1.7} />,
               ),
               label: <Link to="/admin/exports">导出</Link>,
             },
             {
               key: 'trash',
               icon: menuIcon(
-                <Trash weight="regular" size={MENU_ICON_SIZE} />,
+                <IconTrash size={MENU_ICON_SIZE} stroke={1.7} />,
               ),
               label: <Link to="/admin/trash">回收站</Link>,
             },
             {
               key: 'ai',
               icon: menuIcon(
-                <Robot weight="regular" size={MENU_ICON_SIZE} />,
+                <IconRobot size={MENU_ICON_SIZE} stroke={1.7} />,
               ),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
