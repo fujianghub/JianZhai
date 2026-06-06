@@ -147,7 +147,6 @@ export default function KBPostsPage() {
           : '',
       }));
       const result = await attApi.importBatch(items, tree.id, null);
-      reload();
       const msg = `已导入 ${result.created.length} 个文件` +
         (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
         (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
@@ -157,6 +156,9 @@ export default function KBPostsPage() {
       message.error(formatApiError(err, '批量上传失败'));
     } finally {
       setUploading(false);
+      // Refresh even on failure — the server creates documents one by one, so
+      // a timeout / partial error may still have produced new docs.
+      reload();
     }
   }
 

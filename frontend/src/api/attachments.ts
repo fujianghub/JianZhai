@@ -13,6 +13,16 @@ export interface Attachment {
   created_at: string;
 }
 
+// Upload/import requests override the global 30s axios timeout: the byte
+// upload itself can be slow on LAN/Wi-Fi, and after the bytes reach 100% the
+// server still parses everything synchronously (docx→markdown, remote-image
+// mirroring) before responding — all of which counts against the same timeout.
+// A premature client-side timeout only aborts the *response*, not the server
+// work: documents kept getting created while the UI reported failure and never
+// refreshed the list ("100% 但列表里没有，刷新才出现").
+const UPLOAD_TIMEOUT_MS = 5 * 60_000;
+const BATCH_IMPORT_TIMEOUT_MS = 30 * 60_000;
+
 export async function uploadFile(file: File, documentId?: number): Promise<Attachment> {
   await ensureCsrf();
   const fd = new FormData();
@@ -20,6 +30,7 @@ export async function uploadFile(file: File, documentId?: number): Promise<Attac
   if (documentId != null) fd.append('document', String(documentId));
   const { data } = await apiClient.post<Attachment>('/uploads/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: UPLOAD_TIMEOUT_MS,
   });
   return data;
 }
@@ -42,6 +53,7 @@ export async function importFileAsDoc(
   if (folderId != null) fd.append('folder', String(folderId));
   const { data } = await apiClient.post('/imports/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: UPLOAD_TIMEOUT_MS,
     onUploadProgress: (e) => {
       if (onProgress && e.total) onProgress(e.loaded, e.total);
     },
@@ -81,6 +93,7 @@ export async function importBatch(
   }
   const { data } = await apiClient.post<BatchImportResult>('/imports/batch/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: BATCH_IMPORT_TIMEOUT_MS,
     onUploadProgress: (e) => {
       if (onProgress && e.total) onProgress(e.loaded, e.total);
     },
