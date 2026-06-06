@@ -460,7 +460,7 @@ export function JzSearchIcon(p: IconProps) {
   return (
     <Wrap {...p}>
       <circle cx="10.5" cy="10.5" r="6" />
-      <path d="M15.2 15.2 19.4 19.4" strokeWidth={1.3} />
+      <path d="M15.2 15.2 19.4 19.4" strokeWidth={1.5} />
     </Wrap>
   );
 }

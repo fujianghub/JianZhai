@@ -136,7 +136,7 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<JzRssIcon size={NAV_ICON_SIZE} strokeWidth={0.9} />}
+            icon={<JzRssIcon size={23} strokeWidth={1.1} />}
             tone="rss"
             external
           />
@@ -149,7 +149,7 @@ export default function BlogLayout() {
                   className="jz-nav-link-icon jz-ico-toned jz-ico-tone-search"
                   aria-hidden
                 >
-                  <JzSearchIcon size={NAV_ICON_SIZE} strokeWidth={0.9} />
+                  <JzSearchIcon size={23} strokeWidth={1.1} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}
