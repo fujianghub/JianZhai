@@ -3504,6 +3504,22 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-ico-tone-tags, [data-theme='starry'] .jz-ico-tone-tags, [data-theme='deepsea'] .jz-ico-tone-tags { --jz-ico-c: #de8273; }
 [data-theme='dark'] .jz-ico-tone-star, [data-theme='starry'] .jz-ico-tone-star, [data-theme='deepsea'] .jz-ico-tone-star { --jz-ico-c: #eab308; }
 
+/* 架构总览功能模块/统计卡补充色（同一明度平面，与侧栏色板同源） */
+.jz-ico-tone-edit    { --jz-ico-c: #0891b2; }  /* 青瓷（文档与编辑器） */
+.jz-ico-tone-version { --jz-ico-c: #64748b; }  /* 玄青（历史版本） */
+.jz-ico-tone-link    { --jz-ico-c: #4f46e5; }  /* 靛蓝（双向链接 / HTML） */
+.jz-ico-tone-search  { --jz-ico-c: #0284c7; }  /* 湖蓝（全文搜索） */
+.jz-ico-tone-attach  { --jz-ico-c: #0d9488; }  /* 松石（附件与媒体） */
+[data-theme='dark'] .jz-ico-tone-edit,    [data-theme='starry'] .jz-ico-tone-edit,    [data-theme='deepsea'] .jz-ico-tone-edit    { --jz-ico-c: #22d3ee; }
+[data-theme='dark'] .jz-ico-tone-version, [data-theme='starry'] .jz-ico-tone-version, [data-theme='deepsea'] .jz-ico-tone-version { --jz-ico-c: #94a3b8; }
+[data-theme='dark'] .jz-ico-tone-link,    [data-theme='starry'] .jz-ico-tone-link,    [data-theme='deepsea'] .jz-ico-tone-link    { --jz-ico-c: #818cf8; }
+[data-theme='dark'] .jz-ico-tone-search,  [data-theme='starry'] .jz-ico-tone-search,  [data-theme='deepsea'] .jz-ico-tone-search  { --jz-ico-c: #38bdf8; }
+[data-theme='dark'] .jz-ico-tone-attach,  [data-theme='starry'] .jz-ico-tone-attach,  [data-theme='deepsea'] .jz-ico-tone-attach  { --jz-ico-c: #2dd4bf; }
+/* deepsea 冷色沉底校准（与 dashboard/users/profile 同档提亮） */
+[data-theme='deepsea'] .jz-ico-tone-edit   { --jz-ico-c: #45e2f5; }
+[data-theme='deepsea'] .jz-ico-tone-search { --jz-ico-c: #57cdff; }
+[data-theme='deepsea'] .jz-ico-tone-attach { --jz-ico-c: #3fe0cb; }
+
 /* 通用 tone 消费规则：菜单槽之外（工作台快捷卡等）也能上专属色；
    静止 78% 微降，所在卡片悬停时升满色 */
 .jz-glass .jz-ico-toned {
@@ -3550,6 +3566,51 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: color-mix(in srgb, var(--jz-ico-c) 78%, var(--jz-icon-stroke));
 }
 .jz-blog-glass .jz-nav-link--login:hover .jz-ico-toned {
+  color: var(--jz-ico-c);
+}
+
+/* ── 架构总览 tone 接入（2026-06-06，与工作台快捷入口同款专属色体系）──
+   tone 类挂在卡片上：--jz-ico-c 既染子图标，也供 hover 边框/阴影取色；
+   未带 tone 的卡片回退翡翠 accent，不影响工作台。 */
+/* 旧式双色图标（浅染/点缀走 --jz-icon-fill/spot）在 tone 上下文里跟随专属色 */
+.jz-admin-glass .jz-overview-page .jz-ico-toned {
+  --jz-icon-fill: color-mix(in srgb, var(--jz-ico-c) 14%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-ico-c) 22%, transparent);
+  --jz-icon-spot: var(--jz-ico-c);
+}
+/* 功能模块卡：hover 边框/阴影随各自专属色，图标微放大活化 */
+.jz-admin-glass .jz-overview-page .jz-feature-card:hover {
+  border-color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 45%, transparent);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 13%, transparent);
+}
+.jz-admin-glass .jz-overview-page .jz-feature-card-icon .jz-icon {
+  transition: transform 0.22s ease;
+}
+.jz-admin-glass .jz-overview-page .jz-feature-card:hover .jz-feature-card-icon .jz-icon {
+  transform: scale(1.1);
+}
+/* 统计小卡：前缀图标对齐 + hover 边框随专属色、图标升满色 */
+.jz-admin-glass .jz-overview-stat .ant-statistic-content-prefix .jz-ico-toned {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: -2px;
+  font-size: 19px;
+}
+.jz-admin-glass .jz-overview-page .jz-overview-stat:hover {
+  border-color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 42%, transparent);
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 12%, transparent);
+}
+.jz-admin-glass .jz-overview-stat:hover .jz-ico-toned {
+  color: var(--jz-ico-c);
+}
+/* 页头标题幼苗 / 技术栈分组头：静态场景直接满色 */
+.jz-admin-glass .jz-overview-hero .jz-ico-toned {
+  color: var(--jz-ico-c);
+}
+.jz-admin-glass .jz-overview-page .jz-stack-head-icon {
+  display: inline-flex;
+  align-items: center;
+  font-size: 16px;
   color: var(--jz-ico-c);
 }
 

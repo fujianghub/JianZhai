@@ -4,12 +4,7 @@ import {
   CloudServerOutlined,
   CodeOutlined,
   DatabaseOutlined,
-  FileTextOutlined,
-  FolderOpenOutlined,
   GlobalOutlined,
-  PaperClipOutlined,
-  RobotOutlined,
-  TeamOutlined,
   ThunderboltOutlined,
 } from '@ant-design/icons';
 import MermaidDiagram from '@/components/common/MermaidDiagram';
@@ -22,12 +17,15 @@ import {
   JzAttachmentIcon,
   JzBacklinkIcon,
   JzBlogIcon,
+  JzClockIcon,
+  JzComposeIcon,
   JzExportIcon,
+  JzFolderOpenIcon,
   JzGraphIcon,
   JzKbIcon,
-  JzOutlineIcon,
   JzSearchIcon,
   JzTagIcon,
+  JzUserGroupIcon,
 } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
 import { getSystemInfo, type SystemInfo } from '@/api/admin';
@@ -54,6 +52,8 @@ type StackTagClass = 'jz-stack-tag--backend' | 'jz-stack-tag--frontend' | 'jz-st
 interface StackLayer {
   title: string;
   icon: React.ReactNode;
+  /** 分组头图标专属色（jz-ico-tone-*），与该层标签胶囊色系呼应 */
+  tone: string;
   tagClass: StackTagClass;
   items: StackItem[];
 }
@@ -62,6 +62,7 @@ const STACK: StackLayer[] = [
   {
     title: '后端',
     icon: <CodeOutlined />,
+    tone: 'graph',
     tagClass: 'jz-stack-tag--backend',
     items: [
       { name: 'Python 3.12' },
@@ -81,6 +82,7 @@ const STACK: StackLayer[] = [
   {
     title: '前端',
     icon: <GlobalOutlined />,
+    tone: 'ai',
     tagClass: 'jz-stack-tag--frontend',
     items: [
       { name: 'React 18 + TS' },
@@ -100,6 +102,7 @@ const STACK: StackLayer[] = [
   {
     title: '基础设施',
     icon: <CloudServerOutlined />,
+    tone: 'kb',
     tagClass: 'jz-stack-tag--infra',
     items: [
       { name: 'Docker Compose', hint: 'postgres + redis' },
@@ -117,68 +120,166 @@ interface FeatureModule {
   title: string;
   desc: string;
   icon: React.ReactNode;
+  /** 同明度多彩调色板键（jz-ico-tone-*），与侧栏 / 工作台快捷入口同源 */
+  tone: string;
 }
 
 const FEATURE_MODULES: FeatureModule[] = [
   {
     title: '知识库与目录',
     desc: 'KB / 文件夹嵌套、树拖拽排序、软删除回收站、封面与主题色',
-    icon: <JzKbIcon size={18} />,
+    icon: <JzKbIcon size={24} />,
+    tone: 'kb',
   },
   {
     title: '文档与编辑器',
     desc: 'Rich · Markdown · HTML 三模式；Tiptap 3 扩展（数学、分栏、DocCard、Mermaid 等）',
-    icon: <JzOutlineIcon size={18} />,
+    icon: <JzComposeIcon size={24} />,
+    tone: 'edit',
   },
   {
     title: '历史版本',
     desc: '快照 diff / 回滚；每文档保留 100 个版本',
-    icon: <FileTextOutlined style={{ fontSize: 16 }} />,
+    icon: <JzClockIcon size={24} />,
+    tone: 'version',
   },
   {
     title: '双向链接',
     desc: '@提及解析、反向链接、doc 悬浮卡',
-    icon: <JzBacklinkIcon size={18} />,
+    icon: <JzBacklinkIcon size={24} />,
+    tone: 'link',
   },
   {
     title: '全文搜索',
     desc: '⌘K 全局搜索；jieba + tsvector GIN 索引',
-    icon: <JzSearchIcon size={18} />,
+    icon: <JzSearchIcon size={24} />,
+    tone: 'search',
   },
   {
     title: '标签与评论',
     desc: '标签挂 KB / 文件夹 / 文档；Markdown 评论 + block_id 段落定位',
-    icon: <JzTagIcon size={18} />,
+    icon: <JzTagIcon size={24} />,
+    tone: 'tags',
   },
   {
     title: '导出',
     desc: 'MD / HTML / PDF / DOCX / 整站 zip；Celery 异步',
-    icon: <JzExportIcon size={18} />,
+    icon: <JzExportIcon size={24} />,
+    tone: 'exports',
   },
   {
     title: '博客前台',
     desc: '匿名阅读；4 主题 + 纸张样式；RSS；slug 按 KB 消歧 ?kb=',
-    icon: <JzBlogIcon size={18} />,
+    icon: <JzBlogIcon size={24} />,
+    tone: 'hero',
   },
   {
     title: '附件与媒体',
     desc: '上传 / 媒体库 / PDF 内联预览；单文件 50MB',
-    icon: <JzAttachmentIcon size={18} />,
+    icon: <JzAttachmentIcon size={24} />,
+    tone: 'attach',
   },
   {
     title: '知识图谱',
     desc: 'force-graph 可视化文档引用网络',
-    icon: <JzGraphIcon size={18} />,
+    icon: <JzGraphIcon size={24} />,
+    tone: 'graph',
   },
   {
     title: 'AI 助手',
-    desc: '8 种写作操作 + SSE 流式；/admin/ai 配置与用量',
-    icon: <JzAiIcon size={18} />,
+    desc: '多供应商（Claude + 通义千问）· 模板 · 多轮对话；/admin/ai 配置与用量',
+    icon: <JzAiIcon size={24} />,
+    tone: 'ai',
   },
   {
     title: '视觉系统',
     desc: '玄黑玻璃后台 + 宣纸博客；JzIcon · PWA · 印章 favicon',
-    icon: <JzArchitectureIcon size={18} />,
+    icon: <JzArchitectureIcon size={24} />,
+    tone: 'overview',
+  },
+];
+
+type Counts = NonNullable<SystemInfo['counts']>;
+
+interface StatItem {
+  title: string;
+  icon: React.ReactNode;
+  /** 专属色键，与功能模块卡同一调色板 */
+  tone: string;
+  value: (c: Counts) => number | string;
+  suffix?: (c: Counts) => React.ReactNode;
+}
+
+const STATS: StatItem[] = [
+  {
+    title: '知识库',
+    icon: <JzKbIcon size={18} />,
+    tone: 'kb',
+    value: (c) => c.knowledge_bases,
+  },
+  {
+    title: '文件夹',
+    icon: <JzFolderOpenIcon size={19} />,
+    tone: 'exports',
+    value: (c) => c.folders,
+  },
+  {
+    title: '文档总数',
+    icon: <JzComposeIcon size={19} />,
+    tone: 'edit',
+    value: (c) => c.documents_total,
+    suffix: (c) => (
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        / 已发布 {c.documents_published} · 草稿 {c.documents_draft}
+      </Text>
+    ),
+  },
+  {
+    title: '近 24h 编辑',
+    icon: <ThunderboltOutlined />,
+    tone: 'star',
+    value: (c) => c.documents_updated_24h,
+  },
+  {
+    title: '公开文档',
+    icon: <GlobalOutlined />,
+    tone: 'hero',
+    value: (c) => c.documents_public,
+  },
+  {
+    title: 'HTML 文档',
+    icon: <CodeOutlined />,
+    tone: 'link',
+    value: (c) => c.documents_html,
+  },
+  {
+    title: '用户',
+    icon: <JzUserGroupIcon size={21} />,
+    tone: 'users',
+    value: (c) => c.users_active,
+    suffix: (c) => (
+      <Text type="secondary" style={{ fontSize: 12 }}>
+        / 共 {c.users_total}
+      </Text>
+    ),
+  },
+  {
+    title: '近 24h AI 调用',
+    icon: <JzAiIcon size={19} />,
+    tone: 'ai',
+    value: (c) => c.ai_calls_24h,
+  },
+  {
+    title: '附件',
+    icon: <JzAttachmentIcon size={18} />,
+    tone: 'attach',
+    value: (c) => c.attachments_total,
+  },
+  {
+    title: '附件占用',
+    icon: <DatabaseOutlined />,
+    tone: 'version',
+    value: (c) => formatBytes(c.attachments_bytes),
   },
 ];
 
@@ -235,17 +336,21 @@ export default function SystemOverviewPage() {
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Card className="jz-overview-hero">
           <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-            <JzArchitectureIcon size={22} style={{ marginRight: 10, color: 'var(--jz-accent)' }} />
+            <JzArchitectureIcon
+              size={22}
+              className="jz-ico-toned jz-ico-tone-overview"
+              style={{ marginRight: 10, verticalAlign: '-3px' }}
+            />
             架构总览
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 12, maxWidth: 920 }}>
-            简斋 / JianZhai v0.9 — Monorepo 本地单机「个人知识库 + 公开博客」。
+            简斋 / JianZhai v0.9.10 — Monorepo「个人知识库 + 公开博客」。
             核心理念是<strong>一份内容两形态</strong>（<code>raw_content</code> 私人笔记 ·{' '}
             <code>published_content</code> 发布版），三种编辑器（Rich / Markdown / HTML），
             公开端支持 HTML 原位阅读；AI 全部走后端代理；多账号按 <code>owner</code> 隔离数据。
           </Paragraph>
           <Space size={[8, 8]} wrap>
-            <Tag color="processing">v0.9</Tag>
+            <Tag color="processing">v0.9.10</Tag>
             {info && (
               <>
                 <Tag icon={<CodeOutlined />}>Python {info.runtime.python}</Tag>
@@ -281,130 +386,19 @@ export default function SystemOverviewPage() {
           }
         >
           <Row gutter={[16, 16]}>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="知识库"
-                  value={c?.knowledge_bases ?? '—'}
-                  prefix={<DatabaseOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="文件夹"
-                  value={c?.folders ?? '—'}
-                  prefix={<FolderOpenOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="文档总数"
-                  value={c?.documents_total ?? '—'}
-                  prefix={<FileTextOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                  suffix={
-                    c ? (
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        / 已发布 {c.documents_published} · 草稿 {c.documents_draft}
-                      </Text>
-                    ) : null
-                  }
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="近 24h 编辑"
-                  value={c?.documents_updated_24h ?? '—'}
-                  prefix={<ThunderboltOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="公开文档"
-                  value={c?.documents_public ?? '—'}
-                  prefix={<GlobalOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="HTML 文档"
-                  value={c?.documents_html ?? '—'}
-                  prefix={<CodeOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="用户"
-                  value={c?.users_active ?? '—'}
-                  prefix={<TeamOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                  suffix={
-                    c ? (
-                      <Text type="secondary" style={{ fontSize: 12 }}>
-                        / 共 {c.users_total}
-                      </Text>
-                    ) : null
-                  }
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="近 24h AI 调用"
-                  value={c?.ai_calls_24h ?? '—'}
-                  prefix={<RobotOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="附件"
-                  value={c?.attachments_total ?? '—'}
-                  prefix={<PaperClipOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
-            <Col xs={12} sm={8} md={6}>
-              <div className="jz-overview-stat">
-                <Statistic
-                  title="附件占用"
-                  value={c ? formatBytes(c.attachments_bytes) : '—'}
-                  prefix={<DatabaseOutlined />}
-                  loading={!loadedOnce}
-                  valueStyle={{ color: 'var(--jz-accent)' }}
-                />
-              </div>
-            </Col>
+            {STATS.map((s) => (
+              <Col xs={12} sm={8} md={6} key={s.title}>
+                <div className={`jz-overview-stat jz-ico-tone-${s.tone}`}>
+                  <Statistic
+                    title={s.title}
+                    value={c ? s.value(c) : '—'}
+                    prefix={<span className="jz-ico-toned">{s.icon}</span>}
+                    loading={!loadedOnce}
+                    suffix={c && s.suffix ? s.suffix(c) : null}
+                  />
+                </div>
+              </Col>
+            ))}
           </Row>
         </Card>
 
@@ -412,9 +406,10 @@ export default function SystemOverviewPage() {
           <Row gutter={[12, 12]}>
             {FEATURE_MODULES.map((m) => (
               <Col xs={24} sm={12} md={8} lg={6} key={m.title}>
-                <div className="jz-feature-card">
+                {/* tone 类挂卡片：--jz-ico-c 同时供子图标染色与 hover 边框/阴影取色 */}
+                <div className={`jz-feature-card jz-ico-tone-${m.tone}`}>
                   <div className="jz-feature-card-head">
-                    <span className="jz-feature-card-icon">{m.icon}</span>
+                    <span className="jz-feature-card-icon jz-ico-toned">{m.icon}</span>
                     <span className="jz-feature-card-title">{m.title}</span>
                   </div>
                   <p className="jz-feature-card-desc">{m.desc}</p>
@@ -432,7 +427,9 @@ export default function SystemOverviewPage() {
                   size="small"
                   title={
                     <Space size={6}>
-                      {layer.icon}
+                      <span className={`jz-stack-head-icon jz-ico-toned jz-ico-tone-${layer.tone}`}>
+                        {layer.icon}
+                      </span>
                       <span>{layer.title}</span>
                     </Space>
                   }
