@@ -27,7 +27,7 @@ import UserAccountMenu from '@/components/common/UserAccountMenu';
 
 const { Header, Sider, Content } = Layout;
 
-const MENU_ICON_SIZE = 20;
+const MENU_ICON_SIZE = 23;
 
 function menuIcon(node: ReactNode, tone?: string) {
   return (
