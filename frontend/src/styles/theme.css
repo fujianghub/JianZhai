@@ -3498,6 +3498,22 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='deepsea'] .jz-ico-tone-users     { --jz-ico-c: #57cdff; }
 [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #3fe0cb; }
 
+/* 工作台快捷卡等非菜单场景的补充色（标签·朱砂 / 收藏·缃金） */
+.jz-ico-tone-tags { --jz-ico-c: #b94a3b; }
+.jz-ico-tone-star { --jz-ico-c: #ca8a04; }
+[data-theme='dark'] .jz-ico-tone-tags, [data-theme='starry'] .jz-ico-tone-tags, [data-theme='deepsea'] .jz-ico-tone-tags { --jz-ico-c: #de8273; }
+[data-theme='dark'] .jz-ico-tone-star, [data-theme='starry'] .jz-ico-tone-star, [data-theme='deepsea'] .jz-ico-tone-star { --jz-ico-c: #eab308; }
+
+/* 通用 tone 消费规则：菜单槽之外（工作台快捷卡等）也能上专属色；
+   静止 78% 微降，所在卡片悬停时升满色 */
+.jz-glass .jz-ico-toned {
+  color: color-mix(in srgb, var(--jz-ico-c) 78%, var(--jz-icon-stroke));
+  transition: color 120ms ease;
+}
+.jz-feature-card:hover .jz-ico-toned {
+  color: var(--jz-ico-c);
+}
+
 /* 博客顶栏：仅登录使用专属色（归档/标签/RSS/搜索已回归最初版主题变量配色） */
 .jz-ico-tone-login   { --jz-ico-c: #64748b; }  /* 玄青 */
 [data-theme='dark'] .jz-ico-tone-login,   [data-theme='starry'] .jz-ico-tone-login,   [data-theme='deepsea'] .jz-ico-tone-login   { --jz-ico-c: #94a3b8; }
