@@ -605,6 +605,82 @@ export function JzProfileIcon(p: IconProps) {
   );
 }
 
+/** 单册书 — 文章所属知识库（meta 行小尺寸用）：书皮填充 + 粗书脊 */
+export function JzBookIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <rect x="5" y="4.5" width="14" height="15" rx="1.6" fill="currentColor" fillOpacity={0.28} />
+      <path d="M8.6 4.5v15" strokeWidth={2} />
+    </Wrap>
+  );
+}
+
+/** 时钟 — 发布时间：表盘填充 + 粗指针 */
+export function JzClockIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <circle cx="12" cy="12" r="8" fill="currentColor" fillOpacity={0.28} />
+      <path d="M12 7.6V12l3 2.2" strokeWidth={2} />
+    </Wrap>
+  );
+}
+
+/** 房子 — 首页（市场标准 house 形）：屋体填充 + 门 */
+export function JzHomeIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M4.5 10.4 12 4.2l7.5 6.2v8.2a1.8 1.8 0 0 1-1.8 1.8H6.3a1.8 1.8 0 0 1-1.8-1.8z"
+        fill="currentColor"
+        fillOpacity={0.28}
+      />
+      <path d="M9.8 20.2v-4.4a2.2 2.2 0 0 1 4.4 0v4.4" />
+    </Wrap>
+  );
+}
+
+/** 铅笔 — 编辑（市场标准 pencil 形）：笔身填充 + 笔箍线 */
+export function JzEditIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M14.2 5.8l4 4L8.6 19.4 4 20l.6-4.6z"
+        fill="currentColor"
+        fillOpacity={0.28}
+      />
+      <path d="M12.4 7.6l4 4" />
+    </Wrap>
+  );
+}
+
+/** 撰写 — 完整编辑（市场标准 square.and.pencil 形）：开口方框 + 笔身填充 */
+export function JzComposeIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M11 5H6.8a2.3 2.3 0 0 0-2.3 2.3v9.9a2.3 2.3 0 0 0 2.3 2.3h9.9a2.3 2.3 0 0 0 2.3-2.3V13" />
+      <path
+        d="M17.6 4.7l1.7 1.7-7.2 7.2-2.3.6.6-2.3z"
+        fill="currentColor"
+        fillOpacity={0.28}
+      />
+    </Wrap>
+  );
+}
+
+/** 打开的文件夹 — 文档列表（市场标准 folder.open 形）：前翻盖填充 */
+export function JzFolderOpenIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M4 16.5V6.8A1.8 1.8 0 0 1 5.8 5h3.3l1.9 2h6.2A1.8 1.8 0 0 1 19 8.8v1.4" />
+      <path
+        d="M6.9 10.2h12.6a1.3 1.3 0 0 1 1.25 1.7l-1.8 5.4a2 2 0 0 1-1.9 1.4H5.9A1.9 1.9 0 0 1 4 16.8l1-5.1a1.9 1.9 0 0 1 1.9-1.5z"
+        fill="currentColor"
+        fillOpacity={0.28}
+      />
+    </Wrap>
+  );
+}
+
 /** 汉堡菜单 — 三横线 */
 export function JzMenuIcon(p: IconProps) {
   return (
@@ -682,11 +758,13 @@ export function JzSettingsIcon(p: IconProps) {
 /* ═══════════════ 编辑器侧栏 Tab ═══════════════ */
 
 export function JzOutlineIcon(p: IconProps) {
+  /* 列表/大纲（市场标准 list.bullet 形，SF 分层）：实心圆点 + 文本线 */
   return (
     <Wrap {...p}>
-      <path d="M5 6h14M8 10h11M8 14h11M11 18h8" strokeLinecap="round" />
-      <circle cx="5" cy="10" r="0.8" fill={ICON_SPOT} stroke="none" />
-      <circle cx="5" cy="14" r="0.8" fill={ICON_SPOT} stroke="none" />
+      <circle cx="5.6" cy="7" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="5.6" cy="12" r="1.3" fill="currentColor" stroke="none" />
+      <circle cx="5.6" cy="17" r="1.3" fill="currentColor" stroke="none" />
+      <path d="M9.6 7h9M9.6 12h9M9.6 17h6" strokeWidth={1.8} />
     </Wrap>
   );
 }
