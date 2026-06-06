@@ -3593,8 +3593,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .jz-overview-stat .ant-statistic-content-prefix .jz-ico-toned {
   display: inline-flex;
   align-items: center;
-  vertical-align: -2px;
-  font-size: 19px;
+  vertical-align: -4px;
+  font-size: 24px; /* AntD 前缀图标（雷电/地球/代码/数据库）跟 Jz 系列同档放大 */
 }
 .jz-admin-glass .jz-overview-page .jz-overview-stat:hover {
   border-color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 42%, transparent);

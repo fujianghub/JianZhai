@@ -213,19 +213,19 @@ interface StatItem {
 const STATS: StatItem[] = [
   {
     title: '知识库',
-    icon: <JzKbIcon size={18} />,
+    icon: <JzKbIcon size={24} />,
     tone: 'kb',
     value: (c) => c.knowledge_bases,
   },
   {
     title: '文件夹',
-    icon: <JzFolderOpenIcon size={19} />,
+    icon: <JzFolderOpenIcon size={25} />,
     tone: 'exports',
     value: (c) => c.folders,
   },
   {
     title: '文档总数',
-    icon: <JzComposeIcon size={19} />,
+    icon: <JzComposeIcon size={25} />,
     tone: 'edit',
     value: (c) => c.documents_total,
     suffix: (c) => (
@@ -254,7 +254,7 @@ const STATS: StatItem[] = [
   },
   {
     title: '用户',
-    icon: <JzUserGroupIcon size={21} />,
+    icon: <JzUserGroupIcon size={28} />,
     tone: 'users',
     value: (c) => c.users_active,
     suffix: (c) => (
@@ -265,13 +265,13 @@ const STATS: StatItem[] = [
   },
   {
     title: '近 24h AI 调用',
-    icon: <JzAiIcon size={19} />,
+    icon: <JzAiIcon size={26} />,
     tone: 'ai',
     value: (c) => c.ai_calls_24h,
   },
   {
     title: '附件',
-    icon: <JzAttachmentIcon size={18} />,
+    icon: <JzAttachmentIcon size={24} />,
     tone: 'attach',
     value: (c) => c.attachments_total,
   },
