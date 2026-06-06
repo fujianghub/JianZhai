@@ -11,7 +11,6 @@ import type { CSSProperties, SVGProps } from 'react';
 import {
   JzAiIcon,
   JzArchitectureIcon,
-  JzArchiveBoxIcon,
   JzDashboardIcon,
   JzExportIcon,
   JzGraphIcon,
@@ -26,7 +25,6 @@ import {
 export {
   JzAiIcon,
   JzArchitectureIcon,
-  JzArchiveBoxIcon,
   JzDashboardIcon,
   JzExportIcon,
   JzGraphIcon,
