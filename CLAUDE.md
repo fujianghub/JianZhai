@@ -15,7 +15,7 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9.10 — 题记增强（随机播放 / 拖拽排序 / 导出 / 美化）（叠加 v0.9.9 根管理员 + 账号自服务、v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商） |
+| 实现阶段 | v0.9.10 — 题记增强 + **图标体系定稿**（三区三语言：侧栏设计稿 / 首页最初版 / 主题 AntD）（叠加 v0.9.9 根管理员 + 账号自服务、v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商） |
 | 多用户 | 支持。普通账号按 `owner` 隔离；`is_superuser` 跨租户可见；单一**根管理员**（`ROOT_ADMIN_USERNAME`）位于权限顶端，不可被禁用/删除 |
 | 博客形态 | 全开放（匿名）或**友邻可见**（`SITE_REQUIRE_LOGIN=true` → 需登录），由 `PublicOrLoginGated` 权限类逐请求判定 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
@@ -64,8 +64,9 @@
 | Word 导入 | `mammoth` | |
 | Diff | `diff-match-patch` | 版本对比 |
 | 安全 | `dompurify` | 公开端 HTML 净化 |
-| 拖拽 | `tiptap-extension-global-drag-handle` | |
-| 图标 | **自制 SVG 图标库 `JzIcon`** + AntD icons | |
+| 拖拽 | `tiptap-extension-global-drag-handle` | 编辑器块拖拽 |
+| 列表拖拽排序 | `@dnd-kit/core` + `sortable` | 题记列表整行拖拽 |
+| 图标 | **自制 SVG 图标库 `JzIcon`（50 枚）+ `JzIconKit`（15 枚设计稿系列）** + AntD icons（主题切换） | 100% 自制覆盖菜单/导航，hugeicons 已卸载 |
 
 ---
 
@@ -133,7 +134,8 @@ jianzhai/
 │       │   │   ├── BlockHoverMenu.tsx AIAssistant.tsx
 │       │   │   └── ...（共 20+ 自定义节点 / 扩展）
 │       │   ├── common/            # 跨页公共组件
-│       │   │   ├── JzIcon.tsx               # 20 个自制 SVG 图标
+│       │   │   ├── JzIcon.tsx               # 50 个自制 SVG 图标（首页/编辑器/AI Tab 等）
+│       │   │   ├── JzIconKit.tsx            # 15 枚用户设计稿系列（个人空间侧栏专用）
 │       │   │   ├── SelectionAI.tsx          # 选区 AI ✨ 浮按钮
 │       │   │   ├── DocAIPanel.tsx           # 右下角 AI 抽屉
 │       │   │   ├── DocHoverCard.tsx         # doc:N 链接悬浮卡
@@ -156,6 +158,7 @@ jianzhai/
 │       │   ├── blog/              # 公开博客（匿名 / 友邻可见）
 │       │   │   ├── BlogLayout.tsx BlogHome.tsx PostDetail.tsx
 │       │   │   ├── KBPostsPage.tsx ArchivePage.tsx TagCloudPage.tsx
+│       │   ├── FavoritesPage.tsx  # 收藏页（博客 /favorites + 后台 /admin/favorites 共用）
 │       │   └── DocLinkResolver.tsx
 │       ├── stores/                # Zustand: auth、theme
 │       ├── hooks/
@@ -322,6 +325,7 @@ class AIUsageLog(models.Model):
 - 文件夹多层嵌套
 - 树形目录拖拽排序：`POST /tree/reorder/` 批量提交
 - 折叠 / 展开状态本地持久化
+- KB 大类分组、文档置顶、收藏夹（`FavoritesPage`，后台侧栏「收藏」入口位于知识图谱与导出之间）、多种排序
 
 ### 模块 2：文档与编辑器 ✅
 
@@ -467,11 +471,12 @@ class AIUsageLog(models.Model):
   - 大圆角 14-18px + 颜色偏移柔阴影 + backdrop-filter blur
   - 翡翠胶囊菜单 active 态 + 印章 logo
 - **博客风格**：宣纸 #f3ebd6 + 朱砂 #b94a3b 古风，保留 v0.5 之前主调
-- **自制 SVG 图标库** `components/common/JzIcon.tsx`（20 个）：
-  - 24×24 / 1.5px stroke / `currentColor` / linecap round
-  - 每个图标有专属「印泥色」彩点（朱砂/翡翠/暗金/青蓝/紫罗兰/橙）
-  - CSS 变量 `--jz-icon-accent-active` 在 hover/选中态统一染色 + drop-shadow 发光
-  - 覆盖：后台菜单 7 / 博客导航 5 / AI Tab 4 / 编辑器 sidebar Tab 4
+- **图标体系（2026-06-06 定稿，100% 自制，hugeicons 已卸载）— 三个区域三种语言**：
+  - **个人空间侧栏** = `JzIconKit.tsx`（15 枚，用户设计稿 SVG 生成）：全员 0.72 淡染填充、**无底座裸放**（40px 占位 + 悬停微放大）；**同明度多彩 tone**（`jz-ico-tone-*` 十色「简斋雅色」+ 暗主题提亮 + starry/deepsea 环境光校准）；尺寸逐枚微调（常规 23 / AI 25 / 用户管理 31 / 个人资料 28 / 回收站 21 + viewBox 裁框）；工作台快捷入口与最近知识库卡同语言（裸放 + 专属色）
+  - **博客顶栏** = 最初版 v0.9 浅染族（`JzIcon.tsx`）：归档/标签/搜索/RSS 走 `--jz-icon-fill/spot` 主题变量 + 翡翠 hover，保留圆角方块底座 + 光泽扫过；登录 JzUserIcon 玄青 tone
+  - **主题切换四枚** = AntD Sun/Moon/Star + 手写 WaveIcon（设计稿版已否决回退）
+- **自制 SVG 图标库** `JzIcon.tsx`（50 枚）：24×24 / 1.5px stroke / `currentColor`；印泥色彩点 + `--jz-icon-accent-active` hover/选中染色发光；覆盖首页 / AI Tab / 编辑器 sidebar / PostDetail 等
+- **后台侧栏**：含「收藏」入口（缃金星形 + tone 色，知识图谱与导出之间）
 - **Favicon**：朱砂印章 SVG（径向渐变印泥 + 颗粒滤镜 + 四角磨痕 + 双线印框 + 压痕「簡」）
 - **PWA**：`manifest.webmanifest` + apple-touch-icon + theme-color
 - **白边修复**：`html / body / #root` 全局 reset margin/padding，铺满整屏
@@ -538,6 +543,7 @@ class AIUsageLog(models.Model):
 | **v0.9.8 部署 + 友邻闸门** | 腾讯云部署套件 `infra/`（Dockerfile + docker-compose.prod + Caddy HTTPS 反代 + deploy/backup.sh + 部署指南）；`SITE_REQUIRE_LOGIN` 友邻可见博客闸门（`PublicOrLoginGated`） | ✅ |
 | **v0.9.9 账号体系** | 根管理员分级（`ROOT_ADMIN_USERNAME`，不可被禁用/删除，统一 `can_manage_user` 裁决）；新建账号邮箱必填；用户自助改密码/邮箱/用户名/头像；KB 上传实时进度条 + 批量全选 + 可视化颜色选择器 | ✅ |
 | **v0.9.10 题记增强** | 播放顺序可配置（random 默认洗牌 / sequential）；悬停暂停 + 点击切换；题记列表 dnd-kit 拖拽排序；导出备份文本；首页 + 管理页样式打磨；「首页题记」改名「题记」 | ✅ |
+| **图标体系定稿**（v0.9.10 后续） | 三区三语言：侧栏接入用户设计稿 `JzIconKit`（15 枚淡染裸放 + tone 十色）；博客顶栏回归最初版浅染族；主题四枚回 AntD；工作台快捷入口/最近 KB 卡同语言；侧栏新增「收藏」入口；PostDetail 等全部换自制图标，卸载 hugeicons | ✅ |
 | **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 超大 KB 树分页 / Yjs 协作 | 🔲 |
 
 ---
@@ -599,5 +605,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.10（对应实现 v0.9.10）  
+**文档版本**：v3.11（对应实现 v0.9.10 + 图标体系定稿）  
 **最后更新**：2026-06-06

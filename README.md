@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml)
 
-个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.9**）。
+个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10**）。
 
 一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。支持多账号，普通用户按 `owner` 隔离数据；超级用户可跨租户管理；单一**根管理员**位于权限顶端。博客可切「全开放 / 友邻可见（需登录）」两种形态。附带**腾讯云生产部署套件**（见 [`infra/`](infra/)）。
 
@@ -22,11 +22,12 @@
 | **搜索与标签** | PostgreSQL `tsvector` + jieba；索引 **标题 + 正文 + 标签名 + 评论**；全局 `⌘K` |
 | **评论** | 文档级 + 段落级（`block_id`） |
 | **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；Mermaid 等为静态代码块 |
-| **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；4 套主题 + 纸张样式；首页 **Hero 名句轮播**（朝代/作者/篇名 + 4 种动画）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
+| **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；4 套主题 + 纸张样式；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
 | **账号** | 单一**根管理员**（不可禁用/删除）+ 超管 + 员工分级；新建账号**邮箱必填**；用户自助改密码/邮箱/用户名/头像 |
-| **组织** | KB **大类**分组、文档置顶、收藏夹、多种排序、回收站 UI |
-| **视觉** | 博客：宣纸朱砂古风；后台：玄黑·玻璃拟态 + 翡翠重音；自制 **JzIcon**（20 SVG）；PWA + 印章 favicon |
+| **组织** | KB **大类**分组、文档置顶、收藏夹（博客 `/favorites` + 后台侧栏「收藏」入口）、多种排序、回收站 UI |
+| **题记管理** | `/admin/hero`：dnd-kit **整行拖拽排序**、批量导入 / **导出备份**、预览翻看、播放顺序（随机洗牌 / 顺序） |
+| **视觉** | 博客：宣纸朱砂古风；后台：玄黑·玻璃拟态 + 翡翠重音；**100% 自制图标**（`JzIcon` 50 枚 + 侧栏设计稿 `JzIconKit` 15 枚，tone 十色三主题联动）；PWA + 印章 favicon |
 
 ## 技术栈（摘要）
 
@@ -138,7 +139,8 @@ cd backend && python manage.py seed_architecture_kb
 | 后台登录 | http://localhost:3001/admin |
 | 架构总览（超管） | http://localhost:3001/admin/overview |
 | AI 管理（超管/员工） | http://localhost:3001/admin/ai |
-| Hero 名句管理（员工） | http://localhost:3001/admin/hero |
+| 题记管理（员工） | http://localhost:3001/admin/hero |
+| 收藏 | http://localhost:3001/admin/favorites |
 | 账号设置（自助） | http://localhost:3001/admin/profile |
 | API 根路径 | http://localhost:8002/api/v1/ |
 | RSS | http://localhost:8002/feed.xml |
@@ -161,7 +163,9 @@ cd backend && python manage.py seed_architecture_kb
 | v0.9.5 | Hero 名句轮播（朝代/作者/篇名 + 4 动画）、KB 大类/置顶/收藏/排序、回收站 UI、收藏夹 |
 | v0.9.7 | AI 全面增强：多供应商（Claude + 通义千问）、自定义模板、多轮对话、视觉输入、扩展思考、日预算、失败降级、实时 Markdown 渲染 |
 | **v0.9.8** | 腾讯云部署套件（Docker Compose + Caddy + 备份）+ 友邻可见博客闸门（`SITE_REQUIRE_LOGIN`） |
-| **v0.9.9** | 根管理员分级 + 新建账号邮箱必填 + 用户自助改密码/邮箱/用户名/头像；上传进度条 + 批量全选 + 可视化颜色选择器 |
+| v0.9.9 | 根管理员分级 + 新建账号邮箱必填 + 用户自助改密码/邮箱/用户名/头像；上传进度条 + 批量全选 + 可视化颜色选择器 |
+| **v0.9.10** | 题记增强：随机播放（每次开页洗牌、整轮不重复）/ 悬停暂停 / 点击切换；管理页 dnd-kit 拖拽排序 + 导出备份；「首页题记」改名「题记」 |
+| **图标体系定稿** | 三区三语言：侧栏接入设计稿 `JzIconKit`（15 枚淡染裸放 + tone 十色）；博客顶栏回归最初版浅染族；主题四枚 AntD；侧栏新增「收藏」入口；卸载 hugeicons |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
