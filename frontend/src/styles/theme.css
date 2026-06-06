@@ -3450,36 +3450,36 @@ a.jz-meta-full-edit-btn:focus-visible {
 
 /* 后台侧栏菜单 — 静止 / hover / 选中 三态 */
 .jz-admin-glass .jz-menu-icon-slot.jz-chip-toned {
-  border-color: color-mix(in srgb, var(--jz-chip-c) 44%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-chip-c) 19%, var(--glass-surface-strong));
-  color: color-mix(in srgb, var(--jz-chip-c) 88%, var(--glass-text));
+  border-color: color-mix(in srgb, var(--jz-chip-c) 38%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-chip-c) 15%, var(--glass-surface-strong));
+  color: color-mix(in srgb, var(--jz-chip-c) 85%, var(--glass-text));
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot.jz-chip-toned {
+  border-color: color-mix(in srgb, var(--jz-chip-c) 48%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-chip-c) 20%, var(--glass-surface-strong));
+  color: color-mix(in srgb, var(--jz-chip-c) 90%, var(--glass-text));
+}
+.jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-menu-icon-slot.jz-chip-toned {
   border-color: color-mix(in srgb, var(--jz-chip-c) 58%, var(--glass-border));
   background: color-mix(in srgb, var(--jz-chip-c) 26%, var(--glass-surface-strong));
   color: color-mix(in srgb, var(--jz-chip-c) 94%, var(--glass-text));
-}
-.jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-menu-icon-slot.jz-chip-toned {
-  border-color: color-mix(in srgb, var(--jz-chip-c) 68%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-chip-c) 32%, var(--glass-surface-strong));
-  color: color-mix(in srgb, var(--jz-chip-c) 96%, var(--glass-text));
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-chip-c) 30%, transparent);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-chip-c) 24%, transparent);
 }
 
 /* 博客顶栏导航 — 静止 / hover / active 三态 */
 .jz-blog-glass .jz-nav-link-icon.jz-chip-toned {
-  border-color: color-mix(in srgb, var(--jz-chip-c) 44%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-chip-c) 19%, var(--glass-surface-strong));
-  color: color-mix(in srgb, var(--jz-chip-c) 88%, var(--glass-text));
+  border-color: color-mix(in srgb, var(--jz-chip-c) 38%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-chip-c) 15%, var(--glass-surface-strong));
+  color: color-mix(in srgb, var(--jz-chip-c) 85%, var(--glass-text));
 }
 .jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon.jz-chip-toned {
-  border-color: color-mix(in srgb, var(--jz-chip-c) 58%, var(--glass-border));
-  color: color-mix(in srgb, var(--jz-chip-c) 94%, var(--glass-text));
-  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-chip-c) 22%, transparent);
+  border-color: color-mix(in srgb, var(--jz-chip-c) 48%, var(--glass-border));
+  color: color-mix(in srgb, var(--jz-chip-c) 90%, var(--glass-text));
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-chip-c) 18%, transparent);
 }
 .jz-blog-glass .jz-nav-link.active .jz-nav-link-icon.jz-chip-toned {
-  border-color: color-mix(in srgb, var(--jz-chip-c) 68%, var(--glass-border));
-  background: color-mix(in srgb, var(--jz-chip-c) 30%, var(--glass-surface-strong));
-  color: color-mix(in srgb, var(--jz-chip-c) 96%, var(--glass-text));
-  box-shadow: 0 3px 14px color-mix(in srgb, var(--jz-chip-c) 26%, transparent);
+  border-color: color-mix(in srgb, var(--jz-chip-c) 58%, var(--glass-border));
+  background: color-mix(in srgb, var(--jz-chip-c) 24%, var(--glass-surface-strong));
+  color: color-mix(in srgb, var(--jz-chip-c) 94%, var(--glass-text));
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--jz-chip-c) 22%, transparent);
 }
