@@ -55,3 +55,6 @@ coverage.xml
 celerybeat-schedule
 celerybeat.pid
 .claude/settings.local.json
+
+# 图标设计稿（本地素材，不入库）
+/icon/
