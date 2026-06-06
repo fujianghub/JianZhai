@@ -455,12 +455,13 @@ export function JzTagsIcon(p: IconProps) {
 
 /** 个人空间（人形 + 册页） */
 
-/** 搜索 — 放大镜（纯线稿：镜片无填充 + 粗握柄，2026-06-06 去实心） */
+/** 搜索 — 最初版风格：镜片浅染（主题变量）+ 描边 + 握柄 */
 export function JzSearchIcon(p: IconProps) {
   return (
     <Wrap {...p}>
+      <circle cx="10.5" cy="10.5" r="6" fill={ICON_FILL} />
       <circle cx="10.5" cy="10.5" r="6" />
-      <path d="M15.2 15.2 19.4 19.4" strokeWidth={1.5} />
+      <path d="M15 15l4.5 4.5" />
     </Wrap>
   );
 }
@@ -485,11 +486,12 @@ export function JzArchiveIcon(p: IconProps) {
 const HIER_OPACITY = 0.28;
 
 
-/** RSS — 同心波（纯线稿：双弧 + 空心源点，2026-06-06 去填充） */
+/** RSS — 最初版风格：信号扇面浅染（主题变量）+ 双弧 + 主题色源点 */
 export function JzRssIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      <circle cx="6.3" cy="17.7" r="1.6" />
+      <path d="M4.5 11.4a8.1 8.1 0 0 1 8.1 8.1H4.5z" fill={ICON_FILL} stroke="none" />
+      <circle cx="6.3" cy="17.7" r="1.3" fill={ICON_SPOT} stroke="none" />
       <path d="M4.5 11.4a8.1 8.1 0 0 1 8.1 8.1" />
       <path d="M4.5 5.3a14.2 14.2 0 0 1 14.2 14.2" />
     </Wrap>

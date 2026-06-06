@@ -134,8 +134,7 @@ export default function BlogLayout() {
           <BlogNavItem
             to="/feed.xml"
             label="RSS"
-            icon={<JzRssIcon size={23} strokeWidth={1.1} />}
-            tone="rss"
+            icon={<JzRssIcon size={NAV_ICON_SIZE} />}
             external
           />
           <Tooltip title="搜索 (Ctrl+K)">
@@ -143,11 +142,8 @@ export default function BlogLayout() {
               type="text"
               className="jz-nav-search-btn"
               icon={
-                <span
-                  className="jz-nav-link-icon jz-ico-toned jz-ico-tone-search"
-                  aria-hidden
-                >
-                  <JzSearchIcon size={23} strokeWidth={1.1} />
+                <span className="jz-nav-link-icon" aria-hidden>
+                  <JzSearchIcon size={NAV_ICON_SIZE} />
                 </span>
               }
               onClick={() => setSearchOpen(true)}
