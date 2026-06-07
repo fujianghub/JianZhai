@@ -537,15 +537,22 @@
    as one coordinated control strip we (a) put every diagram control on the
    same 28px baseline, (b) speak one icon language — AntD vector icons, no
    raw unicode glyphs, (c) give the view-mode toggle a segmented-control look
-   and the zoom trio a single bordered capsule. Applies only inside a
-   ``.jz-code-block`` flagged as a diagram (`.jz-code-mermaid` /
-   `.jz-code-plantuml`). */
+   and the zoom trio a single bordered capsule.
+
+   CRITICAL: the diagram code block keeps the *code syntax theme*'s surface
+   (e.g. One Dark Pro's #282c34 — dark even when the page theme is light), so
+   the toolbar background is dark. Every control therefore paints with the
+   CODE-THEME text colours (--jz-code-text / --jz-code-toolbar-text /
+   --jz-code-border) — same palette the language select and copy icons already
+   use — so labels stay legible against the code surface, light or dark code
+   theme alike. (Using page-theme --jz-text here would put dark text on the
+   dark code surface and wash everything out.) */
 .jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm,
 .jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm {
   height: 28px;
   padding-inline: 8px;
   border-radius: 6px;
-  color: var(--jz-text-muted);
+  color: var(--jz-code-text, #abb2bf);
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
@@ -553,7 +560,7 @@
 }
 .jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm:hover,
 .jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm:hover {
-  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 18%, transparent);
   color: var(--jz-accent);
 }
 /* View-mode toggle — looks like a real (segmented) control, not bare text. */
@@ -561,14 +568,16 @@
 .jz-code-block.jz-code-plantuml .jz-diagram-viewmode-btn {
   min-width: 50px;
   justify-content: center;
-  border: 1px solid color-mix(in srgb, var(--jz-divider) 60%, transparent);
-  background: color-mix(in srgb, var(--jz-surface) 70%, var(--jz-accent) 5%);
+  border: 1px solid var(--jz-code-border, #3e4451);
+  background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
+  color: var(--jz-code-text, #abb2bf);
   border-radius: 7px;
   font-weight: 500;
 }
 .jz-code-block.jz-code-mermaid .jz-diagram-viewmode-btn:hover,
 .jz-code-block.jz-code-plantuml .jz-diagram-viewmode-btn:hover {
-  border-color: color-mix(in srgb, var(--jz-accent) 45%, transparent);
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-code-border));
+  color: var(--jz-accent);
 }
 /* Square icon buttons (复制 SVG / 全屏) align with the generic 28×28 copy &
    more icons on the right. */
@@ -578,6 +587,7 @@
   min-width: 28px;
   padding-inline: 0;
   justify-content: center;
+  color: var(--jz-code-toolbar-text, #9da5b4);
 }
 /* Zoom capsule: −, %, + read as a single bordered control. */
 .jz-diagram-zoom-group {
@@ -585,10 +595,10 @@
   align-items: center;
   height: 28px;
   flex: 0 0 auto;
-  border: 1px solid color-mix(in srgb, var(--jz-divider) 60%, transparent);
+  border: 1px solid var(--jz-code-border, #3e4451);
   border-radius: 7px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--jz-surface) 70%, var(--jz-accent) 5%);
+  background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
 }
 .jz-diagram-zoom-group .ant-btn-sm {
   height: 26px;
@@ -596,14 +606,14 @@
   min-width: 26px;
   padding: 0;
   border-radius: 0;
-  color: var(--jz-text-muted);
+  color: var(--jz-code-toolbar-text, #9da5b4);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: background-color 120ms ease, color 120ms ease;
 }
 .jz-diagram-zoom-group .ant-btn-sm:hover {
-  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 20%, transparent);
   color: var(--jz-accent);
 }
 .jz-diagram-zoom-group .jz-diagram-zoom-label {
@@ -613,23 +623,32 @@
   line-height: 26px;
   text-align: center;
   font-size: 11px;
-  color: var(--jz-text-muted);
-  border-inline: 1px solid color-mix(in srgb, var(--jz-divider) 55%, transparent);
+  color: var(--jz-code-text, #abb2bf);
+  border-inline: 1px solid var(--jz-code-border, #3e4451);
   font-variant-numeric: tabular-nums;
 }
-/* Mermaid type select — match the 28px baseline & rounding of the others. */
+/* Mermaid type select — same code-theme palette as the language select, plus
+   the 28px baseline & rounding of the others. */
 .jz-code-block.jz-code-mermaid .jz-mermaid-type-select .ant-select-selector {
   min-height: 28px !important;
   height: 28px;
   border-radius: 6px !important;
   display: flex;
   align-items: center;
+  background: color-mix(in srgb, var(--jz-code-text) 6%, transparent) !important;
+  border-color: var(--jz-code-border, #3e4451) !important;
+  color: var(--jz-code-text, #abb2bf) !important;
 }
-/* Toolbar dividers more visible — without this they vanish under accent
-   hover backgrounds. */
+.jz-code-block.jz-code-mermaid .jz-mermaid-type-select .ant-select-selection-item {
+  color: var(--jz-code-text, #abb2bf) !important;
+}
+.jz-code-block.jz-code-mermaid .jz-mermaid-type-select .ant-select-arrow {
+  color: var(--jz-code-toolbar-text, #9da5b4) !important;
+}
+/* Toolbar dividers more visible against the code surface. */
 .jz-code-block.jz-code-mermaid .jz-code-toolbar-divider,
 .jz-code-block.jz-code-plantuml .jz-code-toolbar-divider {
-  background: color-mix(in srgb, var(--jz-divider) 80%, var(--jz-text-muted) 20%);
+  background: color-mix(in srgb, var(--jz-code-border) 70%, var(--jz-code-text) 30%);
 }
 
 /* Mermaid / PlantUML diagram editor — Yuque-style split source + preview */
