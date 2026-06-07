@@ -8,7 +8,9 @@ import Link from '@tiptap/extension-link';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
-import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table';
+import { TableRow } from '@tiptap/extension-table';
+import { ColorTable } from './TableMarkdown';
+import { ColorTableCell, ColorTableHeader, CELL_BG_PRESETS } from './TableCellColor';
 import { ResizableImage } from './ResizableImage';
 import { ImageUpload } from './imageUpload';
 import { Underline } from '@tiptap/extension-underline';
@@ -299,10 +301,10 @@ export default function RichTextEditor({
       Placeholder.configure({ placeholder: '键入 / 选择块类型；键入 @ 引用其他文档' }),
       TaskList,
       TaskItem.configure({ nested: true }),
-      Table.configure({ resizable: true }),
+      ColorTable.configure({ resizable: true }),
       TableRow,
-      TableHeader,
-      TableCell,
+      ColorTableHeader,
+      ColorTableCell,
       ResizableImage.configure({
         // Make images selectable and HTML-export friendly. The default schema
         // is already a block-level node so TextAlign can layout it.
@@ -1319,6 +1321,79 @@ export default function RichTextEditor({
               表头
             </button>
             <span className="jz-bubble-divider" aria-hidden />
+            <Dropdown
+              trigger={['click']}
+              getPopupContainer={() => document.body}
+              overlayStyle={{ zIndex: 12000 }}
+              menu={{
+                items: [
+                  ...CELL_BG_PRESETS.map((c) => ({
+                    key: c.value,
+                    label: (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            display: 'inline-block', width: 14, height: 14, borderRadius: 3,
+                            background: c.value, border: '1px solid var(--jz-border)',
+                          }}
+                        />
+                        {c.label}
+                      </span>
+                    ),
+                    onClick: () =>
+                      editor.chain().focus().setCellAttribute('bgColor', c.value).run(),
+                  })),
+                  { type: 'divider' as const },
+                  {
+                    key: 'clear-bg',
+                    label: '清除底色',
+                    onClick: () =>
+                      editor.chain().focus().setCellAttribute('bgColor', null).run(),
+                  },
+                ],
+              }}
+            >
+              <button type="button" className="jz-bubble-btn" title="单元格底色（对选中的所有单元格生效）">
+                🎨底色
+              </button>
+            </Dropdown>
+            <Dropdown
+              trigger={['click']}
+              getPopupContainer={() => document.body}
+              overlayStyle={{ zIndex: 12000 }}
+              menu={{
+                items: [
+                  ...TEXT_COLOR_PRESETS.map((c) => ({
+                    key: c.value,
+                    label: (
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                        <span
+                          style={{
+                            display: 'inline-block', width: 14, height: 14, borderRadius: 3,
+                            background: c.value, border: '1px solid var(--jz-border)',
+                          }}
+                        />
+                        {c.label}
+                      </span>
+                    ),
+                    onClick: () =>
+                      editor.chain().focus().setCellAttribute('textColor', c.value).run(),
+                  })),
+                  { type: 'divider' as const },
+                  {
+                    key: 'clear-text',
+                    label: '清除文字色',
+                    onClick: () =>
+                      editor.chain().focus().setCellAttribute('textColor', null).run(),
+                  },
+                ],
+              }}
+            >
+              <button type="button" className="jz-bubble-btn" title="单元格文字色">
+                A色
+              </button>
+            </Dropdown>
+            <span className="jz-bubble-divider" aria-hidden />
             <button
               type="button"
               className="jz-bubble-btn"
@@ -1537,6 +1612,31 @@ export default function RichTextEditor({
               { type: 'divider' as const },
               { key: 'mergeCells', label: '合并选中单元格', onClick: () => { editor.chain().focus().mergeCells().run(); setTableCtxMenu(null); } },
               { key: 'splitCell', label: '拆分单元格', onClick: () => { editor.chain().focus().splitCell().run(); setTableCtxMenu(null); } },
+              { type: 'divider' as const },
+              {
+                key: 'cell-bg',
+                label: '单元格底色',
+                children: [
+                  ...CELL_BG_PRESETS.map((c) => ({
+                    key: `bg-${c.value}`,
+                    label: c.label,
+                    onClick: () => { editor.chain().focus().setCellAttribute('bgColor', c.value).run(); setTableCtxMenu(null); },
+                  })),
+                  { key: 'bg-clear', label: '清除底色', onClick: () => { editor.chain().focus().setCellAttribute('bgColor', null).run(); setTableCtxMenu(null); } },
+                ],
+              },
+              {
+                key: 'cell-text',
+                label: '单元格文字色',
+                children: [
+                  ...TEXT_COLOR_PRESETS.map((c) => ({
+                    key: `tc-${c.value}`,
+                    label: c.label,
+                    onClick: () => { editor.chain().focus().setCellAttribute('textColor', c.value).run(); setTableCtxMenu(null); },
+                  })),
+                  { key: 'tc-clear', label: '清除文字色', onClick: () => { editor.chain().focus().setCellAttribute('textColor', null).run(); setTableCtxMenu(null); } },
+                ],
+              },
               { type: 'divider' as const },
               { key: 'deleteTable', label: '删除表格', danger: true, onClick: () => { editor.chain().focus().deleteTable().run(); setTableCtxMenu(null); } },
             ],
