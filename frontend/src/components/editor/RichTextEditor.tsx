@@ -12,6 +12,7 @@ import { TableRow } from '@tiptap/extension-table';
 import { ColorTable } from './TableMarkdown';
 import { ColorTableCell, ColorTableHeader, CELL_BG_PRESETS } from './TableCellColor';
 import { TableInteractions, currentColIndex, currentRowIndex } from './tableInteractions';
+import { TableMaxRows } from './TableMaxRows';
 import TableOverlay from './TableOverlay';
 import { ResizableImage } from './ResizableImage';
 import { ImageUpload } from './imageUpload';
@@ -308,6 +309,7 @@ export default function RichTextEditor({
       ColorTableHeader,
       ColorTableCell,
       TableInteractions,
+      TableMaxRows,
       ResizableImage.configure({
         // Make images selectable and HTML-export friendly. The default schema
         // is already a block-level node so TextAlign can layout it.
@@ -1259,174 +1261,6 @@ export default function RichTextEditor({
             💬 {annotationHover.text}
           </div>
         )}
-        {/* Table-aware bubble menu — appears whenever caret is inside a table */}
-        <BubbleMenu
-          editor={editor}
-          options={{ placement: 'top' }}
-          shouldShow={({ editor }) => editor.isEditable && editor.isActive('table')}
-        >
-          <div className="jz-bubble-menu" role="toolbar" aria-label="表格工具栏">
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().addRowBefore().run()}
-              title="上方插入行"
-            >
-              ⬆️行
-            </button>
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().addRowAfter().run()}
-              title="下方插入行"
-            >
-              ⬇️行
-            </button>
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().addColumnBefore().run()}
-              title="左侧插入列"
-            >
-              ⬅️列
-            </button>
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().addColumnAfter().run()}
-              title="右侧插入列"
-            >
-              列➡️
-            </button>
-            <span className="jz-bubble-divider" aria-hidden />
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().mergeCells().run()}
-              title="合并选中单元格"
-            >
-              ⊞合并
-            </button>
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().splitCell().run()}
-              title="拆分单元格"
-            >
-              ⊟拆分
-            </button>
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().toggleHeaderRow().run()}
-              title="切换表头行"
-            >
-              表头
-            </button>
-            <span className="jz-bubble-divider" aria-hidden />
-            <Dropdown
-              trigger={['click']}
-              getPopupContainer={() => document.body}
-              overlayStyle={{ zIndex: 12000 }}
-              menu={{
-                items: [
-                  ...CELL_BG_PRESETS.map((c) => ({
-                    key: c.value,
-                    label: (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <span
-                          style={{
-                            display: 'inline-block', width: 14, height: 14, borderRadius: 3,
-                            background: c.value, border: '1px solid var(--jz-border)',
-                          }}
-                        />
-                        {c.label}
-                      </span>
-                    ),
-                    onClick: () =>
-                      editor.chain().focus().setCellAttribute('bgColor', c.value).run(),
-                  })),
-                  { type: 'divider' as const },
-                  {
-                    key: 'clear-bg',
-                    label: '清除底色',
-                    onClick: () =>
-                      editor.chain().focus().setCellAttribute('bgColor', null).run(),
-                  },
-                ],
-              }}
-            >
-              <button type="button" className="jz-bubble-btn" title="单元格底色（对选中的所有单元格生效）">
-                🎨底色
-              </button>
-            </Dropdown>
-            <Dropdown
-              trigger={['click']}
-              getPopupContainer={() => document.body}
-              overlayStyle={{ zIndex: 12000 }}
-              menu={{
-                items: [
-                  ...TEXT_COLOR_PRESETS.map((c) => ({
-                    key: c.value,
-                    label: (
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-                        <span
-                          style={{
-                            display: 'inline-block', width: 14, height: 14, borderRadius: 3,
-                            background: c.value, border: '1px solid var(--jz-border)',
-                          }}
-                        />
-                        {c.label}
-                      </span>
-                    ),
-                    onClick: () =>
-                      editor.chain().focus().setCellAttribute('textColor', c.value).run(),
-                  })),
-                  { type: 'divider' as const },
-                  {
-                    key: 'clear-text',
-                    label: '清除文字色',
-                    onClick: () =>
-                      editor.chain().focus().setCellAttribute('textColor', null).run(),
-                  },
-                ],
-              }}
-            >
-              <button type="button" className="jz-bubble-btn" title="单元格文字色">
-                A色
-              </button>
-            </Dropdown>
-            <span className="jz-bubble-divider" aria-hidden />
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().deleteRow().run()}
-              title="删除当前行"
-              style={{ color: '#cf1322' }}
-            >
-              删行
-            </button>
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().deleteColumn().run()}
-              title="删除当前列"
-              style={{ color: '#cf1322' }}
-            >
-              删列
-            </button>
-            <button
-              type="button"
-              className="jz-bubble-btn"
-              onClick={() => editor.chain().focus().deleteTable().run()}
-              title="删除整个表格"
-              style={{ color: '#cf1322' }}
-            >
-              删表
-            </button>
-          </div>
-        </BubbleMenu>
-
         {/* Floating selection menu — appears when the user highlights inline
             text. We hide it on read-only documents and inside code blocks
             (where bolding/italic doesn't apply). */}
@@ -1606,8 +1440,24 @@ export default function RichTextEditor({
           onOpenChange={(v) => { if (!v) setTableCtxMenu(null); }}
           menu={{
             items: [
+              { key: 'selectAll', label: '全选整表', onClick: () => { editor.chain().focus().selectTableAll().run(); setTableCtxMenu(null); } },
               { key: 'selectRow', label: '选中整行', onClick: () => { editor.chain().focus().selectTableRow(currentRowIndex(editor)).run(); setTableCtxMenu(null); } },
               { key: 'selectCol', label: '选中整列', onClick: () => { editor.chain().focus().selectTableColumn(currentColIndex(editor)).run(); setTableCtxMenu(null); } },
+              {
+                key: 'density', label: '密度', children: [
+                  { key: 'd-compact', label: '紧凑', onClick: () => { editor.commands.setTableDensity('compact'); setTableCtxMenu(null); } },
+                  { key: 'd-normal', label: '标准', onClick: () => { editor.commands.setTableDensity('normal'); setTableCtxMenu(null); } },
+                  { key: 'd-loose', label: '宽松', onClick: () => { editor.commands.setTableDensity('loose'); setTableCtxMenu(null); } },
+                ],
+              },
+              {
+                key: 'maxrows', label: '最多显示行数', children: [
+                  { key: 'r-0', label: '不限', onClick: () => { editor.commands.setTableMaxRows(null); setTableCtxMenu(null); } },
+                  { key: 'r-10', label: '10 行', onClick: () => { editor.commands.setTableMaxRows(10); setTableCtxMenu(null); } },
+                  { key: 'r-20', label: '20 行', onClick: () => { editor.commands.setTableMaxRows(20); setTableCtxMenu(null); } },
+                  { key: 'r-30', label: '30 行', onClick: () => { editor.commands.setTableMaxRows(30); setTableCtxMenu(null); } },
+                ],
+              },
               { type: 'divider' as const },
               { key: 'addRowBefore', label: '在上方插入行', onClick: () => { editor.chain().focus().addRowBefore().run(); setTableCtxMenu(null); } },
               { key: 'addRowAfter', label: '在下方插入行', onClick: () => { editor.chain().focus().addRowAfter().run(); setTableCtxMenu(null); } },

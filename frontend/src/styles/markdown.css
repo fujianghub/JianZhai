@@ -151,7 +151,21 @@
 .markdown-preview table th,
 .markdown-preview table td {
   border: 1px solid var(--jz-divider);
-  padding: 6px 10px;
+  /* 间距由表级 CSS 变量驱动（密度预设 / 自定义间距）；默认 6px/10px */
+  padding: var(--jz-cell-pad-v, 6px) var(--jz-cell-pad-h, 10px);
+}
+/* 密度预设：data-jz-density 属性选择器设变量（纯 CSS，不受 DOMPurify 影响） */
+.markdown-preview table[data-jz-density='compact'] {
+  --jz-cell-pad-v: 3px;
+  --jz-cell-pad-h: 6px;
+}
+.markdown-preview table[data-jz-density='normal'] {
+  --jz-cell-pad-v: 6px;
+  --jz-cell-pad-h: 10px;
+}
+.markdown-preview table[data-jz-density='loose'] {
+  --jz-cell-pad-v: 10px;
+  --jz-cell-pad-h: 16px;
 }
 
 /* ── 冻结首列 ──
