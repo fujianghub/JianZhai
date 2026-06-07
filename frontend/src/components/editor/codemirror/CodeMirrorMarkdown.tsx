@@ -195,18 +195,32 @@ const CodeMirrorMarkdown = forwardRef<EditorSurfaceHandle, CodeMirrorMarkdownPro
           }),
         ),
         EditorView.domEventHandlers({
-          paste: (e) => {
-            const cb = cbRef.current.onPasteFiles;
-            if (!cb) return false;
+          paste: (e, view) => {
             const items = Array.from(e.clipboardData?.items ?? []);
             const images = items
               .filter((i) => i.kind === 'file' && i.type.startsWith('image/'))
               .map((i) => i.getAsFile())
               .filter((f): f is File => !!f);
-            if (images.length === 0) return false;
-            e.preventDefault();
-            cb(images);
-            return true;
+            if (images.length > 0 && cbRef.current.onPasteFiles) {
+              e.preventDefault();
+              cbRef.current.onPasteFiles(images);
+              return true;
+            }
+            // 智能链接：选中文字时粘贴 URL → [选区](url)（语雀同款）
+            const text = e.clipboardData?.getData('text/plain')?.trim() ?? '';
+            const sel = view.state.selection.main;
+            if (!sel.empty && /^https?:\/\/\S+$/.test(text)) {
+              e.preventDefault();
+              const selected = view.state.sliceDoc(sel.from, sel.to);
+              const insert = `[${selected}](${text})`;
+              view.dispatch({
+                changes: { from: sel.from, to: sel.to, insert },
+                selection: { anchor: sel.from + insert.length },
+                userEvent: 'input.paste',
+              });
+              return true;
+            }
+            return false;
           },
           drop: (e) => {
             const cb = cbRef.current.onDropFiles;

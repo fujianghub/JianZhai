@@ -7,6 +7,7 @@ import {
   CommentOutlined,
   ItalicOutlined,
   OrderedListOutlined,
+  QuestionCircleOutlined,
   SaveOutlined,
   StrikethroughOutlined,
   UnderlineOutlined,
@@ -19,8 +20,20 @@ import MentionPicker from './MentionPicker';
 import LivePreviewPane from './LivePreviewPane';
 import CodeMirrorMarkdown from './codemirror/CodeMirrorMarkdown';
 import FloatingFormatToolbar, { type FloatCommand } from './codemirror/FloatingFormatToolbar';
+import MathEditorModal from './MathEditorModal';
+import ShortcutCheatSheet from './ShortcutCheatSheet';
 import { listKeymap } from './codemirror/extensions/listKeymap';
 import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
+import { tableAssistKeymap } from './codemirror/extensions/tableAssist';
+import {
+  addColumnAfter,
+  addRowAfter,
+  cellIndexAt,
+  deleteColumn,
+  deleteRow,
+  findTableRange,
+  formatTable,
+} from './codemirror/pure/tableFormat';
 import {
   clearInlineFormat,
   makeLink,
@@ -37,7 +50,12 @@ import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 import MarkdownSlashMenu, { useMarkdownSlashDisplayItems } from './MarkdownSlashMenu';
-import { findSlashTrigger, getMarkdownInsertForCommand } from './markdownSlashActions';
+import {
+  findSlashTrigger,
+  getMarkdownInsertForCommand,
+  isMarkdownCapable,
+  markdownInteractiveKind,
+} from './markdownSlashActions';
 import { trackRecentSlashCommand } from './slashCommandRegistry';
 import type { SlashCommandItem } from './slashCommandRegistry';
 
@@ -64,8 +82,10 @@ type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 type MdLayoutMode = 'split' | 'edit' | 'preview';
 const MD_LAYOUT_KEY = 'jz-md-layout';
 
-/** 模块级常量 — CM 扩展只在挂载时装配一次。 */
-const CM_EXTRA_EXTENSIONS = [listKeymap, inlineFormatKeymap];
+/** 模块级常量 — CM 扩展只在挂载时装配一次。表格优先于列表（同在 Tab/Enter 上）。 */
+const CM_EXTRA_EXTENSIONS = [tableAssistKeymap, listKeymap, inlineFormatKeymap];
+
+const CALLOUT_LAST_KEY = 'jz-callout-last';
 
 export default function MarkdownEditor({
   value,
@@ -96,6 +116,23 @@ export default function MarkdownEditor({
     }
   }, [layoutMode]);
   const [mentionOpen, setMentionOpen] = useState(false);
+  /** @ 选择器的插入形态：普通提及链接 or 文档卡片。 */
+  const mentionKindRef = useRef<'mention' | 'doc-card'>('mention');
+  /** 数学可视化 Modal：打开时记录待替换范围与块级/行内形态。 */
+  const [mathModal, setMathModal] = useState<{
+    open: boolean;
+    displayMode: boolean;
+    range: { from: number; to: number };
+  }>({ open: false, displayMode: true, range: { from: 0, to: 0 } });
+  const [cheatOpen, setCheatOpen] = useState(false);
+  /** callout 记住上次颜色（语雀同款）。 */
+  const [lastCallout, setLastCallout] = useState<string>(() => {
+    try {
+      return localStorage.getItem(CALLOUT_LAST_KEY) || 'tips';
+    } catch {
+      return 'tips';
+    }
+  });
   /** 选区浮动格式条锚点（视口坐标）。 */
   const [floatAnchor, setFloatAnchor] = useState<{ left: number; top: number } | null>(null);
   const floatTimerRef = useRef<number | null>(null);
@@ -290,40 +327,69 @@ export default function MarkdownEditor({
     [readOnly],
   );
 
-  function selectSlashItem(item: SlashCommandItem) {
-    const surface = surfaceRef.current;
-    if (item.richTextOnly || !slashTriggerRef.current || !surface) return;
-    const insert = getMarkdownInsertForCommand(item);
-    if (insert !== null) {
-      trackRecentSlashCommand(item.title);
-      surface.insertAt(slashTriggerRef.current.from, slashTriggerRef.current.to, insert);
+  /** MD 专属交互命令（@提及 / 文档卡 / 数学 Modal），range = 待替换区间。 */
+  function runInteractive(
+    kind: 'mention' | 'doc-card' | 'math-block' | 'math-inline',
+    range: { from: number; to: number },
+  ) {
+    if (kind === 'mention' || kind === 'doc-card') {
+      mentionKindRef.current = kind;
+      triggerRangeRef.current = range;
+      setMentionOpen(true);
+      return;
     }
-    setSlashOpen(false);
-    slashTriggerRef.current = null;
+    setMathModal({ open: true, displayMode: kind === 'math-block', range });
   }
 
-  function openMentionAtCursor() {
-    const pos = surfaceRef.current?.getSelection().from ?? value.length;
-    triggerRangeRef.current = { from: pos, to: pos };
-    setMentionOpen(true);
+  function selectSlashItem(item: SlashCommandItem) {
+    const surface = surfaceRef.current;
+    const trigger = slashTriggerRef.current;
+    if (!isMarkdownCapable(item) || !trigger || !surface) return;
+    setSlashOpen(false);
+    slashTriggerRef.current = null;
+    trackRecentSlashCommand(item.title);
+    const interactive = markdownInteractiveKind(item);
+    if (interactive) {
+      // 先吃掉 /query 触发文本，再弹交互层
+      surface.insertAt(trigger.from, trigger.to, '');
+      runInteractive(interactive, { from: trigger.from, to: trigger.from });
+      return;
+    }
+    const insert = getMarkdownInsertForCommand(item);
+    if (insert !== null) {
+      surface.insertAt(trigger.from, trigger.to, insert);
+    }
   }
 
   function insertFromQuickMenu(item: SlashCommandItem) {
     if (readOnly) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const interactive = markdownInteractiveKind(item);
+    if (interactive) {
+      trackRecentSlashCommand(item.title);
+      const { from } = surface.getSelection();
+      runInteractive(interactive, { from, to: from });
+      return;
+    }
     const insert = getMarkdownInsertForCommand(item);
     if (insert === null) {
-      if (item.id === 'mention') {
-        openMentionAtCursor();
-        return;
-      }
       message.info('该块请切换到富文本编辑器');
       return;
     }
-    const surface = surfaceRef.current;
-    if (!surface) return;
     const { from, to } = surface.getSelection();
     trackRecentSlashCommand(item.title);
     surface.insertAt(from, to, insert);
+  }
+
+  /** 数学 Modal 确认：按形态写入 $$..$$ / $..$。 */
+  function handleMathSubmit(latex: string) {
+    const surface = surfaceRef.current;
+    const { displayMode, range } = mathModal;
+    setMathModal((m) => ({ ...m, open: false }));
+    if (!surface || !latex.trim()) return;
+    const insert = displayMode ? `$$\n${latex.trim()}\n$$\n` : `$${latex.trim()}$`;
+    surface.insertAt(range.from, range.to, insert);
   }
 
   /* --------------------------- 键盘路由（CM keydown） --------------------------- */
@@ -354,7 +420,7 @@ export default function MarkdownEditor({
         }
         if (e.key === 'Enter' || e.key === 'Tab') {
           const item = slash.items[slash.index];
-          if (item && !item.richTextOnly) {
+          if (item && isMarkdownCapable(item)) {
             selectSlashItem(item);
             return true;
           }
@@ -373,6 +439,11 @@ export default function MarkdownEditor({
       // Ctrl/⌘+U — wrap selection with <u>…</u>.
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'u' || e.key === 'U')) {
         surfaceRef.current?.wrapSelection('<u>', '</u>');
+        return true;
+      }
+      // Ctrl/⌘+/ — 快捷键速查
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        setCheatOpen(true);
         return true;
       }
       return false;
@@ -417,9 +488,13 @@ export default function MarkdownEditor({
   function handleMentionSelect(s: MentionSuggestion) {
     const surface = surfaceRef.current;
     const range = triggerRangeRef.current ?? { from: value.length, to: value.length };
-    const insertion = `@[${s.title}](doc:${s.id})`;
+    const insertion =
+      mentionKindRef.current === 'doc-card'
+        ? `\n[[doc-card:${s.id}]]\n`
+        : `@[${s.title}](doc:${s.id})`;
     surface?.insertAt(range.from, range.to, insertion);
     setMentionOpen(false);
+    mentionKindRef.current = 'mention';
   }
 
   /** Wrap the current selection (or insert a placeholder) with an inline HTML
@@ -499,6 +574,13 @@ export default function MarkdownEditor({
     if (readOnly) return;
     const surface = surfaceRef.current;
     if (!surface) return;
+    // 记住上次颜色（语雀同款）：下次直接点主按钮即用
+    setLastCallout(slug);
+    try {
+      localStorage.setItem(CALLOUT_LAST_KEY, slug);
+    } catch {
+      /* noop */
+    }
     const base = surface.getValue();
     const { from: start, to: end } = surface.getSelection();
     // Make sure we're on a fresh line — Yuque-style callouts don't behave
@@ -508,6 +590,53 @@ export default function MarkdownEditor({
     const head = (prevCharNeedsNl ? '\n' : '') + `:::${slug}\n`;
     const tail = `\n:::` + (nextCharNeedsNl ? '\n' : '');
     surface.wrapSelection(head, tail, '在此输入内容…');
+  }
+
+  /* ----------------------------- 表格命令 ----------------------------- */
+
+  function runTableCommand(kind: 'format' | 'row' | 'col' | 'del-row' | 'del-col') {
+    const view = viewRef.current;
+    if (!view || readOnly) return;
+    const sel = view.state.selection.main;
+    const cursorLine = view.state.doc.lineAt(sel.head);
+    const allLines = view.state.doc.toString().split('\n');
+    const range = findTableRange(allLines, cursorLine.number - 1);
+    if (!range) {
+      message.info('请把光标放在表格内');
+      return;
+    }
+    const startLine = view.state.doc.line(range.start + 1);
+    const endLine = view.state.doc.line(range.end + 1);
+    const block = view.state.sliceDoc(startLine.from, endLine.to);
+    const rowIdx = cursorLine.number - 1 - range.start;
+    const colIdx = cellIndexAt(cursorLine.text, sel.head - cursorLine.from) ?? 0;
+    let next: string | null = null;
+    switch (kind) {
+      case 'format':
+        next = formatTable(block);
+        break;
+      case 'row':
+        next = addRowAfter(block, rowIdx);
+        break;
+      case 'col':
+        next = addColumnAfter(block, colIdx);
+        break;
+      case 'del-row':
+        next = deleteRow(block, rowIdx);
+        if (next === null) message.info('表头与分隔行不可删（或表格只剩一行）');
+        break;
+      case 'del-col':
+        next = deleteColumn(block, colIdx);
+        if (next === null) message.info('表格只剩一列，不可再删');
+        break;
+    }
+    if (next === null || next === block) return;
+    view.dispatch({
+      changes: { from: startLine.from, to: endLine.to, insert: next },
+      scrollIntoView: true,
+      userEvent: 'input.format',
+    });
+    view.focus();
   }
 
   /* ----------------------------- 行级滚动同步 ----------------------------- */
@@ -725,14 +854,21 @@ export default function MarkdownEditor({
             <Button size="small" icon={<BgColorsOutlined />} disabled={readOnly} />
           </Tooltip>
         </Dropdown>
-        <Dropdown
+        <Dropdown.Button
+          size="small"
           disabled={readOnly}
+          className="jz-callout-dropdown-btn"
+          onClick={() => insertCallout(lastCallout)}
           menu={{
+            selectedKeys: [lastCallout],
             items: CALLOUT_TEMPLATES.map((t) => ({
               key: t.slug,
               label: (
                 <span>
-                  <span style={{ display: 'inline-block', minWidth: 90 }}>{t.label}</span>
+                  <span style={{ display: 'inline-block', minWidth: 90 }}>
+                    {t.label}
+                    {t.slug === lastCallout ? ' ✓' : ''}
+                  </span>
                   <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
                     {t.hint}
                   </Typography.Text>
@@ -742,9 +878,31 @@ export default function MarkdownEditor({
             })),
           }}
         >
-          <Tooltip title="插入色块 (callout)">
-            <Button size="small" icon={<CommentOutlined />} disabled={readOnly}>
-              色块 ▾
+          <Tooltip
+            title={`插入色块（上次：${CALLOUT_TEMPLATES.find((t) => t.slug === lastCallout)?.label ?? lastCallout}）`}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <CommentOutlined /> 色块
+            </span>
+          </Tooltip>
+        </Dropdown.Button>
+        <Dropdown
+          disabled={readOnly}
+          menu={{
+            items: [
+              { key: 'format', label: '一键对齐格式化', onClick: () => runTableCommand('format') },
+              { type: 'divider' as const },
+              { key: 'row', label: '下方插入行', onClick: () => runTableCommand('row') },
+              { key: 'col', label: '右侧插入列', onClick: () => runTableCommand('col') },
+              { type: 'divider' as const },
+              { key: 'del-row', label: '删除当前行', danger: true, onClick: () => runTableCommand('del-row') },
+              { key: 'del-col', label: '删除当前列', danger: true, onClick: () => runTableCommand('del-col') },
+            ],
+          }}
+        >
+          <Tooltip title="表格操作（光标需在表格内；Tab 跳格 / 回车加行）">
+            <Button size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
+              表格 ▾
             </Button>
           </Tooltip>
         </Dropdown>
@@ -759,6 +917,14 @@ export default function MarkdownEditor({
             { label: '并排', value: 'split' },
           ]}
         />
+        <Tooltip title="键盘快捷键 (Ctrl+/)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<QuestionCircleOutlined />}
+            onClick={() => setCheatOpen(true)}
+          />
+        </Tooltip>
         </div>
       </div>
       <div
@@ -814,6 +980,14 @@ export default function MarkdownEditor({
         onSelect={selectSlashItem}
         onHoverIndex={setSlashSelectedIndex}
       />
+      <MathEditorModal
+        open={mathModal.open}
+        initial=""
+        displayMode={mathModal.displayMode}
+        onCancel={() => setMathModal((m) => ({ ...m, open: false }))}
+        onSubmit={handleMathSubmit}
+      />
+      <ShortcutCheatSheet open={cheatOpen} onClose={() => setCheatOpen(false)} />
     </div>
   );
 }
