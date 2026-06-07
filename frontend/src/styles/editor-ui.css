@@ -1280,3 +1280,91 @@
   background: color-mix(in srgb, var(--jz-surface-2) 75%, transparent);
   border: 1px solid var(--jz-divider);
 }
+
+/* ── 表格悬浮交互层（语雀式 +行/+列 与 grip 把手） ── */
+.jz-table-overlay > * {
+  position: fixed;
+  z-index: 1100;
+}
+.jz-table-edge-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px dashed color-mix(in srgb, var(--jz-accent) 45%, var(--jz-border));
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--jz-accent) 8%, var(--jz-surface));
+  color: var(--jz-accent);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  padding: 0;
+}
+.jz-table-edge-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--jz-accent) 16%, var(--jz-surface));
+}
+.jz-table-edge-col { width: 16px; }
+.jz-table-edge-row { height: 16px; }
+.jz-table-grip {
+  background: color-mix(in srgb, var(--jz-text-muted) 28%, transparent);
+  border-radius: 4px;
+  cursor: grab;
+  opacity: 0.45;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+.jz-table-grip:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--jz-accent) 55%, transparent);
+}
+.jz-table-grip.is-dragging {
+  background: var(--jz-accent);
+  opacity: 1;
+  cursor: grabbing;
+}
+.jz-table-grip-col { height: 8px; }
+.jz-table-grip-row { width: 8px; }
+.jz-table-drop-line {
+  background: var(--jz-accent);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--jz-accent) 60%, transparent);
+  pointer-events: none;
+}
+.jz-table-drop-line-v { width: 2px; }
+.jz-table-drop-line-h { height: 2px; }
+
+/* ── MD Live Preview 就地渲染 widget ── */
+.jz-lp-image {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+}
+.jz-lp-image img {
+  max-height: 300px;
+  max-width: 100%;
+  border-radius: 8px;
+  border: 1px solid var(--jz-divider);
+  cursor: pointer;
+  display: block;
+}
+.jz-lp-image-broken {
+  color: var(--jz-text-muted);
+  font-style: italic;
+}
+.jz-lp-math {
+  display: inline-block;
+  padding: 0 2px;
+  cursor: pointer;
+}
+
+/* ── MD 表格浮动操作条 ── */
+.jz-md-table-bar-label {
+  font-size: 11px;
+  color: var(--jz-text-muted);
+  padding: 0 6px 0 4px;
+  user-select: none;
+}
+.jz-md-float-btn.is-danger:hover {
+  background: color-mix(in srgb, #cf1322 14%, transparent);
+  color: #cf1322;
+}

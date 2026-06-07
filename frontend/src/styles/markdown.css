@@ -1960,6 +1960,9 @@
   align-items: center;
   gap: 1px;
   padding: 4px;
+  /* 必须盖过表格 sticky 表头（th z-index 3/4）——菜单加宽后会与表头区重叠 */
+  position: relative;
+  z-index: 20;
   background: color-mix(in srgb, var(--jz-surface) 96%, transparent);
   border: 1px solid var(--jz-border);
   border-radius: 8px;

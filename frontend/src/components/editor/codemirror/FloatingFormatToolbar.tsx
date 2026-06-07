@@ -1,5 +1,5 @@
 import { createPortal } from 'react-dom';
-import { Tooltip } from 'antd';
+import { Dropdown, Tooltip } from 'antd';
 import {
   BoldOutlined,
   ItalicOutlined,
@@ -8,7 +8,9 @@ import {
   UnderlineOutlined,
   LinkOutlined,
   ClearOutlined,
+  FontColorsOutlined,
 } from '@ant-design/icons';
+import { TEXT_COLOR_PRESETS } from '../callouts';
 
 export type FloatCommand =
   | 'bold'
@@ -17,12 +19,14 @@ export type FloatCommand =
   | 'code'
   | 'underline'
   | 'link'
-  | 'clear';
+  | 'clear'
+  | 'color';
 
 interface Props {
   /** 选区上方的锚点（视口坐标）；null 隐藏。 */
   anchor: { left: number; top: number } | null;
-  onCommand: (cmd: FloatCommand) => void;
+  /** color 命令带颜色值参数。 */
+  onCommand: (cmd: FloatCommand, arg?: string) => void;
 }
 
 const ITEMS: Array<{ cmd: FloatCommand; icon: React.ReactNode; title: string }> = [
@@ -67,6 +71,34 @@ export default function FloatingFormatToolbar({ anchor, onCommand }: Props) {
           </button>
         </Tooltip>
       ))}
+      <Dropdown
+        trigger={['click']}
+        getPopupContainer={() => document.body}
+        overlayStyle={{ zIndex: 12000 }}
+        menu={{
+          items: TEXT_COLOR_PRESETS.map((c) => ({
+            key: c.value,
+            label: (
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                <span
+                  style={{
+                    display: 'inline-block', width: 12, height: 12, borderRadius: 3,
+                    background: c.value, border: '1px solid var(--jz-border)',
+                  }}
+                />
+                {c.label}
+              </span>
+            ),
+            onClick: () => onCommand('color', c.value),
+          })),
+        }}
+      >
+        <Tooltip title="文字颜色" mouseEnterDelay={0.4}>
+          <button type="button" className="jz-md-float-btn" aria-label="文字颜色">
+            <FontColorsOutlined />
+          </button>
+        </Tooltip>
+      </Dropdown>
     </div>,
     document.body,
   );

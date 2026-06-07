@@ -5,6 +5,8 @@ import {
   BoldOutlined,
   CodeOutlined,
   CommentOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
   ItalicOutlined,
   OrderedListOutlined,
   QuestionCircleOutlined,
@@ -14,6 +16,7 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import type { EditorView } from '@codemirror/view';
+import { Compartment } from '@codemirror/state';
 import MarkdownQuickInsertButton from './toolbar/MarkdownQuickInsertButton';
 import { renderMarkdownForEditor, wordCount } from '@/utils/markdown';
 import MentionPicker from './MentionPicker';
@@ -25,6 +28,7 @@ import ShortcutCheatSheet from './ShortcutCheatSheet';
 import { listKeymap } from './codemirror/extensions/listKeymap';
 import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
 import { tableAssistKeymap } from './codemirror/extensions/tableAssist';
+import { livePreview } from './codemirror/extensions/livePreview';
 import {
   addColumnAfter,
   addRowAfter,
@@ -33,7 +37,9 @@ import {
   deleteRow,
   findTableRange,
   formatTable,
+  isTableLine,
 } from './codemirror/pure/tableFormat';
+import TableFloatingBar from './codemirror/TableFloatingBar';
 import {
   clearInlineFormat,
   makeLink,
@@ -82,10 +88,16 @@ type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 type MdLayoutMode = 'split' | 'edit' | 'preview';
 const MD_LAYOUT_KEY = 'jz-md-layout';
 
-/** 模块级常量 — CM 扩展只在挂载时装配一次。表格优先于列表（同在 Tab/Enter 上）。 */
-const CM_EXTRA_EXTENSIONS = [tableAssistKeymap, listKeymap, inlineFormatKeymap];
-
 const CALLOUT_LAST_KEY = 'jz-callout-last';
+const LIVE_PREVIEW_KEY = 'jz-md-livepreview';
+
+function loadLivePreviewOn(): boolean {
+  try {
+    return localStorage.getItem(LIVE_PREVIEW_KEY) !== 'false'; // 默认开
+  } catch {
+    return true;
+  }
+}
 
 export default function MarkdownEditor({
   value,
@@ -125,6 +137,32 @@ export default function MarkdownEditor({
     range: { from: number; to: number };
   }>({ open: false, displayMode: true, range: { from: 0, to: 0 } });
   const [cheatOpen, setCheatOpen] = useState(false);
+  /** Live Preview（就地渲染）开关 + 实例级 Compartment（挂载时装配进 CM）。 */
+  const [lpOn, setLpOn] = useState<boolean>(loadLivePreviewOn);
+  const lpCompartmentRef = useRef(new Compartment());
+  const cmExtraExtensions = useMemo(
+    () => [
+      tableAssistKeymap,
+      listKeymap,
+      inlineFormatKeymap,
+      lpCompartmentRef.current.of(loadLivePreviewOn() ? livePreview() : []),
+    ],
+    [],
+  );
+  const toggleLivePreview = useCallback(() => {
+    setLpOn((on) => {
+      const next = !on;
+      try {
+        localStorage.setItem(LIVE_PREVIEW_KEY, String(next));
+      } catch {
+        /* noop */
+      }
+      viewRef.current?.dispatch({
+        effects: lpCompartmentRef.current.reconfigure(next ? livePreview() : []),
+      });
+      return next;
+    });
+  }, []);
   /** callout 记住上次颜色（语雀同款）。 */
   const [lastCallout, setLastCallout] = useState<string>(() => {
     try {
@@ -136,6 +174,8 @@ export default function MarkdownEditor({
   /** 选区浮动格式条锚点（视口坐标）。 */
   const [floatAnchor, setFloatAnchor] = useState<{ left: number; top: number } | null>(null);
   const floatTimerRef = useRef<number | null>(null);
+  /** 表格浮动操作条锚点（光标进表格时显示）。 */
+  const [tableBarAnchor, setTableBarAnchor] = useState<{ left: number; top: number } | null>(null);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashAnchor, setSlashAnchor] = useState<DOMRect | null>(null);
@@ -518,12 +558,15 @@ export default function MarkdownEditor({
     view.focus();
   }
 
-  function runFormat(cmd: FloatCommand) {
+  function runFormat(cmd: FloatCommand, arg?: string) {
     const view = viewRef.current;
     if (!view || readOnly) return;
     const sel = view.state.selection.main;
     const doc = view.state.doc.toString();
     switch (cmd) {
+      case 'color':
+        if (arg) wrapSelection(`<span style="color:${arg};">`, '</span>');
+        break;
       case 'bold':
         applyEdit(toggleWrap(doc, sel.from, sel.to, '**', '加粗文本'));
         break;
@@ -643,6 +686,7 @@ export default function MarkdownEditor({
 
   const handleCmScroll = useCallback((view: EditorView) => {
     setFloatAnchor(null); // 视口坐标随滚动失效，先收起
+    setTableBarAnchor(null);
     if (syncScrollLockRef.current) return;
     const preview = previewElRef.current;
     if (!preview) return;
@@ -683,8 +727,25 @@ export default function MarkdownEditor({
   const handleCmUpdate = useCallback(
     (info: { docChanged: boolean; selectionSet: boolean; view: EditorView }) => {
       updateSlashFromView(info.view);
-      // 选区浮动格式条：选区稳定 200ms 后在选区起点上方弹出
       const sel = info.view.state.selection.main;
+      // 表格浮动操作条：光标（空选区）在表格内 → 锚到表格首行上方
+      if (sel.empty && !readOnly) {
+        const line = info.view.state.doc.lineAt(sel.head);
+        if (isTableLine(line.text)) {
+          const allLines = info.view.state.doc.toString().split('\n');
+          const range = findTableRange(allLines, line.number - 1);
+          if (range) {
+            const headLine = info.view.state.doc.line(range.start + 1);
+            const c = info.view.coordsAtPos(headLine.from);
+            if (c) setTableBarAnchor({ left: c.left, top: c.top });
+          }
+        } else {
+          setTableBarAnchor(null);
+        }
+      } else {
+        setTableBarAnchor(null);
+      }
+      // 选区浮动格式条：选区稳定 200ms 后在选区起点上方弹出
       if (floatTimerRef.current) {
         window.clearTimeout(floatTimerRef.current);
         floatTimerRef.current = null;
@@ -917,6 +978,14 @@ export default function MarkdownEditor({
             { label: '并排', value: 'split' },
           ]}
         />
+        <Tooltip title={lpOn ? '就地渲染：开（点击切纯源码）' : '就地渲染：关（点击开启）'}>
+          <Button
+            size="small"
+            className={`jz-toolbar-icon-btn${lpOn ? ' is-active' : ''}`}
+            icon={lpOn ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+            onClick={toggleLivePreview}
+          />
+        </Tooltip>
         <Tooltip title="键盘快捷键 (Ctrl+/)">
           <Button
             size="small"
@@ -941,7 +1010,7 @@ export default function MarkdownEditor({
             onDropFiles={readOnly ? undefined : (files) => void uploadAndInsertSequential(files)}
             onSurfaceReady={handleSurfaceReady}
             onViewReady={handleViewReady}
-            extraExtensions={CM_EXTRA_EXTENSIONS}
+            extraExtensions={cmExtraExtensions}
           />
         </div>
         {layoutMode !== 'edit' && (
@@ -958,6 +1027,7 @@ export default function MarkdownEditor({
         )}
       </div>
       <FloatingFormatToolbar anchor={readOnly ? null : floatAnchor} onCommand={runFormat} />
+      <TableFloatingBar anchor={readOnly ? null : tableBarAnchor} onCommand={runTableCommand} />
       <MentionPicker
         open={mentionOpen}
         onCancel={() => setMentionOpen(false)}
