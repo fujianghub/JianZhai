@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert,
@@ -71,6 +71,10 @@ import {
 import { PAPER_STYLES } from '@/utils/paper';
 import type { DocFormat, DocumentDetail, KnowledgeBase, Visibility } from '@/types';
 import type { EditorSaveHandle } from '@/components/editor/editorSaveLifecycle';
+import {
+  textareaSurface,
+  type EditorSurfaceHandle,
+} from '@/components/editor/surface/EditorSurface';
 
 type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf';
 type ContentSource = 'raw' | 'published';
@@ -206,10 +210,20 @@ export default function DocEditorPage({
   }, []);
 
   const [richEditor, setRichEditor] = useState<TiptapEditor | null>(null);
-  const [mdTextarea, setMdTextarea] = useState<HTMLTextAreaElement | null>(null);
+  const [mdSurface, setMdSurface] = useState<EditorSurfaceHandle | null>(null);
   const [htmlTextarea, setHtmlTextarea] = useState<HTMLTextAreaElement | null>(null);
   const [findOpen, setFindOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+
+  // HTML 模式的 textarea 包成 EditorSurface，与 MD(CM) 走同一套 seek / 查找接口
+  const editorBodyRef = useRef('');
+  useEffect(() => {
+    editorBodyRef.current = localEditorBody;
+  }, [localEditorBody]);
+  const htmlSurface = useMemo(
+    () => (htmlTextarea ? textareaSurface(htmlTextarea, () => editorBodyRef.current) : null),
+    [htmlTextarea],
+  );
 
   // Ctrl/⌘+F → 唤起查找面板；F9 → 切换专注写作模式
   useEffect(() => {
@@ -822,7 +836,7 @@ export default function DocEditorPage({
             onUploadPrimary={handlePrimaryUpload}
             uploadingPrimary={uploadingPrimary}
             onRichEditorReady={setRichEditor}
-            onMarkdownTextareaReady={setMdTextarea}
+            onMarkdownSurfaceReady={setMdSurface}
             onHtmlTextareaReady={setHtmlTextarea}
             onSaveReady={registerEditorSave}
           />
@@ -855,10 +869,10 @@ export default function DocEditorPage({
                   source={mode === 'markdown' || mode === 'html' ? editorBody : undefined}
                   sourceKind={mode === 'html' ? 'html' : 'markdown'}
                   onSeek={(pos) => {
-                    if (mode === 'html' && htmlTextarea) {
-                      seekTextarea(htmlTextarea, pos, editorBody);
-                    } else if (mode === 'markdown' && mdTextarea) {
-                      seekTextarea(mdTextarea, pos, editorBody);
+                    if (mode === 'html') {
+                      htmlSurface?.seekTo(pos);
+                    } else if (mode === 'markdown') {
+                      mdSurface?.seekTo(pos);
                     }
                   }}
                 />
@@ -875,8 +889,8 @@ export default function DocEditorPage({
         open={findOpen}
         onClose={() => setFindOpen(false)}
         editor={mode === 'rich' ? richEditor : null}
-        textarea={
-          mode === 'markdown' ? mdTextarea : mode === 'html' ? htmlTextarea : null
+        surface={
+          mode === 'markdown' ? mdSurface : mode === 'html' ? htmlSurface : null
         }
         source={mode === 'markdown' || mode === 'html' ? editorBody : undefined}
         onSourceChange={
@@ -943,7 +957,7 @@ interface SurfaceProps {
   onUploadPrimary: (file: File) => Promise<void> | void;
   uploadingPrimary: boolean;
   onRichEditorReady?: (editor: TiptapEditor | null) => void;
-  onMarkdownTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  onMarkdownSurfaceReady?: (handle: EditorSurfaceHandle | null) => void;
   onHtmlTextareaReady?: (el: HTMLTextAreaElement | null) => void;
   onSaveReady?: (handle: EditorSaveHandle | null) => void;
 }
@@ -961,7 +975,7 @@ function EditorSurface({
   onUploadPrimary,
   uploadingPrimary,
   onRichEditorReady,
-  onMarkdownTextareaReady,
+  onMarkdownSurfaceReady,
   onHtmlTextareaReady,
   onSaveReady,
 }: SurfaceProps) {
@@ -1037,23 +1051,11 @@ function EditorSurface({
       onChange={onChange}
       onAutoSave={onAutoSave}
       documentId={doc.id}
-      onTextareaReady={onMarkdownTextareaReady}
+      onSurfaceReady={onMarkdownSurfaceReady}
       paperStyle={doc.paper_style}
       onSaveReady={onSaveReady}
     />
   );
-}
-
-/** Move the textarea selection to ``pos`` and scroll the line into view. */
-function seekTextarea(ta: HTMLTextAreaElement, pos: number, source: string) {
-  ta.focus();
-  ta.setSelectionRange(pos, pos);
-  const before = source.slice(0, pos);
-  const lineIndex = before.split('\n').length - 1;
-  const style = getComputedStyle(ta);
-  const lh = parseFloat(style.lineHeight || '20') || 20;
-  // 让目标行大约停在视口的 1/4 处，比贴顶更舒服
-  ta.scrollTop = Math.max(0, lineIndex * lh - ta.clientHeight / 4);
 }
 
 interface MissingProps {

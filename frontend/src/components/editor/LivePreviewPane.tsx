@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Collapse } from 'antd';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
-import { renderMarkdownWithToc } from '@/utils/markdown';
+import { renderMarkdownForEditor, renderMarkdownWithToc } from '@/utils/markdown';
 import { paperClassName } from '@/utils/paper';
 import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
 
@@ -18,6 +18,13 @@ interface Props {
   scrollRef?: React.RefObject<HTMLDivElement | null>;
   /** Fired when the markdown scroll container mounts or unmounts. */
   onScrollContainerReady?: (el: HTMLDivElement | null) => void;
+  /**
+   * Editor mode: render with ``data-line`` anchors (line-level scroll sync).
+   * Never set from the blog reader — annotated HTML is editor-only.
+   */
+  sourceMap?: boolean;
+  /** Scroll events from the preview container (for editor scroll sync). */
+  onScroll?: (el: HTMLDivElement) => void;
 }
 
 export default function LivePreviewPane({
@@ -28,6 +35,8 @@ export default function LivePreviewPane({
   className,
   scrollRef,
   onScrollContainerReady,
+  sourceMap = false,
+  onScroll,
 }: Props) {
   const [debouncedSource, setDebouncedSource] = useState(source);
   const innerScrollRef = useRef<HTMLDivElement | null>(null);
@@ -55,10 +64,12 @@ export default function LivePreviewPane({
     [debouncedSource],
   );
 
-  const { html, toc } = useMemo(
-    () => (kind === 'markdown' ? renderMarkdownWithToc(debouncedSource) : { html: '', toc: [] }),
-    [debouncedSource, kind],
-  );
+  const { html, toc } = useMemo(() => {
+    if (kind !== 'markdown') return { html: '', toc: [] };
+    return sourceMap
+      ? renderMarkdownForEditor(debouncedSource)
+      : renderMarkdownWithToc(debouncedSource);
+  }, [debouncedSource, kind, sourceMap]);
 
   if (kind === 'html') {
     return (
@@ -77,6 +88,7 @@ export default function LivePreviewPane({
     <div
       ref={setScrollEl}
       className={`jz-doc-preview-col jz-doc-live-preview-scroll ${className ?? ''}`}
+      onScroll={onScroll ? (e) => onScroll(e.currentTarget) : undefined}
     >
       {showToc && toc.length > 0 && (
         <Collapse

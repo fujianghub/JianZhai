@@ -51,6 +51,40 @@ export default defineConfig(({ mode }) => {
         '/sitemap.xml': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
       },
     },
+    build: {
+      rollupOptions: {
+        output: {
+          /**
+           * 编辑器双内核各自独立 chunk：CodeMirror（MD 源码模式）与
+           * Tiptap/ProseMirror（富文本）都只被懒加载的编辑页用到，
+           * 拆出去保证 main bundle 不回胖、两内核互不牵连缓存失效。
+           */
+          manualChunks(id: string) {
+            // 只归并 CM 核心；@codemirror/lang-* 与各 @lezer 语法包由
+            // language-data 动态 import 按需加载，不能合进来（否则一次性
+            // 拖入全部语言 ≈ 1.5MB）。
+            const CM_CORE = [
+              '@codemirror/state',
+              '@codemirror/view',
+              '@codemirror/commands',
+              '@codemirror/language-data',
+              '@codemirror/language',
+              '@codemirror/lang-markdown',
+              '@lezer/common',
+              '@lezer/highlight',
+              '@lezer/lr',
+              '@lezer/markdown',
+              'style-mod',
+              'w3c-keyname',
+              'crelt',
+            ];
+            if (CM_CORE.some((p) => id.includes(p))) return 'codemirror';
+            if (id.includes('@tiptap') || id.includes('prosemirror')) return 'tiptap';
+            return undefined;
+          },
+        },
+      },
+    },
     test: {
       environment: 'node',
     },

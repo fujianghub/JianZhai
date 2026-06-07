@@ -51,6 +51,28 @@ md.use(mdMultimdTable, { multiline: true, rowspan: true, headerless: false });
 md.use(katexPlugin);
 
 /**
+ * Source-line annotations for the editor's line-level scroll sync.
+ *
+ * When the render env carries ``jzSourceMap: true`` (only the Markdown
+ * editor's live preview sets it), every top-level block token that knows its
+ * source range gets a ``data-line`` attribute with its (preprocessed) start
+ * line. Blog / export renders never set the flag, so their HTML — and the
+ * ``renderMarkdownWithToc`` LRU cache — stay byte-identical to before.
+ */
+md.core.ruler.push('jz_source_line', (state) => {
+  if (!state.env?.jzSourceMap) return;
+  for (const token of state.tokens) {
+    if (!token.map || token.nesting < 0) continue;
+    // Only annotate tokens the default renderer serialises with attrs;
+    // fences/html_block use custom renderers that ignore attrs — skipping
+    // them is fine, the sync interpolates between surrounding anchors.
+    if (token.type.endsWith('_open') || token.type === 'fence' || token.type === 'hr') {
+      token.attrSet('data-line', String(token.map[0]));
+    }
+  }
+});
+
+/**
  * KaTeX plugin for markdown-it. Without this the public blog (which renders
  * pure Markdown — no Tiptap MathBlock to paper over the gap) leaves ``$$E=mc^2$$``
  * as literal dollar-sign text.
@@ -307,8 +329,9 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'colspan', 'rowspan', 'align', 'valign', 'scope',
     'color', 'face', 'size',
     'type', 'checked', 'disabled', 'value',
-    // mermaid + our own enhancers
-    'data-lang', 'data-source', 'data-action', 'aria-label', 'aria-pressed', 'aria-live',
+    // mermaid + our own enhancers; data-line = editor scroll-sync anchors
+    'data-lang', 'data-source', 'data-action', 'data-line',
+    'aria-label', 'aria-pressed', 'aria-live',
     'role', 'contenteditable', 'hidden',
     // SVG specifics
     'viewBox', 'd', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'cx', 'cy', 'r', 'rx', 'ry',
@@ -560,6 +583,50 @@ export function renderMarkdownWithToc(source: string): { html: string; toc: TocE
   }
   return result;
 }
+
+/**
+ * Editor-preview variant of {@link renderMarkdownWithToc}:
+ *   - injects ``data-line`` anchors (jzSourceMap env flag) for line-level
+ *     scroll sync between the CodeMirror pane and the preview;
+ *   - returns the *preprocessed* source so callers can build the
+ *     original↔preprocessed line map without re-running the pipeline.
+ *
+ * Deliberately NOT routed through the renderMarkdownWithToc LRU — the
+ * annotated HTML must never leak into blog/export renders.
+ */
+export function renderMarkdownForEditor(source: string): {
+  html: string;
+  toc: TocEntry[];
+  preprocessed: string;
+} {
+  const raw = source ?? '';
+  const cached = editorRenderCache.get(raw);
+  if (cached) {
+    editorRenderCache.delete(raw);
+    editorRenderCache.set(raw, cached);
+    return cached;
+  }
+  const preprocessed = preprocessMarkdown(raw);
+  const env: { toc: TocEntry[]; jzSourceMap: boolean } = { toc: [], jzSourceMap: true };
+  const html = md.render(preprocessed, env);
+  const result = {
+    html: addImgLazyAttrs(sanitize(html)),
+    toc: env.toc,
+    preprocessed,
+  };
+  editorRenderCache.set(raw, result);
+  if (editorRenderCache.size > EDITOR_RENDER_CACHE_MAX) {
+    const oldest = editorRenderCache.keys().next().value;
+    if (oldest !== undefined) editorRenderCache.delete(oldest);
+  }
+  return result;
+}
+
+const EDITOR_RENDER_CACHE_MAX = 4;
+const editorRenderCache = new Map<
+  string,
+  { html: string; toc: TocEntry[]; preprocessed: string }
+>();
 
 /**
  * Apply `fn` to source segments that lie OUTSIDE fenced code blocks

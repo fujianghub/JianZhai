@@ -1,31 +1,30 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Input, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Segmented, Tag, Tooltip, Typography } from 'antd';
 import {
   BgColorsOutlined,
   CommentOutlined,
   SaveOutlined,
   UnderlineOutlined,
 } from '@ant-design/icons';
+import type { EditorView } from '@codemirror/view';
 import MarkdownQuickInsertButton from './toolbar/MarkdownQuickInsertButton';
-import { renderMarkdown, wordCount } from '@/utils/markdown';
+import { renderMarkdownForEditor, wordCount } from '@/utils/markdown';
 import MentionPicker from './MentionPicker';
-import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
+import LivePreviewPane from './LivePreviewPane';
+import CodeMirrorMarkdown from './codemirror/CodeMirrorMarkdown';
+import { getLineMap } from './codemirror/pure/lineMap';
+import { syncEditorToPreview, syncPreviewToEditor } from './codemirror/scrollSync';
+import type { EditorSurfaceHandle } from './surface/EditorSurface';
 import { CALLOUT_TEMPLATES, TEXT_COLOR_PRESETS } from './callouts';
 import type { MentionSuggestion } from '@/api/linking';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
-import { paperClassName } from '@/utils/paper';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 import MarkdownSlashMenu, { useMarkdownSlashDisplayItems } from './MarkdownSlashMenu';
-import {
-  applyMarkdownSlashCommand,
-  findSlashTrigger,
-  getMarkdownInsertForCommand,
-} from './markdownSlashActions';
+import { findSlashTrigger, getMarkdownInsertForCommand } from './markdownSlashActions';
 import { trackRecentSlashCommand } from './slashCommandRegistry';
 import type { SlashCommandItem } from './slashCommandRegistry';
 
-const { TextArea } = Input;
 const { Text } = Typography;
 
 interface Props {
@@ -37,14 +36,12 @@ interface Props {
   readOnly?: boolean;
   /** Document this editor is editing — used to attach pasted images. */
   documentId?: number;
-  /** Lift the textarea element up so the outline panel can scroll/seek it. */
-  onTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  /** Lift the editor surface up so the outline / find-replace can seek it. */
+  onSurfaceReady?: (handle: EditorSurfaceHandle | null) => void;
   /** Paper-style preset key applied to the preview pane. */
   paperStyle?: string;
   /** Register saveNow for parent flush-before-publish / mode switch. */
   onSaveReady?: (handle: EditorSaveHandle | null) => void;
-  /** When true, hide internal preview/split controls (page-level LivePreviewPane). */
-  hideInternalPreview?: boolean;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
@@ -58,10 +55,9 @@ export default function MarkdownEditor({
   autosaveMs = 5000,
   readOnly = false,
   documentId,
-  onTextareaReady,
+  onSurfaceReady,
   paperStyle,
   onSaveReady,
-  hideInternalPreview = false,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [layoutMode, setLayoutMode] = useState<MdLayoutMode>(() => {
@@ -89,8 +85,9 @@ export default function MarkdownEditor({
   const slashDisplayItems = useMarkdownSlashDisplayItems(slashQuery);
   /** Cursor offset captured when @ trigger or button fired; insertion replaces text from here. */
   const triggerRangeRef = useRef<{ from: number; to: number } | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const previewRef = useRef<HTMLDivElement | null>(null);
+  const surfaceRef = useRef<EditorSurfaceHandle | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const previewElRef = useRef<HTMLDivElement | null>(null);
   const syncScrollLockRef = useRef(false);
   const lastSavedRef = useRef(value);
   /** Last value emitted via local onChange — used to tell server echoes from
@@ -183,7 +180,7 @@ export default function MarkdownEditor({
   }, [onAutoSave, value, status]);
 
   // Ctrl/⌘+S — manual save. Bound to the document so it fires even when the
-  // textarea isn't focused (e.g. the user clicked into the preview pane).
+  // editor isn't focused (e.g. the user clicked into the preview pane).
   useEffect(() => {
     if (readOnly || !onAutoSave) return;
     const onKey = (e: KeyboardEvent) => {
@@ -222,53 +219,65 @@ export default function MarkdownEditor({
     };
   }, []);
 
-  // Debounce the preview render so each keystroke doesn't reparse Markdown
-  // + run DOMPurify on long documents (10k+ chars chokes on every char).
+  const count = useMemo(() => wordCount(value), [value]);
+
+  // Debounced source for the line-map (matches LivePreviewPane's own 200ms
+  // debounce so the preview HTML and the map describe the same snapshot).
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedValue(value), 200);
     return () => window.clearTimeout(t);
   }, [value]);
-  const html = useMemo(() => renderMarkdown(debouncedValue), [debouncedValue]);
-  const count = useMemo(() => wordCount(value), [value]);
+  const lineMap = useMemo(() => {
+    // renderMarkdownForEditor is LRU-cached — LivePreviewPane renders the
+    // same debounced source, so this is an O(1) cache hit, not a re-render.
+    const { preprocessed } = renderMarkdownForEditor(debouncedValue);
+    return getLineMap(debouncedValue, preprocessed);
+  }, [debouncedValue]);
+  const lineMapRef = useRef(lineMap);
+  useEffect(() => {
+    lineMapRef.current = lineMap;
+  }, [lineMap]);
 
-  function openMentionAtCursor() {
-    const ta = textareaRef.current;
-    const pos = ta?.selectionStart ?? value.length;
-    triggerRangeRef.current = { from: pos, to: pos };
-    setMentionOpen(true);
-  }
+  /* ----------------------------- 斜杠菜单 ----------------------------- */
 
-  function updateSlashMenuFromCursor(ta: HTMLTextAreaElement, source: string) {
-    const cursor = ta.selectionStart ?? 0;
-    const trig = findSlashTrigger(source, cursor);
-    if (trig) {
-      slashTriggerRef.current = { from: trig.from, to: trig.to };
-      setSlashQuery(trig.query);
-      setSlashOpen(true);
-      setSlashSelectedIndex(0);
-      const rect = ta.getBoundingClientRect();
-      setSlashAnchor(new DOMRect(rect.left + 12, rect.top + 28, 280, 0));
-    } else {
-      setSlashOpen(false);
-      slashTriggerRef.current = null;
-    }
-  }
+  const updateSlashFromView = useCallback(
+    (view: EditorView) => {
+      if (readOnly) return;
+      const cursor = view.state.selection.main.head;
+      const source = view.state.doc.toString();
+      const trig = findSlashTrigger(source, cursor);
+      if (trig) {
+        slashTriggerRef.current = { from: trig.from, to: trig.to };
+        setSlashQuery(trig.query);
+        setSlashOpen(true);
+        setSlashSelectedIndex(0);
+        const c = view.coordsAtPos(cursor);
+        if (c) setSlashAnchor(new DOMRect(c.left, c.bottom + 4, 280, 0));
+      } else {
+        setSlashOpen(false);
+        slashTriggerRef.current = null;
+      }
+    },
+    [readOnly],
+  );
 
   function selectSlashItem(item: SlashCommandItem) {
-    if (item.richTextOnly || !slashTriggerRef.current) return;
-    const next = applyMarkdownSlashCommand(
-      value,
-      slashTriggerRef.current.from,
-      slashTriggerRef.current.to,
-      item,
-    );
-    if (next !== null) {
+    const surface = surfaceRef.current;
+    if (item.richTextOnly || !slashTriggerRef.current || !surface) return;
+    const insert = getMarkdownInsertForCommand(item);
+    if (insert !== null) {
       trackRecentSlashCommand(item.title);
-      onChange(next);
+      surface.insertAt(slashTriggerRef.current.from, slashTriggerRef.current.to, insert);
     }
     setSlashOpen(false);
     slashTriggerRef.current = null;
+  }
+
+  function openMentionAtCursor() {
+    const pos = surfaceRef.current?.getSelection().from ?? value.length;
+    triggerRangeRef.current = { from: pos, to: pos };
+    setMentionOpen(true);
   }
 
   function insertFromQuickMenu(item: SlashCommandItem) {
@@ -282,234 +291,176 @@ export default function MarkdownEditor({
       message.info('该块请切换到富文本编辑器');
       return;
     }
-    const ta = textareaRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? start;
-    const next = value.slice(0, start) + insert + value.slice(end);
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const { from, to } = surface.getSelection();
     trackRecentSlashCommand(item.title);
-    onChange(next);
-    const caret = start + insert.length;
-    queueMicrotask(() => {
-      if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(caret, caret);
-    });
+    surface.insertAt(from, to, insert);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (slashOpen && slashDisplayItems.length > 0) {
-      const n = slashDisplayItems.length;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setSlashOpen(false);
-        return;
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSlashSelectedIndex((i) => (i + 1) % n);
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSlashSelectedIndex((i) => (i + n - 1) % n);
-        return;
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        const item = slashDisplayItems[slashSelectedIndex];
-        if (item && !item.richTextOnly) {
-          e.preventDefault();
-          selectSlashItem(item);
+  /* --------------------------- 键盘路由（CM keydown） --------------------------- */
+
+  // Latest-state refs for the CM keydown handler (registered once inside CM).
+  const slashStateRef = useRef({ open: slashOpen, items: slashDisplayItems, index: slashSelectedIndex });
+  slashStateRef.current = { open: slashOpen, items: slashDisplayItems, index: slashSelectedIndex };
+
+  const handleCmKeyDown = useCallback(
+    (e: KeyboardEvent, view: EditorView): boolean => {
+      if (readOnly) return false;
+      const slash = slashStateRef.current;
+      if (slash.open && slash.items.length > 0) {
+        const n = slash.items.length;
+        if (e.key === 'Escape') {
+          setSlashOpen(false);
+          return true;
         }
-        return;
+        if (e.key === 'ArrowDown') {
+          setSlashSelectedIndex((i) => (i + 1) % n);
+          return true;
+        }
+        if (e.key === 'ArrowUp') {
+          setSlashSelectedIndex((i) => (i + n - 1) % n);
+          return true;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          const item = slash.items[slash.index];
+          if (item && !item.richTextOnly) {
+            selectSlashItem(item);
+            return true;
+          }
+          return false;
+        }
       }
-    }
 
-    // Open mention picker on standalone "@" keystroke and consume the keystroke.
-    if (e.key === '@' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const pos = ta.selectionStart;
-      triggerRangeRef.current = { from: pos, to: pos };
-      setMentionOpen(true);
-      return;
-    }
-    // Ctrl/⌘+U — wrap selection with <u>…</u>. The browser's default for
-    // Ctrl+U inside a textarea is a noop, so we don't need to preventDefault
-    // for compat, but doing so suppresses Firefox's "view source" shortcut
-    // for completeness.
-    if (
-      (e.metaKey || e.ctrlKey) &&
-      !e.shiftKey &&
-      !e.altKey &&
-      (e.key === 'u' || e.key === 'U')
-    ) {
-      e.preventDefault();
-      wrapSelection('<u>', '</u>');
-    }
-  }
+      // Open mention picker on standalone "@" keystroke and consume it.
+      if (e.key === '@' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const pos = view.state.selection.main.head;
+        triggerRangeRef.current = { from: pos, to: pos };
+        setMentionOpen(true);
+        return true;
+      }
+      // Ctrl/⌘+U — wrap selection with <u>…</u>.
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'u' || e.key === 'U')) {
+        surfaceRef.current?.wrapSelection('<u>', '</u>');
+        return true;
+      }
+      return false;
+    },
+    // selectSlashItem reads refs/surface — safe to omit; readOnly is the only real dep
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [readOnly],
+  );
+
+  /* ----------------------------- 图片上传 ----------------------------- */
 
   /** Escape characters that would break the Markdown image syntax `![…](…)`. */
   function escapeMdAlt(s: string): string {
     return s.replace(/[\\[\]\n)]/g, (c) => (c === '\n' ? ' ' : '\\' + c));
   }
 
-  /** Upload multiple files in order, building one big insertion. Re-reads live
-   *  textarea content before each insertion so concurrent typing is preserved. */
+  /** Upload multiple files in order, inserting each as it completes. All
+   *  writes go through surface.insertAt → CM dispatch → onChange, so undo
+   *  history and the save chain stay consistent with typing. */
   async function uploadAndInsertSequential(files: File[]) {
-    const ta = textareaRef.current;
-    let start = ta?.selectionStart ?? lastLocalRef.current.length;
-    let end = ta?.selectionEnd ?? start;
-    let caret = end;
-    let any = false;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    let { from: start, to: end } = surface.getSelection();
     for (const file of files) {
-      const base = ta?.value ?? lastLocalRef.current;
-      start = Math.min(start, base.length);
-      end = Math.min(end, base.length);
       try {
         const att = await uploadFile(file, documentId);
-        const next = ta?.value ?? lastLocalRef.current;
-        const prevCharNeedsNl = start > 0 && next[start - 1] !== '\n';
+        const base = surface.getValue();
+        start = Math.min(start, base.length);
+        end = Math.min(end, base.length);
+        const prevCharNeedsNl = start > 0 && base[start - 1] !== '\n';
         const altText = escapeMdAlt(att.original_filename || file.name);
-        const insertion =
-          (prevCharNeedsNl ? '\n' : '') + `![${altText}](${att.url})\n`;
-        const merged = next.slice(0, start) + insertion + next.slice(end);
-        lastLocalRef.current = merged;
+        const insertion = (prevCharNeedsNl ? '\n' : '') + `![${altText}](${att.url})\n`;
+        surface.insertAt(start, end, insertion);
         start += insertion.length;
         end = start;
-        caret = start;
-        any = true;
       } catch (err) {
         message.error(err instanceof Error ? err.message : '图片上传失败');
       }
     }
-    if (any) {
-      onChange(lastLocalRef.current);
-      queueMicrotask(() => {
-        if (ta) {
-          ta.focus();
-          ta.setSelectionRange(caret, caret);
-        }
-      });
-    }
-  }
-
-  /** Clipboard paste handler — intercept image-bearing paste and upload. */
-  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    if (readOnly) return;
-    const items = Array.from(e.clipboardData?.items ?? []);
-    const images = items
-      .filter((i) => i.kind === 'file' && i.type.startsWith('image/'))
-      .map((i) => i.getAsFile())
-      .filter((f): f is File => !!f);
-    if (images.length === 0) return;
-    e.preventDefault();
-    await uploadAndInsertSequential(images);
-  }
-
-  /** Drop handler — same as paste but for dragged files. */
-  async function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
-    if (readOnly) return;
-    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
-      f.type.startsWith('image/'),
-    );
-    if (files.length === 0) return;
-    e.preventDefault();
-    await uploadAndInsertSequential(files);
-  }
-
-  /** Without an explicit dragover preventDefault, browsers refuse the drop —
-   *  the file is forwarded to the OS / new tab instead of our handler. */
-  function handleDragOver(e: React.DragEvent<HTMLTextAreaElement>) {
-    if (readOnly) return;
-    const items = Array.from(e.dataTransfer?.items ?? []);
-    if (items.some((i) => i.kind === 'file')) e.preventDefault();
   }
 
   function handleMentionSelect(s: MentionSuggestion) {
+    const surface = surfaceRef.current;
     const range = triggerRangeRef.current ?? { from: value.length, to: value.length };
     const insertion = `@[${s.title}](doc:${s.id})`;
-    const next = value.slice(0, range.from) + insertion + value.slice(range.to);
-    onChange(next);
+    surface?.insertAt(range.from, range.to, insertion);
     setMentionOpen(false);
-    // Restore cursor after the inserted mention
-    const newPos = range.from + insertion.length;
-    queueMicrotask(() => {
-      const ta = textareaRef.current;
-      if (ta) {
-        ta.focus();
-        ta.setSelectionRange(newPos, newPos);
-      }
-    });
   }
 
   /** Wrap the current selection (or insert a placeholder) with an inline HTML
-   * snippet. Used by the colour / underline / horizontal-rule buttons. */
+   * snippet. Used by the colour / underline buttons. */
   function wrapSelection(before: string, after: string, placeholder = '内容') {
     if (readOnly) return;
-    const ta = textareaRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? value.length;
-    const selected = value.slice(start, end) || placeholder;
-    const insertion = before + selected + after;
-    const next = value.slice(0, start) + insertion + value.slice(end);
-    onChange(next);
-    const cursorStart = start + before.length;
-    const cursorEnd = cursorStart + selected.length;
-    queueMicrotask(() => {
-      if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(cursorStart, cursorEnd);
-    });
+    surfaceRef.current?.wrapSelection(before, after, placeholder);
   }
 
   /** Insert a fenced ``:::${slug}`` block at the current cursor; if there's a
    * non-empty selection, wrap it instead of replacing with placeholder text. */
   function insertCallout(slug: string) {
     if (readOnly) return;
-    const ta = textareaRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? value.length;
-    const selected = value.slice(start, end);
-    const body = selected.trim() || '在此输入内容…';
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const base = surface.getValue();
+    const { from: start, to: end } = surface.getSelection();
     // Make sure we're on a fresh line — Yuque-style callouts don't behave
     // well when squashed inline with prose.
-    const prevCharNeedsNl = start > 0 && value[start - 1] !== '\n';
-    const nextCharNeedsNl = end < value.length && value[end] !== '\n';
+    const prevCharNeedsNl = start > 0 && base[start - 1] !== '\n';
+    const nextCharNeedsNl = end < base.length && base[end] !== '\n';
     const head = (prevCharNeedsNl ? '\n' : '') + `:::${slug}\n`;
     const tail = `\n:::` + (nextCharNeedsNl ? '\n' : '');
-    const insertion = head + body + tail;
-    const next = value.slice(0, start) + insertion + value.slice(end);
-    onChange(next);
-    // Drop the cursor inside the block so the user can start typing right away.
-    const cursorAt = start + head.length + body.length;
-    queueMicrotask(() => {
-      if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(start + head.length, cursorAt);
-    });
+    surface.wrapSelection(head, tail, '在此输入内容…');
   }
 
-  function onTextareaScroll(e: React.UIEvent<HTMLTextAreaElement>) {
+  /* ----------------------------- 行级滚动同步 ----------------------------- */
+
+  const handleCmScroll = useCallback((view: EditorView) => {
     if (syncScrollLockRef.current) return;
-    const ta = e.currentTarget;
-    const preview = previewRef.current;
+    const preview = previewElRef.current;
     if (!preview) return;
-    const ratio = ta.scrollTop / Math.max(1, ta.scrollHeight - ta.clientHeight);
     syncScrollLockRef.current = true;
-    preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight);
-    requestAnimationFrame(() => { syncScrollLockRef.current = false; });
-  }
+    syncEditorToPreview(view, preview, lineMapRef.current);
+    requestAnimationFrame(() => {
+      syncScrollLockRef.current = false;
+    });
+  }, []);
 
-  function onPreviewScroll(e: React.UIEvent<HTMLDivElement>) {
+  const handlePreviewScroll = useCallback((el: HTMLDivElement) => {
     if (syncScrollLockRef.current) return;
-    const preview = e.currentTarget;
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const ratio = preview.scrollTop / Math.max(1, preview.scrollHeight - preview.clientHeight);
+    const view = viewRef.current;
+    if (!view) return;
     syncScrollLockRef.current = true;
-    ta.scrollTop = ratio * (ta.scrollHeight - ta.clientHeight);
-    requestAnimationFrame(() => { syncScrollLockRef.current = false; });
-  }
+    syncPreviewToEditor(el, view, lineMapRef.current);
+    requestAnimationFrame(() => {
+      syncScrollLockRef.current = false;
+    });
+  }, []);
+
+  const handlePreviewContainerReady = useCallback((el: HTMLDivElement | null) => {
+    previewElRef.current = el;
+  }, []);
+
+  const handleSurfaceReady = useCallback(
+    (handle: EditorSurfaceHandle | null) => {
+      surfaceRef.current = handle;
+      onSurfaceReady?.(handle);
+    },
+    [onSurfaceReady],
+  );
+
+  const handleViewReady = useCallback((view: EditorView | null) => {
+    viewRef.current = view;
+  }, []);
+
+  const handleCmUpdate = useCallback(
+    (info: { docChanged: boolean; selectionSet: boolean; view: EditorView }) => {
+      updateSlashFromView(info.view);
+    },
+    [updateSlashFromView],
+  );
 
   const statusLabel: Record<SaveStatus, { text: string; color?: string }> = {
     idle: { text: '已同步' },
@@ -608,18 +559,16 @@ export default function MarkdownEditor({
             </Button>
           </Tooltip>
         </Dropdown>
-        {!hideInternalPreview && (
-          <Segmented
-            size="small"
-            value={layoutMode}
-            onChange={(v) => setLayoutMode(v as MdLayoutMode)}
-            options={[
-              { label: '编辑', value: 'edit' },
-              { label: '预览', value: 'preview' },
-              { label: '并排', value: 'split' },
-            ]}
-          />
-        )}
+        <Segmented
+          size="small"
+          value={layoutMode}
+          onChange={(v) => setLayoutMode(v as MdLayoutMode)}
+          options={[
+            { label: '编辑', value: 'edit' },
+            { label: '预览', value: 'preview' },
+            { label: '并排', value: 'split' },
+          ]}
+        />
         </div>
       </div>
       <div
@@ -627,63 +576,38 @@ export default function MarkdownEditor({
         style={{
           display: 'grid',
           gridTemplateColumns:
-            hideInternalPreview || layoutMode === 'edit'
-              ? '1fr'
-              : layoutMode === 'preview'
-                ? '1fr'
-                : 'minmax(220px, 30%) minmax(0, 70%)',
+            layoutMode === 'split' ? 'minmax(280px, 1fr) minmax(0, 1fr)' : '1fr',
           gap: 12,
           flex: 1,
           minHeight: 0,
         }}
       >
-        {(hideInternalPreview || layoutMode !== 'preview') && (
-        <TextArea
-          ref={(el) => {
-            const ta = el?.resizableTextArea?.textArea ?? null;
-            textareaRef.current = ta;
-            onTextareaReady?.(ta);
-          }}
-          value={value}
-          onChange={(e) => {
-            const next = e.target.value;
-            onChange(next);
-            if (!readOnly) updateSlashMenuFromCursor(e.target, next);
-          }}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => updateSlashMenuFromCursor(e.currentTarget, value)}
-          onPaste={handlePaste}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onScroll={hideInternalPreview ? undefined : onTextareaScroll}
-          readOnly={readOnly}
-          autoSize={false}
-          style={{
-            height: '100%',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            fontSize: 14,
-            resize: 'none',
-          }}
-          placeholder="使用 Markdown 书写；键入 @ 引用其他文档"
-        />
-        )}
-        {!hideInternalPreview && layoutMode !== 'edit' && (
-        <div
-          ref={previewRef}
-          className={`markdown-preview jz-md-editor-preview paper ${paperClassName(paperStyle)}`}
-          style={{
-            overflow: 'auto',
-            padding: '24px 28px',
-            border: '1px solid var(--glass-border, var(--jz-border))',
-            borderRadius: 10,
-            minHeight: layoutMode === 'preview' ? 'min(72vh, 900px)' : 0,
-          }}
-          onScroll={onPreviewScroll}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-        )}
-        {!hideInternalPreview && (
-          <CodeBlockEnhancer selector=".jz-md-editor-preview" bindKey={html} />
+        <div style={{ display: layoutMode === 'preview' ? 'none' : 'block', minHeight: 0, minWidth: 0 }}>
+          <CodeMirrorMarkdown
+            value={value}
+            onChange={onChange}
+            readOnly={readOnly}
+            placeholder="使用 Markdown 书写；键入 / 唤起插入菜单，@ 引用其他文档"
+            onUpdate={handleCmUpdate}
+            onScroll={layoutMode === 'split' ? handleCmScroll : undefined}
+            onKeyDown={handleCmKeyDown}
+            onPasteFiles={readOnly ? undefined : (files) => void uploadAndInsertSequential(files)}
+            onDropFiles={readOnly ? undefined : (files) => void uploadAndInsertSequential(files)}
+            onSurfaceReady={handleSurfaceReady}
+            onViewReady={handleViewReady}
+          />
+        </div>
+        {layoutMode !== 'edit' && (
+          <LivePreviewPane
+            source={value}
+            kind="markdown"
+            paperStyle={paperStyle}
+            showToc={layoutMode === 'preview'}
+            sourceMap
+            className="jz-md-editor-preview"
+            onScrollContainerReady={handlePreviewContainerReady}
+            onScroll={layoutMode === 'split' ? handlePreviewScroll : undefined}
+          />
         )}
       </div>
       <MentionPicker
