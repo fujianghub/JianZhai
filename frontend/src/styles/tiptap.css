@@ -531,53 +531,99 @@
   height: auto;
 }
 
-/* ── Editor-side mermaid toolbar polish ─────────────────────────────────
-   Default AntD ``type="text"`` buttons have no hover background and the
-   zoom +/- pair feels disconnected. Group them into a 24px-high band with
-   subtle hover染色, capsule zoom controls, and an accent ring on the active
-   view-mode button. Applies only inside ``.jz-code-block`` that flagged
-   itself as a diagram (`.jz-code-mermaid` / `.jz-code-plantuml`). */
+/* ── Editor-side diagram toolbar polish ─────────────────────────────────
+   The diagram controls share the toolbar with the generic copy / more icon
+   buttons (28px) and the language select (28px). To make the whole bar read
+   as one coordinated control strip we (a) put every diagram control on the
+   same 28px baseline, (b) speak one icon language — AntD vector icons, no
+   raw unicode glyphs, (c) give the view-mode toggle a segmented-control look
+   and the zoom trio a single bordered capsule. Applies only inside a
+   ``.jz-code-block`` flagged as a diagram (`.jz-code-mermaid` /
+   `.jz-code-plantuml`). */
 .jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm,
 .jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm {
-  height: 24px;
+  height: 28px;
   padding-inline: 8px;
   border-radius: 6px;
   color: var(--jz-text-muted);
-  transition: background-color 120ms ease, color 120ms ease;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 .jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm:hover,
 .jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm:hover {
   background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
   color: var(--jz-accent);
 }
-/* Zoom capsule: the −, %, + trio is visually a single control. We do this
-   purely via sibling adjacency — no extra wrapping markup needed. */
-.jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm[aria-label="缩小"],
-.jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm[aria-label="缩小"] {
-  border-top-right-radius: 0;
-  border-bottom-right-radius: 0;
-  min-width: 22px;
-  padding-inline: 4px;
-  font-weight: 600;
+/* View-mode toggle — looks like a real (segmented) control, not bare text. */
+.jz-code-block.jz-code-mermaid .jz-diagram-viewmode-btn,
+.jz-code-block.jz-code-plantuml .jz-diagram-viewmode-btn {
+  min-width: 50px;
+  justify-content: center;
+  border: 1px solid color-mix(in srgb, var(--jz-divider) 60%, transparent);
+  background: color-mix(in srgb, var(--jz-surface) 70%, var(--jz-accent) 5%);
+  border-radius: 7px;
+  font-weight: 500;
 }
-.jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm[aria-label="放大"],
-.jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm[aria-label="放大"] {
-  border-top-left-radius: 0;
-  border-bottom-left-radius: 0;
-  min-width: 22px;
-  padding-inline: 4px;
-  font-weight: 600;
+.jz-code-block.jz-code-mermaid .jz-diagram-viewmode-btn:hover,
+.jz-code-block.jz-code-plantuml .jz-diagram-viewmode-btn:hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, transparent);
 }
-.jz-code-block.jz-code-mermaid .jz-diagram-zoom-label,
-.jz-code-block.jz-code-plantuml .jz-diagram-zoom-label {
+/* Square icon buttons (复制 SVG / 全屏) align with the generic 28×28 copy &
+   more icons on the right. */
+.jz-code-block.jz-code-mermaid .jz-code-toolbar > .jz-diagram-icon-btn,
+.jz-code-block.jz-code-plantuml .jz-code-toolbar > .jz-diagram-icon-btn {
+  width: 28px;
+  min-width: 28px;
+  padding-inline: 0;
+  justify-content: center;
+}
+/* Zoom capsule: −, %, + read as a single bordered control. */
+.jz-diagram-zoom-group {
+  display: inline-flex;
+  align-items: center;
+  height: 28px;
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--jz-divider) 60%, transparent);
+  border-radius: 7px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--jz-surface) 70%, var(--jz-accent) 5%);
+}
+.jz-diagram-zoom-group .ant-btn-sm {
+  height: 26px;
+  width: 26px;
+  min-width: 26px;
+  padding: 0;
   border-radius: 0;
-  padding: 0 6px;
-  background: color-mix(in srgb, var(--jz-surface) 80%, var(--jz-accent) 4%);
-  border-top: 1px solid color-mix(in srgb, var(--jz-divider) 50%, transparent);
-  border-bottom: 1px solid color-mix(in srgb, var(--jz-divider) 50%, transparent);
-  height: 24px;
-  line-height: 22px;
+  color: var(--jz-text-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.jz-diagram-zoom-group .ant-btn-sm:hover {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-accent);
+}
+.jz-diagram-zoom-group .jz-diagram-zoom-label {
+  min-width: 44px;
+  padding: 0 4px;
+  height: 26px;
+  line-height: 26px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--jz-text-muted);
+  border-inline: 1px solid color-mix(in srgb, var(--jz-divider) 55%, transparent);
   font-variant-numeric: tabular-nums;
+}
+/* Mermaid type select — match the 28px baseline & rounding of the others. */
+.jz-code-block.jz-code-mermaid .jz-mermaid-type-select .ant-select-selector {
+  min-height: 28px !important;
+  height: 28px;
+  border-radius: 6px !important;
+  display: flex;
+  align-items: center;
 }
 /* Toolbar dividers more visible — without this they vanish under accent
    hover backgrounds. */
