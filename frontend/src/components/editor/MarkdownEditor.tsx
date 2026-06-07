@@ -5,6 +5,8 @@ import {
   BoldOutlined,
   CodeOutlined,
   CommentOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
   ItalicOutlined,
   OrderedListOutlined,
   QuestionCircleOutlined,
@@ -14,6 +16,7 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import type { EditorView } from '@codemirror/view';
+import { Compartment } from '@codemirror/state';
 import MarkdownQuickInsertButton from './toolbar/MarkdownQuickInsertButton';
 import { renderMarkdownForEditor, wordCount } from '@/utils/markdown';
 import MentionPicker from './MentionPicker';
@@ -25,6 +28,7 @@ import ShortcutCheatSheet from './ShortcutCheatSheet';
 import { listKeymap } from './codemirror/extensions/listKeymap';
 import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
 import { tableAssistKeymap } from './codemirror/extensions/tableAssist';
+import { livePreview } from './codemirror/extensions/livePreview';
 import {
   addColumnAfter,
   addRowAfter,
@@ -82,10 +86,16 @@ type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 type MdLayoutMode = 'split' | 'edit' | 'preview';
 const MD_LAYOUT_KEY = 'jz-md-layout';
 
-/** 模块级常量 — CM 扩展只在挂载时装配一次。表格优先于列表（同在 Tab/Enter 上）。 */
-const CM_EXTRA_EXTENSIONS = [tableAssistKeymap, listKeymap, inlineFormatKeymap];
-
 const CALLOUT_LAST_KEY = 'jz-callout-last';
+const LIVE_PREVIEW_KEY = 'jz-md-livepreview';
+
+function loadLivePreviewOn(): boolean {
+  try {
+    return localStorage.getItem(LIVE_PREVIEW_KEY) !== 'false'; // 默认开
+  } catch {
+    return true;
+  }
+}
 
 export default function MarkdownEditor({
   value,
@@ -125,6 +135,32 @@ export default function MarkdownEditor({
     range: { from: number; to: number };
   }>({ open: false, displayMode: true, range: { from: 0, to: 0 } });
   const [cheatOpen, setCheatOpen] = useState(false);
+  /** Live Preview（就地渲染）开关 + 实例级 Compartment（挂载时装配进 CM）。 */
+  const [lpOn, setLpOn] = useState<boolean>(loadLivePreviewOn);
+  const lpCompartmentRef = useRef(new Compartment());
+  const cmExtraExtensions = useMemo(
+    () => [
+      tableAssistKeymap,
+      listKeymap,
+      inlineFormatKeymap,
+      lpCompartmentRef.current.of(loadLivePreviewOn() ? livePreview() : []),
+    ],
+    [],
+  );
+  const toggleLivePreview = useCallback(() => {
+    setLpOn((on) => {
+      const next = !on;
+      try {
+        localStorage.setItem(LIVE_PREVIEW_KEY, String(next));
+      } catch {
+        /* noop */
+      }
+      viewRef.current?.dispatch({
+        effects: lpCompartmentRef.current.reconfigure(next ? livePreview() : []),
+      });
+      return next;
+    });
+  }, []);
   /** callout 记住上次颜色（语雀同款）。 */
   const [lastCallout, setLastCallout] = useState<string>(() => {
     try {
@@ -917,6 +953,14 @@ export default function MarkdownEditor({
             { label: '并排', value: 'split' },
           ]}
         />
+        <Tooltip title={lpOn ? '就地渲染：开（点击切纯源码）' : '就地渲染：关（点击开启）'}>
+          <Button
+            size="small"
+            className={`jz-toolbar-icon-btn${lpOn ? ' is-active' : ''}`}
+            icon={lpOn ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+            onClick={toggleLivePreview}
+          />
+        </Tooltip>
         <Tooltip title="键盘快捷键 (Ctrl+/)">
           <Button
             size="small"
@@ -941,7 +985,7 @@ export default function MarkdownEditor({
             onDropFiles={readOnly ? undefined : (files) => void uploadAndInsertSequential(files)}
             onSurfaceReady={handleSurfaceReady}
             onViewReady={handleViewReady}
-            extraExtensions={CM_EXTRA_EXTENSIONS}
+            extraExtensions={cmExtraExtensions}
           />
         </div>
         {layoutMode !== 'edit' && (
