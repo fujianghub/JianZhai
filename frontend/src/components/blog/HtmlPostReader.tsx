@@ -172,6 +172,7 @@ function HtmlPostReader({
    *  cause the parent page to layout-shift on every scan. */
   const lastHeightRef = useRef(0);
   const lastHeadingsLenRef = useRef(0);
+  const lastPlainLenRef = useRef(0);
   const [height, setHeight] = useState<number | null>(null);
   const [hasMeta, setHasMeta] = useState(false);
   const [cspFallback, setCspFallback] = useState(false);
@@ -223,9 +224,13 @@ function HtmlPostReader({
     const headingsLen = meta.headings.length;
     const heightChanged = Math.abs(reported - lastHeightRef.current) >= 16;
     const headingsChanged = headingsLen !== lastHeadingsLenRef.current;
-    if (!heightChanged && !headingsChanged && hasMetaRef.current) return;
+    // plainText arrives once, on the first idle full-scan — without this
+    // dimension a heading-less document's word count would be deduped away.
+    const plainChanged = meta.plainText.length !== lastPlainLenRef.current;
+    if (!heightChanged && !headingsChanged && !plainChanged && hasMetaRef.current) return;
     lastHeightRef.current = reported;
     lastHeadingsLenRef.current = headingsLen;
+    lastPlainLenRef.current = meta.plainText.length;
     setHeight(reported);
     hasMetaRef.current = true;
     setHasMeta(true);
