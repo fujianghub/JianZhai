@@ -2360,8 +2360,12 @@ sup.jz-footnote-ref:hover,
   width: 100%;
 }
 
-/* ── 居中限宽 960px 编辑区 —— */
+/* ── 两栏铺满：编辑画布铺满整页，正文居中限宽，大纲贴右边缘（≥1280 见下方 media）── */
 .jz-doc-body {
+  /* 可读正文宽 + 在流右栏宽（仅 ≥1280 生效，<1280 大纲仍浮动） */
+  --jz-doc-read-max: 860px;
+  --jz-doc-rail-w: 260px;
+  --jz-doc-rail-gap: 24px;
   position: relative;
   flex: 1;
   min-height: 0;
@@ -2369,10 +2373,9 @@ sup.jz-footnote-ref:hover,
   flex-direction: column;
 }
 .jz-doc-editor-col {
-  max-width: 960px;
-  margin: 0 auto;
   width: 100%;
   flex: 1;
+  min-width: 0;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -2380,6 +2383,25 @@ sup.jz-footnote-ref:hover,
 .jz-doc-editor-col > .jz-editor-surface {
   flex: 1;
   min-height: 0;
+}
+
+/* ── 正文可读限宽居中（仅单栏；并排预览各 pane 仍铺满）──
+   只限「正文内容根」，工具条 / 纸张卡 / 画布背景仍满宽，呈现「画布铺满、文字居中」。 */
+.jz-doc-editor-col .tiptap-shell .ProseMirror {
+  max-width: var(--jz-doc-read-max);
+  margin-inline: auto;
+}
+.jz-md-editor-split:not(.is-split) .jz-cm-host .cm-content,
+.jz-md-editor-split:not(.is-split) .jz-md-editor-preview {
+  max-width: var(--jz-doc-read-max);
+  margin-inline: auto;
+  width: 100%;
+}
+.jz-html-editor:not(:has(.jz-html-editor-panes--split)) .jz-html-editor-source,
+.jz-html-editor:not(:has(.jz-html-editor-panes--split)) .jz-html-editor-preview {
+  max-width: var(--jz-doc-read-max);
+  margin-inline: auto;
+  width: 100%;
 }
 
 /* 语雀式并排 / 全屏预览布局 */
@@ -2498,10 +2520,29 @@ sup.jz-footnote-ref:hover,
 }
 
 @media (min-width: 1280px) {
-  .jz-blog-glass.jz-doc-shell-blog .jz-editor-sidebar-floating {
-    top: 132px;
-    right: max(16px, var(--jz-blog-content-pad-x, 24px));
-    max-height: calc(100vh - 152px);
+  /* 博客编辑壳同款两栏铺满（rail 偏移随博客较矮 header top:60 调整） */
+  .jz-blog-glass.jz-doc-shell-blog .jz-doc-body {
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--jz-doc-rail-gap);
+  }
+  .jz-blog-glass.jz-doc-shell-blog .jz-doc-body > .jz-doc-editor-col {
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: none;                 /* 盖掉 --jz-doc-editor-max 的 1400 上限，真正铺满 */
+  }
+  .jz-blog-glass.jz-doc-shell-blog .jz-doc-body > .jz-editor-sidebar-floating {
+    position: sticky !important;
+    top: 128px;
+    right: auto;
+    align-self: flex-start;
+    flex: 0 0 var(--jz-doc-rail-w);
+    width: var(--jz-doc-rail-w);
+    max-height: calc(100vh - 148px);
+    overflow: auto;
+    z-index: 10;
+    box-shadow: none;
+    border-left: 1px solid var(--glass-border, var(--jz-border));
   }
 }
 
@@ -2529,12 +2570,29 @@ sup.jz-footnote-ref:hover,
   box-shadow: 0 10px 32px rgba(0, 0, 0, 0.10);
 }
 
-/* 大屏（≥1280px）：贴在居中 960 编辑区的右外侧 */
+/* 大屏（≥1280px）：两栏铺满 —— 编辑区 flex:1 铺满 + 大纲变在流 sticky 右栏贴边 */
 @media (min-width: 1280px) {
-  .jz-editor-sidebar-floating {
-    top: 140px;
-    right: max(24px, calc((100vw - 960px) / 2 - 260px));
+  .jz-admin-glass .jz-doc-body {
+    flex-direction: row;
+    align-items: stretch;
+    gap: var(--jz-doc-rail-gap);
+  }
+  .jz-admin-glass .jz-doc-body > .jz-doc-editor-col {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .jz-admin-glass .jz-doc-body > .jz-editor-sidebar-floating {
+    position: sticky !important;     /* 覆盖基线的 position:fixed */
+    top: 140px;                       /* 让过 sticky header（top:64 + 条高） */
+    right: auto;
+    align-self: flex-start;           /* stretch 行里允许 sticky 生效 */
+    flex: 0 0 var(--jz-doc-rail-w);
+    width: var(--jz-doc-rail-w);
     max-height: calc(100vh - 160px);
+    overflow: auto;
+    z-index: 10;                      /* 在流，置于 sticky header(15) 之下 */
+    box-shadow: none;
+    border-left: 1px solid var(--glass-border, var(--jz-border));
   }
 }
 
