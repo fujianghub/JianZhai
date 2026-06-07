@@ -554,20 +554,31 @@
    raw unicode glyphs, (c) give the view-mode toggle a segmented-control look
    and the zoom trio a single bordered capsule.
 
-   CRITICAL: the diagram code block keeps the *code syntax theme*'s surface
+   CRITICAL #1: the diagram code block keeps the *code syntax theme*'s surface
    (e.g. One Dark Pro's #282c34 — dark even when the page theme is light), so
    the toolbar background is dark. Every control therefore paints with the
    CODE-THEME text colours (--jz-code-text / --jz-code-toolbar-text /
    --jz-code-border) — same palette the language select and copy icons already
    use — so labels stay legible against the code surface, light or dark code
    theme alike. (Using page-theme --jz-text here would put dark text on the
-   dark code surface and wash everything out.) */
+   dark code surface and wash everything out.)
+
+   CRITICAL #2: the global ``.jz-admin-glass .ant-btn`` rule forces
+   ``background: var(--glass-surface) !important`` on every AntD button — in a
+   light page theme that paints these toolbar buttons WHITE, on which the
+   code-theme light-grey icon text vanishes. So every button background here is
+   pinned ``transparent !important`` (let the dark code toolbar show through)
+   and colours are ``!important`` to win the specificity/!important fight. */
+.jz-code-block.jz-code-mermaid .jz-code-toolbar .ant-btn,
+.jz-code-block.jz-code-plantuml .jz-code-toolbar .ant-btn {
+  background: transparent !important;
+}
 .jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm,
 .jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm {
   height: 28px;
   padding-inline: 8px;
   border-radius: 6px;
-  color: var(--jz-code-text, #abb2bf);
+  color: var(--jz-code-text, #abb2bf) !important;
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
@@ -575,8 +586,8 @@
 }
 .jz-code-block.jz-code-mermaid .jz-code-toolbar > .ant-btn-sm:hover,
 .jz-code-block.jz-code-plantuml .jz-code-toolbar > .ant-btn-sm:hover {
-  background: color-mix(in srgb, var(--jz-accent) 18%, transparent);
-  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent) !important;
+  color: var(--jz-accent) !important;
 }
 /* View-mode toggle — looks like a real (segmented) control, not bare text. */
 .jz-code-block.jz-code-mermaid .jz-diagram-viewmode-btn,
@@ -584,15 +595,15 @@
   min-width: 50px;
   justify-content: center;
   border: 1px solid var(--jz-code-border, #3e4451);
-  background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
-  color: var(--jz-code-text, #abb2bf);
+  background: color-mix(in srgb, var(--jz-code-text) 12%, transparent) !important;
+  color: var(--jz-code-text, #abb2bf) !important;
   border-radius: 7px;
   font-weight: 500;
 }
 .jz-code-block.jz-code-mermaid .jz-diagram-viewmode-btn:hover,
 .jz-code-block.jz-code-plantuml .jz-diagram-viewmode-btn:hover {
   border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-code-border));
-  color: var(--jz-accent);
+  color: var(--jz-accent) !important;
 }
 /* Square icon buttons (复制 SVG / 全屏) align with the generic 28×28 copy &
    more icons on the right. */
@@ -602,7 +613,20 @@
   min-width: 28px;
   padding-inline: 0;
   justify-content: center;
-  color: var(--jz-code-toolbar-text, #9da5b4);
+  color: var(--jz-code-toolbar-text, #9da5b4) !important;
+}
+/* Copy / more icon buttons (in .jz-code-toolbar-actions, not direct children).
+   markdown.css already pins their text to --jz-code-toolbar-text !important;
+   we only need to strip the glass white background so that light-grey text
+   lands on the dark code toolbar, not on a white pill. */
+.tiptap-shell .ProseMirror .jz-code-block.jz-code-mermaid .jz-code-toolbar-icon.ant-btn,
+.tiptap-shell .ProseMirror .jz-code-block.jz-code-plantuml .jz-code-toolbar-icon.ant-btn {
+  background: transparent !important;
+}
+.tiptap-shell .ProseMirror .jz-code-block.jz-code-mermaid .jz-code-toolbar-icon.ant-btn:hover,
+.tiptap-shell .ProseMirror .jz-code-block.jz-code-plantuml .jz-code-toolbar-icon.ant-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent) !important;
+  color: var(--jz-accent) !important;
 }
 /* Zoom capsule: −, %, + read as a single bordered control. */
 .jz-diagram-zoom-group {
@@ -613,7 +637,7 @@
   border: 1px solid var(--jz-code-border, #3e4451);
   border-radius: 7px;
   overflow: hidden;
-  background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
+  background: color-mix(in srgb, var(--jz-code-text) 12%, transparent);
 }
 .jz-diagram-zoom-group .ant-btn-sm {
   height: 26px;
@@ -621,15 +645,15 @@
   min-width: 26px;
   padding: 0;
   border-radius: 0;
-  color: var(--jz-code-toolbar-text, #9da5b4);
+  color: var(--jz-code-toolbar-text, #9da5b4) !important;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: background-color 120ms ease, color 120ms ease;
 }
 .jz-diagram-zoom-group .ant-btn-sm:hover {
-  background: color-mix(in srgb, var(--jz-accent) 20%, transparent);
-  color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent) !important;
+  color: var(--jz-accent) !important;
 }
 .jz-diagram-zoom-group .jz-diagram-zoom-label {
   min-width: 44px;
