@@ -53,7 +53,7 @@
 | 路由 | React Router v6 | |
 | 状态 | Zustand | `stores/auth.ts`、`stores/theme.ts` |
 | HTTP | Axios | `api/client.ts` 集中封装 |
-| 编辑器内核 | **Tiptap 3** (ProseMirror) | 富文本 + Markdown + HTML 三种编辑器 |
+| 编辑器内核 | **Tiptap 3** (ProseMirror) + **CodeMirror 6**（MD 源码模式） | 富文本(Tiptap) / Markdown(CM6) / HTML(textarea) |
 | 数学 | KaTeX 0.16 | 可视化输入 Modal + 实时预览 |
 | Markdown 渲染 | `markdown-it` + `markdown-it-container`/`sub`/`sup`/`mark`/`task-lists` | |
 | ↔ Markdown 转换 | `tiptap-markdown` | |
@@ -331,7 +331,9 @@ class AIUsageLog(models.Model):
 ### 模块 2：文档与编辑器 ✅
 
 - 文档 CRUD + 软删除
-- **三种编辑器并存**：RichTextEditor / MarkdownEditor / HtmlEditor，统一以 Markdown 持久化
+- **三种编辑器并存**：RichTextEditor (Tiptap) / MarkdownEditor (**CodeMirror 6 内核**) / HtmlEditor (textarea)，统一以 Markdown 持久化
+- **MD 源码模式（CM6，语雀级体验）**：语法高亮 + 行号 + 当前行；选区浮动格式条（B/I/S/code/U/链接/清除格式，操作后保持可连续叠加）；快捷键 Ctrl+B/I/E/K、Ctrl+Shift+X；回车续列表（-/1./>/任务复位/有序自增）+ 空项退出 + Tab/Shift+Tab 缩进；**表格辅助**（Tab 跳格选内容/末格自动加行/回车加行——仅完整表格的数据行劫持按键，半成品/粘贴不干扰；工具栏「表格 ▾」一键 CJK 宽度对齐格式化 + 行列增删）；数学可视化 Modal（`MathEditorModal` 与富文本共享）；分栏(:::cols-N/::col)/tabs(:::tabs/::tab)/doc-card/footnote 可直接插 MD 源码（`isMarkdownCapable` 判定）；callout 记住上次颜色（Dropdown.Button 主键直插）；选区粘贴 URL 自动成链；@ 不吞键（字面 @ 落档，取消保留——邮箱/@media 转义出口）；斜杠菜单 caret 级定位（coordsAtPos）；Ctrl+/ 快捷键速查面板；**行级双向滚动同步**（markdown-it 注入 data-line 锚点[仅编辑器 env] + 原文↔预处理 lineMap[唯一行锚点+LIS+分段插值]）；预览统一 LivePreviewPane（TOC+共享渲染管道）
+- **EditorSurface 适配层**（`components/editor/surface/EditorSurface.ts`）：MD(CM)/HTML(textarea) 统一 seek/选区/查找接口，DocEditorPage 与 FindReplacePanel 不再直接摸 textarea；CM 受控策略=回声跳过+外部更新最小 diff（保 undo）；CM6 主题纯 CSS 变量（--jz-*）四主题零订阅跟随；vite manualChunks 拆 codemirror/tiptap 独立 chunk（CM 语言包保持懒加载）
 - **乐观并发防覆盖**：PATCH 带 `expected_version`，冲突 409 → 前端提示 + 拉取最新
 - 自动保存 5 秒防抖；状态指示器（idle/pending/saving/saved/error）
 - 手动发布 + 单独编辑发布版本 + 撤回发布

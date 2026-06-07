@@ -608,6 +608,14 @@ export default function DocEditorPage({
           <Tag color={doc.status === 'published' ? 'green' : 'default'}>
             {doc.status === 'published' ? '已发布' : '草稿'}
           </Tag>
+          <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
+            <Button
+              icon={<UnorderedListOutlined />}
+              type={outlineOpen ? 'primary' : 'text'}
+              onClick={() => setOutlineOpen((v) => !v)}
+              aria-pressed={outlineOpen}
+            />
+          </Tooltip>
           <Tooltip title="退出专注写作模式 (Esc / F9)">
             <Button icon={<CompressOutlined />} onClick={() => setFocusMode(false)}>
               退出专注
@@ -702,29 +710,32 @@ export default function DocEditorPage({
               ]}
             />
           )}
-          <Segmented
-            size="small"
-            value={mode}
-            onChange={(v) => void changeEditorMode(v as EditorMode)}
-            options={[
-              { label: 'MD', value: 'markdown' },
-              { label: '富文本', value: 'rich' },
-              { label: 'HTML', value: 'html' },
-              { label: 'PDF', value: 'pdf' },
-            ]}
-          />
-          <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
-            <Button
-              icon={<UnorderedListOutlined />}
-              type={outlineOpen ? 'primary' : 'text'}
-              className="jz-toolbar-btn"
-              onClick={() => setOutlineOpen((v) => !v)}
-              aria-pressed={outlineOpen}
+          <span className="jz-doc-mode-group">
+            <Segmented
+              size="small"
+              value={mode}
+              onChange={(v) => void changeEditorMode(v as EditorMode)}
+              options={[
+                { label: 'MD', value: 'markdown' },
+                { label: '富文本', value: 'rich' },
+                { label: 'HTML', value: 'html' },
+                { label: 'PDF', value: 'pdf' },
+              ]}
             />
-          </Tooltip>
-          <Tooltip title="专注写作模式 (F9)">
-            <Button icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
-          </Tooltip>
+            <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
+              <Button
+                size="small"
+                icon={<UnorderedListOutlined />}
+                type={outlineOpen ? 'primary' : 'text'}
+                className="jz-toolbar-btn"
+                onClick={() => setOutlineOpen((v) => !v)}
+                aria-pressed={outlineOpen}
+              />
+            </Tooltip>
+            <Tooltip title="专注写作模式 (F9)">
+              <Button size="small" type="text" icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
+            </Tooltip>
+          </span>
           {doc.status === 'published' ? (
             <>
               <Button
@@ -861,7 +872,7 @@ export default function DocEditorPage({
             onSaveReady={registerEditorSave}
           />
         </div>
-        {outlineOpen && mode !== 'pdf' && !focusMode && (
+        {outlineOpen && mode !== 'pdf' && (
           <aside className="jz-editor-sidebar jz-editor-sidebar-floating">
             <div className="jz-editor-sidebar-tabs">
               {([

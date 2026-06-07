@@ -1212,6 +1212,20 @@
      退出弹性拉伸、固定显式高度，CM 与预览才有内部滚动条。 */
   flex: 0 0 auto;
   height: max(480px, calc(100vh - 340px));
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+.jz-md-editor-root .jz-md-editor-split.is-split {
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 1fr);
+}
+/* 窄屏：并排回退为上下两栏（编辑在上、预览在下），不再左右挤压 */
+@media (max-width: 900px) {
+  .jz-md-editor-root .jz-md-editor-split.is-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 46%) minmax(0, 1fr);
+  }
 }
 
 /* ── MD 选区浮动格式条（语雀式就近编辑） ── */
@@ -1254,4 +1268,15 @@
 [data-theme='deepsea'] .jz-md-float-toolbar {
   background: color-mix(in srgb, var(--jz-bg-app) 78%, #232a38);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 顶栏视图工具组：模式切换/大纲/专注收进次级胶囊，与发布主操作分层 ── */
+.jz-doc-mode-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--jz-surface-2) 75%, transparent);
+  border: 1px solid var(--jz-divider);
 }

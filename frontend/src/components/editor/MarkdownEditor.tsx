@@ -927,16 +927,7 @@ export default function MarkdownEditor({
         </Tooltip>
         </div>
       </div>
-      <div
-        className="jz-md-editor-split jz-editor-content-area"
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            layoutMode === 'split' ? 'minmax(280px, 1fr) minmax(0, 1fr)' : '1fr',
-          gap: 12,
-          minHeight: 0,
-        }}
-      >
+      <div className={`jz-md-editor-split jz-editor-content-area is-${layoutMode}`}>
         <div style={{ display: layoutMode === 'preview' ? 'none' : 'block', minHeight: 0, minWidth: 0 }}>
           <CodeMirrorMarkdown
             value={value}
