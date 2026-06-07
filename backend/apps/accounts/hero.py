@@ -187,7 +187,13 @@ def _validated_quotes(raw) -> list[dict] | str:
 @permission_classes([PublicOrLoginGated])
 def hero_public(request):
     """Anonymous: returns the slim shape the homepage rotator consumes."""
-    return Response(_serialize_public(HeroSettings.load()))
+    from django.core.cache import cache
+
+    cached = cache.get(HeroSettings.PUBLIC_CACHE_KEY)
+    if cached is None:
+        cached = _serialize_public(HeroSettings.load())
+        cache.set(HeroSettings.PUBLIC_CACHE_KEY, cached, HeroSettings.PUBLIC_CACHE_TTL)
+    return Response(cached)
 
 
 @api_view(["GET", "PATCH"])

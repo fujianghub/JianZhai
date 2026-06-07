@@ -140,74 +140,80 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         generated=datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC"),
     )
 
-    entries: list[tuple[str, bytes]] = [
-        ("index.html", index_html.encode("utf-8")),
-        ("search.js", SEARCH_JS.encode("utf-8")),
-        ("robots.txt", b"User-agent: *\nAllow: /\n"),
-    ]
+    # search_index is the only state that must outlive the per-doc loop (it
+    # feeds index.json/sitemap/feed at the end). It holds just title/url + a
+    # 600-char snippet per doc — small. Everything else (rendered page bodies,
+    # media bytes) is yielded and freed one doc at a time so a large KB export
+    # never holds the whole site in memory; the zip is streamed straight to disk.
+    search_index: list[dict] = []
 
-    search_index = []
-    asset_names: set[str] = set()
-    for doc in docs:
-        body_md = common.doc_export_body(doc)
-        fname = _doc_filename(doc)
-        # HTML-format docs are shipped verbatim — wrapping them in PAGE_TEMPLATE
-        # would inject a second <html>/<head> and clobber the author's styling.
-        # Site navigation remains reachable via index.html.
-        if detect_doc_format(doc) == "html" and body_md.strip():
-            html_out = common.rewrite_html_media(
-                body_md, embed=False, asset_prefix="assets/"
-            )
-            entries.append((fname, html_out.encode("utf-8")))
-            for asset_name, asset_data in common.collect_html_media(body_md):
+    def _entries():
+        asset_names: set[str] = set()
+        yield ("index.html", index_html.encode("utf-8"))
+        yield ("search.js", SEARCH_JS.encode("utf-8"))
+        yield ("robots.txt", b"User-agent: *\nAllow: /\n")
+
+        for doc in docs:
+            body_md = common.doc_export_body(doc)
+            fname = _doc_filename(doc)
+            # HTML-format docs are shipped verbatim — wrapping them in
+            # PAGE_TEMPLATE would inject a second <html>/<head> and clobber the
+            # author's styling. Site navigation remains reachable via index.html.
+            if detect_doc_format(doc) == "html" and body_md.strip():
+                html_out = common.rewrite_html_media(
+                    body_md, embed=False, asset_prefix="assets/"
+                )
+                yield (fname, html_out.encode("utf-8"))
+                for asset_name, asset_data in common.collect_html_media(body_md):
+                    if asset_name not in asset_names:
+                        asset_names.add(asset_name)
+                        yield (asset_name, asset_data)
+                search_index.append(
+                    {
+                        "id": doc.id,
+                        "title": doc.title,
+                        "url": fname,
+                        "body": common.html_to_plain_text(body_md)[:600],
+                    }
+                )
+                continue
+
+            body_html = common.render_document_body_html(doc, embed_media=False)
+            for asset_name, asset_data in common.collect_markdown_media(body_md):
                 if asset_name not in asset_names:
                     asset_names.add(asset_name)
-                    entries.append((asset_name, asset_data))
+                    yield (asset_name, asset_data)
+            meta = doc.knowledge_base.name + (
+                f" · {doc.published_at:%Y-%m-%d}" if doc.published_at else ""
+            )
+            per_nav = _render_nav(docs, current_id=doc.id)
+            page = PAGE_TEMPLATE.format(
+                title=common._escape(doc.title),
+                site_title=common._escape(scope.label),
+                css=SITE_CSS,
+                nav=per_nav,
+                meta=common._escape(meta),
+                body=body_html,
+                index_link="index.html",
+                search_script="search.js",
+            )
+            yield (fname, page.encode("utf-8"))
             search_index.append(
                 {
                     "id": doc.id,
                     "title": doc.title,
                     "url": fname,
-                    "body": common.html_to_plain_text(body_md)[:600],
+                    "body": _plain_text(body_md)[:600],
                 }
             )
-            continue
 
-        body_html = common.render_document_body_html(doc, embed_media=False)
-        for asset_name, asset_data in common.collect_markdown_media(body_md):
-            if asset_name not in asset_names:
-                asset_names.add(asset_name)
-                entries.append((asset_name, asset_data))
-        meta = doc.knowledge_base.name + (
-            f" · {doc.published_at:%Y-%m-%d}" if doc.published_at else ""
-        )
-        per_nav = _render_nav(docs, current_id=doc.id)
-        page = PAGE_TEMPLATE.format(
-            title=common._escape(doc.title),
-            site_title=common._escape(scope.label),
-            css=SITE_CSS,
-            nav=per_nav,
-            meta=common._escape(meta),
-            body=body_html,
-            index_link="index.html",
-            search_script="search.js",
-        )
-        entries.append((fname, page.encode("utf-8")))
-        search_index.append(
-            {
-                "id": doc.id,
-                "title": doc.title,
-                "url": fname,
-                "body": _plain_text(body_md)[:600],
-            }
-        )
-
-    entries.append(("index.json", json.dumps(search_index, ensure_ascii=False).encode("utf-8")))
-    entries.append(("sitemap.xml", _render_sitemap(docs).encode("utf-8")))
-    entries.append(("feed.xml", _render_rss(scope, docs).encode("utf-8")))
+        # By now the loop above has fully populated search_index.
+        yield ("index.json", json.dumps(search_index, ensure_ascii=False).encode("utf-8"))
+        yield ("sitemap.xml", _render_sitemap(docs).encode("utf-8"))
+        yield ("feed.xml", _render_rss(scope, docs).encode("utf-8"))
 
     path = common.reserve_export_path(".zip")
-    common.write_bytes(path, common.make_zip(entries))
+    common.stream_zip_to_path(path, _entries())
     return path, f"{common.safe_slug(scope.label)}-site.zip", "application/zip"
 
 

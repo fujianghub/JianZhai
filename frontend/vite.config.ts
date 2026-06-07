@@ -102,6 +102,11 @@ export default defineConfig(({ mode }) => {
             ];
             if (CM_CORE.some((p) => id.includes(p))) return 'codemirror';
             if (id.includes('@tiptap') || id.includes('prosemirror')) return 'tiptap';
+            // Heavy, on-demand-only parsers: keep them in dedicated chunks so
+            // they never get hoisted into a page/component chunk. They load
+            // lazily — pdfjs via LazyPdfCanvas, mammoth via utils/docx.
+            if (id.includes('pdfjs-dist')) return 'pdfjs';
+            if (id.includes('node_modules/mammoth')) return 'mammoth';
             return undefined;
           },
         },

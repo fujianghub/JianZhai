@@ -15,6 +15,7 @@ from apps.editor.models import Attachment
 from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
 from .serializers import (
+    _FMT_HEAD_EXPR,
     DocumentListSerializer,
     DocumentPublishedContentSerializer,
     DocumentSerializer,
@@ -56,15 +57,19 @@ class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
     lookup_field = "pk"
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        if self.action == "list":
-            qs = qs.annotate(
+        # Annotate the document count for every read action (not just list) so
+        # retrieve/update responses skip the per-object COUNT fallback too.
+        return (
+            super()
+            .get_queryset()
+            .annotate(
                 _document_count=Count(
                     "documents",
                     filter=Q(documents__is_deleted=False),
                 )
-            ).prefetch_related("tags")
-        return qs
+            )
+            .prefetch_related("tags")
+        )
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -110,6 +115,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
             .select_related("knowledge_base", "folder")
             .prefetch_related(_PRIMARY_ATTACHMENT_PREFETCH)
         )
+        # The list serializer never emits the body; defer the big columns and
+        # annotate a truncated head so ``detect_doc_format`` stays query-free.
+        # retrieve/update keep the full content via the default queryset.
+        if self.action == "list":
+            qs = qs.defer(
+                "raw_content", "published_content", "search_vector"
+            ).annotate(_fmt_head=_FMT_HEAD_EXPR)
         kb = self.request.query_params.get("knowledge_base")
         folder = self.request.query_params.get("folder")
         if kb:
@@ -540,24 +552,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="favorites")
     def favorites(self, request):
         """List documents the current user has favorited (scoped by KB ownership)."""
-        favs = (
-            DocumentFavorite.objects.filter(user=request.user)
-            .select_related("document", "document__knowledge_base")
-            .filter(document__is_deleted=False)
-            .order_by("-created_at")
-        )
-        doc_ids = [f.document_id for f in favs]
-        if not doc_ids:
-            return Response([])
-        allowed_ids = set(
-            scope_queryset(
-                Document.objects.filter(id__in=doc_ids, is_deleted=False),
-                request.user,
-                field="knowledge_base__owner",
-            ).values_list("id", flat=True)
-        )
-        visible = [f for f in favs if f.document_id in allowed_ids]
-        return Response(FavoriteDocumentSerializer(visible, many=True).data)
+        # Single query: the KB-ownership scope is applied via the relation path
+        # instead of fetching ids then re-filtering in a second round-trip.
+        favs = scope_queryset(
+            DocumentFavorite.objects.filter(
+                user=request.user, document__is_deleted=False
+            ),
+            request.user,
+            field="document__knowledge_base__owner",
+        ).select_related("document", "document__knowledge_base").order_by("-created_at")
+        return Response(FavoriteDocumentSerializer(favs, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="mentions")
     def mentions(self, request):

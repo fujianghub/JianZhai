@@ -155,6 +155,10 @@ DATABASES = {
             "postgresql://jianzhai:jianzhai@localhost:5432/jianzhai",
         ),
         conn_max_age=600,
+        # Persistent connections (conn_max_age) can hand a long-lived worker
+        # (Celery / gunicorn) a stale socket; a health check reconnects
+        # transparently instead of erroring on the first query.
+        conn_health_checks=True,
     ),
 }
 

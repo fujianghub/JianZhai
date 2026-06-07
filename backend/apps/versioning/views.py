@@ -27,7 +27,9 @@ class VersionListCreate(APIView):
 
     def get(self, request, doc_id: int):
         doc = _get_owned_document(request.user, doc_id)
-        qs = doc.versions.all()
+        # The list serializer omits ``content``; defer it so a 100-snapshot
+        # history doesn't drag every full-document body over the wire.
+        qs = doc.versions.defer("content")
         return Response(DocumentVersionListSerializer(qs, many=True).data)
 
     def post(self, request, doc_id: int):

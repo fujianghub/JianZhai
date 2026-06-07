@@ -3,11 +3,21 @@ from __future__ import annotations
 from pathlib import Path
 
 from django.db import transaction
+from django.db.models import Value
+from django.db.models.functions import Coalesce, NullIf, Substr
 from django.utils import timezone
 from rest_framework import serializers
 
 from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
+
+# Truncated body head for format detection on list/tree endpoints that
+# ``.defer()`` the full ``raw_content`` / ``published_content`` columns.
+# ``looks_like_html`` only inspects the leading ~4096 chars, so this window is
+# sufficient and keeps the deferred columns out of the result set.
+_FMT_HEAD_EXPR = Substr(
+    Coalesce(NullIf("raw_content", Value("")), "published_content", Value("")), 1, 4096
+)
 
 
 def _assert_owned(serializer, obj, owner_id):
@@ -78,8 +88,14 @@ def detect_doc_format(doc: Document) -> str:
             return "image"
         return "markdown"
 
-    body = (doc.raw_content or "") or (doc.published_content or "")
-    if looks_like_html(body):
+    # List/tree endpoints ``.defer()`` the big body columns and instead annotate
+    # ``_fmt_head`` (the first 4096 chars via Substr) — enough for
+    # ``looks_like_html`` which only inspects the leading window. Reading the
+    # annotation avoids a per-row query that would otherwise un-defer the column.
+    head = getattr(doc, "_fmt_head", None)
+    if head is None:
+        head = (doc.raw_content or "") or (doc.published_content or "")
+    if looks_like_html(head):
         return "html"
     return "markdown"
 
@@ -499,8 +515,13 @@ def build_tree(kb: KnowledgeBase, user=None) -> dict:
         .prefetch_related("tags")
         .order_by("order", "id")
     )
+    # The tree only needs metadata; defer the big body columns and instead
+    # annotate ``_fmt_head`` (first 4096 chars) so ``detect_doc_format`` can
+    # classify no-attachment HTML docs without un-deferring the full content.
     documents = list(
         Document.objects.filter(knowledge_base=kb)
+        .defer("raw_content", "published_content", "search_vector")
+        .annotate(_fmt_head=_FMT_HEAD_EXPR)
         .prefetch_related(
             Prefetch(
                 "attachments",

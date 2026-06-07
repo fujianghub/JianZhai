@@ -125,6 +125,11 @@ class KnowledgeBase(models.Model):
             ),
         ]
         ordering = ["order", "id"]
+        indexes = [
+            # SoftDeleteManager filters is_deleted=False on every query; the
+            # owner-scoped, ordered list is the dominant access pattern.
+            models.Index(fields=["owner", "is_deleted", "order"]),
+        ]
 
     def __str__(self) -> str:
         return self.name
@@ -163,7 +168,7 @@ class Folder(models.Model):
     class Meta:
         ordering = ["order", "id"]
         indexes = [
-            models.Index(fields=["knowledge_base", "parent"]),
+            models.Index(fields=["knowledge_base", "parent", "is_deleted"]),
         ]
 
     def __str__(self) -> str:
@@ -250,8 +255,10 @@ class Document(models.Model):
         ]
         indexes = [
             GinIndex(fields=["search_vector"]),
-            models.Index(fields=["knowledge_base", "folder"]),
-            models.Index(fields=["visibility", "status", "-published_at"]),
+            # is_deleted is appended because SoftDeleteManager adds
+            # is_deleted=False to every query — keeps the index covering.
+            models.Index(fields=["knowledge_base", "folder", "is_deleted"]),
+            models.Index(fields=["visibility", "status", "is_deleted", "-published_at"]),
         ]
         ordering = ["order", "-updated_at"]
 

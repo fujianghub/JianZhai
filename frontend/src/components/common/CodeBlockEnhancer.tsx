@@ -40,7 +40,10 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
       if (!pre || !code) continue;
 
       if (block.classList.contains('jz-code-mermaid')) {
-        void hydrateMermaid(block);
+        // Theme is part of the render signature: a preview-HTML refresh with
+        // the same source + theme is a no-op, but a theme switch must re-render
+        // (mermaid bakes colours into the SVG).
+        void hydrateMermaid(block, `${themeMode}:${accentKey}`);
         cleanups.push(wireCanvasClickToSource(block));
       } else if (block.classList.contains('jz-code-plantuml')) {
         void hydratePlantuml(block);
@@ -124,10 +127,16 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
  *  can't interleave: only the latest call per canvas is allowed to write. */
 let hydrateSeq = 0;
 
-async function hydrateMermaid(block: HTMLElement) {
+async function hydrateMermaid(block: HTMLElement, renderSig = '') {
   const canvas = block.querySelector<HTMLElement>('.jz-mermaid-canvas');
   if (!canvas) return;
   const b64 = block.dataset.source ?? '';
+  // Skip re-rendering an already-rendered diagram whose source + theme are
+  // unchanged (e.g. a preview-HTML refresh during editing). Mirrors the
+  // hydratePlantuml data-rendered-for guard; renderSig carries the theme so a
+  // theme switch still forces a fresh render.
+  const renderKey = `${b64}::${renderSig}`;
+  if (canvas.dataset.renderedFor === renderKey && canvas.querySelector('svg')) return;
   let source = '';
   try {
     source = decodeBase64UTF8(b64);
@@ -144,6 +153,7 @@ async function hydrateMermaid(block: HTMLElement) {
     // lives in a config far from this injection point — re-sanitize here so a
     // future config change can't silently reopen an innerHTML XSS.
     canvas.innerHTML = sanitizeHtml(svg);
+    canvas.dataset.renderedFor = renderKey;
   } catch (err) {
     if (canvas.dataset.hydrateToken !== token) return;
     const msg = (err as Error)?.message ?? '渲染失败';

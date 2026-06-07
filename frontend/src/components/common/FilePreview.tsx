@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Modal, Spin, Typography } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import mammoth from 'mammoth';
 import { renderMarkdown, sanitizeHtml } from '@/utils/markdown';
+import { convertDocxToHtml } from '@/utils/docx';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { attachmentAbsoluteUrl, previewKind, type Attachment } from '@/api/attachments';
-import PdfCanvas from './PdfCanvas';
+import PdfCanvas from './LazyPdfCanvas';
 import FullscreenableIframe from './FullscreenableIframe';
 
 const { Text } = Typography;
@@ -110,9 +110,9 @@ function DocxPreview({ url }: { url: string }) {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.arrayBuffer();
       })
-      .then((buf) => mammoth.convertToHtml({ arrayBuffer: buf }))
-      .then((result) => {
-        if (!cancelled) setHtml(sanitizeHtml(result.value));
+      .then((buf) => convertDocxToHtml(buf))
+      .then((value) => {
+        if (!cancelled) setHtml(sanitizeHtml(value));
       })
       .catch((e) => {
         if (!cancelled) setErr(e?.message || '解析失败');

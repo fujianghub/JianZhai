@@ -55,13 +55,38 @@ class AISettings(models.Model):
     def __str__(self) -> str:
         return f"AI 设置 (default={self.default_model}, enabled={self.enabled})"
 
+    # Cache key for the singleton — read on every AI call, mutated only via
+    # the admin settings page, so a short-TTL cache eliminates ~5-6 repeat
+    # SELECTs per request. Bump the suffix if the cached shape ever changes.
+    CACHE_KEY = "ai-settings-v1"
+    CACHE_TTL = 300
+
     def save(self, *args, **kwargs) -> None:
         # Enforce singleton.
         self.pk = 1
         super().save(*args, **kwargs)
+        # Drop the cached copy so the next read reflects the new settings.
+        from django.core.cache import cache
+
+        cache.delete(self.CACHE_KEY)
 
     @classmethod
-    def load(cls) -> "AISettings":
+    def load(cls, *, use_cache: bool = False) -> "AISettings":
+        """Return the singleton.
+
+        ``use_cache=True`` serves a short-lived cached instance for hot read
+        paths (per-call settings lookups). Writers and the admin API read
+        fresh (default) so they never operate on a stale row.
+        """
+        if use_cache:
+            from django.core.cache import cache
+
+            cached = cache.get(cls.CACHE_KEY)
+            if cached is not None:
+                return cached
+            obj, _ = cls.objects.get_or_create(pk=1)
+            cache.set(cls.CACHE_KEY, obj, cls.CACHE_TTL)
+            return obj
         obj, _ = cls.objects.get_or_create(pk=1)
         return obj
 
@@ -117,6 +142,10 @@ class AIUsageLog(models.Model):
     # Approximate prompt character count — used to validate the frontend's
     # cost preview against actual delivered cost (mostly for debugging).
     prompt_chars = models.PositiveIntegerField(default=0)
+    # Estimated USD cost of this call, computed once at write time from the
+    # model price table. Lets budget enforcement and usage aggregation use a
+    # database SUM instead of a per-row Python loop over a 24h window.
+    estimated_usd = models.FloatField(default=0.0)
 
     class Meta:
         ordering = ["-created_at"]
@@ -134,6 +163,20 @@ class AIUsageLog(models.Model):
             f"in={self.input_tokens} out={self.output_tokens} "
             f"{'ok' if self.succeeded else 'fail'}"
         )
+
+    def save(self, *args, **kwargs) -> None:
+        # Compute the estimated cost once, intrinsically, so every creation
+        # path (not just _log_usage) populates it and budget SUMs stay correct.
+        if not self.estimated_usd:
+            try:
+                from .pricing import estimate_cost_usd
+
+                self.estimated_usd = float(
+                    estimate_cost_usd(self.model, self.input_tokens, self.output_tokens)
+                )
+            except Exception:
+                self.estimated_usd = 0.0
+        super().save(*args, **kwargs)
 
     @property
     def total_tokens(self) -> int:
