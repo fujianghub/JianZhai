@@ -1,7 +1,31 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { Dropdown, InputNumber, Tooltip } from 'antd';
+import {
+  BgColorsOutlined,
+  FontColorsOutlined,
+  ColumnHeightOutlined,
+  TableOutlined,
+  MergeCellsOutlined,
+  SplitCellsOutlined,
+  BorderOuterOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import type { Editor } from '@tiptap/core';
 import { message } from '@/utils/notify';
+import { CELL_BG_PRESETS } from './TableCellColor';
+import { TEXT_COLOR_PRESETS } from './callouts';
+import { DENSITY_PRESETS } from '@/utils/tableDensity';
+
+const MAX_ROWS_OPTIONS = [0, 10, 20, 30]; // 0 = 不限
+
+/** 读当前选区所在表格的自定义间距 attr（用于「只改一个轴」时保留另一个）。 */
+function currentTableAttr(editor: Editor, key: 'cellPadV' | 'cellPadH'): number | null {
+  const v = editor.getAttributes('table')?.[key];
+  return typeof v === 'number' ? v : null;
+}
+const tableCellPadV = (e: Editor) => currentTableAttr(e, 'cellPadV');
+const tableCellPadH = (e: Editor) => currentTableAttr(e, 'cellPadH');
 
 /**
  * 表格悬浮交互层（语雀/Notion 式）：
@@ -58,6 +82,8 @@ function collectRects(editor: Editor, tableEl: HTMLTableElement): TableRects | n
 export default function TableOverlay({ editor }: { editor: Editor | null }) {
   const [rects, setRects] = useState<TableRects | null>(null);
   const [drag, setDrag] = useState<DragState | null>(null);
+  /** caret 是否在某张表内 —— 决定是否显示上方工具条（与 hover 区分）。 */
+  const [caretInTable, setCaretInTable] = useState(false);
   const tableElRef = useRef<HTMLTableElement | null>(null);
   const rectsRef = useRef<TableRects | null>(null);
   rectsRef.current = rects;
@@ -122,6 +148,37 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
     return () => {
       document.removeEventListener('mousemove', onMove);
       if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+    };
+  }, [editor]);
+
+  // caret 进入表格 → 锚到该表并显示工具条（无需 hover）；离开则收工具条
+  useEffect(() => {
+    if (!editor) return;
+    const onSel = () => {
+      const active = editor.isActive('table');
+      setCaretInTable(active);
+      if (!active) return;
+      // 用选区位置定位 caret 所在的 <table> DOM，作为工具条锚点
+      try {
+        const { from } = editor.state.selection;
+        const dom = editor.view.domAtPos(from)?.node as HTMLElement | null;
+        const el = (dom?.nodeType === 1 ? dom : dom?.parentElement)?.closest('table') as
+          | HTMLTableElement
+          | null;
+        if (el) {
+          tableElRef.current = el;
+          setRects(collectRects(editor, el));
+        }
+      } catch {
+        /* noop */
+      }
+    };
+    editor.on('selectionUpdate', onSel);
+    editor.on('transaction', onSel);
+    onSel();
+    return () => {
+      editor.off('selectionUpdate', onSel);
+      editor.off('transaction', onSel);
     };
   }, [editor]);
 
@@ -198,8 +255,132 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
   if (!editor || !editor.isEditable || !rects) return null;
   const { table, cols, rows, tablePos } = rects;
 
+  const run = (fn: () => void) => () => {
+    fn();
+  };
+  const colorMenu = (
+    attr: 'bgColor' | 'textColor',
+    presets: Array<{ label: string; value: string }>,
+  ) => ({
+    items: [
+      ...presets.map((c) => ({
+        key: c.value,
+        label: (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span
+              style={{
+                display: 'inline-block',
+                width: 13,
+                height: 13,
+                borderRadius: 3,
+                background: c.value,
+                border: '1px solid var(--jz-border)',
+              }}
+            />
+            {c.label}
+          </span>
+        ),
+        onClick: () => editor.chain().focus().setCellAttribute(attr, c.value).run(),
+      })),
+      { type: 'divider' as const },
+      {
+        key: 'clear',
+        label: attr === 'bgColor' ? '清除底色' : '清除文字色',
+        onClick: () => editor.chain().focus().setCellAttribute(attr, null).run(),
+      },
+    ],
+  });
+
   return createPortal(
-    <div className="jz-table-overlay" aria-hidden>
+    <div className="jz-table-overlay" aria-hidden={false}>
+      {/* 统一工具条：caret 在表内时显示在表格上方（错开 grip 与表头） */}
+      {caretInTable && (
+        <div
+          className="jz-table-toolbar"
+          style={{ left: table.left, top: Math.max(8, table.top - 56), maxWidth: Math.max(table.width, 360) }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <div className="jz-table-tb-group">
+            <Tooltip title="选中整表">
+              <button className="jz-table-tb-btn" onClick={run(() => editor.commands.selectTableAll(tablePos))}>
+                <BorderOuterOutlined />
+              </button>
+            </Tooltip>
+            <Tooltip title="合并单元格">
+              <button className="jz-table-tb-btn" onClick={run(() => editor.chain().focus().mergeCells().run())}>
+                <MergeCellsOutlined />
+              </button>
+            </Tooltip>
+            <Tooltip title="拆分单元格">
+              <button className="jz-table-tb-btn" onClick={run(() => editor.chain().focus().splitCell().run())}>
+                <SplitCellsOutlined />
+              </button>
+            </Tooltip>
+            <Tooltip title="切换表头行">
+              <button className="jz-table-tb-btn" onClick={run(() => editor.chain().focus().toggleHeaderRow().run())}>
+                <TableOutlined />
+              </button>
+            </Tooltip>
+          </div>
+          <span className="jz-table-tb-divider" />
+          <div className="jz-table-tb-group">
+            <Dropdown trigger={['click']} getPopupContainer={() => document.body} overlayStyle={{ zIndex: 12000 }} menu={colorMenu('bgColor', CELL_BG_PRESETS)}>
+              <Tooltip title="单元格底色"><button className="jz-table-tb-btn"><BgColorsOutlined /></button></Tooltip>
+            </Dropdown>
+            <Dropdown trigger={['click']} getPopupContainer={() => document.body} overlayStyle={{ zIndex: 12000 }} menu={colorMenu('textColor', TEXT_COLOR_PRESETS)}>
+              <Tooltip title="文字颜色"><button className="jz-table-tb-btn"><FontColorsOutlined /></button></Tooltip>
+            </Dropdown>
+            <Dropdown
+              trigger={['click']}
+              getPopupContainer={() => document.body}
+              overlayStyle={{ zIndex: 12000 }}
+              popupRender={() => (
+                <div className="jz-table-density-pop" onMouseDown={(e) => e.preventDefault()}>
+                  <div className="jz-table-density-row">
+                    {(['compact', 'normal', 'loose'] as const).map((d) => (
+                      <button key={d} className="jz-table-density-chip" onClick={() => editor.commands.setTableDensity(d)}>
+                        {d === 'compact' ? '紧凑' : d === 'normal' ? '标准' : '宽松'}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="jz-table-density-custom">
+                    <label>行间距<InputNumber size="small" min={0} max={48} placeholder={String(DENSITY_PRESETS.normal.v)} onChange={(v) => v != null && editor.commands.setTableCellPadding(Number(v), tableCellPadH(editor))} /></label>
+                    <label>列间距<InputNumber size="small" min={0} max={48} placeholder={String(DENSITY_PRESETS.normal.h)} onChange={(v) => v != null && editor.commands.setTableCellPadding(tableCellPadV(editor), Number(v))} /></label>
+                  </div>
+                </div>
+              )}
+            >
+              <Tooltip title="行/列间距（密度）"><button className="jz-table-tb-btn"><ColumnHeightOutlined /></button></Tooltip>
+            </Dropdown>
+            <Dropdown
+              trigger={['click']}
+              getPopupContainer={() => document.body}
+              overlayStyle={{ zIndex: 12000 }}
+              menu={{
+                items: MAX_ROWS_OPTIONS.map((n) => ({
+                  key: String(n),
+                  label: n === 0 ? '不限行数' : `最多 ${n} 行`,
+                  onClick: () => editor.commands.setTableMaxRows(n || null),
+                })),
+              }}
+            >
+              <Tooltip title="最多显示行数"><button className="jz-table-tb-btn jz-table-tb-text">行数▾</button></Tooltip>
+            </Dropdown>
+          </div>
+          <span className="jz-table-tb-divider" />
+          <div className="jz-table-tb-group">
+            <Tooltip title="删除当前行">
+              <button className="jz-table-tb-btn is-danger" onClick={run(() => editor.chain().focus().deleteRow().run())}>删行</button>
+            </Tooltip>
+            <Tooltip title="删除当前列">
+              <button className="jz-table-tb-btn is-danger" onClick={run(() => editor.chain().focus().deleteColumn().run())}>删列</button>
+            </Tooltip>
+            <Tooltip title="删除整个表格">
+              <button className="jz-table-tb-btn is-danger" onClick={run(() => editor.chain().focus().deleteTable().run())}><DeleteOutlined /></button>
+            </Tooltip>
+          </div>
+        </div>
+      )}
       {/* 右缘 + 列 */}
       <button
         type="button"
@@ -233,7 +414,7 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
         <div
           key={`c${i}`}
           className={`jz-table-grip jz-table-grip-col${drag?.kind === 'col' && drag.from === i ? ' is-dragging' : ''}`}
-          style={{ left: c.left + 2, width: Math.max(16, c.width - 4), top: table.top - 14 }}
+          style={{ left: c.left + 2, width: Math.max(16, c.width - 4), top: table.top - 22 }}
           title="单击选中整列，拖动移动"
           onPointerDown={(e) => beginDrag(e, 'col', i)}
         />
@@ -243,7 +424,7 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
         <div
           key={`r${i}`}
           className={`jz-table-grip jz-table-grip-row${drag?.kind === 'row' && drag.from === i ? ' is-dragging' : ''}`}
-          style={{ top: r.top + 2, height: Math.max(14, r.height - 4), left: table.left - 14 }}
+          style={{ top: r.top + 2, height: Math.max(14, r.height - 4), left: table.left - 22 }}
           title="单击选中整行，拖动移动"
           onPointerDown={(e) => beginDrag(e, 'row', i)}
         />

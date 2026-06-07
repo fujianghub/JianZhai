@@ -27,6 +27,14 @@ declare module '@tiptap/core' {
       moveTableRowTo: (from: number, to: number, pos?: number) => ReturnType;
       /** 列重排。 */
       moveTableColumnTo: (from: number, to: number, pos?: number) => ReturnType;
+      /** 全选整表（CellSelection 覆盖所有单元格，像语雀）。 */
+      selectTableAll: (pos?: number) => ReturnType;
+      /** 设表级「最多显示行数」（null = 不限）。 */
+      setTableMaxRows: (n: number | null) => ReturnType;
+      /** 设表级密度预设（清除自定义间距）。 */
+      setTableDensity: (d: 'compact' | 'normal' | 'loose' | null) => ReturnType;
+      /** 设表级自定义间距（行间距 v / 列间距 h，px）。 */
+      setTableCellPadding: (v: number | null, h: number | null) => ReturnType;
     };
   }
 }
@@ -100,6 +108,30 @@ export const TableInteractions = Extension.create({
         (from: number, to: number, pos?: number) =>
         ({ state, dispatch }) =>
           moveTableColumn({ from, to, pos, select: true })(state, dispatch),
+      selectTableAll:
+        (pos?: number) =>
+        ({ state, dispatch }) => {
+          const table = resolveTable(state, pos);
+          if (!table) return false;
+          const map = TableMap.get(table.node);
+          const topLeft = table.start + map.positionAt(0, 0, table.node);
+          const botRight = table.start + map.positionAt(map.height - 1, map.width - 1, table.node);
+          const sel = CellSelection.create(state.doc, topLeft, botRight);
+          if (dispatch) dispatch(state.tr.setSelection(sel).scrollIntoView());
+          return true;
+        },
+      setTableMaxRows:
+        (n: number | null) =>
+        ({ commands }) =>
+          commands.updateAttributes('table', { maxRows: n }),
+      setTableDensity:
+        (d: 'compact' | 'normal' | 'loose' | null) =>
+        ({ commands }) =>
+          commands.updateAttributes('table', { density: d, cellPadV: null, cellPadH: null }),
+      setTableCellPadding:
+        (v: number | null, h: number | null) =>
+        ({ commands }) =>
+          commands.updateAttributes('table', { cellPadV: v, cellPadH: h }),
     };
   },
 });
