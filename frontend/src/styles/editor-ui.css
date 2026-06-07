@@ -1213,3 +1213,45 @@
   flex: 0 0 auto;
   height: max(480px, calc(100vh - 340px));
 }
+
+/* ── MD 选区浮动格式条（语雀式就近编辑） ── */
+.jz-md-float-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: var(--jz-surface-2, #fff);
+  border: 1px solid var(--jz-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(10px);
+  animation: jz-float-toolbar-in 0.12s ease-out;
+}
+@keyframes jz-float-toolbar-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.jz-md-float-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--jz-text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.jz-md-float-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-accent);
+}
+[data-theme='dark'] .jz-md-float-toolbar,
+[data-theme='starry'] .jz-md-float-toolbar,
+[data-theme='deepsea'] .jz-md-float-toolbar {
+  background: color-mix(in srgb, var(--jz-bg-app) 78%, #232a38);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}

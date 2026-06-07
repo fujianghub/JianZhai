@@ -171,7 +171,9 @@ const CodeMirrorMarkdown = forwardRef<EditorSurfaceHandle, CodeMirrorMarkdownPro
         history(),
         bracketMatching(),
         EditorView.lineWrapping,
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        // addKeymap:false — 内置 Enter(insertNewlineContinueMarkup) 与我们
+        // listKeymap 的续行/退出/自增规则冲突，由 extraExtensions 全权接管
+        markdown({ base: markdownLanguage, codeLanguages: languages, addKeymap: false }),
         jzCmTheme,
         jzCmHighlight,
         readOnlyCompartment.current.of([
@@ -242,8 +244,10 @@ const CodeMirrorMarkdown = forwardRef<EditorSurfaceHandle, CodeMirrorMarkdownPro
             });
           }
         }),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        // 自定义 keymap（续列表/格式化）排在 defaultKeymap 之前，确保先于
+        // 默认 Enter / 快捷键处理
         ...(extraExtensions ?? []),
+        keymap.of([...defaultKeymap, ...historyKeymap]),
       ];
       if (placeholder) extensions.push(cmPlaceholder(placeholder));
 

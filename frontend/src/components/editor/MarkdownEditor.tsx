@@ -2,9 +2,15 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Dropdown, Segmented, Tag, Tooltip, Typography } from 'antd';
 import {
   BgColorsOutlined,
+  BoldOutlined,
+  CodeOutlined,
   CommentOutlined,
+  ItalicOutlined,
+  OrderedListOutlined,
   SaveOutlined,
+  StrikethroughOutlined,
   UnderlineOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
 import type { EditorView } from '@codemirror/view';
 import MarkdownQuickInsertButton from './toolbar/MarkdownQuickInsertButton';
@@ -12,6 +18,16 @@ import { renderMarkdownForEditor, wordCount } from '@/utils/markdown';
 import MentionPicker from './MentionPicker';
 import LivePreviewPane from './LivePreviewPane';
 import CodeMirrorMarkdown from './codemirror/CodeMirrorMarkdown';
+import FloatingFormatToolbar, { type FloatCommand } from './codemirror/FloatingFormatToolbar';
+import { listKeymap } from './codemirror/extensions/listKeymap';
+import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
+import {
+  clearInlineFormat,
+  makeLink,
+  toggleLinePrefix,
+  toggleWrap,
+  type EditInstruction,
+} from './codemirror/pure/inlineFormat';
 import { getLineMap } from './codemirror/pure/lineMap';
 import { syncEditorToPreview, syncPreviewToEditor } from './codemirror/scrollSync';
 import type { EditorSurfaceHandle } from './surface/EditorSurface';
@@ -48,6 +64,9 @@ type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 type MdLayoutMode = 'split' | 'edit' | 'preview';
 const MD_LAYOUT_KEY = 'jz-md-layout';
 
+/** 模块级常量 — CM 扩展只在挂载时装配一次。 */
+const CM_EXTRA_EXTENSIONS = [listKeymap, inlineFormatKeymap];
+
 export default function MarkdownEditor({
   value,
   onChange: onChangeProp,
@@ -77,6 +96,9 @@ export default function MarkdownEditor({
     }
   }, [layoutMode]);
   const [mentionOpen, setMentionOpen] = useState(false);
+  /** 选区浮动格式条锚点（视口坐标）。 */
+  const [floatAnchor, setFloatAnchor] = useState<{ left: number; top: number } | null>(null);
+  const floatTimerRef = useRef<number | null>(null);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashAnchor, setSlashAnchor] = useState<DOMRect | null>(null);
@@ -219,6 +241,12 @@ export default function MarkdownEditor({
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (floatTimerRef.current) window.clearTimeout(floatTimerRef.current);
+    };
+  }, []);
+
   const count = useMemo(() => wordCount(value), [value]);
 
   // Debounced source for the line-map (matches LivePreviewPane's own 200ms
@@ -332,12 +360,13 @@ export default function MarkdownEditor({
         }
       }
 
-      // Open mention picker on standalone "@" keystroke and consume it.
+      // "@" — 打开提及选择器，但不吞键：字面 @ 先落入文档，选中文档时
+      // 连同 @ 一起替换；取消则保留字面 @（邮箱 / @media 等场景的转义出口）。
       if (e.key === '@' && !e.metaKey && !e.ctrlKey && !e.altKey) {
         const pos = view.state.selection.main.head;
-        triggerRangeRef.current = { from: pos, to: pos };
-        setMentionOpen(true);
-        return true;
+        triggerRangeRef.current = { from: pos, to: pos + 1 };
+        window.setTimeout(() => setMentionOpen(true), 0);
+        return false;
       }
       // Ctrl/⌘+U — wrap selection with <u>…</u>.
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'u' || e.key === 'U')) {
@@ -398,6 +427,70 @@ export default function MarkdownEditor({
     surfaceRef.current?.wrapSelection(before, after, placeholder);
   }
 
+  /* --------------------------- 格式命令（工具栏 + 浮动条共用） --------------------------- */
+
+  function applyEdit(ins: EditInstruction) {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      changes: { from: ins.from, to: ins.to, insert: ins.insert },
+      selection: { anchor: ins.selFrom, head: ins.selTo },
+      scrollIntoView: true,
+      userEvent: 'input.format',
+    });
+    view.focus();
+  }
+
+  function runFormat(cmd: FloatCommand) {
+    const view = viewRef.current;
+    if (!view || readOnly) return;
+    const sel = view.state.selection.main;
+    const doc = view.state.doc.toString();
+    switch (cmd) {
+      case 'bold':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '**', '加粗文本'));
+        break;
+      case 'italic':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '*', '斜体文本'));
+        break;
+      case 'strike':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '~~', '删除线'));
+        break;
+      case 'code':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '`', '代码'));
+        break;
+      case 'underline':
+        wrapSelection('<u>', '</u>');
+        break;
+      case 'link':
+        applyEdit(makeLink(doc, sel.from, sel.to));
+        break;
+      case 'clear':
+        applyEdit(clearInlineFormat(doc, sel.from, sel.to));
+        break;
+    }
+    // 不主动收起浮动条：操作后选区仍在（语雀同款），可连续叠加格式
+  }
+
+  /** 行级命令：标题 / 列表 / 引用，作用于选区覆盖的整行。 */
+  function runLineCommand(
+    cmd: 'heading-1' | 'heading-2' | 'heading-3' | 'bullet' | 'ordered' | 'quote',
+  ) {
+    const view = viewRef.current;
+    if (!view || readOnly) return;
+    const sel = view.state.selection.main;
+    const fromLine = view.state.doc.lineAt(sel.from);
+    const toLine = view.state.doc.lineAt(sel.to);
+    const block = view.state.sliceDoc(fromLine.from, toLine.to);
+    const next = toggleLinePrefix(block, cmd);
+    view.dispatch({
+      changes: { from: fromLine.from, to: toLine.to, insert: next },
+      scrollIntoView: true,
+      userEvent: 'input.format',
+    });
+    view.focus();
+  }
+
   /** Insert a fenced ``:::${slug}`` block at the current cursor; if there's a
    * non-empty selection, wrap it instead of replacing with placeholder text. */
   function insertCallout(slug: string) {
@@ -418,6 +511,7 @@ export default function MarkdownEditor({
   /* ----------------------------- 行级滚动同步 ----------------------------- */
 
   const handleCmScroll = useCallback((view: EditorView) => {
+    setFloatAnchor(null); // 视口坐标随滚动失效，先收起
     if (syncScrollLockRef.current) return;
     const preview = previewElRef.current;
     if (!preview) return;
@@ -458,8 +552,26 @@ export default function MarkdownEditor({
   const handleCmUpdate = useCallback(
     (info: { docChanged: boolean; selectionSet: boolean; view: EditorView }) => {
       updateSlashFromView(info.view);
+      // 选区浮动格式条：选区稳定 200ms 后在选区起点上方弹出
+      const sel = info.view.state.selection.main;
+      if (floatTimerRef.current) {
+        window.clearTimeout(floatTimerRef.current);
+        floatTimerRef.current = null;
+      }
+      if (sel.empty || readOnly) {
+        setFloatAnchor(null);
+        return;
+      }
+      floatTimerRef.current = window.setTimeout(() => {
+        const view = viewRef.current;
+        if (!view) return;
+        const s = view.state.selection.main;
+        if (s.empty) return;
+        const c = view.coordsAtPos(Math.min(s.from, s.to));
+        if (c) setFloatAnchor({ left: c.left, top: c.top });
+      }, 200);
     },
-    [updateSlashFromView],
+    [updateSlashFromView, readOnly],
   );
 
   const statusLabel: Record<SaveStatus, { text: string; color?: string }> = {
@@ -500,14 +612,89 @@ export default function MarkdownEditor({
         <div className="jz-editor-toolbar-main">
         <MarkdownQuickInsertButton onInsert={insertFromQuickMenu} disabled={readOnly} />
         <span className="jz-editor-toolbar-divider" aria-hidden />
+        <Dropdown
+          disabled={readOnly}
+          menu={{
+            items: [
+              { key: 'heading-1', label: 'H1 一级标题', onClick: () => runLineCommand('heading-1') },
+              { key: 'heading-2', label: 'H2 二级标题', onClick: () => runLineCommand('heading-2') },
+              { key: 'heading-3', label: 'H3 三级标题', onClick: () => runLineCommand('heading-3') },
+              { type: 'divider' as const },
+              { key: 'quote', label: '> 引用', onClick: () => runLineCommand('quote') },
+            ],
+          }}
+        >
+          <Tooltip title="标题 / 引用">
+            <Button size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
+              H ▾
+            </Button>
+          </Tooltip>
+        </Dropdown>
+        <Tooltip title="加粗 (Ctrl+B)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<BoldOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('bold')}
+          />
+        </Tooltip>
+        <Tooltip title="斜体 (Ctrl+I)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<ItalicOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('italic')}
+          />
+        </Tooltip>
+        <Tooltip title="删除线 (Ctrl+Shift+X)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<StrikethroughOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('strike')}
+          />
+        </Tooltip>
+        <Tooltip title="行内代码 (Ctrl+E)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<CodeOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('code')}
+          />
+        </Tooltip>
         <Tooltip title="下划线 (Ctrl+U)">
           <Button
             size="small"
+            className="jz-toolbar-icon-btn"
             icon={<UnderlineOutlined />}
             disabled={readOnly}
             onClick={() => wrapSelection('<u>', '</u>')}
           />
         </Tooltip>
+        <span className="jz-editor-toolbar-divider" aria-hidden />
+        <Tooltip title="无序列表">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<UnorderedListOutlined />}
+            disabled={readOnly}
+            onClick={() => runLineCommand('bullet')}
+          />
+        </Tooltip>
+        <Tooltip title="有序列表">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<OrderedListOutlined />}
+            disabled={readOnly}
+            onClick={() => runLineCommand('ordered')}
+          />
+        </Tooltip>
+        <span className="jz-editor-toolbar-divider" aria-hidden />
         <Dropdown
           disabled={readOnly}
           menu={{
@@ -559,6 +746,7 @@ export default function MarkdownEditor({
             </Button>
           </Tooltip>
         </Dropdown>
+        <span style={{ marginLeft: 'auto' }} />
         <Segmented
           size="small"
           value={layoutMode}
@@ -594,6 +782,7 @@ export default function MarkdownEditor({
             onDropFiles={readOnly ? undefined : (files) => void uploadAndInsertSequential(files)}
             onSurfaceReady={handleSurfaceReady}
             onViewReady={handleViewReady}
+            extraExtensions={CM_EXTRA_EXTENSIONS}
           />
         </div>
         {layoutMode !== 'edit' && (
@@ -609,6 +798,7 @@ export default function MarkdownEditor({
           />
         )}
       </div>
+      <FloatingFormatToolbar anchor={readOnly ? null : floatAnchor} onCommand={runFormat} />
       <MentionPicker
         open={mentionOpen}
         onCancel={() => setMentionOpen(false)}
