@@ -112,6 +112,27 @@ def test_mixed_kb_tree_toc_folders_and_panel_order(owner, kb):
 
 
 @pytest.mark.django_db
+def test_selection_toc_omits_unselected_folders(owner, kb):
+    # Two folders; select a doc from only one + a loose root doc. The TOC must
+    # NOT list the folder that has no selected document inside it.
+    kept = Folder.objects.create(knowledge_base=kb, name="Kept Folder", order=0)
+    skipped = Folder.objects.create(knowledge_base=kb, name="Skipped Folder", order=1)
+    loose = make_doc(kb, "loose", published="# Loose", folder=None, order=0)
+    kept_doc = make_doc(kb, "kept", published="# Kept", folder=kept, order=0)
+    make_doc(kb, "skipped", published="# Skipped", folder=skipped, order=0)
+
+    scope = collect_for_scope(
+        owner=owner, scope="selection", target_id=0, doc_ids=[loose.id, kept_doc.id]
+    )
+    html = html_export.render_html(scope)
+
+    assert "Kept Folder" in html
+    assert "Skipped Folder" not in html
+    panel_ids = re.findall(r'<section class="export-doc-panel" id="doc-(\d+)"', html)
+    assert panel_ids == [str(loose.id), str(kept_doc.id)]
+
+
+@pytest.mark.django_db
 def test_markdown_code_fence_syntax_highlight(owner, kb):
     make_doc(
         kb,
