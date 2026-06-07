@@ -99,9 +99,14 @@ export interface AIEstimate {
 
 let capCache: { at: number; data: AICapabilities } | null = null;
 const CAP_TTL_MS = 5 * 60_000;
+// Dedupe concurrent in-flight requests: AIModelBadge / DocAIPanel / AIAssistant
+// often mount together and all call getCapabilities() before the cache is
+// warm, firing N identical requests. Share one promise until it resolves.
+let capInflight: Promise<AICapabilities> | null = null;
 
 export function clearCapabilitiesCache() {
   capCache = null;
+  capInflight = null;
 }
 
 export async function getAISettings(): Promise<AIAdminSettings> {
@@ -119,9 +124,17 @@ export async function updateAISettings(patch: Partial<AIAdminSettings>): Promise
 export async function getCapabilities(): Promise<AICapabilities> {
   const now = Date.now();
   if (capCache && now - capCache.at < CAP_TTL_MS) return capCache.data;
-  const { data } = await apiClient.get<AICapabilities>('/ai/capabilities/');
-  capCache = { at: now, data };
-  return data;
+  if (capInflight) return capInflight;
+  capInflight = apiClient
+    .get<AICapabilities>('/ai/capabilities/')
+    .then(({ data }) => {
+      capCache = { at: Date.now(), data };
+      return data;
+    })
+    .finally(() => {
+      capInflight = null;
+    });
+  return capInflight;
 }
 
 // ── Prompt templates CRUD ─────────────────────────────────────────────
