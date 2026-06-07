@@ -40,6 +40,51 @@ def test_create_and_download(owner, kb, api_client, settings, tmp_path):
     assert b"Body" in b"".join(dl.streaming_content)
 
 
+def test_create_selection_combines_folder_and_docs(owner, kb, api_client, settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    from apps.knowledge.models import Folder
+
+    folder = Folder.objects.create(knowledge_base=kb, name="F")
+    a = make_doc(kb, "a", folder=folder, published="# A\n\nbody-a")
+    loose = make_doc(kb, "loose", published="# L\n\nbody-l")
+    api_client.force_login(user=owner)
+    resp = api_client.post(
+        reverse("api_v1:export-list"),
+        {
+            "scope": "selection",
+            "format": "html",
+            "folder_ids": [folder.id],
+            "doc_ids": [loose.id],
+        },
+        format="json",
+    )
+    assert resp.status_code == 201, resp.data
+    task = ExportTask.objects.get(pk=resp.data["id"])
+    assert task.scope == "selection"
+    assert task.target_id == kb.id  # anchored to the owning KB
+    assert sorted(task.selection["doc_ids"]) == [loose.id]
+    assert task.selection["folder_ids"] == [folder.id]
+    run_export(task.id)
+    task.refresh_from_db()
+    assert task.status == ExportTask.STATUS_DONE
+    # Anthology HTML should contain both the folder doc and the loose doc.
+    from pathlib import Path
+
+    html = Path(task.file_path).read_text(encoding="utf-8")
+    assert "body-a" in html and "body-l" in html
+    assert f"#doc-{a.id}" in html  # TOC links the selected folder doc
+
+
+def test_create_selection_requires_picks(owner, kb, api_client):
+    api_client.force_login(user=owner)
+    resp = api_client.post(
+        reverse("api_v1:export-list"),
+        {"scope": "selection", "format": "md", "folder_ids": [], "doc_ids": []},
+        format="json",
+    )
+    assert resp.status_code == 400
+
+
 def test_create_invalid_target_404(owner, api_client):
     api_client.force_login(user=owner)
     resp = api_client.post(

@@ -48,21 +48,36 @@ class ExportTaskViewSet(
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         scope = serializer.validated_data["scope"]
-        target_id = serializer.validated_data["target_id"]
+        target_id = serializer.validated_data.get("target_id") or 0
         fmt = serializer.validated_data["format"]
+        folder_ids = serializer.validated_data.get("folder_ids") or []
+        doc_ids = serializer.validated_data.get("doc_ids") or []
 
         # Validate that the user actually owns the target before queuing work.
         try:
-            scope_info = collect_for_scope(owner=request.user, scope=scope, target_id=target_id)
+            scope_info = collect_for_scope(
+                owner=request.user,
+                scope=scope,
+                target_id=target_id,
+                folder_ids=folder_ids,
+                doc_ids=doc_ids,
+            )
         except ObjectDoesNotExist:
             return Response({"detail": "export target not found"}, status=404)
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=400)
 
+        selection: dict = {}
+        if scope == ExportTask.SCOPE_SELECTION:
+            # Persist the picks so the worker can re-resolve; anchor target_id to the KB.
+            selection = {"folder_ids": folder_ids, "doc_ids": doc_ids}
+            target_id = scope_info.kb.id
+
         task = ExportTask.objects.create(
             owner=request.user,
             scope=scope,
             target_id=target_id,
+            selection=selection,
             target_label=scope_info.label,
             format=fmt,
         )

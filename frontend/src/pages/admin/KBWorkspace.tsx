@@ -88,6 +88,7 @@ export default function KBWorkspace() {
   const [folderForm] = Form.useForm<{ name: string; parent?: number | null }>();
   const [exportOpen, setExportOpen] = useState(false);
   const [folderExport, setFolderExport] = useState<TreeFolder | null>(null);
+  const [selectionExportOpen, setSelectionExportOpen] = useState(false);
 
   // -------- batch selection --------
   const [batchMode, setBatchMode] = useState(false);
@@ -597,6 +598,14 @@ export default function KBWorkspace() {
           <Space wrap size={6}>
             <Button
               size="small"
+              icon={<ExportOutlined />}
+              disabled={selectionCount === 0}
+              onClick={() => setSelectionExportOpen(true)}
+            >
+              导出
+            </Button>
+            <Button
+              size="small"
               disabled={selectionCount === 0}
               onClick={() => {
                 setMoveTarget(null);
@@ -767,6 +776,15 @@ export default function KBWorkspace() {
           onSubmitted={() => navigate('/admin/exports')}
         />
       )}
+      <ExportDialog
+        open={selectionExportOpen}
+        onClose={() => setSelectionExportOpen(false)}
+        scope="selection"
+        folderIds={checked.folderIds}
+        docIds={checked.docIds}
+        targetLabel={`已选 ${selectionCount} 项`}
+        onSubmitted={() => navigate('/admin/exports')}
+      />
 
       <Modal
         open={newDocModal}

@@ -10,10 +10,12 @@ class ExportTask(models.Model):
     SCOPE_DOC = "doc"
     SCOPE_FOLDER = "folder"
     SCOPE_KB = "kb"
+    SCOPE_SELECTION = "selection"
     SCOPE_CHOICES = [
         (SCOPE_DOC, "Document"),
         (SCOPE_FOLDER, "Folder"),
         (SCOPE_KB, "Knowledge Base"),
+        (SCOPE_SELECTION, "Selection"),
     ]
 
     FORMAT_MD = "md"
@@ -45,6 +47,9 @@ class ExportTask(models.Model):
     )
     scope = models.CharField(max_length=10, choices=SCOPE_CHOICES)
     target_id = models.IntegerField()
+    # For scope="selection": {"folder_ids": [...], "doc_ids": [...]} chosen in
+    # the KB batch-management view; target_id stores the owning KB id.
+    selection = models.JSONField(default=dict, blank=True)
     target_label = models.CharField(max_length=200, blank=True)
     format = models.CharField(max_length=10, choices=FORMAT_CHOICES)
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default=STATUS_PENDING)
