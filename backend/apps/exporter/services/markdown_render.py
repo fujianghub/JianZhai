@@ -108,12 +108,35 @@ def _highlight_code(code: str, lang: str) -> str:
 DEFAULT_CODE_THEME = "one-dark-pro"
 _CODE_THEME = {"value": DEFAULT_CODE_THEME}
 
-# Mermaid / PlantUML are intentionally rendered as **annotated** code blocks
-# in offline exports — the reader has no JS to run mermaid.run(), so the best
-# we can offer is a clearly-labelled "diagram source" panel that copy-pastes
-# back into the editor cleanly. (Documented in CLAUDE.md "Mermaid/PlantUML
-# 在离线导出中为带语言标签的代码块，无运行时渲染.")
+# Mermaid blocks are rendered to inline SVG ahead of time by
+# ``diagram_render`` (headless Chromium) and threaded in via ``env`` so offline
+# HTML/PDF exports show the actual diagram. When that SVG isn't available
+# (Playwright missing, syntax error, or a PlantUML block we don't render), the
+# fence degrades to a clearly-labelled "diagram source" panel that copy-pastes
+# back into the editor cleanly.
 _DIAGRAM_LANGS = {"mermaid", "plantuml", "puml"}
+# Only Mermaid is rendered to SVG server-side; PlantUML needs a separate server.
+MERMAID_LANGS = {"mermaid"}
+
+
+def _fence_lang(token) -> str:
+    info = (token.info or "").strip()
+    return (info.split()[0] if info else "").lower()
+
+
+def _render_diagram_source_panel(lang: str, body_text: str, theme: str) -> str:
+    label = lang or "text"
+    return (
+        f'<div class="jz-code-block jz-code-diagram jz-code-{_escape(lang)}" '
+        f'data-code-theme="{_escape(theme)}" data-lang="{_escape(lang)}">'
+        f'<div class="jz-code-toolbar">'
+        f'<span class="jz-code-lang">{_escape(label)}</span>'
+        f'<span class="jz-code-diagram-hint">图表源码（离线导出不渲染图）</span>'
+        f'</div>'
+        f'<pre class="jz-code-pre"><code class="language-{_escape(lang)} hljs">'
+        f"{_escape(body_text)}</code></pre>"
+        f"</div>\n"
+    )
 
 
 def _render_fence(self, tokens, idx, options, env):
@@ -123,22 +146,17 @@ def _render_fence(self, tokens, idx, options, env):
     label = lang or "text"
     theme = _CODE_THEME["value"]
     if lang.lower() in _DIAGRAM_LANGS:
-        # Distinct chrome — readers grok "this is a diagram source, not
-        # ordinary code" without needing JS-driven rendering. The body keeps
-        # plain text + a hint banner so users can paste it into a live
-        # JianZhai instance to re-render.
         body_text = token.content.rstrip("\n")
-        return (
-            f'<div class="jz-code-block jz-code-diagram jz-code-{_escape(lang)}" '
-            f'data-code-theme="{_escape(theme)}" data-lang="{_escape(lang)}">'
-            f'<div class="jz-code-toolbar">'
-            f'<span class="jz-code-lang">{_escape(label)}</span>'
-            f'<span class="jz-code-diagram-hint">图表源码（离线导出不渲染图）</span>'
-            f'</div>'
-            f'<pre class="jz-code-pre"><code class="language-{_escape(lang)} hljs">'
-            f"{_escape(body_text)}</code></pre>"
-            f"</div>\n"
-        )
+        # Pre-rendered SVG (keyed by the exact fence body) wins — show the real
+        # diagram. Otherwise fall back to the labelled source panel.
+        svgs = env.get("diagram_svgs") if isinstance(env, dict) else None
+        svg = svgs.get(body_text) if isinstance(svgs, dict) else None
+        if svg:
+            return (
+                f'<div class="jz-diagram jz-diagram-{_escape(lang)}" '
+                f'data-lang="{_escape(lang)}">{svg}</div>\n'
+            )
+        return _render_diagram_source_panel(lang, body_text, theme)
     body = _highlight_code(token.content, lang)
     return (
         f'<div class="jz-code-block" data-code-theme="{_escape(theme)}" data-lang="{_escape(lang)}">'
@@ -188,7 +206,30 @@ def _rewrite_doc_links(html: str) -> str:
     return _DOC_LINK_HREF.sub(r'href="#doc-\1"', html)
 
 
-def render_markdown(text: str, *, code_theme: str | None = None) -> str:
+def collect_mermaid_sources(text: str) -> list[str]:
+    r"""Return the body of every ``\`\`\`mermaid`` fence, keyed exactly as the
+    renderer keys them (so a pre-rendered SVG map lines up at render time).
+
+    Parses through the same preprocess + tokenizer ``render_markdown`` uses, so
+    ``token.content.rstrip("\\n")`` here is byte-for-byte the lookup key used in
+    ``_render_fence``.
+    """
+    prepared = preprocess_markdown(text)
+    out: list[str] = []
+    for token in _RENDERER.parse(prepared, {}):
+        if token.type == "fence" and _fence_lang(token) in MERMAID_LANGS:
+            body = token.content.rstrip("\n")
+            if body.strip():
+                out.append(body)
+    return out
+
+
+def render_markdown(
+    text: str,
+    *,
+    code_theme: str | None = None,
+    diagram_svgs: dict[str, str] | None = None,
+) -> str:
     """Preprocess + render Markdown to an HTML fragment.
 
     ``code_theme`` overrides the code-block ``data-code-theme`` attribute so
@@ -196,12 +237,17 @@ def render_markdown(text: str, *, code_theme: str | None = None) -> str:
     a user preference instead of the hardcoded one-dark-pro default. Restored
     to default once the renderer returns so concurrent calls don't poison
     each other (the renderer instance is module-level for caching reasons).
+
+    ``diagram_svgs`` maps a Mermaid fence body to its pre-rendered SVG (see
+    ``collect_mermaid_sources`` + ``diagram_render``); matched blocks render as
+    inline SVG, unmatched ones fall back to the source panel.
     """
     prepared = preprocess_markdown(text)
     previous = _CODE_THEME["value"]
     if code_theme:
         _CODE_THEME["value"] = code_theme
+    env = {"diagram_svgs": diagram_svgs or {}}
     try:
-        return _rewrite_doc_links(_RENDERER.render(prepared))
+        return _rewrite_doc_links(_RENDERER.render(prepared, env))
     finally:
         _CODE_THEME["value"] = previous

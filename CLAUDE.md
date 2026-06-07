@@ -412,7 +412,8 @@ class AIUsageLog(models.Model):
   - **HTML 篇**：完整页面写入 `<iframe class="export-html-frame" srcdoc>`（仅 `/media/` → base64 重写 + 注入 vh-override），样式与外壳**互不污染**，原样保留作者 `<head>` 样式；**单篇** HTML 导出仍 `export()` 原样写出（不套外壳）。
   - 样式：`BASE_CSS` + `export-markdown.css` + `export-anthology.css`（后者仅 html_export 加载，不进 export_stylesheet/静态站）。
 - **HTML/PDF 合订本（PDF）**：`render_html(scope, mode="print")`——展开全部 panel、去目录与脚本、篇章间 `page-break-before`；HTML 篇**不用 iframe**，改为抽取 `<head>` 内 `<style>` + body 扁平嵌入（`export-html-print`），避免 Chromium 打印空白 iframe。Playwright 用 `emulate_media("screen")` 保留屏幕样式（分页由 `.is-print` 类的常开断页规则驱动，不依赖 `@media print`）。外链 `<link>` CSS **不内嵌**（离线限制）。
-- **离线资源**：HTML/PDF 单文件内嵌本地 `/media/` 为 base64；zip 类导出复制到 `assets/` 并重写路径。Mermaid/PlantUML 在离线导出中为带语言标签的代码块，无运行时渲染。
+- **离线资源**：HTML/PDF 单文件内嵌本地 `/media/` 为 base64；zip 类导出复制到 `assets/` 并重写路径。
+- **Mermaid 离线渲染为 SVG**（`services/diagram_render.py`）：HTML / PDF / 静态站导出在生成 HTML 前，用与 PDF 相同的 headless Chromium + 自带 mermaid 包（`static/vendor/mermaid.min.js`，无需 node_modules）把所有 `` ```mermaid `` 块批量渲染为**内联 SVG**（每次导出仅启动一次浏览器）。`render_markdown(text, diagram_svgs=…)` 经 `env` 注入；`collect_mermaid_sources` 用同一分词器取键确保对得上。Playwright/Chromium 缺失或语法错误时，该块优雅降级为「图表源码」面板。PlantUML 仍为源码面板（需独立服务器渲染）。
 - Celery `exporter.run_export` 异步；broker 不可达时 create 内联 fallback；前端 `/admin/exports` 轮询 + `downloadExport()`（fetch + blob，避免跨域 cookie 问题）
 - 测试：`backend/apps/exporter/tests/`（含 anthology interactive/print、iframe 隔离、HTML 扁平化用例）；PDF 用例在无 Playwright 时 skip
 

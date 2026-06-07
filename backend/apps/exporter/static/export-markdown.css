@@ -311,6 +311,18 @@
   color: #1f1f1f;
 }
 
+/* Pre-rendered Mermaid diagram (inline SVG from diagram_render). Centred,
+   never wider than the column; the SVG's own viewBox drives the aspect ratio. */
+.jz-markdown.export-markdown .jz-diagram {
+  margin: 1em 0;
+  text-align: center;
+  overflow-x: auto;
+}
+.jz-markdown.export-markdown .jz-diagram svg {
+  max-width: 100%;
+  height: auto;
+}
+
 /* HTML-format embed wrapper */
 .export-html-embed {
   margin: 0.5em 0;

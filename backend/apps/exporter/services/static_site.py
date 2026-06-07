@@ -147,6 +147,10 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     # never holds the whole site in memory; the zip is streamed straight to disk.
     search_index: list[dict] = []
 
+    # Render Mermaid → SVG once (one headless-Chromium launch) up front; the map
+    # is small text and shared across the streamed per-doc renders below.
+    diagram_svgs = common.build_scope_diagram_svgs(scope)
+
     def _entries():
         asset_names: set[str] = set()
         yield ("index.html", index_html.encode("utf-8"))
@@ -178,7 +182,9 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
                 )
                 continue
 
-            body_html = common.render_document_body_html(doc, embed_media=False)
+            body_html = common.render_document_body_html(
+                doc, embed_media=False, diagram_svgs=diagram_svgs
+            )
             for asset_name, asset_data in common.collect_markdown_media(body_md):
                 if asset_name not in asset_names:
                     asset_names.add(asset_name)
