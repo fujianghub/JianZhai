@@ -12,23 +12,35 @@
  *  frame instead. See https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe#srcdoc */
 const SRCDOC_BASE = '<base href="about:srcdoc">';
 
+/** Insert an arbitrary `<base href>` as the first child of `<head>` (or the
+ *  document start). The FIRST `<base>` in a document wins per the HTML spec,
+ *  so prepending lets it override author `<base href="/">` tags that would
+ *  otherwise resolve against the embedding page origin. ``href`` is
+ *  attribute-escaped. */
+export function withBaseHref(html: string, href: string): string {
+  const esc = href.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  const baseTag = `<base href="${esc}">`;
+  if (!html) return baseTag;
+  const head = /<head[^>]*>/i.exec(html);
+  if (head) {
+    const at = head.index + head[0].length;
+    return html.slice(0, at) + baseTag + html.slice(at);
+  }
+  const htmlTag = /<html[^>]*>/i.exec(html);
+  if (htmlTag) {
+    const at = htmlTag.index + htmlTag[0].length;
+    return html.slice(0, at) + baseTag + html.slice(at);
+  }
+  return baseTag + html;
+}
+
 /** Insert `<base href="about:srcdoc">` as the first child of `<head>` (or the
  *  document start). Always prepended so it wins over author `<base href="/">`
  *  tags that would otherwise resolve to the embedding page origin. */
 export function withSrcdocBase(html: string): string {
   if (!html) return SRCDOC_BASE;
   if (/<base\s[^>]*href\s*=\s*["']about:srcdoc["']/i.test(html)) return html;
-  const head = /<head[^>]*>/i.exec(html);
-  if (head) {
-    const at = head.index + head[0].length;
-    return html.slice(0, at) + SRCDOC_BASE + html.slice(at);
-  }
-  const htmlTag = /<html[^>]*>/i.exec(html);
-  if (htmlTag) {
-    const at = htmlTag.index + htmlTag[0].length;
-    return html.slice(0, at) + SRCDOC_BASE + html.slice(at);
-  }
-  return SRCDOC_BASE + html;
+  return withBaseHref(html, 'about:srcdoc');
 }
 
 /** With `<base href="about:srcdoc">`, root-relative URLs like `/media/uploads/…`

@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildHtmlPreviewSrcdoc, rewriteRootRelativeAssets, withSrcdocBase } from './htmlPreview';
+import { buildHtmlPreviewSrcdoc, rewriteRootRelativeAssets, withBaseHref, withSrcdocBase } from './htmlPreview';
 
 describe('withSrcdocBase', () => {
   it('inserts <base href="about:srcdoc"> as the first head child', () => {
@@ -64,5 +64,26 @@ describe('rewriteRootRelativeAssets', () => {
 
   it('is a no-op on empty input', () => {
     expect(rewriteRootRelativeAssets('')).toBe('');
+  });
+});
+
+describe('withBaseHref', () => {
+  it('inserts the given href as first child of <head>', () => {
+    const out = withBaseHref('<html><head><title>x</title></head><body>hi</body></html>', 'https://h/media/a/x.html');
+    expect(out).toBe('<html><head><base href="https://h/media/a/x.html"><title>x</title></head><body>hi</body></html>');
+  });
+
+  it('prepends before an author <base> so ours wins', () => {
+    const out = withBaseHref('<head><base href="/"><link href="./a.css"></head>', 'https://h/x.html');
+    expect(out.indexOf('https://h/x.html')).toBeLessThan(out.indexOf('href="/"'));
+  });
+
+  it('escapes the href attribute', () => {
+    const out = withBaseHref('<p>hi</p>', 'https://h/x.html?a=1&b="2"');
+    expect(out).toContain('<base href="https://h/x.html?a=1&amp;b=&quot;2&quot;">');
+  });
+
+  it('handles empty html', () => {
+    expect(withBaseHref('', 'https://h/x.html')).toBe('<base href="https://h/x.html">');
   });
 });

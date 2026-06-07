@@ -1,4 +1,4 @@
-import { withSrcdocBase } from '@/utils/htmlPreview';
+import { withBaseHref, withSrcdocBase } from '@/utils/htmlPreview';
 
 /** ES5 bootstrap injected into srcDoc HTML (raw_content-only fallback).
  *  Kept in a plain ``.ts`` file so ``</script>`` never appears inside ``.tsx``
@@ -54,15 +54,35 @@ export const HTML_READER_BOOTSTRAP = [
   '    var el=document.getElementById(e.data.id);if(el)el.scrollIntoView({block:\'start\'});',
   '  }',
   '});',
+  // In-document anchor clicks must scroll in place: with an http(s) <base>
+  // (attachment mode) a plain "#sec" link would otherwise resolve to the
+  // base URL and navigate the iframe to the raw file, losing this bootstrap.
+  'document.addEventListener(\'click\',function(e){',
+  '  var t=e.target;',
+  '  while(t&&t!==document&&!(t.tagName&&t.tagName.toLowerCase()===\'a\'))t=t.parentNode;',
+  '  if(!t||t===document)return;',
+  '  var href=t.getAttribute(\'href\')||\'\';',
+  '  if(href.charAt(0)===\'#\'){',
+  '    e.preventDefault();',
+  '    var el=document.getElementById(href.slice(1));',
+  '    if(el)el.scrollIntoView({block:\'start\'});',
+  '  }',
+  '},true);',
   '})();',
   '</scr', 'ipt>',
 ].join('');
 
-/** Insert bootstrap right before ``</body>``; if absent, append at end. Also
- *  injects a srcdoc `<base>` so in-document anchors don't escape the frame. */
-export function injectHtmlReaderBootstrap(html: string): string {
-  if (!html) return withSrcdocBase('') + HTML_READER_BOOTSTRAP;
-  const based = withSrcdocBase(html);
+/** Insert bootstrap right before ``</body>``; if absent, append at end.
+ *
+ *  Also injects a `<base>`: ``about:srcdoc`` for raw_content HTML (default),
+ *  or the attachment's own URL when ``baseHref`` is given — fetched-attachment
+ *  mode renders via srcDoc inside an opaque-origin sandbox, and the http(s)
+ *  base makes ``./assets/x.css`` and ``/media/...`` resolve exactly like the
+ *  old ``<iframe src>`` did. */
+export function injectHtmlReaderBootstrap(html: string, baseHref?: string): string {
+  const withBase = (s: string) => (baseHref ? withBaseHref(s, baseHref) : withSrcdocBase(s));
+  if (!html) return withBase('') + HTML_READER_BOOTSTRAP;
+  const based = withBase(html);
   const m = /<\/body\s*>/i.exec(based);
   if (m) {
     return based.slice(0, m.index) + HTML_READER_BOOTSTRAP + based.slice(m.index);
