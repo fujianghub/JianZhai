@@ -1356,3 +1356,15 @@
   padding: 0 2px;
   cursor: pointer;
 }
+
+/* ── MD 表格浮动操作条 ── */
+.jz-md-table-bar-label {
+  font-size: 11px;
+  color: var(--jz-text-muted);
+  padding: 0 6px 0 4px;
+  user-select: none;
+}
+.jz-md-float-btn.is-danger:hover {
+  background: color-mix(in srgb, #cf1322 14%, transparent);
+  color: #cf1322;
+}

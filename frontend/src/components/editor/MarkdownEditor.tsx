@@ -37,7 +37,9 @@ import {
   deleteRow,
   findTableRange,
   formatTable,
+  isTableLine,
 } from './codemirror/pure/tableFormat';
+import TableFloatingBar from './codemirror/TableFloatingBar';
 import {
   clearInlineFormat,
   makeLink,
@@ -172,6 +174,8 @@ export default function MarkdownEditor({
   /** 选区浮动格式条锚点（视口坐标）。 */
   const [floatAnchor, setFloatAnchor] = useState<{ left: number; top: number } | null>(null);
   const floatTimerRef = useRef<number | null>(null);
+  /** 表格浮动操作条锚点（光标进表格时显示）。 */
+  const [tableBarAnchor, setTableBarAnchor] = useState<{ left: number; top: number } | null>(null);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashAnchor, setSlashAnchor] = useState<DOMRect | null>(null);
@@ -554,12 +558,15 @@ export default function MarkdownEditor({
     view.focus();
   }
 
-  function runFormat(cmd: FloatCommand) {
+  function runFormat(cmd: FloatCommand, arg?: string) {
     const view = viewRef.current;
     if (!view || readOnly) return;
     const sel = view.state.selection.main;
     const doc = view.state.doc.toString();
     switch (cmd) {
+      case 'color':
+        if (arg) wrapSelection(`<span style="color:${arg};">`, '</span>');
+        break;
       case 'bold':
         applyEdit(toggleWrap(doc, sel.from, sel.to, '**', '加粗文本'));
         break;
@@ -679,6 +686,7 @@ export default function MarkdownEditor({
 
   const handleCmScroll = useCallback((view: EditorView) => {
     setFloatAnchor(null); // 视口坐标随滚动失效，先收起
+    setTableBarAnchor(null);
     if (syncScrollLockRef.current) return;
     const preview = previewElRef.current;
     if (!preview) return;
@@ -719,8 +727,25 @@ export default function MarkdownEditor({
   const handleCmUpdate = useCallback(
     (info: { docChanged: boolean; selectionSet: boolean; view: EditorView }) => {
       updateSlashFromView(info.view);
-      // 选区浮动格式条：选区稳定 200ms 后在选区起点上方弹出
       const sel = info.view.state.selection.main;
+      // 表格浮动操作条：光标（空选区）在表格内 → 锚到表格首行上方
+      if (sel.empty && !readOnly) {
+        const line = info.view.state.doc.lineAt(sel.head);
+        if (isTableLine(line.text)) {
+          const allLines = info.view.state.doc.toString().split('\n');
+          const range = findTableRange(allLines, line.number - 1);
+          if (range) {
+            const headLine = info.view.state.doc.line(range.start + 1);
+            const c = info.view.coordsAtPos(headLine.from);
+            if (c) setTableBarAnchor({ left: c.left, top: c.top });
+          }
+        } else {
+          setTableBarAnchor(null);
+        }
+      } else {
+        setTableBarAnchor(null);
+      }
+      // 选区浮动格式条：选区稳定 200ms 后在选区起点上方弹出
       if (floatTimerRef.current) {
         window.clearTimeout(floatTimerRef.current);
         floatTimerRef.current = null;
@@ -1002,6 +1027,7 @@ export default function MarkdownEditor({
         )}
       </div>
       <FloatingFormatToolbar anchor={readOnly ? null : floatAnchor} onCommand={runFormat} />
+      <TableFloatingBar anchor={readOnly ? null : tableBarAnchor} onCommand={runTableCommand} />
       <MentionPicker
         open={mentionOpen}
         onCancel={() => setMentionOpen(false)}
