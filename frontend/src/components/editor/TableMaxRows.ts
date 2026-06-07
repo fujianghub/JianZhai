@@ -68,7 +68,15 @@ export const TableMaxRows = Extension.create({
           // 初次挂载后同步一次（处理已存在的表格）
           requestAnimationFrame(() => syncTables(view));
           return {
-            update: (v) => syncTables(v),
+            // Selection / cursor moves fire ``update`` too, but table-level
+            // attrs only change when the doc changes. Skipping doc-unchanged
+            // updates avoids a full-doc traversal + forced reflow
+            // (getBoundingClientRect) on every keystroke-less cursor move —
+            // the dominant source of table-doc typing lag.
+            update: (v, prevState) => {
+              if (v.state.doc === prevState.doc) return;
+              syncTables(v);
+            },
           };
         },
       }),

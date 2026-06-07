@@ -14,9 +14,20 @@ interface Anchor {
   top: number; // 相对滚动容器内容顶部
 }
 
+// Anchor positions only change when the preview content reflows (new HTML or a
+// width change), not on scroll. Measuring every ``[data-line]`` element with
+// getBoundingClientRect on *each* scroll event is layout thrashing; cache the
+// computed anchors per preview element and rebuild only when a cheap signature
+// (anchor count + scrollHeight + width) changes.
+const _anchorCache = new WeakMap<HTMLElement, { sig: string; anchors: Anchor[] }>();
+
 function collectAnchors(container: HTMLElement): Anchor[] {
-  const cRect = container.getBoundingClientRect();
   const els = container.querySelectorAll<HTMLElement>('[data-line]');
+  const sig = `${els.length}:${container.scrollHeight}:${container.clientWidth}`;
+  const cached = _anchorCache.get(container);
+  if (cached && cached.sig === sig) return cached.anchors;
+
+  const cRect = container.getBoundingClientRect();
   const out: Anchor[] = [];
   els.forEach((el) => {
     const line = Number(el.dataset.line);
@@ -25,6 +36,7 @@ function collectAnchors(container: HTMLElement): Anchor[] {
     out.push({ line, top });
   });
   out.sort((a, b) => a.line - b.line || a.top - b.top);
+  _anchorCache.set(container, { sig, anchors: out });
   return out;
 }
 

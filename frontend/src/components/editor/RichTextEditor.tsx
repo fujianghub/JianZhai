@@ -834,15 +834,26 @@ export default function RichTextEditor({
   }, [fullscreen]);
 
   const count = useMemo(() => wordCount(value), [value]);
-  /** Live markdown for toolbar dirty-state (save button) — updated on every
-   *  editor keystroke, not lagged behind the 200ms onChange debounce. */
+  /** Live markdown for toolbar dirty-state (save button). Serializing the whole
+   *  doc (getMarkdown) on *every* keystroke + re-rendering the toolbar is a
+   *  primary source of typing lag in long docs — debounce so it runs only
+   *  after the user pauses. The save button being briefly stale (~250ms) is
+   *  harmless; Ctrl/⌘+S (saveNow) always reads fresh markdown. */
   const [liveMd, setLiveMd] = useState(value);
   useEffect(() => {
     if (!editor) return;
-    const sync = () => setLiveMd(editor.storage.markdown?.getMarkdown?.() ?? '');
-    sync();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const sync = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        setLiveMd(editor.storage.markdown?.getMarkdown?.() ?? '');
+      }, 250);
+    };
+    // Prime once immediately so the initial dirty state is correct.
+    setLiveMd(editor.storage.markdown?.getMarkdown?.() ?? '');
     editor.on('update', sync);
     return () => {
+      if (timer) clearTimeout(timer);
       editor.off('update', sync);
     };
   }, [editor]);
