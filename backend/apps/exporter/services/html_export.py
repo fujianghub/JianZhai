@@ -22,15 +22,20 @@ def render_html(scope: ExportScope, *, mode: str = "interactive") -> str:
     ``mode="print"`` reveals every panel, drops the TOC, and flattens HTML docs
     for headless-Chromium pagination (used by the PDF exporter).
     """
+    diagram_svgs = common.build_scope_diagram_svgs(scope)
     if len(scope.documents) <= 1:
-        return _render_single(scope, mode=mode)
-    return _render_anthology(scope, mode=mode)
+        return _render_single(scope, mode=mode, diagram_svgs=diagram_svgs)
+    return _render_anthology(scope, mode=mode, diagram_svgs=diagram_svgs)
 
 
-def _render_single(scope: ExportScope, *, mode: str) -> str:
+def _render_single(
+    scope: ExportScope, *, mode: str, diagram_svgs: dict[str, str] | None = None
+) -> str:
     if scope.documents:
         doc = scope.documents[0]
-        inner = common.render_document_body_html(doc, embed_media=True, export_mode=mode)
+        inner = common.render_document_body_html(
+            doc, embed_media=True, export_mode=mode, diagram_svgs=diagram_svgs
+        )
         body = (
             f"<h1>{common._escape(doc.title)}</h1>\n"
             f"{common._doc_meta_html(doc)}\n{inner}"
@@ -45,9 +50,11 @@ def _render_single(scope: ExportScope, *, mode: str) -> str:
     )
 
 
-def _render_anthology(scope: ExportScope, *, mode: str) -> str:
+def _render_anthology(
+    scope: ExportScope, *, mode: str, diagram_svgs: dict[str, str] | None = None
+) -> str:
     is_print = mode == "print"
-    panels = common.doc_panels_html(scope, export_mode=mode)
+    panels = common.doc_panels_html(scope, export_mode=mode, diagram_svgs=diagram_svgs)
     toc = "" if is_print else _build_toc(scope)
     script = "" if is_print else f"<script>{ANTHOLOGY_JS}</script>"
     return ANTHOLOGY_SHELL.format(

@@ -157,9 +157,35 @@ def export_root() -> Path:
     root.mkdir(parents=True, exist_ok=True)
     return root
 
-def render_markdown(text: str) -> str:
-    """Render Markdown to HTML (preprocess + enhanced markdown-it)."""
-    return markdown_render.render_markdown(text)
+def render_markdown(text: str, *, diagram_svgs: dict[str, str] | None = None) -> str:
+    """Render Markdown to HTML (preprocess + enhanced markdown-it).
+
+    ``diagram_svgs`` (Mermaid fence body → pre-rendered SVG) lets HTML/PDF/site
+    exports embed real diagrams instead of source panels.
+    """
+    return markdown_render.render_markdown(text, diagram_svgs=diagram_svgs)
+
+
+def build_scope_diagram_svgs(scope: ExportScope) -> dict[str, str]:
+    """Render every Mermaid diagram across the scope's Markdown docs in one
+    headless-Chromium batch (one browser launch per export, not per diagram).
+
+    Returns a ``{fence_body: svg}`` map; HTML-format docs and PlantUML blocks
+    contribute nothing. Degrades to an empty map when Playwright/Chromium is
+    unavailable, so callers transparently fall back to source panels.
+    """
+    from apps.knowledge.serializers import detect_doc_format
+
+    from . import diagram_render
+
+    sources: list[str] = []
+    for doc in scope.documents:
+        if detect_doc_format(doc) == "html":
+            continue
+        sources.extend(markdown_render.collect_mermaid_sources(doc_export_body(doc)))
+    if not sources:
+        return {}
+    return diagram_render.render_mermaid_svgs(sources)
 
 
 # CSS readers are cached via ``lru_cache``: it's thread-safe (Python's GIL +
@@ -215,7 +241,11 @@ def export_anthology_stylesheet() -> str:
 
 
 def render_document_body_html(
-    doc, *, embed_media: bool = True, export_mode: str = "interactive"
+    doc,
+    *,
+    embed_media: bool = True,
+    export_mode: str = "interactive",
+    diagram_svgs: dict[str, str] | None = None,
 ) -> str:
     """Render one document body to an HTML fragment for export shells.
 
@@ -233,7 +263,7 @@ def render_document_body_html(
     md = content
     if not embed_media:
         md = rewrite_markdown_media_paths(md)
-    html = render_markdown(md)
+    html = render_markdown(md, diagram_svgs=diagram_svgs)
     html = rewrite_html_media(
         html,
         embed=embed_media,
@@ -420,7 +450,12 @@ def _doc_meta_html(doc) -> str:
     return f'<div class="post-meta">{meta}</div>'
 
 
-def doc_panels_html(scope: ExportScope, *, export_mode: str = "interactive") -> str:
+def doc_panels_html(
+    scope: ExportScope,
+    *,
+    export_mode: str = "interactive",
+    diagram_svgs: dict[str, str] | None = None,
+) -> str:
     """Render each document as a switchable ``.export-doc-panel`` section.
 
     In ``interactive`` mode all panels but the first carry ``hidden`` (the TOC
@@ -433,7 +468,9 @@ def doc_panels_html(scope: ExportScope, *, export_mode: str = "interactive") -> 
     docs_ordered = iter_tree_documents(scope.kb, scope.documents)
     for idx, doc in enumerate(docs_ordered):
         fmt = "html" if detect_doc_format(doc) == "html" else "markdown"
-        body = render_document_body_html(doc, embed_media=True, export_mode=export_mode)
+        body = render_document_body_html(
+            doc, embed_media=True, export_mode=export_mode, diagram_svgs=diagram_svgs
+        )
         hidden = " hidden" if export_mode == "interactive" and idx > 0 else ""
         if fmt == "html":
             header = ""

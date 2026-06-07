@@ -126,6 +126,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         # Fall back to raw_content if nothing has been published yet — useful for local archives.
         docs = scope.documents
 
+    diagram_svgs = common.build_scope_diagram_svgs(scope)
     nav_html = _render_nav(docs, current_id=None)
     recent_html = "".join(
         f'<li><a href="{_doc_filename(d)}">{common._escape(d.title)}</a></li>'
@@ -173,7 +174,9 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             )
             continue
 
-        body_html = common.render_document_body_html(doc, embed_media=False)
+        body_html = common.render_document_body_html(
+            doc, embed_media=False, diagram_svgs=diagram_svgs
+        )
         for asset_name, asset_data in common.collect_markdown_media(body_md):
             if asset_name not in asset_names:
                 asset_names.add(asset_name)
