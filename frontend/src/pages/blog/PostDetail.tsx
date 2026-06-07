@@ -37,6 +37,7 @@ import KbNavSidebar from '@/components/common/KbNavSidebar';
 import TocPanel from '@/components/common/TocPanel';
 import HtmlPostReader, { type HtmlReaderMeta } from '@/components/blog/HtmlPostReader';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
+import TableEnhancer from '@/components/common/TableEnhancer';
 import { paperClassName, getReaderOverride, setReaderOverride } from '@/utils/paper';
 import { resolveTagCssColor } from '@/utils/tagColor';
 import { loadArticleFont, saveArticleFont, stackFor } from '@/utils/articleFont';
@@ -783,6 +784,7 @@ export default function PostDetail() {
             />
           )}
           <CodeBlockEnhancer selector=".jz-post-article" bindKey={rendered.html} />
+          <TableEnhancer selector=".jz-post-article" bindKey={rendered.html} />
             </>
           )}
 

@@ -12,6 +12,7 @@ import { TableRow } from '@tiptap/extension-table';
 import { ColorTable } from './TableMarkdown';
 import { ColorTableCell, ColorTableHeader, CELL_BG_PRESETS } from './TableCellColor';
 import { TableInteractions, currentColIndex, currentRowIndex } from './tableInteractions';
+import { TableMaxRows } from './TableMaxRows';
 import TableOverlay from './TableOverlay';
 import { ResizableImage } from './ResizableImage';
 import { ImageUpload } from './imageUpload';
@@ -308,6 +309,7 @@ export default function RichTextEditor({
       ColorTableHeader,
       ColorTableCell,
       TableInteractions,
+      TableMaxRows,
       ResizableImage.configure({
         // Make images selectable and HTML-export friendly. The default schema
         // is already a block-level node so TextAlign can layout it.

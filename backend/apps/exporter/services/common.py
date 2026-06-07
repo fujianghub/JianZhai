@@ -299,7 +299,10 @@ pre { background: #282c34; color: #eaeaea; padding: 12px 16px; border-radius: 6p
       overflow: auto; line-height: 1.5; font-size: 0.9em; }
 pre code { background: transparent; color: inherit; padding: 0; }
 table { border-collapse: collapse; margin: 1em 0; }
-th, td { border: 1px solid #e5e5e5; padding: 6px 10px; }
+th, td { border: 1px solid #e5e5e5; padding: var(--jz-cell-pad-v, 6px) var(--jz-cell-pad-h, 10px); }
+table[data-jz-density="compact"] { --jz-cell-pad-v: 3px; --jz-cell-pad-h: 6px; }
+table[data-jz-density="normal"] { --jz-cell-pad-v: 6px; --jz-cell-pad-h: 10px; }
+table[data-jz-density="loose"] { --jz-cell-pad-v: 10px; --jz-cell-pad-h: 16px; }
 hr { border: none; border-top: 1px solid #eee; margin: 1.5em 0; }
 a { color: #1677ff; text-decoration: none; }
 a:hover { text-decoration: underline; }

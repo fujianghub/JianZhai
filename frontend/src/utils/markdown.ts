@@ -367,6 +367,8 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'type', 'checked', 'disabled', 'value',
     // mermaid + our own enhancers; data-line = editor scroll-sync anchors
     'data-lang', 'data-source', 'data-action', 'data-line',
+    // table-level styling: max display rows / density preset / custom cell padding
+    'data-jz-max-rows', 'data-jz-density', 'data-jz-pad-v', 'data-jz-pad-h',
     'aria-label', 'aria-pressed', 'aria-live',
     'role', 'contenteditable', 'hidden',
     // <details> open state; doc-card / doc-link ids; annotation tooltips
