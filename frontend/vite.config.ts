@@ -34,10 +34,29 @@ export default defineConfig(({ mode }) => {
   return {
     plugins,
     resolve: {
+      // CodeMirror 致命坑：@codemirror/lang-markdown 的 codeLanguages 指向
+      // @codemirror/language-data 全量列表，遇到代码块时**懒加载** @codemirror/lang-*。
+      // dev 下这些懒包不在初始预打包里，Vite 会就地再优化，可能给它们各自塞一份
+      // @codemirror/state/view —— 于是 instanceof 跨实例失败，构造编辑器抛
+      // "Unrecognized extension value in extension set"。dedupe 强制全图只解析到
+      // 唯一物理副本，根治"多实例"。
+      dedupe: ['@codemirror/state', '@codemirror/view'],
       alias: {
         '@': path.resolve(__dirname, 'src'),
         '@dev-guide': path.resolve(__dirname, '../docs/dev-guide'),
       },
+    },
+    optimizeDeps: {
+      // 把 CM 核心钉成共享预打包依赖：懒加载的 lang-* 会引用这一份 state/view，
+      // 而非各自内联一份（配合上面的 dedupe 双保险）。
+      include: [
+        '@codemirror/state',
+        '@codemirror/view',
+        '@codemirror/commands',
+        '@codemirror/language',
+        '@codemirror/language-data',
+        '@codemirror/lang-markdown',
+      ],
     },
     server: {
       // Dual-stack: browsers often resolve localhost → ::1; 0.0.0.0 alone skips IPv6 loopback.
