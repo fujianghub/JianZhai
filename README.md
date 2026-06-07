@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml)
 
-个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10**）。
+个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10+**，编辑器已追平语雀 · 含安全复审 / 性能优化 9 Phase / Mermaid 离线导出 SVG）。
 
 一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。支持多账号，普通用户按 `owner` 隔离数据；超级用户可跨租户管理；单一**根管理员**位于权限顶端。博客可切「全开放 / 友邻可见（需登录）」两种形态。附带**腾讯云生产部署套件**（见 [`infra/`](infra/)）。
 
@@ -15,13 +15,13 @@
 | 模块 | 说明 |
 |------|------|
 | **知识库** | KB / 文件夹嵌套、树拖拽排序、软删除回收站、封面与主题色 |
-| **编辑器** | Tiptap 3：**富文本 / Markdown / HTML** 三模式；数学、分栏、Mermaid、PlantUML、DocCard、`@` 提及、块菜单、图片工具栏等 |
+| **编辑器** | Tiptap 3 + **CodeMirror 6**（MD 源码，语雀级）：**富文本 / Markdown / HTML** 三模式；MD 源码模式浮动格式条 / 智能续列表 / 表格辅助 / **Live Preview 就地渲染** / 行级双向滚动同步；富文本表格**单元格染色 + 悬浮行列 + 冻结首行列**；数学、分栏、Mermaid、PlantUML、DocCard、`@` 提及、块菜单、图片工具栏等；完整编辑两栏铺满（正文限宽 + 大纲右栏 sticky） |
 | **HTML 博客阅读** | 发布版为完整 HTML 时，前台用 `HtmlPostReader` 原位 iframe 阅读（附件 `src` + 样式保留） |
 | **版本与协作辅助** | DocumentVersion 快照、行级/字符级 diff、回滚（每文档保留 100 个）；乐观并发 `expected_version` 防覆盖 |
 | **链接与图谱** | `@[title](doc:id)` 双向链接、反链面板、`react-force-graph-2d` 知识图谱 |
 | **搜索与标签** | PostgreSQL `tsvector` + jieba；索引 **标题 + 正文 + 标签名 + 评论**；全局 `⌘K` |
 | **评论** | 文档级 + 段落级（`block_id`） |
-| **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；Mermaid 等为静态代码块 |
+| **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG**（HTML/PDF/静态站，headless Chromium + vendored mermaid，缺失时降级源码面板）；PlantUML 仍为代码块 |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；4 套主题 + 纸张样式；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
 | **账号** | 单一**根管理员**（不可禁用/删除）+ 超管 + 员工分级；新建账号**邮箱必填**；用户自助改密码/邮箱/用户名/头像 |
@@ -166,6 +166,9 @@ cd backend && python manage.py seed_architecture_kb
 | v0.9.9 | 根管理员分级 + 新建账号邮箱必填 + 用户自助改密码/邮箱/用户名/头像；上传进度条 + 批量全选 + 可视化颜色选择器 |
 | **v0.9.10** | 题记增强：随机播放（每次开页洗牌、整轮不重复）/ 悬停暂停 / 点击切换；管理页 dnd-kit 拖拽排序 + 导出备份；「首页题记」改名「题记」 |
 | **图标体系定稿** | 三区三语言：侧栏接入设计稿 `JzIconKit`（15 枚淡染裸放 + tone 十色）；博客顶栏回归最初版浅染族；主题四枚 AntD；侧栏新增「收藏」入口；卸载 hugeicons |
+| **编辑器追平语雀** | MD 源码模式换 **CodeMirror 6**（浮动格式条/智能列表/表格辅助/行级滚动同步/`EditorSurface` 适配层）+ **Live Preview** 就地渲染；富文本表格单元格染色 + 悬浮行列 + grip 拖移 + 冻结首行列 + `.jz-table-wrap` 滚动；`convertLayoutBlocks` 根治 callout 劫持 |
+| **安全复审 + 性能 9 Phase** | 六领域安全加固（TLS/闸门/`raw_content`/AI 预算预留/iframe 去同源）；defer 大正文 + 软删索引 + 消 N+1 + AI 缓存 + 公开缓存 + 拆 chunk + 请求去重 + 编辑器防抖 + 导出流式（255+275 测试绿） |
+| **Mermaid 导出 SVG + 两栏铺满** | HTML/PDF/静态站把 Mermaid 块离线渲为内联 SVG（headless Chromium + vendored mermaid）；完整编辑两栏铺满（正文限宽 + 大纲右栏 sticky）；Mermaid 净化修复（foreignObject/dy）；图表操作条亮色灰字修复 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
