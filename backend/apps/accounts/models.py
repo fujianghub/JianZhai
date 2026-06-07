@@ -95,10 +95,18 @@ class HeroSettings(models.Model):
     def __str__(self) -> str:
         return f"题记设置 (enabled={self.enabled}, quotes={len(self.quotes or [])})"
 
+    # Public homepage rotator payload cache — invalidated on every save so an
+    # edit in /admin/hero shows up immediately (not after a TTL).
+    PUBLIC_CACHE_KEY = "hero:public:v1"
+    PUBLIC_CACHE_TTL = 300
+
     def save(self, *args, **kwargs) -> None:
         # Enforce singleton — same trick as AISettings.
         self.pk = 1
         super().save(*args, **kwargs)
+        from django.core.cache import cache
+
+        cache.delete(self.PUBLIC_CACHE_KEY)
 
     @classmethod
     def load(cls) -> "HeroSettings":

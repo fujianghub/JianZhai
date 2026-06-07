@@ -330,7 +330,18 @@ class PublicArchiveView(APIView):
 
     permission_classes = [PublicOrLoginGated]
 
+    # User-invariant (no per-user favorite context) public aggregate — cache
+    # with a short TTL so the multi-query bucket build doesn't run per request.
+    CACHE_KEY = "blog:archive:v1"
+    CACHE_TTL = 120
+
     def get(self, request):
+        from django.core.cache import cache
+
+        cached = cache.get(self.CACHE_KEY)
+        if cached is not None:
+            return Response(cached)
+
         qs = (
             _published_qs()
             .annotate(month=TruncMonth("published_at"))
@@ -349,6 +360,7 @@ class PublicArchiveView(APIView):
                 published_at__month=bucket["month"],
             )[:50]
             bucket["posts"] = PublicPostListSerializer(posts, many=True).data
+        cache.set(self.CACHE_KEY, buckets, self.CACHE_TTL)
         return Response(buckets)
 
 

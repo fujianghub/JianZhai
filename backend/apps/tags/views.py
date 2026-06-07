@@ -92,10 +92,20 @@ def folder_tags(request, folder_id: int):
     return Response(TagSerializer(tags, many=True).data)
 
 
+_TAG_CLOUD_CACHE_KEY = "public:tag_cloud:v1"
+_TAG_CLOUD_CACHE_TTL = 120
+
+
 @api_view(["GET"])
 @permission_classes([PublicOrLoginGated])
 def public_tag_cloud(request):
     """Tags with at least one published, public document on a public knowledge base."""
+    from django.core.cache import cache
+
+    cached = cache.get(_TAG_CLOUD_CACHE_KEY)
+    if cached is not None:
+        return Response(cached)
+
     qs = (
         Tag.objects.filter(_PUBLIC_TAG_DOC_Q)
         .annotate(
@@ -111,21 +121,21 @@ def public_tag_cloud(request):
         .distinct()
         .order_by("-doc_count", "name")
     )
-    return Response(
-        [
-            {
-                "id": t.id,
-                "name": t.name,
-                "slug": t.slug,
-                "color": t.color,
-                "count": t.doc_count + t.kb_count + t.folder_count,
-                "doc_count": t.doc_count,
-                "kb_count": t.kb_count,
-                "folder_count": t.folder_count,
-            }
-            for t in qs
-        ]
-    )
+    payload = [
+        {
+            "id": t.id,
+            "name": t.name,
+            "slug": t.slug,
+            "color": t.color,
+            "count": t.doc_count + t.kb_count + t.folder_count,
+            "doc_count": t.doc_count,
+            "kb_count": t.kb_count,
+            "folder_count": t.folder_count,
+        }
+        for t in qs
+    ]
+    cache.set(_TAG_CLOUD_CACHE_KEY, payload, _TAG_CLOUD_CACHE_TTL)
+    return Response(payload)
 
 
 @api_view(["GET"])
