@@ -17,6 +17,10 @@ class TagSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "slug", "document_count", "created_at"]
 
     def get_document_count(self, obj: Tag) -> int:
+        # TagViewSet annotates ``_doc_count`` to avoid a COUNT per tag row.
+        annotated = getattr(obj, "_doc_count", None)
+        if annotated is not None:
+            return annotated
         return obj.documents(manager="objects").count()
 
     def create(self, validated_data):

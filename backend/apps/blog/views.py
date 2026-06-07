@@ -145,44 +145,44 @@ class PublicKBCategoriesView(APIView):
     def get(self, request):
         from .serializers import PublicKBSerializer
 
-        categories = list(
-            KnowledgeBaseCategory.objects.filter(
-                knowledge_bases__visibility="public",
-                knowledge_bases__is_deleted=False,
-            )
-            .distinct()
-            .order_by("order", "id")
-        )
-        uncategorized = list(
-            KnowledgeBase.objects.filter(visibility="public", is_deleted=False, category__isnull=True)
+        # Fetch every public KB once (with post counts + tags + category) and
+        # group in Python, instead of one annotated query per category.
+        all_kbs = list(
+            KnowledgeBase.objects.filter(visibility="public", is_deleted=False)
+            .select_related("category")
             .prefetch_related("tags")
             .annotate(_post_count=_POST_COUNT_ANNOTATION)
             .order_by("order", "id")
         )
+        by_category: dict[int | None, list] = {}
+        for kb in all_kbs:
+            by_category.setdefault(kb.category_id, []).append(kb)
+
         groups = []
-        for cat in categories:
-            kbs = list(
-                KnowledgeBase.objects.filter(
-                    visibility="public", is_deleted=False, category=cat
-                )
-                .prefetch_related("tags")
-                .annotate(_post_count=_POST_COUNT_ANNOTATION)
+        # Categories that actually have public KBs, in their configured order.
+        seen_cat_ids = {cid for cid in by_category if cid is not None}
+        if seen_cat_ids:
+            categories = (
+                KnowledgeBaseCategory.objects.filter(id__in=seen_cat_ids)
                 .order_by("order", "id")
             )
-            if kbs:
-                groups.append(
-                    {
-                        "category": {
-                            "id": cat.id,
-                            "name": cat.name,
-                            "slug": cat.slug,
-                            "description": cat.description,
-                            "accent_color": cat.accent_color,
-                            "order": cat.order,
-                        },
-                        "knowledge_bases": PublicKBSerializer(kbs, many=True).data,
-                    }
-                )
+            for cat in categories:
+                kbs = by_category.get(cat.id, [])
+                if kbs:
+                    groups.append(
+                        {
+                            "category": {
+                                "id": cat.id,
+                                "name": cat.name,
+                                "slug": cat.slug,
+                                "description": cat.description,
+                                "accent_color": cat.accent_color,
+                                "order": cat.order,
+                            },
+                            "knowledge_bases": PublicKBSerializer(kbs, many=True).data,
+                        }
+                    )
+        uncategorized = by_category.get(None, [])
         if uncategorized:
             groups.append(
                 {

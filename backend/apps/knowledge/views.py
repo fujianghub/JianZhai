@@ -57,15 +57,19 @@ class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
     lookup_field = "pk"
 
     def get_queryset(self):
-        qs = super().get_queryset()
-        if self.action == "list":
-            qs = qs.annotate(
+        # Annotate the document count for every read action (not just list) so
+        # retrieve/update responses skip the per-object COUNT fallback too.
+        return (
+            super()
+            .get_queryset()
+            .annotate(
                 _document_count=Count(
                     "documents",
                     filter=Q(documents__is_deleted=False),
                 )
-            ).prefetch_related("tags")
-        return qs
+            )
+            .prefetch_related("tags")
+        )
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -548,24 +552,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=["get"], url_path="favorites")
     def favorites(self, request):
         """List documents the current user has favorited (scoped by KB ownership)."""
-        favs = (
-            DocumentFavorite.objects.filter(user=request.user)
-            .select_related("document", "document__knowledge_base")
-            .filter(document__is_deleted=False)
-            .order_by("-created_at")
-        )
-        doc_ids = [f.document_id for f in favs]
-        if not doc_ids:
-            return Response([])
-        allowed_ids = set(
-            scope_queryset(
-                Document.objects.filter(id__in=doc_ids, is_deleted=False),
-                request.user,
-                field="knowledge_base__owner",
-            ).values_list("id", flat=True)
-        )
-        visible = [f for f in favs if f.document_id in allowed_ids]
-        return Response(FavoriteDocumentSerializer(visible, many=True).data)
+        # Single query: the KB-ownership scope is applied via the relation path
+        # instead of fetching ids then re-filtering in a second round-trip.
+        favs = scope_queryset(
+            DocumentFavorite.objects.filter(
+                user=request.user, document__is_deleted=False
+            ),
+            request.user,
+            field="document__knowledge_base__owner",
+        ).select_related("document", "document__knowledge_base").order_by("-created_at")
+        return Response(FavoriteDocumentSerializer(favs, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="mentions")
     def mentions(self, request):

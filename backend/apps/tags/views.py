@@ -43,7 +43,11 @@ class TagViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return scope_queryset(Tag.objects.all(), self.request.user, field="owner")
+        # Annotate the live document count in one query instead of issuing a
+        # COUNT(*) per tag row inside the serializer.
+        return scope_queryset(Tag.objects.all(), self.request.user, field="owner").annotate(
+            _doc_count=Count("documents", filter=Q(documents__is_deleted=False), distinct=True)
+        )
 
 
 @api_view(["GET", "PATCH"])
