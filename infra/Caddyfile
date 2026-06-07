@@ -58,6 +58,15 @@ fujiang.jianzhai.cn {
         # that case while <img src="...svg"> rendering is unaffected.
         @svg path *.svg
         header @svg Content-Security-Policy "sandbox"
+        # uploads/ filenames are uuid-based and immutable (re-uploading
+        # produces a new name), so the browser may cache them forever —
+        # makes HTML-post fetches and inline images instant on revisit.
+        # Avatars (avatars/user_N.webp) keep a fixed name and are mutable;
+        # they get only a short cache so profile changes show up promptly.
+        @uploads path /uploads/*
+        header @uploads Cache-Control "public, max-age=31536000, immutable"
+        @avatars path /avatars/*
+        header @avatars Cache-Control "public, max-age=300"
         root * /srv-media
         file_server
     }
