@@ -5,7 +5,11 @@ import {
   CaretRightOutlined,
   CheckOutlined,
   CopyOutlined,
+  ExpandOutlined,
+  FileImageOutlined,
+  MinusOutlined,
   MoreOutlined,
+  PlusOutlined,
 } from '@ant-design/icons';
 import {
   NodeViewContent,
@@ -302,13 +306,21 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
 
         {isDiagram && (
           <>
-            <Button size="small" type="text" onClick={cycleViewMode}>
-              {diagramViewMode === 'source'
-                ? '图表'
-                : diagramViewMode === 'preview'
-                  ? '源码'
-                  : '分栏'}
-            </Button>
+            <Tooltip title="切换显示：源码 / 图表 / 分栏">
+              <Button
+                size="small"
+                type="text"
+                className="jz-diagram-viewmode-btn"
+                aria-label="切换图表显示模式"
+                onClick={cycleViewMode}
+              >
+                {diagramViewMode === 'source'
+                  ? '图表'
+                  : diagramViewMode === 'preview'
+                    ? '源码'
+                    : '分栏'}
+              </Button>
+            </Tooltip>
             {isMermaid && (
               <Select
                 size="small"
@@ -323,32 +335,53 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 disabled={!editor.isEditable}
               />
             )}
-            <Button size="small" type="text" onClick={() => adjustZoom(-1)} aria-label="缩小">
-              −
-            </Button>
-            <span className="jz-diagram-zoom-label">{Math.round(diagramZoom * 100)}%</span>
-            <Button size="small" type="text" onClick={() => adjustZoom(1)} aria-label="放大">
-              +
-            </Button>
+            <span className="jz-diagram-zoom-group">
+              <Tooltip title="缩小">
+                <Button
+                  size="small"
+                  type="text"
+                  aria-label="缩小"
+                  icon={<MinusOutlined />}
+                  onClick={() => adjustZoom(-1)}
+                />
+              </Tooltip>
+              <span className="jz-diagram-zoom-label">{Math.round(diagramZoom * 100)}%</span>
+              <Tooltip title="放大">
+                <Button
+                  size="small"
+                  type="text"
+                  aria-label="放大"
+                  icon={<PlusOutlined />}
+                  onClick={() => adjustZoom(1)}
+                />
+              </Tooltip>
+            </span>
             {previewHtml && (
-              <Button size="small" type="text" onClick={() => void copySvg()}>
-                复制 SVG
-              </Button>
+              <Tooltip title="复制 SVG">
+                <Button
+                  size="small"
+                  type="text"
+                  className="jz-diagram-icon-btn"
+                  aria-label="复制 SVG"
+                  icon={<FileImageOutlined />}
+                  onClick={() => void copySvg()}
+                />
+              </Tooltip>
             )}
             <Tooltip title="全屏查看（Esc 退出，滚轮缩放，拖拽平移）">
               <Button
                 size="small"
                 type="text"
+                className="jz-diagram-icon-btn"
                 aria-label="全屏查看图表"
                 disabled={!previewHtml}
+                icon={<ExpandOutlined />}
                 onClick={() =>
                   openDiagramFullscreenFromHtml(previewHtml, {
                     lang: isMermaid ? 'mermaid' : 'plantuml',
                   })
                 }
-              >
-                ⤢
-              </Button>
+              />
             </Tooltip>
             <span className="jz-code-toolbar-divider" aria-hidden />
           </>
