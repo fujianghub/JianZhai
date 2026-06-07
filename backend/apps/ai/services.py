@@ -29,9 +29,14 @@ ENV_DEFAULT_MAX_TOKENS = int(os.environ.get("CLAUDE_MAX_TOKENS", "1024"))
 
 
 def _settings():
-    """Read AISettings singleton lazily (avoids ORM import at module load)."""
+    """Read AISettings singleton lazily (avoids ORM import at module load).
+
+    Hot path: a single AI call queries enabled / default_model / max_tokens /
+    budget / thinking, each via this helper. Serve a short-TTL cached copy so
+    those collapse to one DB read (invalidated on AISettings.save()).
+    """
     from .models import AISettings
-    return AISettings.load()
+    return AISettings.load(use_cache=True)
 
 
 def get_default_model() -> str:
@@ -209,20 +214,29 @@ def check_daily_budget(user) -> None:
         return
     from datetime import timedelta
     from django.utils import timezone
-    from .models import AIUsageLog
-    from .pricing import estimate_cost_usd
 
     cutoff = timezone.now() - timedelta(hours=24)
-    rows = AIUsageLog.objects.filter(user=user, created_at__gte=cutoff).values(
-        "model", "input_tokens", "output_tokens"
-    )
-    spent = 0.0
-    for r in rows:
-        spent += estimate_cost_usd(r["model"], r["input_tokens"], r["output_tokens"])
+    spent = _spent_usd_since(user, cutoff)
     if spent >= budget:
         raise AIBudgetExceeded(
             f"已超过近 24 小时预算（{spent:.2f} / {budget:.2f} USD），请稍后再用或联系管理员"
         )
+
+
+def _spent_usd_since(user, cutoff) -> float:
+    """Sum a user's estimated AI spend since ``cutoff`` via a single DB SUM.
+
+    Replaces the previous pattern of pulling every usage row in the window and
+    re-estimating its cost in Python on each budget check.
+    """
+    from django.db.models import Sum
+
+    from .models import AIUsageLog
+
+    agg = AIUsageLog.objects.filter(user=user, created_at__gte=cutoff).aggregate(
+        total=Sum("estimated_usd")
+    )
+    return float(agg["total"] or 0.0)
 
 
 # In-flight budget reservations live in Redis so concurrent requests see each
@@ -288,16 +302,8 @@ def budget_reservation(user, model: str, prompt_chars: int, max_tokens: int):
 
             from django.utils import timezone
 
-            from .models import AIUsageLog
-
             cutoff = timezone.now() - timedelta(hours=24)
-            rows = AIUsageLog.objects.filter(user=user, created_at__gte=cutoff).values(
-                "model", "input_tokens", "output_tokens"
-            )
-            spent = sum(
-                estimate_cost_usd(r["model"], r["input_tokens"], r["output_tokens"])
-                for r in rows
-            )
+            spent = _spent_usd_since(user, cutoff)
             if spent + others_usd >= budget:
                 raise AIBudgetExceeded(
                     f"并发请求已占满近 24 小时预算（{spent:.2f} + 进行中 {others_usd:.2f} "
@@ -330,7 +336,11 @@ def _log_usage(
     fallback_from: str = "",
     prompt_chars: int = 0,
 ) -> None:
-    """Record a single AI call. Lazy-imported so service module stays lean."""
+    """Record a single AI call. Lazy-imported so service module stays lean.
+
+    ``estimated_usd`` is computed intrinsically in ``AIUsageLog.save()`` so it
+    is populated regardless of creation path.
+    """
     try:
         from .models import AIUsageLog
         AIUsageLog.objects.create(
