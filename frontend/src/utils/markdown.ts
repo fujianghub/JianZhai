@@ -200,6 +200,13 @@ function katexPlugin(mdInst: MarkdownIt): void {
 const tableMd = new MarkdownIt({ html: true, linkify: false, breaks: false });
 tableMd.use(mdMultimdTable, { multiline: true, rowspan: true, headerless: false });
 
+/** Pipe tables normally reach ``md`` pre-rendered by ``convertGfmPipeTables``,
+ * but GFM tables written without outer pipes are parsed natively by ``md`` —
+ * wrap those in the same scroll container the preprocess path emits, so wide
+ * tables scroll horizontally instead of being clipped. */
+md.renderer.rules.table_open = () => '<div class="jz-table-wrap">\n<table>\n';
+md.renderer.rules.table_close = () => '</table>\n</div>\n';
+
 /**
  * markdown-it normally wraps a fenced block in ``<pre><code class="…">…</code></pre>``
  * even when ``options.highlight`` returns custom HTML, unless that HTML
@@ -718,7 +725,11 @@ export function convertGfmPipeTables(src: string): string {
         i++;
       }
       if (tableLines.length >= 2 && isGfmTableSeparator(tableLines[1]!)) {
-        out.push(tableMd.render(tableLines.join('\n')).trim());
+        // Wrap in a scroll container so wide tables get horizontal scroll in
+        // the reader instead of being clipped (see .jz-table-wrap in
+        // markdown.css). Kept on one chunk with no blank lines so markdown-it
+        // treats the whole thing as a single html_block.
+        out.push(`<div class="jz-table-wrap">\n${tableMd.render(tableLines.join('\n')).trim()}\n</div>`);
       } else {
         out.push(...tableLines);
       }

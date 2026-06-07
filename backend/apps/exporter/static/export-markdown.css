@@ -55,6 +55,18 @@
   color: #b94a3b;
 }
 
+/* Scroll wrapper emitted by markdown_render — wide tables scroll instead of
+   being clipped. Cells break long words so print/PDF (no scrollbars) keeps
+   every column on the page. */
+.jz-markdown.export-markdown .jz-table-wrap {
+  overflow-x: auto;
+  margin: 1em 0;
+}
+
+.jz-markdown.export-markdown .jz-table-wrap > table {
+  margin: 0;
+}
+
 .jz-markdown.export-markdown table {
   border-collapse: collapse;
   margin: 1em 0;
@@ -65,6 +77,7 @@
 .jz-markdown.export-markdown td {
   border: 1px solid #e5e5e5;
   padding: 6px 10px;
+  word-break: break-word;
 }
 
 .jz-markdown.export-markdown th {

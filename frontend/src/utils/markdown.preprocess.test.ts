@@ -41,6 +41,23 @@ describe('preprocessMarkdown', () => {
     expect(out).toContain('a');
   });
 
+  it('wraps converted pipe tables in a .jz-table-wrap scroll container', () => {
+    const src = '| h1 | h2 |\n| --- | --- |\n| a | b |';
+    const out = convertGfmPipeTables(src);
+    const wrapAt = out.indexOf('<div class="jz-table-wrap">');
+    expect(wrapAt).toBeGreaterThanOrEqual(0);
+    expect(wrapAt).toBeLessThan(out.indexOf('<table'));
+    expect(out.trimEnd().endsWith('</div>')).toBe(true);
+    // single html_block chunk: no blank line may split the wrapper from the table
+    expect(out).not.toMatch(/jz-table-wrap">\n\s*\n/);
+  });
+
+  it('renderMarkdown keeps the table scroll wrapper through sanitize', () => {
+    const html = renderMarkdown('| h1 | h2 |\n| --- | --- |\n| a | b |');
+    expect(html).toContain('jz-table-wrap');
+    expect(html).toContain('<table');
+  });
+
   it('unglues container fences after images', () => {
     const src = '![](https://example.com/foo.png):::info\nBody\n:::';
     const out = preprocessMarkdown(src);
