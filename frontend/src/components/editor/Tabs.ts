@@ -37,7 +37,16 @@ export const TabPanel = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-jz-tab-panel]' }];
+    return [
+      {
+        tag: 'div[data-jz-tab-panel]',
+        // Skip the non-editable label element when parsing the panel back —
+        // without contentElement the label text was duplicated into the body
+        // on every reload (the label itself lives in the data-label attr).
+        contentElement: (el: HTMLElement) =>
+          (el.querySelector(':scope > .jz-tab-panel-body') as HTMLElement | null) ?? el,
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes, node }) {

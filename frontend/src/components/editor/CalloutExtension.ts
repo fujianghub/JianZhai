@@ -115,7 +115,14 @@ export const CalloutExtension = Node.create({
           setup(md: { use: (...args: unknown[]) => unknown }) {
             md.use(mdContainer, 'callout', {
               validate(params: string) {
-                return /^([a-zA-Z][\w-]*)(\s+.*)?$/.test(params.trim());
+                const t = params.trim();
+                // Structural layout containers are converted to HTML during
+                // ``preprocessMarkdown`` (convertLayoutBlocks) and must never
+                // be swallowed by this catch-all — a hijacked ``:::details``
+                // loses its summary, ``:::cols-N`` collapses its columns and
+                // ``:::tabs`` flattens its labels.
+                if (/^(details|tabs|cols-\d+)\b/.test(t)) return false;
+                return /^([a-zA-Z][\w-]*)(\s+.*)?$/.test(t);
               },
               render(tokens: ContainerToken[], idx: number) {
                 const t = tokens[idx];

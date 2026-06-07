@@ -103,13 +103,22 @@ export const ResizableImage = Image.extend({
       ...(this.parent?.() ?? {}),
       markdown: {
         serialize(state: MdState, node: MdNode) {
-          const { src, alt, title, width, height, caption, rotation, imageStyle } = node.attrs;
+          const { src, alt, title, width, height, caption, rotation, imageStyle, textAlign } =
+            node.attrs;
           const rot = ((Number(rotation) || 0) % 360 + 360) % 360;
           const sty = (imageStyle || '').trim();
-          if (width || height || caption || rot || sty) {
+          // TextAlign registers a ``textAlign`` attr on the image node; it was
+          // missing from this destructure, so centred/right-aligned images
+          // silently snapped back to the left on every markdown round-trip.
+          const align = String(textAlign || '').trim();
+          const hasAlign = !!align && align !== 'left';
+          if (width || height || caption || rot || sty || hasAlign) {
             const esc = (v: unknown) =>
               String(v).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
-            let html = `<figure>`;
+            // Style goes on BOTH elements: the <figure> makes the alignment
+            // visible on the reader side; the <img> is what ``parseHTML``
+            // matches, so TextAlign reads it back from there on reload.
+            let html = hasAlign ? `<figure style="text-align: ${esc(align)};">` : `<figure>`;
             html += `<img src="${esc(src)}"`;
             if (alt) html += ` alt="${esc(alt)}"`;
             if (title) html += ` title="${esc(title)}"`;
@@ -117,7 +126,13 @@ export const ResizableImage = Image.extend({
             if (height) html += ` height="${height}"`;
             if (caption) html += ` data-caption="${esc(caption)}"`;
             if (sty) html += ` data-image-style="${esc(sty)}" class="jz-image-style-${esc(sty)}"`;
-            if (rot) html += ` data-rotation="${rot}" style="transform: rotate(${rot}deg);"`;
+            {
+              const styles: string[] = [];
+              if (rot) styles.push(`transform: rotate(${rot}deg)`);
+              if (hasAlign) styles.push(`text-align: ${align}`);
+              if (rot) html += ` data-rotation="${rot}"`;
+              if (styles.length) html += ` style="${esc(styles.join('; '))};"`;
+            }
             html += ' />';
             if (caption) html += `<figcaption>${esc(caption)}</figcaption>`;
             html += `</figure>`;
@@ -154,5 +169,7 @@ interface MdNode {
     caption?: string | null;
     rotation?: number | null;
     imageStyle?: string | null;
+    /** Registered by the TextAlign extension (types include 'image'). */
+    textAlign?: string | null;
   };
 }

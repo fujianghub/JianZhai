@@ -315,6 +315,9 @@ export default function MarkdownEditor({
         return;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
+        // IME guard: 中文输入法选词的确认回车 (isComposing / keyCode 229)
+        // 不是菜单选择 — 劫持它会把命令片段插进正在组字的文本。
+        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
         const item = slashDisplayItems[slashSelectedIndex];
         if (item && !item.richTextOnly) {
           e.preventDefault();

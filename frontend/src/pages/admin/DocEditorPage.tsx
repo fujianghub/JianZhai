@@ -437,6 +437,26 @@ export default function DocEditorPage({
 
   async function changeEditorMode(next: EditorMode) {
     if (next === mode) return;
+    // HTML 文档切入富文本/Markdown 会被 tiptap-markdown 重新解析——脚本、
+    // 样式、复杂布局被不可逆地压扁，5 秒后自动保存把残骸写回 raw_content。
+    // 必须先经用户确认（版本历史是唯一回头路）。
+    if (doc?.doc_format === 'html' && mode === 'html' && next !== 'html') {
+      const ok = await new Promise<boolean>((resolve) => {
+        Modal.confirm({
+          title: '切换可能损坏 HTML 文档',
+          content:
+            '这是一篇 HTML 文档。转入富文本 / Markdown 编辑会重新解析内容，' +
+            '不被编辑器支持的标签、样式和脚本将被丢弃，且编辑后自动保存会覆盖原文' +
+            '（仅能从版本历史回滚）。确定继续？',
+          okText: '仍要切换',
+          okButtonProps: { danger: true },
+          cancelText: '取消',
+          onOk: () => resolve(true),
+          onCancel: () => resolve(false),
+        });
+      });
+      if (!ok) return;
+    }
     await flushPendingEdits();
     setMode(next);
     setModeTouched(true);
@@ -909,7 +929,10 @@ export default function DocEditorPage({
         documentId={doc.id}
         onRestored={async () => {
           const fresh = await docsApi.getDocument(doc.id);
-          setDoc(fresh);
+          // 走与 409 冲突同一条「强制重同步」路径：blur + bump
+          // forceSyncRevision + setDoc。以前只 setDoc，编辑器画面还是旧文，
+          // 下一次 autosave 直接把旧文写回去，静默覆盖刚刚回滚的结果。
+          applyVersionConflict(fresh);
         }}
       />
       <ExportDialog

@@ -68,14 +68,20 @@
 }
 
 .jz-markdown.export-markdown table {
-  border-collapse: collapse;
+  /* separate (not collapse): collapsed borders detach from sticky cells in
+     the frozen-pane rules below. Single-side borders keep the 1px grid. */
+  border-collapse: separate;
+  border-spacing: 0;
   margin: 1em 0;
   width: 100%;
+  border-top: 1px solid #e5e5e5;
+  border-left: 1px solid #e5e5e5;
 }
 
 .jz-markdown.export-markdown th,
 .jz-markdown.export-markdown td {
-  border: 1px solid #e5e5e5;
+  border-right: 1px solid #e5e5e5;
+  border-bottom: 1px solid #e5e5e5;
   padding: 6px 10px;
   word-break: break-word;
 }
@@ -83,6 +89,32 @@
 .jz-markdown.export-markdown th {
   background: #fafafa;
   font-weight: 600;
+}
+
+/* 冻结首行 / 首列 — only meaningful in the interactive HTML export (the
+   .jz-table-wrap scrolls horizontally; the page itself scrolls vertically).
+   Print/PDF lays tables out in full, where sticky simply never engages.
+   Backgrounds are opaque so pinned cells cover columns sliding underneath. */
+.jz-markdown.export-markdown thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.jz-markdown.export-markdown th:first-child,
+.jz-markdown.export-markdown td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  background: #ffffff;
+}
+
+.jz-markdown.export-markdown th:first-child {
+  background: #fafafa;
+}
+
+.jz-markdown.export-markdown thead th:first-child {
+  z-index: 3;
 }
 
 .jz-markdown.export-markdown img {
