@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useThemeStore } from '@/stores/theme';
 import { renderMermaid } from '@/utils/mermaid';
 import { sanitizeHtml } from '@/utils/markdown';
 import { fetchPlantumlSvg } from '@/utils/plantuml';
@@ -16,6 +17,14 @@ import { openDiagramFullscreen as openDiagramFullscreenOverlay } from '@/utils/d
  * Hook that wires up the per-code-block toolbar rendered by renderCodeBlock.
  */
 export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown) {
+  // Subscribing to the theme mode makes the whole effect re-run on a live
+  // theme switch, which re-hydrates every Mermaid canvas with the new
+  // palette (mermaid bakes colours into each SVG at render time — there is
+  // no CSS-variable path to recolour an existing diagram). PlantUML SVGs are
+  // theme-independent and skip the round-trip via the data-rendered-for
+  // guard in hydratePlantuml.
+  const themeMode = useThemeStore((s) => s.mode);
+  const accentKey = useThemeStore((s) => s.accent.key);
   useEffect(() => {
     const root = document.querySelector(containerSelector);
     if (!root) return;
@@ -108,8 +117,12 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
     return () => {
       for (const c of cleanups) c();
     };
-  }, [containerSelector, bindKey]);
+  }, [containerSelector, bindKey, themeMode, accentKey]);
 }
+
+/** Monotonic token so overlapping hydrations (e.g. two rapid theme switches)
+ *  can't interleave: only the latest call per canvas is allowed to write. */
+let hydrateSeq = 0;
 
 async function hydrateMermaid(block: HTMLElement) {
   const canvas = block.querySelector<HTMLElement>('.jz-mermaid-canvas');
@@ -122,13 +135,17 @@ async function hydrateMermaid(block: HTMLElement) {
     canvas.innerHTML = '<div class="jz-mermaid-error">无法解析图表源码</div>';
     return;
   }
+  const token = String(++hydrateSeq);
+  canvas.dataset.hydrateToken = token;
   try {
     const svg = await renderMermaid(source);
+    if (canvas.dataset.hydrateToken !== token) return; // superseded by a newer call
     // Mermaid's securityLevel:'strict' already sanitizes, but that guarantee
     // lives in a config far from this injection point — re-sanitize here so a
     // future config change can't silently reopen an innerHTML XSS.
     canvas.innerHTML = sanitizeHtml(svg);
   } catch (err) {
+    if (canvas.dataset.hydrateToken !== token) return;
     const msg = (err as Error)?.message ?? '渲染失败';
     canvas.innerHTML =
       '<div class="jz-mermaid-error">Mermaid 渲染失败：<br/><code>' +
@@ -141,6 +158,10 @@ async function hydratePlantuml(block: HTMLElement) {
   const canvas = block.querySelector<HTMLElement>('.jz-mermaid-canvas');
   if (!canvas) return;
   const b64 = block.dataset.source ?? '';
+  // PlantUML output is theme-independent; when the enhancer re-runs because
+  // of a theme switch, skip the server round-trip if this exact source is
+  // already on the canvas.
+  if (canvas.dataset.renderedFor === b64 && canvas.querySelector('svg')) return;
   let source = '';
   try {
     source = decodeBase64UTF8(b64);
@@ -154,6 +175,7 @@ async function hydratePlantuml(block: HTMLElement) {
     // VITE_PLANTUML_BASE_URL override) is ever compromised, raw innerHTML
     // would execute its scripts in our origin. Sanitize before injecting.
     canvas.innerHTML = sanitizeHtml(svg);
+    canvas.dataset.renderedFor = b64;
   } catch (err) {
     const msg = (err as Error)?.message ?? '渲染失败';
     canvas.innerHTML =
