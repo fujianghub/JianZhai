@@ -578,7 +578,6 @@ export default function MarkdownEditor({
           gridTemplateColumns:
             layoutMode === 'split' ? 'minmax(280px, 1fr) minmax(0, 1fr)' : '1fr',
           gap: 12,
-          flex: 1,
           minHeight: 0,
         }}
       >

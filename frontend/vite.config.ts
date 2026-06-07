@@ -7,7 +7,10 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  const apiBase = env.VITE_API_BASE_URL ?? 'http://localhost:8002/api/v1';
+  // JZ_API_PROXY_TARGET：仅改 dev 代理上游、不暴露给客户端（非 VITE_ 前缀）。
+  // 用于并行验证实例把 /api 指到第二个后端，客户端仍走同源相对路径。
+  const apiBase =
+    env.JZ_API_PROXY_TARGET ?? env.VITE_API_BASE_URL ?? 'http://localhost:8002/api/v1';
   const apiOrigin = new URL(apiBase).origin;
   // Opt-in HTTPS for LAN access: Chrome treats LAN-IP HTTP origins as
   // insecure context and pops the "this file may have been tampered with"
