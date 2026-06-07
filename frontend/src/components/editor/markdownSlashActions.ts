@@ -6,8 +6,41 @@ import {
   getSlashCommands,
 } from './slashCommandRegistry';
 
+/**
+ * richTextOnly 命令中，渲染管道（convertLayoutBlocks / markdown-it-footnote /
+ * convertBlockPlaceholders）已支持等价源码语法的覆盖集合 —— MD 模式直接插
+ * 源码，不再提示「请切换到富文本」。
+ */
+const MD_OVERRIDE_INSERTS: Record<string, string> = {
+  'columns-2': '\n:::cols-2\n左栏内容\n::col\n右栏内容\n:::\n\n',
+  'columns-3': '\n:::cols-3\n第一栏\n::col\n第二栏\n::col\n第三栏\n:::\n\n',
+  tabs: '\n:::tabs\n::tab 标签一\n内容一\n::tab 标签二\n内容二\n:::\n\n',
+  footnote: '正文[^1]\n\n[^1]: 脚注内容\n',
+};
+
+/** 在 MD 模式经特殊交互（弹选择器/Modal）完成、而非纯文本插入的命令。 */
+const MD_INTERACTIVE_IDS = new Set(['mention', 'doc-card', 'math-block', 'math-inline']);
+
+/** MD 模式可用（直接插入或有专属交互），用于菜单置灰与回车选择判定。 */
+export function isMarkdownCapable(item: SlashCommandItem): boolean {
+  if (MD_INTERACTIVE_IDS.has(item.id)) return true;
+  if (item.id in MD_OVERRIDE_INSERTS) return true;
+  return !item.richTextOnly && getMarkdownInsertForCommand(item) !== null;
+}
+
+/** 命令是否走 MD 专属交互（返回交互类型，否则 null）。 */
+export function markdownInteractiveKind(
+  item: SlashCommandItem,
+): 'mention' | 'doc-card' | 'math-block' | 'math-inline' | null {
+  return MD_INTERACTIVE_IDS.has(item.id)
+    ? (item.id as 'mention' | 'doc-card' | 'math-block' | 'math-inline')
+    : null;
+}
+
 /** Markdown snippet inserted when a slash command is chosen (replaces `/query`). */
 export function getMarkdownInsertForCommand(item: SlashCommandItem): string | null {
+  const override = MD_OVERRIDE_INSERTS[item.id];
+  if (override !== undefined) return override;
   if (item.richTextOnly) return null;
 
   switch (item.id) {
@@ -71,12 +104,6 @@ export function getMarkdownInsertForCommand(item: SlashCommandItem): string | nu
       return ':::color1\n\n:::\n';
     case 'details':
       return ':::details 摘要\n\n内容\n:::\n';
-    case 'columns-2':
-      return '<!-- 双栏布局请切换到富文本编辑器 -->\n\n';
-    case 'columns-3':
-      return '<!-- 三栏布局请切换到富文本编辑器 -->\n\n';
-    case 'tabs':
-      return '<!-- 标签页请切换到富文本编辑器 -->\n\n';
     case 'toc':
       return '[TOC]\n\n';
     case 'math-block':

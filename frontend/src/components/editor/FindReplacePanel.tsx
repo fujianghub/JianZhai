@@ -8,14 +8,15 @@ import {
 } from '@ant-design/icons';
 import type { Editor } from '@tiptap/core';
 import { findReplaceKey, getFindState } from './findReplace';
+import type { EditorSurfaceHandle } from './surface/EditorSurface';
 
 interface Props {
   open: boolean;
   onClose: () => void;
   /** Tiptap mode — when present, all operations go through editor commands. */
   editor?: Editor | null;
-  /** Markdown/HTML 模式：仅做 textarea 内 indexOf 选区高亮。 */
-  textarea?: HTMLTextAreaElement | null;
+  /** Markdown(CM)/HTML(textarea) 模式：统一经 EditorSurface 做选区高亮与滚动。 */
+  surface?: EditorSurfaceHandle | null;
   /** Markdown 模式：替换需要改 value 并通过这个回调上报 */
   source?: string;
   onSourceChange?: (next: string) => void;
@@ -24,7 +25,7 @@ interface Props {
 /**
  * 浮动查找/替换面板。两种数据后端：
  *   - Tiptap：走 `findReplace` 扩展，匹配位 Decoration 高亮。
- *   - Textarea：原生 ``setSelectionRange`` 跳转 + JS 字符串替换。
+ *   - EditorSurface（CM / textarea）：选区跳转 + JS 字符串替换。
  *
  * 触发：Ctrl/⌘+F 打开；ESC 关闭。
  */
@@ -32,7 +33,7 @@ export default function FindReplacePanel({
   open,
   onClose,
   editor,
-  textarea,
+  surface,
   source,
   onSourceChange,
 }: Props) {
@@ -78,25 +79,20 @@ export default function FindReplacePanel({
     if (!open) return;
     if (editor) {
       editor.chain().findInDoc(query, { caseSensitive }).run();
-    } else if (textarea && source !== undefined) {
+    } else if (surface && source !== undefined) {
       setTaMatches(computeTaMatches(source, query, caseSensitive));
     }
-  }, [query, caseSensitive, open, editor, textarea, source]);
+  }, [query, caseSensitive, open, editor, surface, source]);
 
-  // textarea 模式：当前匹配位变化时滚到对应位置
+  // surface 模式：当前匹配位变化时选中并滚到对应位置
   useEffect(() => {
-    if (editor || !textarea) return;
+    if (editor || !surface) return;
     const { matches, current } = taMatches;
-    if (current < 0 || !matches[current]) return;
+    if (current < 0 || matches[current] === undefined) return;
     const pos = matches[current];
-    textarea.focus();
-    textarea.setSelectionRange(pos, pos + query.length);
-    const before = (source ?? '').slice(0, pos);
-    const lineIndex = before.split('\n').length - 1;
-    const style = getComputedStyle(textarea);
-    const lh = parseFloat(style.lineHeight || '20') || 20;
-    textarea.scrollTop = Math.max(0, lineIndex * lh - textarea.clientHeight / 4);
-  }, [taMatches, query, textarea, editor, source]);
+    surface.setSelection(pos, pos + query.length);
+    surface.scrollToPos(pos);
+  }, [taMatches, query, surface, editor, source]);
 
   const handleFindNext = useCallback(() => {
     if (editor) {
@@ -169,7 +165,7 @@ export default function FindReplacePanel({
         const m = s.matches[s.current];
         editor.chain().setTextSelection(m.from).scrollIntoView().run();
       }
-    } else if (textarea && source !== undefined && onSourceChange) {
+    } else if (surface && source !== undefined && onSourceChange) {
       const { matches, current } = taMatches;
       if (current < 0 || !matches[current]) return;
       const pos = matches[current];
@@ -190,7 +186,7 @@ export default function FindReplacePanel({
   function handleReplaceAll() {
     if (editor) {
       editor.chain().replaceAllInDoc(replaceWith).run();
-    } else if (textarea && source !== undefined && onSourceChange) {
+    } else if (surface && source !== undefined && onSourceChange) {
       if (!query) return;
       const re = new RegExp(escapeRegex(query), caseSensitive ? 'g' : 'gi');
       const next = source.replace(re, replaceWith);

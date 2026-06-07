@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import type { SlashCommandItem } from './slashCommandRegistry';
 import { formatSlashDescription, getRecentSlashTitles } from './slashCommandRegistry';
-import { filterMarkdownSlashCommands } from './markdownSlashActions';
+import { filterMarkdownSlashCommands, isMarkdownCapable } from './markdownSlashActions';
 import { insertIconToneClass } from './toolbar/insertIconTone';
 
 interface Props {
@@ -62,12 +62,12 @@ export default function MarkdownSlashMenu({
             className={
               'slash-menu-item' +
               (idx === selectedIndex ? ' is-active' : '') +
-              (item.richTextOnly ? ' is-rich-only' : '')
+              (isMarkdownCapable(item) ? '' : ' is-rich-only')
             }
             onMouseEnter={() => onHoverIndex(idx)}
             onMouseDown={(e) => {
               e.preventDefault();
-              if (!item.richTextOnly) onSelect(item);
+              if (isMarkdownCapable(item)) onSelect(item);
             }}
           >
             <span
@@ -80,7 +80,7 @@ export default function MarkdownSlashMenu({
               <span className="slash-menu-item-title">{item.title}</span>
               <span className="slash-menu-item-desc">
                 {formatSlashDescription(item)}
-                {item.richTextOnly ? ' · 仅富文本' : ''}
+                {isMarkdownCapable(item) ? '' : ' · 仅富文本'}
               </span>
             </span>
           </button>

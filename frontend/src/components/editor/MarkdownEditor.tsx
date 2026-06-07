@@ -1,31 +1,64 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Input, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Segmented, Tag, Tooltip, Typography } from 'antd';
 import {
   BgColorsOutlined,
+  BoldOutlined,
+  CodeOutlined,
   CommentOutlined,
+  ItalicOutlined,
+  OrderedListOutlined,
+  QuestionCircleOutlined,
   SaveOutlined,
+  StrikethroughOutlined,
   UnderlineOutlined,
+  UnorderedListOutlined,
 } from '@ant-design/icons';
+import type { EditorView } from '@codemirror/view';
 import MarkdownQuickInsertButton from './toolbar/MarkdownQuickInsertButton';
-import { renderMarkdown, wordCount } from '@/utils/markdown';
+import { renderMarkdownForEditor, wordCount } from '@/utils/markdown';
 import MentionPicker from './MentionPicker';
-import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
+import LivePreviewPane from './LivePreviewPane';
+import CodeMirrorMarkdown from './codemirror/CodeMirrorMarkdown';
+import FloatingFormatToolbar, { type FloatCommand } from './codemirror/FloatingFormatToolbar';
+import MathEditorModal from './MathEditorModal';
+import ShortcutCheatSheet from './ShortcutCheatSheet';
+import { listKeymap } from './codemirror/extensions/listKeymap';
+import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
+import { tableAssistKeymap } from './codemirror/extensions/tableAssist';
+import {
+  addColumnAfter,
+  addRowAfter,
+  cellIndexAt,
+  deleteColumn,
+  deleteRow,
+  findTableRange,
+  formatTable,
+} from './codemirror/pure/tableFormat';
+import {
+  clearInlineFormat,
+  makeLink,
+  toggleLinePrefix,
+  toggleWrap,
+  type EditInstruction,
+} from './codemirror/pure/inlineFormat';
+import { getLineMap } from './codemirror/pure/lineMap';
+import { syncEditorToPreview, syncPreviewToEditor } from './codemirror/scrollSync';
+import type { EditorSurfaceHandle } from './surface/EditorSurface';
 import { CALLOUT_TEMPLATES, TEXT_COLOR_PRESETS } from './callouts';
 import type { MentionSuggestion } from '@/api/linking';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
-import { paperClassName } from '@/utils/paper';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 import MarkdownSlashMenu, { useMarkdownSlashDisplayItems } from './MarkdownSlashMenu';
 import {
-  applyMarkdownSlashCommand,
   findSlashTrigger,
   getMarkdownInsertForCommand,
+  isMarkdownCapable,
+  markdownInteractiveKind,
 } from './markdownSlashActions';
 import { trackRecentSlashCommand } from './slashCommandRegistry';
 import type { SlashCommandItem } from './slashCommandRegistry';
 
-const { TextArea } = Input;
 const { Text } = Typography;
 
 interface Props {
@@ -37,19 +70,22 @@ interface Props {
   readOnly?: boolean;
   /** Document this editor is editing — used to attach pasted images. */
   documentId?: number;
-  /** Lift the textarea element up so the outline panel can scroll/seek it. */
-  onTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  /** Lift the editor surface up so the outline / find-replace can seek it. */
+  onSurfaceReady?: (handle: EditorSurfaceHandle | null) => void;
   /** Paper-style preset key applied to the preview pane. */
   paperStyle?: string;
   /** Register saveNow for parent flush-before-publish / mode switch. */
   onSaveReady?: (handle: EditorSaveHandle | null) => void;
-  /** When true, hide internal preview/split controls (page-level LivePreviewPane). */
-  hideInternalPreview?: boolean;
 }
 
 type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 type MdLayoutMode = 'split' | 'edit' | 'preview';
 const MD_LAYOUT_KEY = 'jz-md-layout';
+
+/** 模块级常量 — CM 扩展只在挂载时装配一次。表格优先于列表（同在 Tab/Enter 上）。 */
+const CM_EXTRA_EXTENSIONS = [tableAssistKeymap, listKeymap, inlineFormatKeymap];
+
+const CALLOUT_LAST_KEY = 'jz-callout-last';
 
 export default function MarkdownEditor({
   value,
@@ -58,10 +94,9 @@ export default function MarkdownEditor({
   autosaveMs = 5000,
   readOnly = false,
   documentId,
-  onTextareaReady,
+  onSurfaceReady,
   paperStyle,
   onSaveReady,
-  hideInternalPreview = false,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
   const [layoutMode, setLayoutMode] = useState<MdLayoutMode>(() => {
@@ -81,6 +116,26 @@ export default function MarkdownEditor({
     }
   }, [layoutMode]);
   const [mentionOpen, setMentionOpen] = useState(false);
+  /** @ 选择器的插入形态：普通提及链接 or 文档卡片。 */
+  const mentionKindRef = useRef<'mention' | 'doc-card'>('mention');
+  /** 数学可视化 Modal：打开时记录待替换范围与块级/行内形态。 */
+  const [mathModal, setMathModal] = useState<{
+    open: boolean;
+    displayMode: boolean;
+    range: { from: number; to: number };
+  }>({ open: false, displayMode: true, range: { from: 0, to: 0 } });
+  const [cheatOpen, setCheatOpen] = useState(false);
+  /** callout 记住上次颜色（语雀同款）。 */
+  const [lastCallout, setLastCallout] = useState<string>(() => {
+    try {
+      return localStorage.getItem(CALLOUT_LAST_KEY) || 'tips';
+    } catch {
+      return 'tips';
+    }
+  });
+  /** 选区浮动格式条锚点（视口坐标）。 */
+  const [floatAnchor, setFloatAnchor] = useState<{ left: number; top: number } | null>(null);
+  const floatTimerRef = useRef<number | null>(null);
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashAnchor, setSlashAnchor] = useState<DOMRect | null>(null);
@@ -89,8 +144,9 @@ export default function MarkdownEditor({
   const slashDisplayItems = useMarkdownSlashDisplayItems(slashQuery);
   /** Cursor offset captured when @ trigger or button fired; insertion replaces text from here. */
   const triggerRangeRef = useRef<{ from: number; to: number } | null>(null);
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const previewRef = useRef<HTMLDivElement | null>(null);
+  const surfaceRef = useRef<EditorSurfaceHandle | null>(null);
+  const viewRef = useRef<EditorView | null>(null);
+  const previewElRef = useRef<HTMLDivElement | null>(null);
   const syncScrollLockRef = useRef(false);
   const lastSavedRef = useRef(value);
   /** Last value emitted via local onChange — used to tell server echoes from
@@ -183,7 +239,7 @@ export default function MarkdownEditor({
   }, [onAutoSave, value, status]);
 
   // Ctrl/⌘+S — manual save. Bound to the document so it fires even when the
-  // textarea isn't focused (e.g. the user clicked into the preview pane).
+  // editor isn't focused (e.g. the user clicked into the preview pane).
   useEffect(() => {
     if (readOnly || !onAutoSave) return;
     const onKey = (e: KeyboardEvent) => {
@@ -222,297 +278,432 @@ export default function MarkdownEditor({
     };
   }, []);
 
-  // Debounce the preview render so each keystroke doesn't reparse Markdown
-  // + run DOMPurify on long documents (10k+ chars chokes on every char).
+  useEffect(() => {
+    return () => {
+      if (floatTimerRef.current) window.clearTimeout(floatTimerRef.current);
+    };
+  }, []);
+
+  const count = useMemo(() => wordCount(value), [value]);
+
+  // Debounced source for the line-map (matches LivePreviewPane's own 200ms
+  // debounce so the preview HTML and the map describe the same snapshot).
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedValue(value), 200);
     return () => window.clearTimeout(t);
   }, [value]);
-  const html = useMemo(() => renderMarkdown(debouncedValue), [debouncedValue]);
-  const count = useMemo(() => wordCount(value), [value]);
+  const lineMap = useMemo(() => {
+    // renderMarkdownForEditor is LRU-cached — LivePreviewPane renders the
+    // same debounced source, so this is an O(1) cache hit, not a re-render.
+    const { preprocessed } = renderMarkdownForEditor(debouncedValue);
+    return getLineMap(debouncedValue, preprocessed);
+  }, [debouncedValue]);
+  const lineMapRef = useRef(lineMap);
+  useEffect(() => {
+    lineMapRef.current = lineMap;
+  }, [lineMap]);
 
-  function openMentionAtCursor() {
-    const ta = textareaRef.current;
-    const pos = ta?.selectionStart ?? value.length;
-    triggerRangeRef.current = { from: pos, to: pos };
-    setMentionOpen(true);
-  }
+  /* ----------------------------- 斜杠菜单 ----------------------------- */
 
-  function updateSlashMenuFromCursor(ta: HTMLTextAreaElement, source: string) {
-    const cursor = ta.selectionStart ?? 0;
-    const trig = findSlashTrigger(source, cursor);
-    if (trig) {
-      slashTriggerRef.current = { from: trig.from, to: trig.to };
-      setSlashQuery(trig.query);
-      setSlashOpen(true);
-      setSlashSelectedIndex(0);
-      const rect = ta.getBoundingClientRect();
-      setSlashAnchor(new DOMRect(rect.left + 12, rect.top + 28, 280, 0));
-    } else {
-      setSlashOpen(false);
-      slashTriggerRef.current = null;
+  const updateSlashFromView = useCallback(
+    (view: EditorView) => {
+      if (readOnly) return;
+      const cursor = view.state.selection.main.head;
+      const source = view.state.doc.toString();
+      const trig = findSlashTrigger(source, cursor);
+      if (trig) {
+        slashTriggerRef.current = { from: trig.from, to: trig.to };
+        setSlashQuery(trig.query);
+        setSlashOpen(true);
+        setSlashSelectedIndex(0);
+        const c = view.coordsAtPos(cursor);
+        if (c) setSlashAnchor(new DOMRect(c.left, c.bottom + 4, 280, 0));
+      } else {
+        setSlashOpen(false);
+        slashTriggerRef.current = null;
+      }
+    },
+    [readOnly],
+  );
+
+  /** MD 专属交互命令（@提及 / 文档卡 / 数学 Modal），range = 待替换区间。 */
+  function runInteractive(
+    kind: 'mention' | 'doc-card' | 'math-block' | 'math-inline',
+    range: { from: number; to: number },
+  ) {
+    if (kind === 'mention' || kind === 'doc-card') {
+      mentionKindRef.current = kind;
+      triggerRangeRef.current = range;
+      setMentionOpen(true);
+      return;
     }
+    setMathModal({ open: true, displayMode: kind === 'math-block', range });
   }
 
   function selectSlashItem(item: SlashCommandItem) {
-    if (item.richTextOnly || !slashTriggerRef.current) return;
-    const next = applyMarkdownSlashCommand(
-      value,
-      slashTriggerRef.current.from,
-      slashTriggerRef.current.to,
-      item,
-    );
-    if (next !== null) {
-      trackRecentSlashCommand(item.title);
-      onChange(next);
-    }
+    const surface = surfaceRef.current;
+    const trigger = slashTriggerRef.current;
+    if (!isMarkdownCapable(item) || !trigger || !surface) return;
     setSlashOpen(false);
     slashTriggerRef.current = null;
+    trackRecentSlashCommand(item.title);
+    const interactive = markdownInteractiveKind(item);
+    if (interactive) {
+      // 先吃掉 /query 触发文本，再弹交互层
+      surface.insertAt(trigger.from, trigger.to, '');
+      runInteractive(interactive, { from: trigger.from, to: trigger.from });
+      return;
+    }
+    const insert = getMarkdownInsertForCommand(item);
+    if (insert !== null) {
+      surface.insertAt(trigger.from, trigger.to, insert);
+    }
   }
 
   function insertFromQuickMenu(item: SlashCommandItem) {
     if (readOnly) return;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    const interactive = markdownInteractiveKind(item);
+    if (interactive) {
+      trackRecentSlashCommand(item.title);
+      const { from } = surface.getSelection();
+      runInteractive(interactive, { from, to: from });
+      return;
+    }
     const insert = getMarkdownInsertForCommand(item);
     if (insert === null) {
-      if (item.id === 'mention') {
-        openMentionAtCursor();
-        return;
-      }
       message.info('该块请切换到富文本编辑器');
       return;
     }
-    const ta = textareaRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? start;
-    const next = value.slice(0, start) + insert + value.slice(end);
+    const { from, to } = surface.getSelection();
     trackRecentSlashCommand(item.title);
-    onChange(next);
-    const caret = start + insert.length;
-    queueMicrotask(() => {
-      if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(caret, caret);
-    });
+    surface.insertAt(from, to, insert);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (slashOpen && slashDisplayItems.length > 0) {
-      const n = slashDisplayItems.length;
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        setSlashOpen(false);
-        return;
-      }
-      if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        setSlashSelectedIndex((i) => (i + 1) % n);
-        return;
-      }
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        setSlashSelectedIndex((i) => (i + n - 1) % n);
-        return;
-      }
-      if (e.key === 'Enter' || e.key === 'Tab') {
-        // IME guard: 中文输入法选词的确认回车 (isComposing / keyCode 229)
-        // 不是菜单选择 — 劫持它会把命令片段插进正在组字的文本。
-        if (e.nativeEvent.isComposing || e.keyCode === 229) return;
-        const item = slashDisplayItems[slashSelectedIndex];
-        if (item && !item.richTextOnly) {
-          e.preventDefault();
-          selectSlashItem(item);
+  /** 数学 Modal 确认：按形态写入 $$..$$ / $..$。 */
+  function handleMathSubmit(latex: string) {
+    const surface = surfaceRef.current;
+    const { displayMode, range } = mathModal;
+    setMathModal((m) => ({ ...m, open: false }));
+    if (!surface || !latex.trim()) return;
+    const insert = displayMode ? `$$\n${latex.trim()}\n$$\n` : `$${latex.trim()}$`;
+    surface.insertAt(range.from, range.to, insert);
+  }
+
+  /* --------------------------- 键盘路由（CM keydown） --------------------------- */
+
+  // Latest-state refs for the CM keydown handler (registered once inside CM).
+  // IME 守卫（isComposing / keyCode 229）在 CodeMirrorMarkdown 的
+  // domEventHandlers 层统一拦截，组字期间本路由不会被调用。
+  const slashStateRef = useRef({ open: slashOpen, items: slashDisplayItems, index: slashSelectedIndex });
+  slashStateRef.current = { open: slashOpen, items: slashDisplayItems, index: slashSelectedIndex };
+
+  const handleCmKeyDown = useCallback(
+    (e: KeyboardEvent, view: EditorView): boolean => {
+      if (readOnly) return false;
+      const slash = slashStateRef.current;
+      if (slash.open && slash.items.length > 0) {
+        const n = slash.items.length;
+        if (e.key === 'Escape') {
+          setSlashOpen(false);
+          return true;
         }
-        return;
+        if (e.key === 'ArrowDown') {
+          setSlashSelectedIndex((i) => (i + 1) % n);
+          return true;
+        }
+        if (e.key === 'ArrowUp') {
+          setSlashSelectedIndex((i) => (i + n - 1) % n);
+          return true;
+        }
+        if (e.key === 'Enter' || e.key === 'Tab') {
+          const item = slash.items[slash.index];
+          if (item && isMarkdownCapable(item)) {
+            selectSlashItem(item);
+            return true;
+          }
+          return false;
+        }
       }
-    }
 
-    // Open mention picker on standalone "@" keystroke and consume the keystroke.
-    if (e.key === '@' && !e.metaKey && !e.ctrlKey && !e.altKey) {
-      e.preventDefault();
-      const ta = e.currentTarget;
-      const pos = ta.selectionStart;
-      triggerRangeRef.current = { from: pos, to: pos };
-      setMentionOpen(true);
-      return;
-    }
-    // Ctrl/⌘+U — wrap selection with <u>…</u>. The browser's default for
-    // Ctrl+U inside a textarea is a noop, so we don't need to preventDefault
-    // for compat, but doing so suppresses Firefox's "view source" shortcut
-    // for completeness.
-    if (
-      (e.metaKey || e.ctrlKey) &&
-      !e.shiftKey &&
-      !e.altKey &&
-      (e.key === 'u' || e.key === 'U')
-    ) {
-      e.preventDefault();
-      wrapSelection('<u>', '</u>');
-    }
-  }
+      // "@" — 打开提及选择器，但不吞键：字面 @ 先落入文档，选中文档时
+      // 连同 @ 一起替换；取消则保留字面 @（邮箱 / @media 等场景的转义出口）。
+      if (e.key === '@' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        const pos = view.state.selection.main.head;
+        triggerRangeRef.current = { from: pos, to: pos + 1 };
+        window.setTimeout(() => setMentionOpen(true), 0);
+        return false;
+      }
+      // Ctrl/⌘+U — wrap selection with <u>…</u>.
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'u' || e.key === 'U')) {
+        surfaceRef.current?.wrapSelection('<u>', '</u>');
+        return true;
+      }
+      // Ctrl/⌘+/ — 快捷键速查
+      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
+        setCheatOpen(true);
+        return true;
+      }
+      return false;
+    },
+    // selectSlashItem reads refs/surface — safe to omit; readOnly is the only real dep
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [readOnly],
+  );
+
+  /* ----------------------------- 图片上传 ----------------------------- */
 
   /** Escape characters that would break the Markdown image syntax `![…](…)`. */
   function escapeMdAlt(s: string): string {
     return s.replace(/[\\[\]\n)]/g, (c) => (c === '\n' ? ' ' : '\\' + c));
   }
 
-  /** Upload multiple files in order, building one big insertion. Re-reads live
-   *  textarea content before each insertion so concurrent typing is preserved. */
+  /** Upload multiple files in order, inserting each as it completes. All
+   *  writes go through surface.insertAt → CM dispatch → onChange, so undo
+   *  history and the save chain stay consistent with typing. */
   async function uploadAndInsertSequential(files: File[]) {
-    const ta = textareaRef.current;
-    let start = ta?.selectionStart ?? lastLocalRef.current.length;
-    let end = ta?.selectionEnd ?? start;
-    let caret = end;
-    let any = false;
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    let { from: start, to: end } = surface.getSelection();
     for (const file of files) {
-      const base = ta?.value ?? lastLocalRef.current;
-      start = Math.min(start, base.length);
-      end = Math.min(end, base.length);
       try {
         const att = await uploadFile(file, documentId);
-        const next = ta?.value ?? lastLocalRef.current;
-        const prevCharNeedsNl = start > 0 && next[start - 1] !== '\n';
+        const base = surface.getValue();
+        start = Math.min(start, base.length);
+        end = Math.min(end, base.length);
+        const prevCharNeedsNl = start > 0 && base[start - 1] !== '\n';
         const altText = escapeMdAlt(att.original_filename || file.name);
-        const insertion =
-          (prevCharNeedsNl ? '\n' : '') + `![${altText}](${att.url})\n`;
-        const merged = next.slice(0, start) + insertion + next.slice(end);
-        lastLocalRef.current = merged;
+        const insertion = (prevCharNeedsNl ? '\n' : '') + `![${altText}](${att.url})\n`;
+        surface.insertAt(start, end, insertion);
         start += insertion.length;
         end = start;
-        caret = start;
-        any = true;
       } catch (err) {
         message.error(err instanceof Error ? err.message : '图片上传失败');
       }
     }
-    if (any) {
-      onChange(lastLocalRef.current);
-      queueMicrotask(() => {
-        if (ta) {
-          ta.focus();
-          ta.setSelectionRange(caret, caret);
-        }
-      });
-    }
-  }
-
-  /** Clipboard paste handler — intercept image-bearing paste and upload. */
-  async function handlePaste(e: React.ClipboardEvent<HTMLTextAreaElement>) {
-    if (readOnly) return;
-    const items = Array.from(e.clipboardData?.items ?? []);
-    const images = items
-      .filter((i) => i.kind === 'file' && i.type.startsWith('image/'))
-      .map((i) => i.getAsFile())
-      .filter((f): f is File => !!f);
-    if (images.length === 0) return;
-    e.preventDefault();
-    await uploadAndInsertSequential(images);
-  }
-
-  /** Drop handler — same as paste but for dragged files. */
-  async function handleDrop(e: React.DragEvent<HTMLTextAreaElement>) {
-    if (readOnly) return;
-    const files = Array.from(e.dataTransfer?.files ?? []).filter((f) =>
-      f.type.startsWith('image/'),
-    );
-    if (files.length === 0) return;
-    e.preventDefault();
-    await uploadAndInsertSequential(files);
-  }
-
-  /** Without an explicit dragover preventDefault, browsers refuse the drop —
-   *  the file is forwarded to the OS / new tab instead of our handler. */
-  function handleDragOver(e: React.DragEvent<HTMLTextAreaElement>) {
-    if (readOnly) return;
-    const items = Array.from(e.dataTransfer?.items ?? []);
-    if (items.some((i) => i.kind === 'file')) e.preventDefault();
   }
 
   function handleMentionSelect(s: MentionSuggestion) {
+    const surface = surfaceRef.current;
     const range = triggerRangeRef.current ?? { from: value.length, to: value.length };
-    const insertion = `@[${s.title}](doc:${s.id})`;
-    const next = value.slice(0, range.from) + insertion + value.slice(range.to);
-    onChange(next);
+    const insertion =
+      mentionKindRef.current === 'doc-card'
+        ? `\n[[doc-card:${s.id}]]\n`
+        : `@[${s.title}](doc:${s.id})`;
+    surface?.insertAt(range.from, range.to, insertion);
     setMentionOpen(false);
-    // Restore cursor after the inserted mention
-    const newPos = range.from + insertion.length;
-    queueMicrotask(() => {
-      const ta = textareaRef.current;
-      if (ta) {
-        ta.focus();
-        ta.setSelectionRange(newPos, newPos);
-      }
-    });
+    mentionKindRef.current = 'mention';
   }
 
   /** Wrap the current selection (or insert a placeholder) with an inline HTML
-   * snippet. Used by the colour / underline / horizontal-rule buttons. */
+   * snippet. Used by the colour / underline buttons. */
   function wrapSelection(before: string, after: string, placeholder = '内容') {
     if (readOnly) return;
-    const ta = textareaRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? value.length;
-    const selected = value.slice(start, end) || placeholder;
-    const insertion = before + selected + after;
-    const next = value.slice(0, start) + insertion + value.slice(end);
-    onChange(next);
-    const cursorStart = start + before.length;
-    const cursorEnd = cursorStart + selected.length;
-    queueMicrotask(() => {
-      if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(cursorStart, cursorEnd);
+    surfaceRef.current?.wrapSelection(before, after, placeholder);
+  }
+
+  /* --------------------------- 格式命令（工具栏 + 浮动条共用） --------------------------- */
+
+  function applyEdit(ins: EditInstruction) {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      changes: { from: ins.from, to: ins.to, insert: ins.insert },
+      selection: { anchor: ins.selFrom, head: ins.selTo },
+      scrollIntoView: true,
+      userEvent: 'input.format',
     });
+    view.focus();
+  }
+
+  function runFormat(cmd: FloatCommand) {
+    const view = viewRef.current;
+    if (!view || readOnly) return;
+    const sel = view.state.selection.main;
+    const doc = view.state.doc.toString();
+    switch (cmd) {
+      case 'bold':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '**', '加粗文本'));
+        break;
+      case 'italic':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '*', '斜体文本'));
+        break;
+      case 'strike':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '~~', '删除线'));
+        break;
+      case 'code':
+        applyEdit(toggleWrap(doc, sel.from, sel.to, '`', '代码'));
+        break;
+      case 'underline':
+        wrapSelection('<u>', '</u>');
+        break;
+      case 'link':
+        applyEdit(makeLink(doc, sel.from, sel.to));
+        break;
+      case 'clear':
+        applyEdit(clearInlineFormat(doc, sel.from, sel.to));
+        break;
+    }
+    // 不主动收起浮动条：操作后选区仍在（语雀同款），可连续叠加格式
+  }
+
+  /** 行级命令：标题 / 列表 / 引用，作用于选区覆盖的整行。 */
+  function runLineCommand(
+    cmd: 'heading-1' | 'heading-2' | 'heading-3' | 'bullet' | 'ordered' | 'quote',
+  ) {
+    const view = viewRef.current;
+    if (!view || readOnly) return;
+    const sel = view.state.selection.main;
+    const fromLine = view.state.doc.lineAt(sel.from);
+    const toLine = view.state.doc.lineAt(sel.to);
+    const block = view.state.sliceDoc(fromLine.from, toLine.to);
+    const next = toggleLinePrefix(block, cmd);
+    view.dispatch({
+      changes: { from: fromLine.from, to: toLine.to, insert: next },
+      scrollIntoView: true,
+      userEvent: 'input.format',
+    });
+    view.focus();
   }
 
   /** Insert a fenced ``:::${slug}`` block at the current cursor; if there's a
    * non-empty selection, wrap it instead of replacing with placeholder text. */
   function insertCallout(slug: string) {
     if (readOnly) return;
-    const ta = textareaRef.current;
-    const start = ta?.selectionStart ?? value.length;
-    const end = ta?.selectionEnd ?? value.length;
-    const selected = value.slice(start, end);
-    const body = selected.trim() || '在此输入内容…';
+    const surface = surfaceRef.current;
+    if (!surface) return;
+    // 记住上次颜色（语雀同款）：下次直接点主按钮即用
+    setLastCallout(slug);
+    try {
+      localStorage.setItem(CALLOUT_LAST_KEY, slug);
+    } catch {
+      /* noop */
+    }
+    const base = surface.getValue();
+    const { from: start, to: end } = surface.getSelection();
     // Make sure we're on a fresh line — Yuque-style callouts don't behave
     // well when squashed inline with prose.
-    const prevCharNeedsNl = start > 0 && value[start - 1] !== '\n';
-    const nextCharNeedsNl = end < value.length && value[end] !== '\n';
+    const prevCharNeedsNl = start > 0 && base[start - 1] !== '\n';
+    const nextCharNeedsNl = end < base.length && base[end] !== '\n';
     const head = (prevCharNeedsNl ? '\n' : '') + `:::${slug}\n`;
     const tail = `\n:::` + (nextCharNeedsNl ? '\n' : '');
-    const insertion = head + body + tail;
-    const next = value.slice(0, start) + insertion + value.slice(end);
-    onChange(next);
-    // Drop the cursor inside the block so the user can start typing right away.
-    const cursorAt = start + head.length + body.length;
-    queueMicrotask(() => {
-      if (!ta) return;
-      ta.focus();
-      ta.setSelectionRange(start + head.length, cursorAt);
+    surface.wrapSelection(head, tail, '在此输入内容…');
+  }
+
+  /* ----------------------------- 表格命令 ----------------------------- */
+
+  function runTableCommand(kind: 'format' | 'row' | 'col' | 'del-row' | 'del-col') {
+    const view = viewRef.current;
+    if (!view || readOnly) return;
+    const sel = view.state.selection.main;
+    const cursorLine = view.state.doc.lineAt(sel.head);
+    const allLines = view.state.doc.toString().split('\n');
+    const range = findTableRange(allLines, cursorLine.number - 1);
+    if (!range) {
+      message.info('请把光标放在表格内');
+      return;
+    }
+    const startLine = view.state.doc.line(range.start + 1);
+    const endLine = view.state.doc.line(range.end + 1);
+    const block = view.state.sliceDoc(startLine.from, endLine.to);
+    const rowIdx = cursorLine.number - 1 - range.start;
+    const colIdx = cellIndexAt(cursorLine.text, sel.head - cursorLine.from) ?? 0;
+    let next: string | null = null;
+    switch (kind) {
+      case 'format':
+        next = formatTable(block);
+        break;
+      case 'row':
+        next = addRowAfter(block, rowIdx);
+        break;
+      case 'col':
+        next = addColumnAfter(block, colIdx);
+        break;
+      case 'del-row':
+        next = deleteRow(block, rowIdx);
+        if (next === null) message.info('表头与分隔行不可删（或表格只剩一行）');
+        break;
+      case 'del-col':
+        next = deleteColumn(block, colIdx);
+        if (next === null) message.info('表格只剩一列，不可再删');
+        break;
+    }
+    if (next === null || next === block) return;
+    view.dispatch({
+      changes: { from: startLine.from, to: endLine.to, insert: next },
+      scrollIntoView: true,
+      userEvent: 'input.format',
     });
+    view.focus();
   }
 
-  function onTextareaScroll(e: React.UIEvent<HTMLTextAreaElement>) {
+  /* ----------------------------- 行级滚动同步 ----------------------------- */
+
+  const handleCmScroll = useCallback((view: EditorView) => {
+    setFloatAnchor(null); // 视口坐标随滚动失效，先收起
     if (syncScrollLockRef.current) return;
-    const ta = e.currentTarget;
-    const preview = previewRef.current;
+    const preview = previewElRef.current;
     if (!preview) return;
-    const ratio = ta.scrollTop / Math.max(1, ta.scrollHeight - ta.clientHeight);
     syncScrollLockRef.current = true;
-    preview.scrollTop = ratio * (preview.scrollHeight - preview.clientHeight);
-    requestAnimationFrame(() => { syncScrollLockRef.current = false; });
-  }
+    syncEditorToPreview(view, preview, lineMapRef.current);
+    requestAnimationFrame(() => {
+      syncScrollLockRef.current = false;
+    });
+  }, []);
 
-  function onPreviewScroll(e: React.UIEvent<HTMLDivElement>) {
+  const handlePreviewScroll = useCallback((el: HTMLDivElement) => {
     if (syncScrollLockRef.current) return;
-    const preview = e.currentTarget;
-    const ta = textareaRef.current;
-    if (!ta) return;
-    const ratio = preview.scrollTop / Math.max(1, preview.scrollHeight - preview.clientHeight);
+    const view = viewRef.current;
+    if (!view) return;
     syncScrollLockRef.current = true;
-    ta.scrollTop = ratio * (ta.scrollHeight - ta.clientHeight);
-    requestAnimationFrame(() => { syncScrollLockRef.current = false; });
-  }
+    syncPreviewToEditor(el, view, lineMapRef.current);
+    requestAnimationFrame(() => {
+      syncScrollLockRef.current = false;
+    });
+  }, []);
+
+  const handlePreviewContainerReady = useCallback((el: HTMLDivElement | null) => {
+    previewElRef.current = el;
+  }, []);
+
+  const handleSurfaceReady = useCallback(
+    (handle: EditorSurfaceHandle | null) => {
+      surfaceRef.current = handle;
+      onSurfaceReady?.(handle);
+    },
+    [onSurfaceReady],
+  );
+
+  const handleViewReady = useCallback((view: EditorView | null) => {
+    viewRef.current = view;
+  }, []);
+
+  const handleCmUpdate = useCallback(
+    (info: { docChanged: boolean; selectionSet: boolean; view: EditorView }) => {
+      updateSlashFromView(info.view);
+      // 选区浮动格式条：选区稳定 200ms 后在选区起点上方弹出
+      const sel = info.view.state.selection.main;
+      if (floatTimerRef.current) {
+        window.clearTimeout(floatTimerRef.current);
+        floatTimerRef.current = null;
+      }
+      if (sel.empty || readOnly) {
+        setFloatAnchor(null);
+        return;
+      }
+      floatTimerRef.current = window.setTimeout(() => {
+        const view = viewRef.current;
+        if (!view) return;
+        const s = view.state.selection.main;
+        if (s.empty) return;
+        const c = view.coordsAtPos(Math.min(s.from, s.to));
+        if (c) setFloatAnchor({ left: c.left, top: c.top });
+      }, 200);
+    },
+    [updateSlashFromView, readOnly],
+  );
 
   const statusLabel: Record<SaveStatus, { text: string; color?: string }> = {
     idle: { text: '已同步' },
@@ -552,14 +743,89 @@ export default function MarkdownEditor({
         <div className="jz-editor-toolbar-main">
         <MarkdownQuickInsertButton onInsert={insertFromQuickMenu} disabled={readOnly} />
         <span className="jz-editor-toolbar-divider" aria-hidden />
+        <Dropdown
+          disabled={readOnly}
+          menu={{
+            items: [
+              { key: 'heading-1', label: 'H1 一级标题', onClick: () => runLineCommand('heading-1') },
+              { key: 'heading-2', label: 'H2 二级标题', onClick: () => runLineCommand('heading-2') },
+              { key: 'heading-3', label: 'H3 三级标题', onClick: () => runLineCommand('heading-3') },
+              { type: 'divider' as const },
+              { key: 'quote', label: '> 引用', onClick: () => runLineCommand('quote') },
+            ],
+          }}
+        >
+          <Tooltip title="标题 / 引用">
+            <Button size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
+              H ▾
+            </Button>
+          </Tooltip>
+        </Dropdown>
+        <Tooltip title="加粗 (Ctrl+B)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<BoldOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('bold')}
+          />
+        </Tooltip>
+        <Tooltip title="斜体 (Ctrl+I)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<ItalicOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('italic')}
+          />
+        </Tooltip>
+        <Tooltip title="删除线 (Ctrl+Shift+X)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<StrikethroughOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('strike')}
+          />
+        </Tooltip>
+        <Tooltip title="行内代码 (Ctrl+E)">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<CodeOutlined />}
+            disabled={readOnly}
+            onClick={() => runFormat('code')}
+          />
+        </Tooltip>
         <Tooltip title="下划线 (Ctrl+U)">
           <Button
             size="small"
+            className="jz-toolbar-icon-btn"
             icon={<UnderlineOutlined />}
             disabled={readOnly}
             onClick={() => wrapSelection('<u>', '</u>')}
           />
         </Tooltip>
+        <span className="jz-editor-toolbar-divider" aria-hidden />
+        <Tooltip title="无序列表">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<UnorderedListOutlined />}
+            disabled={readOnly}
+            onClick={() => runLineCommand('bullet')}
+          />
+        </Tooltip>
+        <Tooltip title="有序列表">
+          <Button
+            size="small"
+            className="jz-toolbar-icon-btn"
+            icon={<OrderedListOutlined />}
+            disabled={readOnly}
+            onClick={() => runLineCommand('ordered')}
+          />
+        </Tooltip>
+        <span className="jz-editor-toolbar-divider" aria-hidden />
         <Dropdown
           disabled={readOnly}
           menu={{
@@ -588,14 +854,21 @@ export default function MarkdownEditor({
             <Button size="small" icon={<BgColorsOutlined />} disabled={readOnly} />
           </Tooltip>
         </Dropdown>
-        <Dropdown
+        <Dropdown.Button
+          size="small"
           disabled={readOnly}
+          className="jz-callout-dropdown-btn"
+          onClick={() => insertCallout(lastCallout)}
           menu={{
+            selectedKeys: [lastCallout],
             items: CALLOUT_TEMPLATES.map((t) => ({
               key: t.slug,
               label: (
                 <span>
-                  <span style={{ display: 'inline-block', minWidth: 90 }}>{t.label}</span>
+                  <span style={{ display: 'inline-block', minWidth: 90 }}>
+                    {t.label}
+                    {t.slug === lastCallout ? ' ✓' : ''}
+                  </span>
                   <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
                     {t.hint}
                   </Typography.Text>
@@ -605,90 +878,86 @@ export default function MarkdownEditor({
             })),
           }}
         >
-          <Tooltip title="插入色块 (callout)">
-            <Button size="small" icon={<CommentOutlined />} disabled={readOnly}>
-              色块 ▾
+          <Tooltip
+            title={`插入色块（上次：${CALLOUT_TEMPLATES.find((t) => t.slug === lastCallout)?.label ?? lastCallout}）`}
+          >
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+              <CommentOutlined /> 色块
+            </span>
+          </Tooltip>
+        </Dropdown.Button>
+        <Dropdown
+          disabled={readOnly}
+          menu={{
+            items: [
+              { key: 'format', label: '一键对齐格式化', onClick: () => runTableCommand('format') },
+              { type: 'divider' as const },
+              { key: 'row', label: '下方插入行', onClick: () => runTableCommand('row') },
+              { key: 'col', label: '右侧插入列', onClick: () => runTableCommand('col') },
+              { type: 'divider' as const },
+              { key: 'del-row', label: '删除当前行', danger: true, onClick: () => runTableCommand('del-row') },
+              { key: 'del-col', label: '删除当前列', danger: true, onClick: () => runTableCommand('del-col') },
+            ],
+          }}
+        >
+          <Tooltip title="表格操作（光标需在表格内；Tab 跳格 / 回车加行）">
+            <Button size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
+              表格 ▾
             </Button>
           </Tooltip>
         </Dropdown>
-        {!hideInternalPreview && (
-          <Segmented
+        <span style={{ marginLeft: 'auto' }} />
+        <Segmented
+          size="small"
+          value={layoutMode}
+          onChange={(v) => setLayoutMode(v as MdLayoutMode)}
+          options={[
+            { label: '编辑', value: 'edit' },
+            { label: '预览', value: 'preview' },
+            { label: '并排', value: 'split' },
+          ]}
+        />
+        <Tooltip title="键盘快捷键 (Ctrl+/)">
+          <Button
             size="small"
-            value={layoutMode}
-            onChange={(v) => setLayoutMode(v as MdLayoutMode)}
-            options={[
-              { label: '编辑', value: 'edit' },
-              { label: '预览', value: 'preview' },
-              { label: '并排', value: 'split' },
-            ]}
+            className="jz-toolbar-icon-btn"
+            icon={<QuestionCircleOutlined />}
+            onClick={() => setCheatOpen(true)}
           />
-        )}
+        </Tooltip>
         </div>
       </div>
-      <div
-        className="jz-md-editor-split jz-editor-content-area"
-        style={{
-          display: 'grid',
-          gridTemplateColumns:
-            hideInternalPreview || layoutMode === 'edit'
-              ? '1fr'
-              : layoutMode === 'preview'
-                ? '1fr'
-                : 'minmax(220px, 30%) minmax(0, 70%)',
-          gap: 12,
-          flex: 1,
-          minHeight: 0,
-        }}
-      >
-        {(hideInternalPreview || layoutMode !== 'preview') && (
-        <TextArea
-          ref={(el) => {
-            const ta = el?.resizableTextArea?.textArea ?? null;
-            textareaRef.current = ta;
-            onTextareaReady?.(ta);
-          }}
-          value={value}
-          onChange={(e) => {
-            const next = e.target.value;
-            onChange(next);
-            if (!readOnly) updateSlashMenuFromCursor(e.target, next);
-          }}
-          onKeyDown={handleKeyDown}
-          onClick={(e) => updateSlashMenuFromCursor(e.currentTarget, value)}
-          onPaste={handlePaste}
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-          onScroll={hideInternalPreview ? undefined : onTextareaScroll}
-          readOnly={readOnly}
-          autoSize={false}
-          style={{
-            height: '100%',
-            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-            fontSize: 14,
-            resize: 'none',
-          }}
-          placeholder="使用 Markdown 书写；键入 @ 引用其他文档"
-        />
-        )}
-        {!hideInternalPreview && layoutMode !== 'edit' && (
-        <div
-          ref={previewRef}
-          className={`markdown-preview jz-md-editor-preview paper ${paperClassName(paperStyle)}`}
-          style={{
-            overflow: 'auto',
-            padding: '24px 28px',
-            border: '1px solid var(--glass-border, var(--jz-border))',
-            borderRadius: 10,
-            minHeight: layoutMode === 'preview' ? 'min(72vh, 900px)' : 0,
-          }}
-          onScroll={onPreviewScroll}
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-        )}
-        {!hideInternalPreview && (
-          <CodeBlockEnhancer selector=".jz-md-editor-preview" bindKey={html} />
+      <div className={`jz-md-editor-split jz-editor-content-area is-${layoutMode}`}>
+        <div style={{ display: layoutMode === 'preview' ? 'none' : 'block', minHeight: 0, minWidth: 0 }}>
+          <CodeMirrorMarkdown
+            value={value}
+            onChange={onChange}
+            readOnly={readOnly}
+            placeholder="使用 Markdown 书写；键入 / 唤起插入菜单，@ 引用其他文档"
+            onUpdate={handleCmUpdate}
+            onScroll={layoutMode === 'split' ? handleCmScroll : undefined}
+            onKeyDown={handleCmKeyDown}
+            onPasteFiles={readOnly ? undefined : (files) => void uploadAndInsertSequential(files)}
+            onDropFiles={readOnly ? undefined : (files) => void uploadAndInsertSequential(files)}
+            onSurfaceReady={handleSurfaceReady}
+            onViewReady={handleViewReady}
+            extraExtensions={CM_EXTRA_EXTENSIONS}
+          />
+        </div>
+        {layoutMode !== 'edit' && (
+          <LivePreviewPane
+            source={value}
+            kind="markdown"
+            paperStyle={paperStyle}
+            showToc={layoutMode === 'preview'}
+            sourceMap
+            className="jz-md-editor-preview"
+            onScrollContainerReady={handlePreviewContainerReady}
+            onScroll={layoutMode === 'split' ? handlePreviewScroll : undefined}
+          />
         )}
       </div>
+      <FloatingFormatToolbar anchor={readOnly ? null : floatAnchor} onCommand={runFormat} />
       <MentionPicker
         open={mentionOpen}
         onCancel={() => setMentionOpen(false)}
@@ -702,6 +971,14 @@ export default function MarkdownEditor({
         onSelect={selectSlashItem}
         onHoverIndex={setSlashSelectedIndex}
       />
+      <MathEditorModal
+        open={mathModal.open}
+        initial=""
+        displayMode={mathModal.displayMode}
+        onCancel={() => setMathModal((m) => ({ ...m, open: false }))}
+        onSubmit={handleMathSubmit}
+      />
+      <ShortcutCheatSheet open={cheatOpen} onClose={() => setCheatOpen(false)} />
     </div>
   );
 }

@@ -3,7 +3,7 @@ import { Input } from 'antd';
 import { SearchOutlined } from '@ant-design/icons';
 import type { SlashCommandItem } from '../slashCommandRegistry';
 import { trackRecentSlashCommand } from '../slashCommandRegistry';
-import { getMarkdownInsertForCommand } from '../markdownSlashActions';
+import { isMarkdownCapable } from '../markdownSlashActions';
 import {
   filterInsertMenu,
   insertMenuDisplayTitle,
@@ -19,8 +19,7 @@ interface Props {
 }
 
 function itemAvailableInMarkdown(item: SlashCommandItem): boolean {
-  if (getMarkdownInsertForCommand(item) !== null) return true;
-  return !item.richTextOnly;
+  return isMarkdownCapable(item);
 }
 
 export default function MarkdownQuickInsertMenu({ onInsert, onClose }: Props) {

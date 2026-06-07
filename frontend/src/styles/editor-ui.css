@@ -1185,3 +1185,98 @@
      stays right-aligned within its own flex line. */
   margin-left: auto;
 }
+
+/* ------------------------------------------------------------------ *
+ *  CodeMirror 6 宿主（MD 源码模式内核）
+ * ------------------------------------------------------------------ */
+.jz-cm-host {
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.jz-cm-host .cm-editor {
+  flex: 1;
+  min-height: 0;
+}
+/* MD 并排模式的预览列：限高滚动（LivePreviewPane 自带 overflow:auto） */
+.jz-md-editor-split .jz-doc-preview-col {
+  min-height: 0;
+}
+/* 编辑/并排区显式视口高度：CM 的 height:100% 需要确定高度才能形成
+   内部滚动条（textarea 有固有高度、CM 没有——不定高时会按内容生长，
+   把整页撑长，行级滚动同步与大纲定位都失效）。 */
+.jz-md-editor-root .jz-md-editor-split {
+  /* flex-basis 0% (来自上方 flex:1) 在 column flex 中压过 height —— 这里
+     退出弹性拉伸、固定显式高度，CM 与预览才有内部滚动条。 */
+  flex: 0 0 auto;
+  height: max(480px, calc(100vh - 340px));
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+.jz-md-editor-root .jz-md-editor-split.is-split {
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 1fr);
+}
+/* 窄屏：并排回退为上下两栏（编辑在上、预览在下），不再左右挤压 */
+@media (max-width: 900px) {
+  .jz-md-editor-root .jz-md-editor-split.is-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(220px, 46%) minmax(0, 1fr);
+  }
+}
+
+/* ── MD 选区浮动格式条（语雀式就近编辑） ── */
+.jz-md-float-toolbar {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  background: var(--jz-surface-2, #fff);
+  border: 1px solid var(--jz-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.14);
+  backdrop-filter: blur(10px);
+  animation: jz-float-toolbar-in 0.12s ease-out;
+}
+@keyframes jz-float-toolbar-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+.jz-md-float-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--jz-text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.jz-md-float-btn:hover {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-accent);
+}
+[data-theme='dark'] .jz-md-float-toolbar,
+[data-theme='starry'] .jz-md-float-toolbar,
+[data-theme='deepsea'] .jz-md-float-toolbar {
+  background: color-mix(in srgb, var(--jz-bg-app) 78%, #232a38);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+}
+
+/* ── 顶栏视图工具组：模式切换/大纲/专注收进次级胶囊，与发布主操作分层 ── */
+.jz-doc-mode-group {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--jz-surface-2) 75%, transparent);
+  border: 1px solid var(--jz-divider);
+}

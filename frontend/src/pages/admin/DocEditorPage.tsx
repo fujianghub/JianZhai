@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import {
   Alert,
@@ -71,6 +71,10 @@ import {
 import { PAPER_STYLES } from '@/utils/paper';
 import type { DocFormat, DocumentDetail, KnowledgeBase, Visibility } from '@/types';
 import type { EditorSaveHandle } from '@/components/editor/editorSaveLifecycle';
+import {
+  textareaSurface,
+  type EditorSurfaceHandle,
+} from '@/components/editor/surface/EditorSurface';
 
 type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf';
 type ContentSource = 'raw' | 'published';
@@ -206,10 +210,20 @@ export default function DocEditorPage({
   }, []);
 
   const [richEditor, setRichEditor] = useState<TiptapEditor | null>(null);
-  const [mdTextarea, setMdTextarea] = useState<HTMLTextAreaElement | null>(null);
+  const [mdSurface, setMdSurface] = useState<EditorSurfaceHandle | null>(null);
   const [htmlTextarea, setHtmlTextarea] = useState<HTMLTextAreaElement | null>(null);
   const [findOpen, setFindOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+
+  // HTML 模式的 textarea 包成 EditorSurface，与 MD(CM) 走同一套 seek / 查找接口
+  const editorBodyRef = useRef('');
+  useEffect(() => {
+    editorBodyRef.current = localEditorBody;
+  }, [localEditorBody]);
+  const htmlSurface = useMemo(
+    () => (htmlTextarea ? textareaSurface(htmlTextarea, () => editorBodyRef.current) : null),
+    [htmlTextarea],
+  );
 
   // Ctrl/⌘+F → 唤起查找面板；F9 → 切换专注写作模式
   useEffect(() => {
@@ -594,6 +608,14 @@ export default function DocEditorPage({
           <Tag color={doc.status === 'published' ? 'green' : 'default'}>
             {doc.status === 'published' ? '已发布' : '草稿'}
           </Tag>
+          <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
+            <Button
+              icon={<UnorderedListOutlined />}
+              type={outlineOpen ? 'primary' : 'text'}
+              onClick={() => setOutlineOpen((v) => !v)}
+              aria-pressed={outlineOpen}
+            />
+          </Tooltip>
           <Tooltip title="退出专注写作模式 (Esc / F9)">
             <Button icon={<CompressOutlined />} onClick={() => setFocusMode(false)}>
               退出专注
@@ -688,29 +710,32 @@ export default function DocEditorPage({
               ]}
             />
           )}
-          <Segmented
-            size="small"
-            value={mode}
-            onChange={(v) => void changeEditorMode(v as EditorMode)}
-            options={[
-              { label: 'MD', value: 'markdown' },
-              { label: '富文本', value: 'rich' },
-              { label: 'HTML', value: 'html' },
-              { label: 'PDF', value: 'pdf' },
-            ]}
-          />
-          <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
-            <Button
-              icon={<UnorderedListOutlined />}
-              type={outlineOpen ? 'primary' : 'text'}
-              className="jz-toolbar-btn"
-              onClick={() => setOutlineOpen((v) => !v)}
-              aria-pressed={outlineOpen}
+          <span className="jz-doc-mode-group">
+            <Segmented
+              size="small"
+              value={mode}
+              onChange={(v) => void changeEditorMode(v as EditorMode)}
+              options={[
+                { label: 'MD', value: 'markdown' },
+                { label: '富文本', value: 'rich' },
+                { label: 'HTML', value: 'html' },
+                { label: 'PDF', value: 'pdf' },
+              ]}
             />
-          </Tooltip>
-          <Tooltip title="专注写作模式 (F9)">
-            <Button icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
-          </Tooltip>
+            <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
+              <Button
+                size="small"
+                icon={<UnorderedListOutlined />}
+                type={outlineOpen ? 'primary' : 'text'}
+                className="jz-toolbar-btn"
+                onClick={() => setOutlineOpen((v) => !v)}
+                aria-pressed={outlineOpen}
+              />
+            </Tooltip>
+            <Tooltip title="专注写作模式 (F9)">
+              <Button size="small" type="text" icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
+            </Tooltip>
+          </span>
           {doc.status === 'published' ? (
             <>
               <Button
@@ -842,12 +867,12 @@ export default function DocEditorPage({
             onUploadPrimary={handlePrimaryUpload}
             uploadingPrimary={uploadingPrimary}
             onRichEditorReady={setRichEditor}
-            onMarkdownTextareaReady={setMdTextarea}
+            onMarkdownSurfaceReady={setMdSurface}
             onHtmlTextareaReady={setHtmlTextarea}
             onSaveReady={registerEditorSave}
           />
         </div>
-        {outlineOpen && mode !== 'pdf' && !focusMode && (
+        {outlineOpen && mode !== 'pdf' && (
           <aside className="jz-editor-sidebar jz-editor-sidebar-floating">
             <div className="jz-editor-sidebar-tabs">
               {([
@@ -875,10 +900,10 @@ export default function DocEditorPage({
                   source={mode === 'markdown' || mode === 'html' ? editorBody : undefined}
                   sourceKind={mode === 'html' ? 'html' : 'markdown'}
                   onSeek={(pos) => {
-                    if (mode === 'html' && htmlTextarea) {
-                      seekTextarea(htmlTextarea, pos, editorBody);
-                    } else if (mode === 'markdown' && mdTextarea) {
-                      seekTextarea(mdTextarea, pos, editorBody);
+                    if (mode === 'html') {
+                      htmlSurface?.seekTo(pos);
+                    } else if (mode === 'markdown') {
+                      mdSurface?.seekTo(pos);
                     }
                   }}
                 />
@@ -895,8 +920,8 @@ export default function DocEditorPage({
         open={findOpen}
         onClose={() => setFindOpen(false)}
         editor={mode === 'rich' ? richEditor : null}
-        textarea={
-          mode === 'markdown' ? mdTextarea : mode === 'html' ? htmlTextarea : null
+        surface={
+          mode === 'markdown' ? mdSurface : mode === 'html' ? htmlSurface : null
         }
         source={mode === 'markdown' || mode === 'html' ? editorBody : undefined}
         onSourceChange={
@@ -966,7 +991,7 @@ interface SurfaceProps {
   onUploadPrimary: (file: File) => Promise<void> | void;
   uploadingPrimary: boolean;
   onRichEditorReady?: (editor: TiptapEditor | null) => void;
-  onMarkdownTextareaReady?: (el: HTMLTextAreaElement | null) => void;
+  onMarkdownSurfaceReady?: (handle: EditorSurfaceHandle | null) => void;
   onHtmlTextareaReady?: (el: HTMLTextAreaElement | null) => void;
   onSaveReady?: (handle: EditorSaveHandle | null) => void;
 }
@@ -984,7 +1009,7 @@ function EditorSurface({
   onUploadPrimary,
   uploadingPrimary,
   onRichEditorReady,
-  onMarkdownTextareaReady,
+  onMarkdownSurfaceReady,
   onHtmlTextareaReady,
   onSaveReady,
 }: SurfaceProps) {
@@ -1060,23 +1085,11 @@ function EditorSurface({
       onChange={onChange}
       onAutoSave={onAutoSave}
       documentId={doc.id}
-      onTextareaReady={onMarkdownTextareaReady}
+      onSurfaceReady={onMarkdownSurfaceReady}
       paperStyle={doc.paper_style}
       onSaveReady={onSaveReady}
     />
   );
-}
-
-/** Move the textarea selection to ``pos`` and scroll the line into view. */
-function seekTextarea(ta: HTMLTextAreaElement, pos: number, source: string) {
-  ta.focus();
-  ta.setSelectionRange(pos, pos);
-  const before = source.slice(0, pos);
-  const lineIndex = before.split('\n').length - 1;
-  const style = getComputedStyle(ta);
-  const lh = parseFloat(style.lineHeight || '20') || 20;
-  // 让目标行大约停在视口的 1/4 处，比贴顶更舒服
-  ta.scrollTop = Math.max(0, lineIndex * lh - ta.clientHeight / 4);
 }
 
 interface MissingProps {
