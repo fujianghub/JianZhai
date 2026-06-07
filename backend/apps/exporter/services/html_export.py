@@ -276,6 +276,13 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         doc = scope.documents[0]
         body = common.doc_export_body(doc)
         if detect_doc_format(doc) == "html" and body.strip():
+            # Render embedded ``<div class="mermaid">`` to SVG so the diagram
+            # shows offline (the doc's CDN mermaid runtime can't run here).
+            from . import diagram_render
+
+            body = diagram_render.inline_html_mermaid(
+                body, common.build_scope_diagram_svgs(scope)
+            )
             path = common.reserve_export_path(".html")
             common.write_text(path, common.rewrite_html_media(body))
             return (

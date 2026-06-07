@@ -16,6 +16,7 @@ per-export cost is one browser start, not one per diagram.
 """
 from __future__ import annotations
 
+import html as _html
 import json
 import logging
 import re
@@ -141,4 +142,69 @@ def render_mermaid_svgs(sources: list[str]) -> dict[str, str]:
         # Browser launch itself failed (no Chromium binary, sandbox, OOM, …).
         log.exception("diagram_render: headless Chromium unavailable; falling back.")
         return out
+    return out
+
+
+# --- HTML-format documents -------------------------------------------------
+# Yuque / hand-authored HTML docs embed diagrams as ``<div class="mermaid">…
+# source…</div>`` plus a CDN ``<script src=".../mermaid.min.js">`` that runs
+# ``mermaid.initialize({startOnLoad:true})`` in the browser. That never renders
+# in an offline export (no network / blocked subresource), so we render those
+# source divs to SVG server-side too and strip the now-useless runtime scripts.
+
+# ``class="mermaid"`` as a standalone token (not ``mermaid-panel`` / ``-body``).
+_HTML_MERMAID_DIV = re.compile(
+    r'<div\b[^>]*\bclass="(?:[^"]*\s)?mermaid(?:\s[^"]*)?"[^>]*>(.*?)</div>',
+    re.S | re.I,
+)
+# Mermaid runtime: the CDN <script src> and any inline mermaid.initialize/run.
+_MERMAID_CDN_SCRIPT = re.compile(
+    r'<script\b[^>]*\bsrc="[^"]*mermaid[^"]*"[^>]*>\s*</script>', re.I
+)
+_MERMAID_INIT_SCRIPT = re.compile(
+    r"<script\b[^>]*>(?:(?!</script>)[\s\S])*?mermaid\.(?:initialize|init|run)"
+    r"(?:(?!</script>)[\s\S])*?</script>",
+    re.I,
+)
+
+
+def _html_mermaid_source(inner: str) -> str:
+    """The diagram source as Mermaid sees it: the browser hands ``textContent``
+    (HTML-unescaped, tags dropped) to ``mermaid.render``."""
+    text = re.sub(r"<br\s*/?>", "\n", inner, flags=re.I)
+    text = re.sub(r"<[^>]+>", "", text)  # drop any stray inline tags
+    return _html.unescape(text).strip("\n")
+
+
+def extract_html_mermaid_sources(html_doc: str) -> list[str]:
+    """Collect Mermaid sources from ``<div class="mermaid">`` blocks in an
+    HTML-format document (keys for the shared SVG batch)."""
+    out: list[str] = []
+    for m in _HTML_MERMAID_DIV.finditer(html_doc or ""):
+        src = _html_mermaid_source(m.group(1))
+        if src.strip():
+            out.append(src)
+    return out
+
+
+def inline_html_mermaid(html_doc: str, svg_map: dict[str, str]) -> str:
+    """Replace ``<div class="mermaid">source</div>`` with the pre-rendered SVG
+    and strip the CDN mermaid runtime. Blocks without a rendered SVG (or when
+    ``svg_map`` is empty) are left untouched so the original markup survives."""
+    if not html_doc or not svg_map:
+        return html_doc or ""
+
+    def repl(m: re.Match) -> str:
+        src = _html_mermaid_source(m.group(1))
+        svg = svg_map.get(src)
+        if not svg:
+            return m.group(0)
+        return f'<div class="mermaid jz-mermaid-rendered">{svg}</div>'
+
+    out = _HTML_MERMAID_DIV.sub(repl, html_doc)
+    # Only neutralise the runtime once we've actually inlined something — keeps
+    # docs whose diagrams failed to render able to fall back to runtime mermaid.
+    if out != html_doc:
+        out = _MERMAID_CDN_SCRIPT.sub("", out)
+        out = _MERMAID_INIT_SCRIPT.sub("", out)
     return out

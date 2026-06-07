@@ -99,3 +99,41 @@ def test_normalize_svg_strips_percentage_width():
     out = diagram_render._normalize_svg(svg)
     assert 'width="100%"' not in out
     assert 'viewBox="0 0 10 10"' in out
+
+
+HTML_MERMAID_DOC = (
+    '<!doctype html><html><head>'
+    '<script src="https://cdn.example/mermaid/10.6.1/mermaid.min.js"></script>'
+    "</head><body>"
+    '<div class="panel mermaid-panel"><div class="mermaid-body">'
+    '<div class="mermaid">\nsequenceDiagram\nA-&gt;&gt;B: hi\n</div>'
+    "</div></div>"
+    "<script>mermaid.initialize({startOnLoad:true});</script>"
+    "</body></html>"
+)
+
+
+def test_extract_html_mermaid_sources_unescapes_and_skips_wrappers():
+    """Only the standalone ``class="mermaid"`` div is a source; ``mermaid-panel``
+    / ``mermaid-body`` wrappers are not. textContent is HTML-unescaped."""
+    srcs = diagram_render.extract_html_mermaid_sources(HTML_MERMAID_DOC)
+    assert srcs == ["sequenceDiagram\nA->>B: hi"]
+
+
+def test_inline_html_mermaid_replaces_div_and_strips_runtime():
+    svg_map = {"sequenceDiagram\nA->>B: hi": "<svg id='s'></svg>"}
+    out = diagram_render.inline_html_mermaid(HTML_MERMAID_DOC, svg_map)
+    assert "jz-mermaid-rendered" in out
+    assert "<svg id='s'></svg>" in out
+    # CDN runtime + init are stripped once something rendered.
+    assert "mermaid.min.js" not in out
+    assert "mermaid.initialize" not in out
+
+
+def test_inline_html_mermaid_no_match_leaves_doc_untouched():
+    # Empty map → nothing inlined, runtime preserved (can still fall back).
+    assert diagram_render.inline_html_mermaid(HTML_MERMAID_DOC, {}) == HTML_MERMAID_DOC
+    # Source not in map → that block untouched, runtime preserved.
+    out = diagram_render.inline_html_mermaid(HTML_MERMAID_DOC, {"other": "<svg/>"})
+    assert "mermaid.min.js" in out
+    assert "jz-mermaid-rendered" not in out

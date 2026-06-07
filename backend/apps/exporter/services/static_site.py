@@ -13,7 +13,7 @@ from apps.knowledge.models import Document
 from apps.knowledge.serializers import detect_doc_format
 
 from ..scope import ExportScope
-from . import common
+from . import common, diagram_render
 
 SITE_CSS = (
     common.export_stylesheet()
@@ -164,8 +164,9 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             # PAGE_TEMPLATE would inject a second <html>/<head> and clobber the
             # author's styling. Site navigation remains reachable via index.html.
             if detect_doc_format(doc) == "html" and body_md.strip():
+                inlined = diagram_render.inline_html_mermaid(body_md, diagram_svgs)
                 html_out = common.rewrite_html_media(
-                    body_md, embed=False, asset_prefix="assets/"
+                    inlined, embed=False, asset_prefix="assets/"
                 )
                 yield (fname, html_out.encode("utf-8"))
                 for asset_name, asset_data in common.collect_html_media(body_md):

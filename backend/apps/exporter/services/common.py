@@ -167,12 +167,13 @@ def render_markdown(text: str, *, diagram_svgs: dict[str, str] | None = None) ->
 
 
 def build_scope_diagram_svgs(scope: ExportScope) -> dict[str, str]:
-    """Render every Mermaid diagram across the scope's Markdown docs in one
-    headless-Chromium batch (one browser launch per export, not per diagram).
+    """Render every Mermaid diagram across the scope in one headless-Chromium
+    batch (one browser launch per export, not per diagram).
 
-    Returns a ``{fence_body: svg}`` map; HTML-format docs and PlantUML blocks
-    contribute nothing. Degrades to an empty map when Playwright/Chromium is
-    unavailable, so callers transparently fall back to source panels.
+    Covers both Markdown ``\`\`\`mermaid`` fences and HTML-format docs that embed
+    ``<div class="mermaid">…</div>`` + a CDN runtime. Returns a ``{source: svg}``
+    map keyed by the exact source each render path looks up. Degrades to an empty
+    map when Playwright/Chromium is unavailable (callers fall back gracefully).
     """
     from apps.knowledge.serializers import detect_doc_format
 
@@ -180,9 +181,11 @@ def build_scope_diagram_svgs(scope: ExportScope) -> dict[str, str]:
 
     sources: list[str] = []
     for doc in scope.documents:
+        body = doc_export_body(doc)
         if detect_doc_format(doc) == "html":
-            continue
-        sources.extend(markdown_render.collect_mermaid_sources(doc_export_body(doc)))
+            sources.extend(diagram_render.extract_html_mermaid_sources(body))
+        else:
+            sources.extend(markdown_render.collect_mermaid_sources(body))
     if not sources:
         return {}
     return diagram_render.render_mermaid_svgs(sources)
@@ -254,8 +257,13 @@ def render_document_body_html(
     """
     from apps.knowledge.serializers import detect_doc_format
 
+    from . import diagram_render
+
     content = doc_export_body(doc)
     if detect_doc_format(doc) == "html":
+        # Render embedded ``<div class="mermaid">`` to SVG so diagrams show
+        # offline (the doc's CDN mermaid runtime won't run in an export).
+        content = diagram_render.inline_html_mermaid(content, diagram_svgs or {})
         if export_mode == "print":
             return render_html_document_print(content)
         return render_html_document_iframe_deferred(content)
