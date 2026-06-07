@@ -11,6 +11,8 @@ import TaskItem from '@tiptap/extension-task-item';
 import { TableRow } from '@tiptap/extension-table';
 import { ColorTable } from './TableMarkdown';
 import { ColorTableCell, ColorTableHeader, CELL_BG_PRESETS } from './TableCellColor';
+import { TableInteractions, currentColIndex, currentRowIndex } from './tableInteractions';
+import TableOverlay from './TableOverlay';
 import { ResizableImage } from './ResizableImage';
 import { ImageUpload } from './imageUpload';
 import { Underline } from '@tiptap/extension-underline';
@@ -305,6 +307,7 @@ export default function RichTextEditor({
       TableRow,
       ColorTableHeader,
       ColorTableCell,
+      TableInteractions,
       ResizableImage.configure({
         // Make images selectable and HTML-export friendly. The default schema
         // is already a block-level node so TextAlign can layout it.
@@ -1596,12 +1599,16 @@ export default function RichTextEditor({
           onPressEnter={(e) => { if (!e.shiftKey) { e.preventDefault(); confirmAnnotation(); } }}
         />
       </Modal>
+      <TableOverlay editor={editor} />
       {tableCtxMenu && (
         <Dropdown
           open={true}
           onOpenChange={(v) => { if (!v) setTableCtxMenu(null); }}
           menu={{
             items: [
+              { key: 'selectRow', label: '选中整行', onClick: () => { editor.chain().focus().selectTableRow(currentRowIndex(editor)).run(); setTableCtxMenu(null); } },
+              { key: 'selectCol', label: '选中整列', onClick: () => { editor.chain().focus().selectTableColumn(currentColIndex(editor)).run(); setTableCtxMenu(null); } },
+              { type: 'divider' as const },
               { key: 'addRowBefore', label: '在上方插入行', onClick: () => { editor.chain().focus().addRowBefore().run(); setTableCtxMenu(null); } },
               { key: 'addRowAfter', label: '在下方插入行', onClick: () => { editor.chain().focus().addRowAfter().run(); setTableCtxMenu(null); } },
               { key: 'deleteRow', label: '删除当前行', danger: true, onClick: () => { editor.chain().focus().deleteRow().run(); setTableCtxMenu(null); } },
