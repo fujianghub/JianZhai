@@ -839,10 +839,11 @@ export default function DocEditorPage({
                 minWidth: 0,
               }
             : {
+                // flexDirection 交给 .jz-doc-body CSS：≥1280 切 row 两栏铺满，
+                // <1280 回 column（内联 flexDirection 会盖掉 media，故此处不设）。
                 flex: 1,
                 minHeight: 0,
                 display: 'flex',
-                flexDirection: 'column',
                 minWidth: 0,
               }),
         }}
