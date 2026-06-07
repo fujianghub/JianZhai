@@ -148,6 +148,17 @@ def _render_fence(self, tokens, idx, options, env):
     )
 
 
+def _render_table_open(self, tokens, idx, options, env) -> str:
+    # Scroll wrapper so wide tables overflow with a scrollbar in interactive
+    # HTML exports instead of being clipped (mirrors the reader's pipeline;
+    # styles in export-markdown.css).
+    return '<div class="jz-table-wrap">\n<table>\n'
+
+
+def _render_table_close(self, tokens, idx, options, env) -> str:
+    return "</table>\n</div>\n"
+
+
 def _build_renderer() -> MarkdownIt:
     md = MarkdownIt("commonmark", {"breaks": True, "linkify": True, "html": True})
     gfm_plugin(md)
@@ -162,6 +173,8 @@ def _build_renderer() -> MarkdownIt:
         render=_render_callout,
     )
     md.add_render_rule("fence", _render_fence)
+    md.add_render_rule("table_open", _render_table_open)
+    md.add_render_rule("table_close", _render_table_close)
     return md
 
 

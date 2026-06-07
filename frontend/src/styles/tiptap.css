@@ -84,6 +84,12 @@
 .tiptap-shell .ProseMirror ul[data-type='taskList'] { list-style: none; padding-left: 0.5em; }
 .tiptap-shell .ProseMirror ul[data-type='taskList'] li { display: flex; gap: 8px; }
 .tiptap-shell .ProseMirror ul[data-type='taskList'] li > label { user-select: none; }
+/* Tiptap (resizable: true) wraps each table in .tableWrapper — let wide
+   tables scroll horizontally in the editor instead of clipping after column
+   resizes push them past the shell width. */
+.tiptap-shell .ProseMirror .tableWrapper {
+  overflow-x: auto;
+}
 .tiptap-shell .ProseMirror table {
   border-collapse: collapse;
   table-layout: fixed;
