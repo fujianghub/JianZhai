@@ -159,15 +159,31 @@ export default function FindReplacePanel({
 
   function handleReplace() {
     if (editor) {
-      editor.chain().replaceCurrent(replaceWith).findInDoc(query, { caseSensitive }).run();
+      // 只跑 replaceCurrent —— 插件在 docChanged 路径上自动重算匹配并把
+      // current 夹紧到新数量（被替换的匹配消失后，同下标正好是下一个）。
+      // 以前这里链了一个 findInDoc(query)，它把 current 重置成 0，于是
+      // 「逐个替换」每替换一次都跳回第 1 个匹配。
+      editor.chain().replaceCurrent(replaceWith).run();
+      const s = getFindState(editor);
+      if (s && s.matches[s.current]) {
+        const m = s.matches[s.current];
+        editor.chain().setTextSelection(m.from).scrollIntoView().run();
+      }
     } else if (textarea && source !== undefined && onSourceChange) {
       const { matches, current } = taMatches;
       if (current < 0 || !matches[current]) return;
       const pos = matches[current];
       const next = source.slice(0, pos) + replaceWith + source.slice(pos + query.length);
       onSourceChange(next);
-      // 重新计算匹配
-      queueMicrotask(() => setTaMatches(computeTaMatches(next, query, caseSensitive)));
+      // 重新计算匹配，指针留在「被替换处之后的下一个匹配」而不是回到 0
+      queueMicrotask(() => {
+        const recomputed = computeTaMatches(next, query, caseSensitive);
+        const nextIdx = recomputed.matches.findIndex((p) => p >= pos);
+        setTaMatches({
+          matches: recomputed.matches,
+          current: recomputed.matches.length ? (nextIdx === -1 ? 0 : nextIdx) : -1,
+        });
+      });
     }
   }
 

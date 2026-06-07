@@ -49,6 +49,8 @@ export default function MentionPicker({ open, onCancel, onSelect }: Props) {
       e.preventDefault();
       setActive((i) => Math.max(i - 1, 0));
     } else if (e.key === 'Enter') {
+      // IME confirm-Enter (isComposing) is for the candidate word, not us.
+      if (e.nativeEvent.isComposing || e.keyCode === 229) return;
       e.preventDefault();
       const pick = items[active];
       if (pick) onSelect(pick);

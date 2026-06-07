@@ -275,11 +275,14 @@ describe('editor markdown gold samples', () => {
     expect(out).toContain('Note body');
   });
 
-  it('preserves details block syntax', () => {
+  it('converts details block to structural HTML (no callout hijack)', () => {
+    // v0.9.11：:::details 在 preprocess 阶段就转成 <details>/<summary> ——
+    // 留成字面 ::: 会被 catch-all callout 容器吞掉，摘要永久丢失。
     const src = ':::details Summary\n\nInner\n:::';
     const out = preprocessMarkdown(src);
-    expect(out).toContain(':::details');
-    expect(out).toContain('Summary');
+    expect(out).toContain('<details class="jz-details-block">');
+    expect(out).toContain('<summary>Summary</summary>');
+    expect(out).toContain('Inner');
   });
 
   it('preserves GFM task list markers', () => {

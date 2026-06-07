@@ -111,6 +111,12 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     return from !== to;
   }, [editor]);
 
+  /** Selection range snapshotted when the AI op is LAUNCHED — applyResult
+   * must target where the user asked, not wherever the cursor drifted to
+   * while the stream was running (clicking elsewhere mid-stream used to
+   * replace/insert at the wrong position). */
+  const selectionRef = useRef<{ from: number; to: number } | null>(null);
+
   const run = useCallback(
     async (op: AIOpDef) => {
       if (!editor) return;
@@ -118,6 +124,10 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
       if (!content.trim()) {
         message.warning('请先选中要处理的文本，或在文档中输入内容');
         return;
+      }
+      {
+        const { from, to } = editor.state.selection;
+        selectionRef.current = { from, to };
       }
       setMenuOpen(false);
       setActive(op);
@@ -151,7 +161,13 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
 
   function applyResult(mode: 'replace' | 'after' | 'before') {
     if (!editor || !text.trim()) return;
-    const { from, to } = editor.state.selection;
+    // Use the launch-time snapshot; clamp into the current doc in case edits
+    // during streaming shrank it. Fall back to the live selection only when
+    // no snapshot exists.
+    const docEnd = editor.state.doc.content.size;
+    const snap = selectionRef.current ?? editor.state.selection;
+    const from = Math.max(0, Math.min(snap.from, docEnd));
+    const to = Math.max(from, Math.min(snap.to, docEnd));
     const chain = editor.chain().focus();
     if (mode === 'replace' && from !== to) {
       chain.deleteRange({ from, to }).insertContent(text).run();
@@ -160,6 +176,7 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     } else {
       chain.insertContentAt(to, '\n\n' + text).run();
     }
+    selectionRef.current = null;
     setActive(null);
     setText('');
   }
@@ -260,7 +277,11 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
         modelLabel={modelLabel}
         streaming={streaming}
         text={text}
-        canReplace={hasSelection()}
+        canReplace={
+          selectionRef.current
+            ? selectionRef.current.from !== selectionRef.current.to
+            : hasSelection()
+        }
         onAbort={closePanel}
         onClose={closePanel}
         onCopy={() => {

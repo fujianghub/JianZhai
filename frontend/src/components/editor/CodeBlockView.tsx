@@ -227,7 +227,14 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   useEffect(() => {
     if (!editor.isEditable) return;
     const onKey = (e: KeyboardEvent) => {
-      if (!editor.isActive('codeBlock')) return;
+      // ``editor.isActive('codeBlock')`` is a GLOBAL check — every mounted
+      // CodeBlockView registers this listener, so without scoping to THIS
+      // node's range the shortcut fired on every code block in the document
+      // at once. Only handle it when the selection sits inside this block.
+      const pos = getPos();
+      if (typeof pos !== 'number') return;
+      const { from } = editor.state.selection;
+      if (from <= pos || from >= pos + node.nodeSize) return;
       if (e.ctrlKey && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
         e.preventDefault();
         handleAutoIndent();
@@ -239,7 +246,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [editor, handleAutoIndent, isDiagram, cycleViewMode]);
+  }, [editor, getPos, node.nodeSize, handleAutoIndent, isDiagram, cycleViewMode]);
 
   const handleSyncStyle = () => {
     syncCodeBlockStyleToDocument(editor, prefs);

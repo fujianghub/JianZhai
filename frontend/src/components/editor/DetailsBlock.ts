@@ -46,7 +46,19 @@ export const DetailsBlock = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'details', priority: 51 }];
+    return [
+      {
+        tag: 'details',
+        priority: 51,
+        // Without contentElement, ProseMirror parses ALL children — including
+        // the <summary> — into the body, duplicating the summary text on every
+        // HTML paste / markdown reload. Prefer our own body wrapper; fall back
+        // to the <details> element itself for foreign HTML (the summary attr
+        // is still extracted separately above).
+        contentElement: (el: HTMLElement) =>
+          (el.querySelector(':scope > .jz-details-body') as HTMLElement | null) ?? el,
+      },
+    ];
   },
 
   renderHTML({ HTMLAttributes, node }) {

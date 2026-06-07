@@ -1,16 +1,39 @@
 """Shared helpers for HTML document bodies (blog reader, backfill, publish)."""
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from apps.editor.models import Attachment
 from apps.knowledge.models import Document
 
+# Fenced code blocks (``` / ~~~). Stripped before HTML sniffing — a Markdown
+# article whose first screen quotes an HTML page inside a fence (e.g. a
+# ```html example) is NOT an HTML document, but the old substring check
+# classified it as one and the public reader rendered the whole post through
+# the raw-HTML iframe path, destroying it.
+_FENCED_BLOCK_RE = re.compile(
+    r"(?ms)^[ \t]*(`{3,}|~{3,})[^\n]*\n.*?^[ \t]*\1[ \t]*$"
+)
+_OPEN_FENCE_TAIL_RE = re.compile(r"(?ms)^[ \t]*(?:`{3,}|~{3,})[^\n]*\n.*\Z")
+
 
 def looks_like_html(text: str) -> bool:
-    """Heuristic: does this text look like a full HTML page?"""
-    head = (text or "").lstrip()[:4096].lower()
-    return head.startswith("<!doctype html") or "<html" in head[:800]
+    """Heuristic: does this text look like a full HTML page?
+
+    A real HTML page either starts with a doctype/&lt;html&gt; or mentions
+    ``<html`` very early — but never behind a Markdown code fence, so fenced
+    blocks are removed before the substring check.
+    """
+    head = (text or "").lstrip()[:4096]
+    low = head.lower()
+    if low.startswith("<!doctype html") or low.startswith("<html"):
+        return True
+    defenced = _FENCED_BLOCK_RE.sub("", head)
+    # An unterminated fence (cut off by the 4096-char window or genuinely
+    # unclosed) hides everything to the end of the sample.
+    defenced = _OPEN_FENCE_TAIL_RE.sub("", defenced)
+    return "<html" in defenced.lower()[:800]
 
 
 def decode_attachment_bytes(blob: bytes) -> str:

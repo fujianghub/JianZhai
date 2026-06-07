@@ -196,9 +196,20 @@ function katexPlugin(mdInst: MarkdownIt): void {
   };
 }
 
-/** Minimal markdown-it instance for GFM pipe-table → HTML conversion in preprocess. */
+/** Minimal markdown-it instance for GFM pipe-table → HTML conversion in preprocess.
+ *
+ * Pipe tables bypass the main ``md`` instance entirely (they're pre-rendered
+ * here), so every inline feature the reader expects inside a cell must ALSO
+ * be registered on this instance: KaTeX ``$..$``, sub/sup/mark, and the
+ * ``doc:N`` link rewrite. Without these, math inside tables rendered as
+ * literal dollar text and ``[x](doc:N)`` mention links were dead. */
 const tableMd = new MarkdownIt({ html: true, linkify: false, breaks: false });
 tableMd.use(mdMultimdTable, { multiline: true, rowspan: true, headerless: false });
+tableMd.use(mdSub);
+tableMd.use(mdSup);
+tableMd.use(mdMark);
+tableMd.use(katexPlugin);
+applyDocLinkRewrite(tableMd);
 
 /** Pipe tables normally reach ``md`` pre-rendered by ``convertGfmPipeTables``,
  * but GFM tables written without outer pipes are parsed natively by ``md`` —
@@ -254,7 +265,15 @@ md.use(mdContainer, 'callout', {
     // Accept ``:::anything`` and ``:::anything Optional Title``. Hyphens,
     // digits, dots and dollar signs are allowed so ``:::color-2``, ``:::v1.0``
     // and ``:::$primary`` also work — anything word-ish makes a slug.
-    return /^[^\s]+(\s+.*)?$/.test(params.trim());
+    //
+    // EXCEPT the layout-container names — ``:::details`` / ``:::cols-N`` /
+    // ``:::tabs`` are handled structurally by ``convertLayoutBlocks`` in the
+    // preprocess stage. Rejecting them here is the safety net: if one slips
+    // through (e.g. malformed, no closing fence), it must NOT be swallowed
+    // into a callout that loses its summary / columns / tab labels.
+    const t = params.trim();
+    if (LAYOUT_CONTAINER_NAMES.test(t)) return false;
+    return /^[^\s]+(\s+.*)?$/.test(t);
   },
   render(tokens: Array<{ nesting: number; info: string }>, idx: number): string {
     const token = tokens[idx];
@@ -293,6 +312,11 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'blockquote', 'pre', 'code',
     'table', 'thead', 'tbody', 'tr', 'td', 'th', 'caption',
     'a', 'img', 'figure', 'figcaption',
+    // collapsible blocks (:::details → <details>/<summary>)
+    'details', 'summary',
+    // video embeds — src is restricted to a player allowlist by the
+    // ``uponSanitizeElement`` hook below; anything else is removed.
+    'iframe',
     // legacy presentational tag (Yuque emits this for inline colour)
     'font',
     // task-list checkboxes; our own code-block toolbar buttons.
@@ -322,6 +346,10 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     // mermaid + our own enhancers
     'data-lang', 'data-source', 'data-action', 'aria-label', 'aria-pressed', 'aria-live',
     'role', 'contenteditable', 'hidden',
+    // <details> open state; doc-card / doc-link ids; annotation tooltips
+    'open', 'data-doc-id', 'data-annotation', 'data-label',
+    // iframe (video embed) presentation attrs — src itself is gated by the hook
+    'allowfullscreen', 'frameborder', 'allow', 'referrerpolicy',
     // SVG specifics
     'viewBox', 'd', 'x', 'y', 'x1', 'x2', 'y1', 'y2', 'cx', 'cy', 'r', 'rx', 'ry',
     'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin',
@@ -349,6 +377,28 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
   // mermaid sets foreignObject; let it through.
   ADD_TAGS: ['foreignObject'],
 };
+
+/**
+ * ``<iframe>`` is on the allowlist solely for VideoEmbed (B 站 / YouTube).
+ * This hook is the actual security boundary: any iframe whose ``src`` is not
+ * an https URL of a known player origin is removed wholesale. Without the
+ * hook, allowing the tag would let a malicious paste embed arbitrary sites.
+ */
+const IFRAME_SRC_ALLOWLIST = [
+  /^https:\/\/player\.bilibili\.com\//i,
+  /^https:\/\/www\.youtube(?:-nocookie)?\.com\/embed\//i,
+];
+
+if (typeof window !== 'undefined') {
+  DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+    if (data.tagName !== 'iframe') return;
+    const el = node as Element;
+    const src = el.getAttribute?.('src') ?? '';
+    if (!IFRAME_SRC_ALLOWLIST.some((re) => re.test(src))) {
+      el.remove();
+    }
+  });
+}
 
 function sanitize(html: string): string {
   if (typeof window === 'undefined') return html; // server-side: skip
@@ -496,24 +546,29 @@ function escape(s: string): string {
 }
 
 // Override link rendering: rewrite `doc:NN` hrefs to internal `/d/NN` route
-// so @[title](doc:NN) mentions become clickable links.
-const defaultLinkOpen =
-  md.renderer.rules.link_open ||
-  function (tokens, idx, options, _env, self) {
-    return self.renderToken(tokens, idx, options);
-  };
+// so @[title](doc:NN) mentions become clickable links. Applied to the main
+// ``md`` instance AND ``tableMd`` (pipe-table cells render through the latter).
+function applyDocLinkRewrite(inst: MarkdownIt): void {
+  const defaultLinkOpen =
+    inst.renderer.rules.link_open ||
+    function (tokens, idx, options, _env, self) {
+      return self.renderToken(tokens, idx, options);
+    };
 
-md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
-  const token = tokens[idx];
-  const href = token.attrGet('href') ?? '';
-  const docMatch = /^doc:(\d+)$/.exec(href);
-  if (docMatch) {
-    token.attrSet('href', `/d/${docMatch[1]}`);
-    token.attrJoin('class', 'doc-link');
-    token.attrSet('data-doc-id', docMatch[1]);
-  }
-  return defaultLinkOpen(tokens, idx, options, env, self);
-};
+  inst.renderer.rules.link_open = (tokens, idx, options, env, self) => {
+    const token = tokens[idx];
+    const href = token.attrGet('href') ?? '';
+    const docMatch = /^doc:(\d+)$/.exec(href);
+    if (docMatch) {
+      token.attrSet('href', `/d/${docMatch[1]}`);
+      token.attrJoin('class', 'doc-link');
+      token.attrSet('data-doc-id', docMatch[1]);
+    }
+    return defaultLinkOpen(tokens, idx, options, env, self);
+  };
+}
+
+applyDocLinkRewrite(md);
 
 /** Inject `loading="lazy" decoding="async"` on every <img> that doesn't already
  *  declare them. Applied after sanitization so DOMPurify can't strip the attrs;
@@ -527,8 +582,32 @@ function addImgLazyAttrs(html: string): string {
   });
 }
 
+/** Matches the ``[TOC]`` placeholder div emitted by ``convertBlockPlaceholders``. */
+const TOC_PLACEHOLDER_RE = /<div data-jz-toc=""[^>]*><\/div>/g;
+
+/** Expand the ``[TOC]`` placeholder into a real nested heading list. The env
+ * ``toc`` is collected by the ``heading_open`` rule during the same render. */
+function expandInlineToc(html: string, toc: TocEntry[]): string {
+  if (!html.includes('data-jz-toc')) return html;
+  if (!toc.length) return html.replace(TOC_PLACEHOLDER_RE, '');
+  const minLevel = Math.min(...toc.map((t) => t.level));
+  const items = toc
+    .map(
+      (t) =>
+        `<li class="jz-inline-toc-l${t.level - minLevel + 1}">` +
+        `<a href="#${escAttr(t.id)}">${escape(t.text)}</a></li>`,
+    )
+    .join('');
+  return html.replace(
+    TOC_PLACEHOLDER_RE,
+    `<div class="jz-inline-toc"><div class="jz-inline-toc-title">目录</div><ul>${items}</ul></div>`,
+  );
+}
+
 export function renderMarkdown(source: string): string {
-  return addImgLazyAttrs(sanitize(md.render(preprocessMarkdown(source ?? ''))));
+  const env: { toc: TocEntry[] } = { toc: [] };
+  const html = md.render(preprocessMarkdown(source ?? ''), env);
+  return addImgLazyAttrs(sanitize(expandInlineToc(html, env.toc)));
 }
 
 export interface TocEntry {
@@ -572,7 +651,10 @@ export function renderMarkdownWithToc(source: string): { html: string; toc: TocE
   }
   const env: { toc: TocEntry[] } = { toc: [] };
   const html = md.render(preprocessMarkdown(raw), env);
-  const result = { html: addImgLazyAttrs(sanitize(html)), toc: env.toc };
+  const result = {
+    html: addImgLazyAttrs(sanitize(expandInlineToc(html, env.toc))),
+    toc: env.toc,
+  };
   renderCache.set(raw, result);
   // Evict the oldest if over capacity. ``Map.keys().next()`` is O(1).
   if (renderCache.size > RENDER_CACHE_MAX) {
@@ -642,8 +724,225 @@ export function preprocessMarkdown(src: string): string {
   let out = (src ?? '').replace(/<!--[\s\S]*?-->/g, '');
   out = mapOutsideFencedCodeBlocks(out, unglueContainerFences);
   out = mapOutsideFencedCodeBlocks(out, applyYuqueCompatMode);
+  out = mapOutsideFencedCodeBlocks(out, convertLayoutBlocks);
+  out = mapOutsideFencedCodeBlocks(out, convertBlockPlaceholders);
   out = mapOutsideFencedCodeBlocks(out, convertGfmPipeTables);
   return out;
+}
+
+/** Container names that are STRUCTURAL layout blocks, not callouts. They are
+ * converted to HTML by {@link convertLayoutBlocks} during preprocess and must
+ * never be matched by the catch-all callout container (which would lose the
+ * details summary, collapse columns, and flatten tab labels). */
+const LAYOUT_CONTAINER_NAMES = /^(details|tabs|cols-\d+)\b/;
+
+const LAYOUT_OPEN_RE = /^:::\s*(details|tabs|cols-([2-9]))(?:\s+(.*?))?\s*$/;
+
+function escAttr(s: string): string {
+  return escape(s).replace(/"/g, '&quot;');
+}
+
+/** Is this trimmed line a ``:::name`` container opener? (Close fences are a
+ * bare ``:::``.) Used for nesting-depth tracking so a layout block's matching
+ * close fence is found even with callouts nested inside. */
+function isContainerOpener(trimmed: string): boolean {
+  return /^:::+\s*\S/.test(trimmed);
+}
+
+function isContainerCloser(trimmed: string): boolean {
+  return /^:::+$/.test(trimmed);
+}
+
+/** Split container body lines on top-level separator lines (``::col`` /
+ * ``::tab Label``), ignoring separators inside nested ``:::`` containers. */
+function splitOnTopLevelSeparator(
+  inner: string[],
+  sepRe: RegExp,
+): Array<{ sep: string | null; lines: string[] }> {
+  const parts: Array<{ sep: string | null; lines: string[] }> = [{ sep: null, lines: [] }];
+  let depth = 0;
+  for (const line of inner) {
+    const t = line.trim();
+    if (depth === 0 && sepRe.test(t)) {
+      parts.push({ sep: t, lines: [] });
+      continue;
+    }
+    if (isContainerOpener(t)) depth++;
+    else if (isContainerCloser(t)) depth = Math.max(0, depth - 1);
+    parts[parts.length - 1]!.lines.push(line);
+  }
+  return parts;
+}
+
+/**
+ * Convert the three structural layout containers into the exact HTML the
+ * Tiptap nodes parse back (``parseHTML`` selectors), fixing two long-standing
+ * round-trip bugs in one stroke:
+ *
+ *   1. The catch-all callout container used to swallow ``:::details`` /
+ *      ``:::cols-N`` / ``:::tabs`` — summary lost, columns collapsed.
+ *   2. The ``::col`` / ``::tab`` separators (2 colons) can NEVER be parsed by
+ *      markdown-it-container (3+ colons required), so even a fixed callout
+ *      rule couldn't restore multi-column / tab structure.
+ *
+ * Syntax handled (the serializers' output in DetailsBlock/Columns/Tabs):
+ *
+ *   :::details Summary text     :::cols-2          :::tabs
+ *   body…                       col A              ::tab 标签 1
+ *   :::                         ::col              panel 1
+ *                               col B              ::tab 标签 2
+ *                               :::                panel 2
+ *                                                  :::
+ *
+ * Inner content stays Markdown — the emitted HTML opener/closer lines are
+ * separated from it by blank lines so markdown-it (``html: true``) resumes
+ * normal parsing inside (type-6 html_block ends at the first blank line).
+ * The same HTML works on the public reader (sanitized; styled by the global
+ * ``jz-details-block`` / ``jz-columns`` / ``jz-tabs`` rules) and in the
+ * editor (ProseMirror parses it straight back into the dedicated nodes).
+ */
+export function convertLayoutBlocks(src: string): string {
+  if (!src.includes(':::')) return src;
+  const lines = src.split('\n');
+  const out: string[] = [];
+  let i = 0;
+
+  while (i < lines.length) {
+    const line = lines[i]!;
+    const m = line.match(LAYOUT_OPEN_RE);
+    if (!m) {
+      out.push(line);
+      i++;
+      continue;
+    }
+
+    // Find the matching close fence, tracking nested ``:::`` containers.
+    let depth = 1;
+    let close = -1;
+    for (let j = i + 1; j < lines.length; j++) {
+      const t = lines[j]!.trim();
+      if (isContainerOpener(t)) depth++;
+      else if (isContainerCloser(t)) {
+        depth--;
+        if (depth === 0) {
+          close = j;
+          break;
+        }
+      }
+    }
+    if (close === -1) {
+      // Unterminated fence — leave the line untouched (the callout validate
+      // also rejects these names, so it degrades to visible literal text
+      // instead of silently corrupting into a callout).
+      out.push(line);
+      i++;
+      continue;
+    }
+
+    const inner = lines.slice(i + 1, close);
+    const kind = m[1]!;
+
+    if (kind === 'details') {
+      const summary = (m[3] ?? '').trim() || '详细内容';
+      out.push(
+        '<details class="jz-details-block">',
+        `<summary>${escape(summary)}</summary>`,
+        '<div class="jz-details-body">',
+        '',
+        convertLayoutBlocks(inner.join('\n')),
+        '',
+        '</div></details>',
+      );
+    } else if (kind === 'tabs') {
+      const rawParts = splitOnTopLevelSeparator(inner, /^::tab(\s+.*)?$/);
+      // Content before the first ::tab becomes an unlabeled leading panel
+      // only when non-empty; drop it otherwise.
+      const panels = rawParts.filter(
+        (p, idx) => idx > 0 || p.lines.some((l) => l.trim()),
+      );
+      if (!panels.length) panels.push({ sep: null, lines: [] });
+      // Editor schema allows tabPanel{1,8} — merge any overflow into the last.
+      while (panels.length > 8) {
+        const extra = panels.pop()!;
+        panels[panels.length - 1]!.lines.push('', ...extra.lines);
+      }
+      out.push('<div data-jz-tabs="" class="jz-tabs">');
+      for (const p of panels) {
+        const label = (p.sep ? p.sep.replace(/^::tab\s*/, '').trim() : '') || '标签页';
+        out.push(
+          `<div data-jz-tab-panel="" data-label="${escAttr(label)}" class="jz-tab-panel">`,
+          `<div class="jz-tab-panel-label">${escape(label)}</div>`,
+          '<div class="jz-tab-panel-body">',
+          '',
+          convertLayoutBlocks(p.lines.join('\n')),
+          '',
+          '</div></div>',
+        );
+      }
+      out.push('</div>');
+    } else {
+      // cols-N
+      const declared = parseInt(m[2] ?? '2', 10);
+      const parts = splitOnTopLevelSeparator(inner, /^::col$/);
+      // Editor schema allows column{2,4}: pad to 2, merge overflow into the 4th.
+      while (parts.length < 2) parts.push({ sep: null, lines: [] });
+      while (parts.length > 4) {
+        const extra = parts.pop()!;
+        parts[parts.length - 1]!.lines.push('', ...extra.lines);
+      }
+      const count = Math.max(2, Math.min(4, Number.isNaN(declared) ? parts.length : declared));
+      out.push(
+        `<div data-jz-columns="" data-cols="${count}" class="jz-columns jz-columns-${count}">`,
+      );
+      for (const p of parts) {
+        out.push(
+          '<div data-jz-column="" class="jz-column">',
+          '',
+          convertLayoutBlocks(p.lines.join('\n')),
+          '',
+          '</div>',
+        );
+      }
+      out.push('</div>');
+    }
+
+    i = close + 1;
+  }
+  return out.join('\n');
+}
+
+/**
+ * Block-level placeholders that previously had ``parse: {}`` (i.e. were lost
+ * as literal text on every markdown reload, in the editor AND on the blog):
+ *
+ *   - ``[TOC]``            → ``<div data-jz-toc>`` (InlineToc node in the
+ *     editor; replaced with a real heading list by the reader renderers)
+ *   - ``[[doc-card:ID]]``  → ``<div data-jz-doc-card>`` (DocCardEmbed node in
+ *     the editor; a plain ``/d/ID`` doc link on the reader side)
+ *
+ * Only whole-line occurrences are converted; inline mentions in prose or
+ * inline code stay literal. Fenced code is excluded at the call site.
+ */
+export function convertBlockPlaceholders(src: string): string {
+  if (!src.includes('[TOC]') && !src.includes('[[doc-card:')) return src;
+  return src
+    .split('\n')
+    .map((line) => {
+      if (/^\[TOC\]\s*$/.test(line)) {
+        return '<div data-jz-toc="" class="jz-inline-toc-placeholder"></div>';
+      }
+      const card = line.match(/^\[\[doc-card:(\d+)\]\]\s*$/);
+      if (card) {
+        const id = card[1]!;
+        return (
+          `<div data-jz-doc-card="" data-doc-id="${id}" class="jz-doc-card">` +
+          `<a class="doc-link" data-doc-id="${id}" href="/d/${id}">📄 文档卡片 #${id}</a>` +
+          `</div>`
+        );
+      }
+      return line;
+    })
+    .join('\n');
 }
 
 /**
