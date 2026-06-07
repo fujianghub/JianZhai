@@ -11,8 +11,13 @@ interface Props {
   open: boolean;
   onClose: () => void;
   scope: ExportScope;
-  targetId: number;
+  /** Used for doc/folder/kb scopes; ignored when scope="selection". */
+  targetId?: number;
   targetLabel: string;
+  /** scope="selection" only: picked folders (expanded server-side to their subtree). */
+  folderIds?: number[];
+  /** scope="selection" only: individually picked documents. */
+  docIds?: number[];
   /** Whether to restrict available formats — single-doc PDF makes sense; static site does not. */
   allowSiteFormat?: boolean;
   onSubmitted?: () => void;
@@ -32,6 +37,8 @@ export default function ExportDialog({
   scope,
   targetId,
   targetLabel,
+  folderIds = [],
+  docIds = [],
   allowSiteFormat = true,
   onSubmitted,
 }: Props) {
@@ -45,7 +52,11 @@ export default function ExportDialog({
   async function handleSubmit() {
     setSubmitting(true);
     try {
-      await exportsApi.createExport({ scope, target_id: targetId, format });
+      if (scope === 'selection') {
+        await exportsApi.createExport({ scope, format, folder_ids: folderIds, doc_ids: docIds });
+      } else {
+        await exportsApi.createExport({ scope, target_id: targetId, format });
+      }
       message.success('已创建导出任务，正在前往导出历史…');
       onSubmitted?.();
       onClose();
@@ -71,7 +82,14 @@ export default function ExportDialog({
       cancelText="取消"
     >
       <Paragraph type="secondary" style={{ marginTop: 0 }}>
-        范围：{scope === 'doc' ? '单文档' : scope === 'folder' ? '文件夹（含子级）' : '整知识库'}
+        范围：
+        {scope === 'doc'
+          ? '单文档'
+          : scope === 'folder'
+            ? '文件夹（含子级）'
+            : scope === 'kb'
+              ? '整知识库'
+              : `已选 ${docIds.length} 篇文档 · ${folderIds.length} 个文件夹（含子级，合并为一个文件）`}
       </Paragraph>
       <Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 12 }}>
         默认导出发布版正文；若尚未发布则使用草稿内容。

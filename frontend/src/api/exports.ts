@@ -1,6 +1,6 @@
 import { apiClient, ensureCsrf } from './client';
 
-export type ExportScope = 'doc' | 'folder' | 'kb';
+export type ExportScope = 'doc' | 'folder' | 'kb' | 'selection';
 export type ExportFormat = 'md' | 'html' | 'pdf' | 'docx' | 'site';
 export type ExportStatus = 'pending' | 'running' | 'done' | 'failed';
 
@@ -57,8 +57,12 @@ export async function getExport(id: number): Promise<ExportTask> {
 
 export async function createExport(payload: {
   scope: ExportScope;
-  target_id: number;
+  target_id?: number;
   format: ExportFormat;
+  /** scope="selection" only: picked folders (expanded to their subtree docs). */
+  folder_ids?: number[];
+  /** scope="selection" only: individually picked documents. */
+  doc_ids?: number[];
 }): Promise<ExportTask> {
   await ensureCsrf();
   const { data } = await apiClient.post<ExportTask>('/exports/', payload);

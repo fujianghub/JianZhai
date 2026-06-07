@@ -57,11 +57,14 @@ def run_export(task_id: int) -> None:
         task.save(update_fields=["status", "started_at"])
 
     try:
+        selection = task.selection or {}
         scope = collect_for_scope(
             owner=task.owner,
             scope=task.scope,
             target_id=task.target_id,
             only_published=(task.format == ExportTask.FORMAT_SITE),
+            folder_ids=selection.get("folder_ids") or [],
+            doc_ids=selection.get("doc_ids") or [],
         )
         # Empty scope is OK only for static sites (renders a stub index).
         if not scope.documents and task.format != ExportTask.FORMAT_SITE:
