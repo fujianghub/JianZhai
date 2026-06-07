@@ -79,6 +79,8 @@ const SlashCommandList = forwardRef<SlashCommandListRef, Props>(
             return true;
           }
           if (event.key === 'Enter') {
+            // IME confirm-Enter must not double as menu selection.
+            if (event.isComposing || event.keyCode === 229) return false;
             selectItem(selectedIndex);
             return true;
           }

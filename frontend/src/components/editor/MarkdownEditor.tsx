@@ -329,6 +329,8 @@ export default function MarkdownEditor({
   /* --------------------------- 键盘路由（CM keydown） --------------------------- */
 
   // Latest-state refs for the CM keydown handler (registered once inside CM).
+  // IME 守卫（isComposing / keyCode 229）在 CodeMirrorMarkdown 的
+  // domEventHandlers 层统一拦截，组字期间本路由不会被调用。
   const slashStateRef = useRef({ open: slashOpen, items: slashDisplayItems, index: slashSelectedIndex });
   slashStateRef.current = { open: slashOpen, items: slashDisplayItems, index: slashSelectedIndex };
 

@@ -91,6 +91,9 @@ class VersionRestore(APIView):
     @transaction.atomic
     def post(self, request, doc_id: int, vid: int):
         doc = _get_owned_document(request.user, doc_id)
+        # Re-fetch under row lock so the restore serializes with concurrent
+        # PATCHes (which also select_for_update) instead of racing them.
+        doc = Document.objects.select_for_update().get(pk=doc.pk)
         target = get_object_or_404(doc.versions, pk=vid)
         # Snapshot the *current* state first, so the restore itself becomes undoable.
         DocumentVersion.create_snapshot(
@@ -100,7 +103,11 @@ class VersionRestore(APIView):
             created_by=request.user,
         )
         doc.raw_content = target.content
-        doc.save(update_fields=["raw_content", "updated_at"])
+        # Bump the optimistic-concurrency token. Without this, a stale editor
+        # tab's autosave (carrying the pre-restore expected_version) passed the
+        # version check and silently overwrote the restored content.
+        doc.version = (doc.version or 0) + 1
+        doc.save(update_fields=["raw_content", "version", "updated_at"])
         # Stack-style: the restore also creates a version pointing to the restored content.
         v = DocumentVersion.create_snapshot(
             document=doc,

@@ -68,6 +68,21 @@ def test_kb_markdown_renders_headings_and_callout(owner, kb):
 
 
 @pytest.mark.django_db
+def test_kb_markdown_table_wrapped_in_scroll_container(owner, kb):
+    make_doc(
+        kb,
+        "md-table",
+        published="| A | B |\n|---|---|\n| 1 | 2 |\n",
+    )
+    scope = collect_for_scope(owner=owner, scope="kb", target_id=kb.id)
+    html = html_export.render_html(scope)
+    # 宽表格滚动容器：包裹 div 须紧贴 <table> 之前/之后（见 markdown_render）
+    assert '<div class="jz-table-wrap">' in html
+    assert html.index('<div class="jz-table-wrap">') < html.index("<table>")
+    assert "</table>\n</div>" in html
+
+
+@pytest.mark.django_db
 def test_mixed_kb_tree_toc_folders_and_panel_order(owner, kb):
     root_folder = Folder.objects.create(knowledge_base=kb, name="Chapter A", order=0)
     sub_folder = Folder.objects.create(

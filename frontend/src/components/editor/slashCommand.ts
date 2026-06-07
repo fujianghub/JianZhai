@@ -35,6 +35,19 @@ export const SlashCommand = Extension.create({
       suggestion: {
         char: '/',
         startOfLine: false,
+        // Never trigger inside code or math — typing `/ai` in a code sample
+        // used to pop the menu and mangle the snippet on selection.
+        allow: ({
+          state,
+          range,
+        }: {
+          state: import('@tiptap/pm/state').EditorState;
+          range: import('@tiptap/core').Range;
+        }) => {
+          const $from = state.doc.resolve(range.from);
+          const parent = $from.parent.type;
+          return !parent.spec.code && parent.name !== 'mathBlock';
+        },
         command: ({
           editor,
           range,

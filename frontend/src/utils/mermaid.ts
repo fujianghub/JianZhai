@@ -89,33 +89,47 @@ function toHex(r: number, g: number, b: number): string {
   return `#${h(r)}${h(g)}${h(b)}`;
 }
 
+/** Composite an [r,g,b,a] colour over an opaque backdrop, returning [r,g,b]. */
+function compositeOver(
+  c: [number, number, number, number],
+  backdrop: [number, number, number],
+): [number, number, number] {
+  return [
+    c[0] * c[3] + backdrop[0] * (1 - c[3]),
+    c[1] * c[3] + backdrop[1] * (1 - c[3]),
+    c[2] * c[3] + backdrop[2] * (1 - c[3]),
+  ];
+}
+
+const WHITE: [number, number, number] = [255, 255, 255];
+
 /** Mix two colour strings at a given mix percentage and return a flat
- *  ``#rrggbb`` result. Transparent or partially-transparent base colours
- *  are composited over white before mixing — Mermaid's internal palette
+ *  ``#rrggbb`` result. Transparent or partially-transparent colours are
+ *  composited over ``backdrop`` before mixing — Mermaid's internal palette
  *  derivation expects opaque inputs.
+ *
+ *  ``backdrop`` matters: dark / starry / deepsea glass tokens are white at
+ *  very low alpha (e.g. ``--jz-surface: rgba(255,255,255,0.045)``) glazed
+ *  over a dark page. Compositing those over white yields near-white — the
+ *  exact bug that made sequence-diagram actor boxes pale-emerald with light
+ *  grey text in dark mode — so callers pass the theme's real page
+ *  background (``--jz-bg-app``).
  *
  *  Why JS, not CSS ``color-mix()``? Because Mermaid runs theme processing
  *  in pure JS and any value we hand it must be parseable by **its** colour
  *  lib, not the browser's. Doing the mix here means we control the output
  *  format precisely — always opaque ``#rrggbb``. */
-function mixColors(base: string, with_: string, percent: number): string {
+function mixColors(
+  base: string,
+  with_: string,
+  percent: number,
+  backdrop: [number, number, number] = WHITE,
+): string {
   const a = parseColor(base);
   const b = parseColor(with_);
   if (!a || !b) return base;
-  // Composite ``a`` over white so transparent surface tokens behave as
-  // their visual equivalent on a page background. Mermaid SVG sits on
-  // ``--jz-diagram-surface`` (also a tint of white) so this is the right
-  // reference plane.
-  const aOpaque: [number, number, number] = [
-    a[0] * a[3] + 255 * (1 - a[3]),
-    a[1] * a[3] + 255 * (1 - a[3]),
-    a[2] * a[3] + 255 * (1 - a[3]),
-  ];
-  const bOpaque: [number, number, number] = [
-    b[0] * b[3] + 255 * (1 - b[3]),
-    b[1] * b[3] + 255 * (1 - b[3]),
-    b[2] * b[3] + 255 * (1 - b[3]),
-  ];
+  const aOpaque = compositeOver(a, backdrop);
+  const bOpaque = compositeOver(b, backdrop);
   const w = Math.max(0, Math.min(1, percent / 100));
   return toHex(
     aOpaque[0] * (1 - w) + bOpaque[0] * w,
@@ -126,16 +140,17 @@ function mixColors(base: string, with_: string, percent: number): string {
 
 /** Convert any CSS colour string to a flat opaque ``#rrggbb`` representation
  *  suitable for Mermaid theme variables. Strips alpha (composites over
- *  white) so downstream colour math doesn't trip on partially-transparent
- *  inputs. Returns the input unchanged if it can't be parsed. */
-function normalizeForMermaid(c: string, fallback: string): string {
+ *  ``backdrop``, default white) so downstream colour math doesn't trip on
+ *  partially-transparent inputs. Returns the fallback if it can't be parsed. */
+function normalizeForMermaid(
+  c: string,
+  fallback: string,
+  backdrop: [number, number, number] = WHITE,
+): string {
   const parsed = parseColor(c);
   if (!parsed) return fallback;
-  return toHex(
-    parsed[0] * parsed[3] + 255 * (1 - parsed[3]),
-    parsed[1] * parsed[3] + 255 * (1 - parsed[3]),
-    parsed[2] * parsed[3] + 255 * (1 - parsed[3]),
-  );
+  const [r, g, b] = compositeOver(parsed, backdrop);
+  return toHex(r, g, b);
 }
 
 function mermaidConfig(theme: string) {
@@ -145,30 +160,64 @@ function mermaidConfig(theme: string) {
     return { startOnLoad: false, securityLevel: 'strict', theme: 'default' as const };
   }
   const styles = getComputedStyle(document.documentElement);
+  const isDark = theme === 'dark' || theme === 'starry' || theme === 'deepsea';
   // Read raw CSS values, then normalise every one of them to an opaque
   // ``#rrggbb`` before they touch Mermaid. The page tokens use semi-
   // transparent ``rgba(...)`` for glass surfaces, which Mermaid's colour
-  // library rejects with NaN-laden lighten/darken math. Composing over
-  // white inside ``normalizeForMermaid`` produces the visual equivalent
-  // without the alpha hazard.
-  const accent = normalizeForMermaid(styles.getPropertyValue('--jz-accent'), '#b94a3b');
-  const text = normalizeForMermaid(styles.getPropertyValue('--jz-text'), '#2c2218');
-  const surface = normalizeForMermaid(styles.getPropertyValue('--jz-surface'), '#faf3e0');
-  const border = normalizeForMermaid(styles.getPropertyValue('--jz-border'), '#d4c4a0');
-  const muted = normalizeForMermaid(styles.getPropertyValue('--jz-text-muted'), '#8a7a5e');
-  const isDark = theme === 'dark' || theme === 'starry' || theme === 'deepsea';
+  // library rejects with NaN-laden lighten/darken math.
+  //
+  // Crucially, alpha is composited over the theme's REAL page background
+  // (``--jz-bg-app``), not over white: the dark glass token is white at
+  // ~4.5 % alpha, which over white flattens to near-white and produced
+  // pale boxes with unreadable light text in dark mode.
+  const bgParsed = parseColor(styles.getPropertyValue('--jz-bg-app').trim());
+  const backdrop: [number, number, number] = bgParsed
+    ? compositeOver(bgParsed, isDark ? [10, 10, 14] : WHITE)
+    : isDark
+      ? [10, 10, 14]
+      : WHITE;
+  const accent = normalizeForMermaid(styles.getPropertyValue('--jz-accent'), '#b94a3b', backdrop);
+  const text = normalizeForMermaid(
+    styles.getPropertyValue('--jz-text'),
+    isDark ? '#e8e6e3' : '#2c2218',
+    backdrop,
+  );
+  const surface = normalizeForMermaid(
+    styles.getPropertyValue('--jz-surface'),
+    isDark ? '#1c1c22' : '#faf3e0',
+    backdrop,
+  );
+  const border = normalizeForMermaid(
+    styles.getPropertyValue('--jz-border'),
+    isDark ? '#4a4a52' : '#d4c4a0',
+    backdrop,
+  );
+  const muted = normalizeForMermaid(
+    styles.getPropertyValue('--jz-text-muted'),
+    isDark ? '#9a988f' : '#8a7a5e',
+    backdrop,
+  );
 
   // "Node surface" — surface tinted toward accent so nodes stand out from
   // the diagram canvas (which itself uses ``--jz-surface``). Higher mix on
   // dark palettes because the bare surface is already dim, and a 4 % accent
   // bump is barely perceptible there. We also offset borders so they always
   // have ≥ 30 % contrast against the node fill, regardless of palette.
-  const nodeFill = mixColors(surface, accent, isDark ? 14 : 8);
-  const nodeAltFill = mixColors(surface, accent, isDark ? 24 : 14);
-  const edgeLabel = mixColors(surface, isDark ? '#ffffff' : '#000000', 6);
+  const nodeFill = mixColors(surface, accent, isDark ? 14 : 8, backdrop);
+  const nodeAltFill = mixColors(surface, accent, isDark ? 24 : 14, backdrop);
+  const edgeLabel = mixColors(surface, isDark ? '#ffffff' : '#000000', 6, backdrop);
+  const clusterFill = mixColors(surface, accent, isDark ? 7 : 4, backdrop);
   return {
     startOnLoad: false,
     securityLevel: 'strict' as const,
+    /* Render every label as native SVG ``<text>`` instead of HTML inside
+       ``<foreignObject>``. The reading side re-sanitises Mermaid's output
+       with DOMPurify (CodeBlockEnhancer → sanitizeHtml), and DOMPurify ≥ 2
+       unconditionally strips HTML elements nested in foreignObject as mXSS
+       hardening — which silently deleted EVERY flowchart node / edge /
+       subgraph label. SVG text survives sanitisation and ``<br/>`` still
+       produces line breaks via tspans. */
+    htmlLabels: false,
     fontFamily:
       '"Noto Serif SC", "Songti SC", "PingFang SC", system-ui, -apple-system, sans-serif',
     /* Tighten the per-diagram spacings — mermaid's defaults leave a lot of
@@ -217,6 +266,26 @@ function mermaidConfig(theme: string) {
       lineColor: muted,
       textColor: text,
       edgeLabelBackground: edgeLabel,
+      // flowchart subgraph (cluster) container + title
+      clusterBkg: clusterFill,
+      clusterBorder: border,
+      titleColor: text,
+      // Sequence diagram — set every text/box colour explicitly instead of
+      // trusting the built-in ``dark`` theme's derivations (it hardcodes
+      // ``lightgrey`` actor text and lightens our boxes, which is exactly
+      // what made actors unreadable in dark mode).
+      actorBkg: nodeFill,
+      actorBorder: accent,
+      actorTextColor: text,
+      actorLineColor: muted,
+      signalColor: muted,
+      signalTextColor: text,
+      labelBoxBkgColor: nodeAltFill,
+      labelBoxBorderColor: border,
+      labelTextColor: text,
+      loopTextColor: text,
+      activationBkgColor: nodeAltFill,
+      activationBorderColor: accent,
       // Sequence / Gantt overrides — keep the same accent so they harmonise
       noteBkgColor: nodeFill,
       noteBorderColor: accent,
@@ -248,7 +317,7 @@ async function loadMermaid(): Promise<MermaidApi> {
 }
 
 /** @internal — exposed only for unit tests; do not import elsewhere. */
-export const __test__ = { parseColor, mixColors, normalizeForMermaid };
+export const __test__ = { parseColor, mixColors, normalizeForMermaid, compositeOver, mermaidConfig };
 
 export async function renderMermaid(source: string): Promise<string> {
   const api = await loadMermaid();

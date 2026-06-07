@@ -108,7 +108,11 @@ export default function LivePreviewPane({
                       style={{ paddingLeft: (entry.level - 1) * 12 + 8 }}
                       onClick={(e) => {
                         e.preventDefault();
-                        const el = innerScrollRef.current?.querySelector(`#${entry.id}`);
+                        // CSS.escape: 数字开头的标题 id（如 "1-概述"）会让
+                        // 裸 #selector 抛 SyntaxError，整个 TOC 点击崩掉。
+                        const el = innerScrollRef.current?.querySelector(
+                          `#${CSS.escape(entry.id)}`,
+                        );
                         el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
                       }}
                     >

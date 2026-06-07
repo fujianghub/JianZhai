@@ -111,10 +111,17 @@
   background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
 }
 
-/* Tables — sticky header keeps the column labels visible while scrolling a
-   long table on tall screens. ``overflow-x: auto`` on the parent wrapper
-   (when present) and a max-height keep wide / long tables from blowing out
-   the page. */
+/* Tables — the markdown pipeline wraps every table in ``.jz-table-wrap``
+   (utils/markdown.ts), which owns scrolling: wide tables scroll horizontally,
+   long tables cap at 70vh and scroll vertically (sticky header stays pinned
+   to the wrap). The bare ``table`` rule below is a fallback for raw-HTML
+   tables authored without the wrapper — they become their own scroll
+   container via display:block. */
+.markdown-preview .jz-table-wrap {
+  overflow: auto;
+  max-height: 70vh;
+  margin: 1.2em 0;
+}
 .markdown-preview table {
   border-collapse: collapse;
   margin: 1em 0;
@@ -124,10 +131,18 @@
   max-height: 70vh;
   overflow-y: auto;
 }
+/* Wrapped tables get real table layout back — display:block on <table>
+   breaks width:100% (rows shrink-to-fit while the border spans full width). */
+.markdown-preview .jz-table-wrap > table {
+  display: table;
+  overflow: visible;
+  max-height: none;
+  margin: 0;
+}
 .markdown-preview table thead th {
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
   background: color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 80%, var(--jz-surface));
   /* sticky removes the cell's border-collapse; recreate via box-shadow so
      the bottom border still draws on top of scrolled content. */
@@ -137,6 +152,29 @@
 .markdown-preview table td {
   border: 1px solid var(--jz-divider);
   padding: 6px 10px;
+}
+
+/* ── 冻结首列 ──
+   The first column pins to the left edge while the table scrolls
+   horizontally inside .jz-table-wrap (or the display:block fallback).
+   Cell backgrounds are already opaque — the 题签 zebra rules further down
+   paint every th/td — so pinned cells fully cover the columns sliding
+   underneath. Layering: header row (2) > body first column (1); the corner
+   cell frozen both ways sits on top (3). */
+.markdown-preview table th:first-child,
+.markdown-preview table td:first-child {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  /* right-edge divider so the frozen column reads as a separate pane */
+  box-shadow: inset -1px 0 0 var(--jz-divider);
+}
+.markdown-preview table thead th:first-child,
+.markdown-preview table tr:first-child th:first-child {
+  z-index: 3;
+  box-shadow:
+    inset -1px 0 0 var(--jz-divider),
+    inset 0 -1px 0 var(--jz-divider);
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -1740,7 +1778,9 @@
   font-size: 0.95em;
   border: 1px solid var(--jz-border);
   border-radius: 8px;
-  overflow: hidden;
+  /* NOTE: no ``overflow: hidden`` here — combined with the reader's
+     display:block fallback it clipped wide/long tables with no way to
+     scroll ("表格显示不完全"). Scrolling lives on .jz-table-wrap. */
   box-shadow: 0 1px 0 color-mix(in srgb, var(--jz-gold) 25%, transparent);
 }
 .markdown-preview th,
@@ -1966,3 +2006,45 @@
   margin: 0 4px;
   align-self: center;
 }
+
+/* ── [TOC] 行内目录（阅读端展开形态）──
+   ``expandInlineToc`` (utils/markdown.ts) replaces the [TOC] placeholder with
+   this card: a thin gold-lined panel echoing the 题签 table header. Levels
+   l1–l4 indent progressively. */
+.markdown-preview .jz-inline-toc {
+  margin: 1.2em 0;
+  padding: 12px 16px;
+  border: 1px solid var(--jz-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--jz-gold) 4%, var(--jz-surface));
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--jz-gold) 25%, transparent);
+}
+.markdown-preview .jz-inline-toc-title {
+  font-weight: 600;
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  letter-spacing: 2px;
+  color: var(--jz-text);
+  border-bottom: 1px solid color-mix(in srgb, var(--jz-gold) 45%, var(--jz-divider));
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.markdown-preview .jz-inline-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.markdown-preview .jz-inline-toc li {
+  margin: 3px 0;
+  line-height: 1.7;
+}
+.markdown-preview .jz-inline-toc li a {
+  color: var(--jz-text);
+  border-bottom: none;
+}
+.markdown-preview .jz-inline-toc li a:hover {
+  color: var(--jz-accent);
+  background: none;
+}
+.markdown-preview .jz-inline-toc .jz-inline-toc-l2 { padding-left: 1.2em; }
+.markdown-preview .jz-inline-toc .jz-inline-toc-l3 { padding-left: 2.4em; }
+.markdown-preview .jz-inline-toc .jz-inline-toc-l4 { padding-left: 3.6em; }

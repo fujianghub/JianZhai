@@ -21,7 +21,23 @@ export const HTML_READER_BOOTSTRAP = [
   '    return links.length>=10;',
   '  }catch(e){return false;}',
   '}',
-  'function scan(){',
+  // Two-stage scan, mirroring the old same-origin fast/full split:
+  //   fast  — height + cached headings/text, NO forced reflow beyond
+  //           scrollHeight. Fires immediately so the iframe sizes in one
+  //           frame.
+  //   full  — recompute heading positions (getBoundingClientRect each) and,
+  //           ONCE only, body.innerText (forces full layout — by far the
+  //           most expensive call here; word-count never changes, so never
+  //           pay for it twice). Deferred to requestIdleCallback so it
+  //           can't block first paint or jank image-load resize bursts.
+  'var cachedItems=[],cachedText=\'\',textDone=false;',
+  'function post(){',
+  '  try{parent.postMessage({type:\'jz-html-meta\',',
+  '    height:contentHeight(),headings:cachedItems,',
+  '    plainText:cachedText,hasBuiltInNav:builtInNav()},\'*\');',
+  '  }catch(e){}',
+  '}',
+  'function fullScan(){',
   '  var hs=document.querySelectorAll(\'h1,h2,h3,h4,h5,h6\'),items=[];',
   '  for(var i=0;i<hs.length;i++){',
   '    var h=hs[i];if(!h.id)h.id=uniq(slug(h.textContent));',
@@ -29,13 +45,30 @@ export const HTML_READER_BOOTSTRAP = [
   '      text:(h.textContent||\'\').trim(),',
   '      top:h.getBoundingClientRect().top+(window.pageYOffset||0)});',
   '  }',
-  '  try{parent.postMessage({type:\'jz-html-meta\',',
-  '    height:contentHeight(),headings:items,',
-  '    plainText:(document.body&&document.body.innerText||\'\').slice(0,200000),',
-  '    hasBuiltInNav:builtInNav()},\'*\');',
-  '  }catch(e){}',
+  '  cachedItems=items;',
+  '  if(!textDone){',
+  '    cachedText=(document.body&&document.body.innerText||\'\').slice(0,200000);',
+  '    textDone=true;',
+  '  }',
+  '  post();',
   '}',
-  'function ready(fn){document.readyState===\'complete\'?fn():window.addEventListener(\'load\',fn);}',
+  'var ric=window.requestIdleCallback||function(cb){return setTimeout(cb,1);};',
+  'var idlePending=0;',
+  'function scheduleFull(){',
+  '  if(idlePending)return;idlePending=1;',
+  '  ric(function(){idlePending=0;fullScan();});',
+  '}',
+  'function scan(){post();scheduleFull();}',
+  // First scan at DOMContentLoaded — waiting for window ``load`` (every
+  // image/font/CDN script) made big documents sit on the skeleton for
+  // seconds. A second scan on ``load`` catches the settled layout, and the
+  // ResizeObserver below keeps tracking late shifts; applyMeta on the parent
+  // side dedupes the bursts.
+  'function ready(fn){',
+  '  if(document.readyState!==\'loading\'){fn();}',
+  '  else{document.addEventListener(\'DOMContentLoaded\',fn);}',
+  '  if(document.readyState!==\'complete\'){window.addEventListener(\'load\',fn);}',
+  '}',
   'try{',
   '  if(!document.getElementById(\'jz-vh-override\')){',
   '    var s=document.createElement(\'style\'); s.id=\'jz-vh-override\';',

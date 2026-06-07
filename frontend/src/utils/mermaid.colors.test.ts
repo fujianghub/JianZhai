@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { __test__ } from './mermaid';
 
-const { parseColor, mixColors, normalizeForMermaid } = __test__;
+const { parseColor, mixColors, normalizeForMermaid, compositeOver } = __test__;
 
 describe('parseColor', () => {
   it('parses 6-char hex', () => {
@@ -75,5 +75,39 @@ describe('normalizeForMermaid', () => {
   });
   it('returns plain hex unchanged (round-trips)', () => {
     expect(normalizeForMermaid('#10b981', '#000')).toBe('#10b981');
+  });
+});
+
+describe('dark-theme backdrop compositing', () => {
+  // The dark theme's glass token is white at ~4.5 % alpha laid over a dark
+  // page (--jz-bg-app: #07090f). Compositing it over WHITE flattens to
+  // near-white — the bug that produced pale sequence-diagram actor boxes
+  // with light grey text in dark mode. Pin the contract: composited over
+  // the real dark backdrop, the result stays dark.
+  const DARK_BG: [number, number, number] = [0x07, 0x09, 0x0f];
+
+  it('white-alpha glass over a dark backdrop stays dark', () => {
+    const out = normalizeForMermaid('rgba(255, 255, 255, 0.045)', '#000', DARK_BG);
+    const channels = out.slice(1).match(/.{2}/g)!.map((h) => parseInt(h, 16));
+    for (const v of channels) expect(v).toBeLessThanOrEqual(40);
+  });
+
+  it('white-alpha glass over white backdrop is near-white (light-mode behaviour preserved)', () => {
+    const out = normalizeForMermaid('rgba(255, 255, 255, 0.045)', '#000');
+    const channels = out.slice(1).match(/.{2}/g)!.map((h) => parseInt(h, 16));
+    for (const v of channels) expect(v).toBeGreaterThanOrEqual(240);
+  });
+
+  it('mixColors composites both sides over the given backdrop', () => {
+    // surface (white 4.5 % alpha) tinted 14 % toward jade, on a dark page:
+    // must come out dark with a slight jade pull, never pale.
+    const out = mixColors('rgba(255, 255, 255, 0.045)', '#10b981', 14, DARK_BG);
+    const channels = out.slice(1).match(/.{2}/g)!.map((h) => parseInt(h, 16));
+    for (const v of channels) expect(v).toBeLessThanOrEqual(64);
+  });
+
+  it('compositeOver math: full alpha returns the colour, zero alpha the backdrop', () => {
+    expect(compositeOver([200, 100, 50, 1], DARK_BG)).toEqual([200, 100, 50]);
+    expect(compositeOver([200, 100, 50, 0], DARK_BG)).toEqual([0x07, 0x09, 0x0f]);
   });
 });

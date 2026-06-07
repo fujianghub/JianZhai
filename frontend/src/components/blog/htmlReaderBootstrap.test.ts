@@ -24,6 +24,17 @@ describe('injectHtmlReaderBootstrap', () => {
     expect(bootAt).toBeLessThan(out.indexOf('</body>'));
   });
 
+  it('bootstrap defers the expensive full scan to idle time and computes innerText once', () => {
+    expect(HTML_READER_BOOTSTRAP).toContain('requestIdleCallback');
+    expect(HTML_READER_BOOTSTRAP).toContain('textDone');
+    // innerText (forced reflow) must appear exactly once, inside the guarded block.
+    expect(HTML_READER_BOOTSTRAP.split('innerText').length - 1).toBe(1);
+  });
+
+  it('bootstrap reports at DOMContentLoaded, not only window load', () => {
+    expect(HTML_READER_BOOTSTRAP).toContain('DOMContentLoaded');
+  });
+
   it('bootstrap intercepts in-document anchor clicks (scroll instead of navigate)', () => {
     // With an http(s) base, "#sec" would resolve to the base URL and reload
     // the raw file — the bootstrap must capture those clicks.

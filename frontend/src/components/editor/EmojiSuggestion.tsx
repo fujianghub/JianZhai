@@ -49,6 +49,8 @@ const EmojiPicker = forwardRef<EmojiPickerRef, PickerProps>(({ items, command },
         return true;
       }
       if (e.key === 'Enter' || e.key === 'Tab') {
+        // IME confirm-Enter must not double as picker selection.
+        if (e.isComposing || e.keyCode === 229) return false;
         if (items[active]) command(items[active]);
         return true;
       }
@@ -99,6 +101,19 @@ export const EmojiSuggestion = Extension.create({
         // null = 始终允许，避免在空段落 / 行首打不出 :smile（默认 [' ', '('] 在
         // paragraph 起点会拒绝）。:emoji: 由用户主动输入，误触发可控。
         allowedPrefixes: null,
+        // 但代码块 / 数学块里的 `:` 是字面冒号（对象字面量、伪类选择器、
+        // LaTeX …），绝不应弹 emoji 候选。
+        allow: ({
+          state,
+          range,
+        }: {
+          state: import('@tiptap/pm/state').EditorState;
+          range: { from: number; to: number };
+        }) => {
+          const $from = state.doc.resolve(range.from);
+          const parent = $from.parent.type;
+          return !parent.spec.code && parent.name !== 'mathBlock';
+        },
         command: ({ editor, range, props }: { editor: import('@tiptap/core').Editor; range: { from: number; to: number }; props: EmojiEntry }) => {
           editor.chain().focus().insertContentAt(range, props.emoji + ' ').run();
         },
