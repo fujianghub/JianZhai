@@ -35,7 +35,16 @@ export const HTML_READER_BOOTSTRAP = [
   '    hasBuiltInNav:builtInNav()},\'*\');',
   '  }catch(e){}',
   '}',
-  'function ready(fn){document.readyState===\'complete\'?fn():window.addEventListener(\'load\',fn);}',
+  // First scan at DOMContentLoaded — waiting for window ``load`` (every
+  // image/font/CDN script) made big documents sit on the skeleton for
+  // seconds. A second scan on ``load`` catches the settled layout, and the
+  // ResizeObserver below keeps tracking late shifts; applyMeta on the parent
+  // side dedupes the bursts.
+  'function ready(fn){',
+  '  if(document.readyState!==\'loading\'){fn();}',
+  '  else{document.addEventListener(\'DOMContentLoaded\',fn);}',
+  '  if(document.readyState!==\'complete\'){window.addEventListener(\'load\',fn);}',
+  '}',
   'try{',
   '  if(!document.getElementById(\'jz-vh-override\')){',
   '    var s=document.createElement(\'style\'); s.id=\'jz-vh-override\';',

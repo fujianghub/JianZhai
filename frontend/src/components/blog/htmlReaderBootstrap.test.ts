@@ -24,6 +24,10 @@ describe('injectHtmlReaderBootstrap', () => {
     expect(bootAt).toBeLessThan(out.indexOf('</body>'));
   });
 
+  it('bootstrap reports at DOMContentLoaded, not only window load', () => {
+    expect(HTML_READER_BOOTSTRAP).toContain('DOMContentLoaded');
+  });
+
   it('bootstrap intercepts in-document anchor clicks (scroll instead of navigate)', () => {
     // With an http(s) base, "#sec" would resolve to the base URL and reload
     // the raw file — the bootstrap must capture those clicks.

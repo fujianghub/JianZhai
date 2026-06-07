@@ -72,11 +72,61 @@ function absoluteHref(url: string): string {
   }
 }
 
+/* ── Per-tab cache for fetched attachment HTML ─────────────────────────
+ * Upload filenames are uuid-based and immutable — replacing the document
+ * produces a NEW url — so the URL itself is a perfect cache key with no TTL.
+ * Keeps prev/next navigation and back-button revisits instant instead of
+ * re-downloading megabyte-sized HTML each time. Oversized entries are
+ * skipped so a single huge file can't evict everything else. */
+const ATT_CACHE_KEY = 'jz-html-att-cache-v1';
+const ATT_CACHE_MAX = 6;
+const ATT_CACHE_ENTRY_LIMIT = 1_500_000; // chars (~3MB UTF-16) per entry
+
+interface AttCacheEntry {
+  ts: number;
+  text: string;
+}
+
+function readAttCache(url: string): string | null {
+  if (typeof sessionStorage === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(ATT_CACHE_KEY);
+    if (!raw) return null;
+    const map = JSON.parse(raw) as Record<string, AttCacheEntry>;
+    return map[url]?.text ?? null;
+  } catch {
+    return null;
+  }
+}
+
+function writeAttCache(url: string, text: string): void {
+  if (typeof sessionStorage === 'undefined') return;
+  if (text.length > ATT_CACHE_ENTRY_LIMIT) return;
+  try {
+    const raw = sessionStorage.getItem(ATT_CACHE_KEY);
+    const map = raw ? (JSON.parse(raw) as Record<string, AttCacheEntry>) : {};
+    map[url] = { ts: Date.now(), text };
+    const keys = Object.keys(map);
+    if (keys.length > ATT_CACHE_MAX) {
+      keys
+        .map((k) => [k, map[k]!.ts] as const)
+        .sort((a, b) => a[1] - b[1])
+        .slice(0, keys.length - ATT_CACHE_MAX)
+        .forEach(([k]) => delete map[k]);
+    }
+    sessionStorage.setItem(ATT_CACHE_KEY, JSON.stringify(map));
+  } catch {
+    /* storage full or disabled — silently skip caching */
+  }
+}
+
 /** Fetch an uploaded ``.html`` attachment as text, honouring its declared
  *  charset: Content-Type header first, then an ASCII probe of the first 2KB
  *  for a ``<meta charset>``. Old GBK-era files decode correctly instead of
  *  rendering as mojibake (``r.text()`` would force UTF-8). */
 async function fetchAttachmentHtml(url: string): Promise<string> {
+  const cached = readAttCache(url);
+  if (cached !== null) return cached;
   const resp = await fetch(url, { credentials: 'same-origin' });
   if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
   const buf = await resp.arrayBuffer();
@@ -86,14 +136,19 @@ async function fetchAttachmentHtml(url: string): Promise<string> {
     const probe = new TextDecoder('latin1').decode(buf.slice(0, 2048));
     charset = (/<meta[^>]+charset\s*=\s*["']?([\w-]+)/i.exec(probe)?.[1] || '').toLowerCase();
   }
+  let text: string;
   if (charset && charset !== 'utf-8' && charset !== 'utf8') {
     try {
-      return new TextDecoder(charset).decode(buf);
+      text = new TextDecoder(charset).decode(buf);
     } catch {
       /* unknown label — fall through to UTF-8 */
+      text = new TextDecoder('utf-8').decode(buf);
     }
+  } else {
+    text = new TextDecoder('utf-8').decode(buf);
   }
-  return new TextDecoder('utf-8').decode(buf);
+  writeAttCache(url, text);
+  return text;
 }
 
 function HtmlPostReader({
@@ -297,7 +352,9 @@ function HtmlPostReader({
           srcDoc={srcDoc}
           sandbox="allow-scripts allow-popups allow-forms"
           scrolling="no"
-          loading="lazy"
+          // NOT loading="lazy": this iframe IS the article body, always at
+          // the top of the viewport — lazy would only postpone parsing and
+          // delay the first height report.
           style={iframeStyle}
         />
       )}
