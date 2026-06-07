@@ -1,12 +1,10 @@
 import { useState } from 'react';
-import { Button, Card, Form, Input, Typography } from 'antd';
+import { Button, Form, Input } from 'antd';
 import { message } from '@/utils/notify';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '@/stores/auth';
 import { formatApiError } from '@/api/client';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
-
-const { Title, Paragraph } = Typography;
 
 export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
@@ -28,43 +26,46 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="jz-glass"
-      style={{
-        minHeight: '100vh',
-        display: 'grid',
-        placeItems: 'center',
-        padding: 16,
-      }}
-    >
-      <div style={{ position: 'fixed', top: 16, right: 16 }}>
+    <div className="jz-glass jz-login">
+      <div className="jz-login-glow" aria-hidden />
+      <div className="jz-login-theme">
         <ThemeSwitcher />
       </div>
-      <Card
-        className="jz-card jz-fade-in"
-        style={{ width: 380, maxWidth: '100%', boxShadow: '0 20px 60px rgba(0,0,0,0.10)' }}
-      >
-        <Title level={2} style={{ marginBottom: 2, letterSpacing: 1.5 }}>简斋 · JianZhai</Title>
-        <Paragraph type="secondary" style={{ marginBottom: 24 }}>
-          个人知识库 + 个人博客
-        </Paragraph>
+
+      <div className="jz-login-card jz-fade-in">
+        <div className="jz-login-seal" aria-hidden>簡</div>
+        <h1 className="jz-login-title">简斋 · JianZhai</h1>
+        <p className="jz-login-sub">个 人 知 识 库 · 个 人 博 客</p>
+
         <Form
           layout="vertical"
           onFinish={onFinish}
-          initialValues={{ username: 'admin', password: 'admin' }}
           requiredMark={false}
+          autoComplete="off"
+          className="jz-login-form"
         >
-          <Form.Item label="用户名" name="username" rules={[{ required: true }]}>
-            <Input autoFocus autoComplete="username" size="large" />
+          <Form.Item label="用户名" name="username" rules={[{ required: true, message: '请输入用户名' }]}>
+            <Input
+              autoFocus
+              size="large"
+              placeholder="请输入用户名"
+              autoComplete="off"
+            />
           </Form.Item>
-          <Form.Item label="密码" name="password" rules={[{ required: true }]}>
-            <Input.Password autoComplete="current-password" size="large" />
+          <Form.Item label="密码" name="password" rules={[{ required: true, message: '请输入密码' }]}>
+            <Input.Password
+              size="large"
+              placeholder="请输入密码"
+              autoComplete="new-password"
+            />
           </Form.Item>
           <Button type="primary" htmlType="submit" loading={submitting} block size="large">
-            登录
+            登 录
           </Button>
         </Form>
-      </Card>
+
+        <div className="jz-login-foot" aria-hidden>一份内容 · 两种形态</div>
+      </div>
     </div>
   );
 }
