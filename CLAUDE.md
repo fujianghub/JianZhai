@@ -15,7 +15,7 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9.10 — 题记增强 + **图标体系定稿**（三区三语言：侧栏设计稿 / 首页最初版 / 主题 AntD）（叠加 v0.9.9 根管理员 + 账号自服务、v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商） |
+| 实现阶段 | v0.9.10 + **编辑器追平语雀**（MD 源码改 CodeMirror 6 + Live Preview + 表格单元格染色/悬浮行列/冻结首行列）、**安全复审批次**（六领域加固）、**性能优化 9 Phase**、**Mermaid 离线导出 SVG**、**完整编辑两栏铺满**（叠加 v0.9.9 根管理员、v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商、图标体系定稿） |
 | 多用户 | 支持。普通账号按 `owner` 隔离；`is_superuser` 跨租户可见；单一**根管理员**（`ROOT_ADMIN_USERNAME`）位于权限顶端，不可被禁用/删除 |
 | 博客形态 | 全开放（匿名）或**友邻可见**（`SITE_REQUIRE_LOGIN=true` → 需登录），由 `PublicOrLoginGated` 权限类逐请求判定 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
@@ -520,7 +520,7 @@ class AIUsageLog(models.Model):
 
 ## 关键风险与注意事项
 
-1. **Tiptap Markdown 互转保真度** — 复杂表格、合并单元格在富文本 ↔ Markdown 间可能丢失。
+1. **Tiptap Markdown 互转保真度** — 带单元格底色/表级样式/不可 GFM 的表会条件序列化为原生 HTML（含 `.jz-table-wrap` + `data-jz-*` + CSS 变量）以保真，无色无样式表仍走干净 GFM 管道；复杂合并单元格、docx 导出的彩色/间距仍可能丢失。
 2. **双向链接** — `linking/tasks.py` 仅接受**同 owner** 且未软删的目标文档；`sync_document_links` 对源文档 `select_for_update` 并把锁结果**赋值给本地变量**（v0.9.2 修复了"取了锁就丢"导致的并发争用），bulk_create 完整运行在 atomic 块内。保存后 Celery 异步解析 `raw_content`。
 3. **乐观并发** — PATCH / 发布版 PATCH / `publish` / `unpublish` 均可带 `expected_version`；序列化器在事务内 `select_for_update` 校验；冲突返回 409 + 最新文档快照。
 4. **大文档性能** — 编辑器 10k+ 字时仍流畅，但建议未来对超长文档启用 Tiptap lazy rendering。
@@ -553,6 +553,12 @@ class AIUsageLog(models.Model):
 | **v0.9.9 账号体系** | 根管理员分级（`ROOT_ADMIN_USERNAME`，不可被禁用/删除，统一 `can_manage_user` 裁决）；新建账号邮箱必填；用户自助改密码/邮箱/用户名/头像；KB 上传实时进度条 + 批量全选 + 可视化颜色选择器 | ✅ |
 | **v0.9.10 题记增强** | 播放顺序可配置（random 默认洗牌 / sequential）；悬停暂停 + 点击切换；题记列表 dnd-kit 拖拽排序；导出备份文本；首页 + 管理页样式打磨；「首页题记」改名「题记」 | ✅ |
 | **图标体系定稿**（v0.9.10 后续） | 三区三语言：侧栏接入用户设计稿 `JzIconKit`（15 枚淡染裸放 + tone 十色）；博客顶栏回归最初版浅染族；主题四枚回 AntD；工作台快捷入口/最近 KB 卡同语言；侧栏新增「收藏」入口；PostDetail 等全部换自制图标，卸载 hugeicons | ✅ |
+| **MD 编辑器换 CM6**（2026-06-07） | MD 源码模式 textarea → **CodeMirror 6**（语雀级：语法高亮/行号/浮动格式条/智能续列表/表格辅助/数学 Modal/行级双向滚动同步/斜杠补块）；`EditorSurface` 适配层统一 MD(CM)/HTML(textarea) seek/选区/查找；vite `manualChunks` 拆 codemirror/tiptap 独立 chunk；坑：lang-markdown 懒加载致 dev 下 `@codemirror/state` 多实例 → `resolve.dedupe` + `optimizeDeps.include` 根治 | ✅ |
+| **追赶语雀第二批**（2026-06-07） | 富文本表格**单元格底色/文字色**（CellSelection 批量染色）+ 条件 HTML 序列化（无色无样式保持干净 GFM 管道）；悬浮行列增删按钮 + grip 单击选行列/拖动重排（pm-tables 自带 moveTableRow/Column）；**MD Live Preview**（Typora/Obsidian 式就地渲染，当前行显源码根除 IME 冲突）；表格浮动操作条 `TableFloatingBar` | ✅ |
+| **安全复审批次**（2026-06-07） | 六领域复审修复合并 main（a72e516）：TLS 条件硬化、友邻闸门加固、`raw_content` 泄漏封堵、AI 预算**调用前预留**、iframe 去同源；deploy-tencent 两提交 cherry-pick 进 main；遗留 media 鉴权待办 | ✅ |
+| **编辑器高危修复 + 表格保真**（2026-06-07） | 表格**冻结首行/首列**（编辑器/阅读/导出三端 sticky）；`convertLayoutBlocks` 根治 callout 劫持 details/cols/tabs + `::col` 不可解析；`.jz-table-wrap` 滚动容器（预处理/md/导出三路包裹）修宽长表被古书题签 `overflow:hidden` 裁切；Mermaid 净化修复（DOMPurify 剥 foreignObject 致无字 + dy 被剥似删除线 → `htmlLabels:false` + allowlist + 实时跟随四主题） | ✅ |
+| **性能优化 9 Phase**（2026-06-08） | defer 大正文字段（列表/树/版本/博客/搜索）；软删复合索引；消除 N+1；AISettings 单例缓存 + 预算 DB 聚合；公开聚合接口缓存 + 持久连接健康检查；懒加载 pdfjs+mammoth（DocAIPanel chunk 2.25MB→660KB）；getCapabilities 并发去重；富文本打字防抖 + 滚动同步；静态站流式写盘；255+275 测试绿 | ✅ |
+| **布局 + 导出保真**（2026-06-08） | **完整编辑两栏铺满**（≥1280 editor flex:1、大纲改流内 sticky 右栏、正文限宽 860 居中，去 body 内联 flexDirection 放行 row）；**Mermaid 离线导出 SVG**（HTML/PDF/静态站用 headless Chromium + vendored mermaid.min.js 渲为内联 SVG，每次导出仅启动一次浏览器，缺失/语法错误优雅降级源码面板）；图表操作条按钮去玻璃底修复亮色页灰字 | ✅ |
 | **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 超大 KB 树分页 / Yjs 协作 | 🔲 |
 
 ---
@@ -614,5 +620,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.11（对应实现 v0.9.10 + 图标体系定稿）  
-**最后更新**：2026-06-06
+**文档版本**：v3.12（对应实现 v0.9.10 + 编辑器换 CM6 / 追赶语雀 / 安全复审 / 性能 9 Phase / Mermaid 导出 SVG / 两栏铺满）  
+**最后更新**：2026-06-08
