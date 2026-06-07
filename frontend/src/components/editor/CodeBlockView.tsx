@@ -32,6 +32,7 @@ import {
   type CodeThemeId,
 } from '@/utils/codeBlockPrefs';
 import { message } from '@/utils/notify';
+import { useThemeStore } from '@/stores/theme';
 import { renderMermaid } from '@/utils/mermaid';
 import { fetchPlantumlSvg } from '@/utils/plantuml';
 import {
@@ -92,6 +93,14 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
 
   const diagramSource = isDiagram ? (node.textContent ?? '') : '';
   const debouncedSource = useDebouncedValue(diagramSource, isPlantuml ? 600 : 300);
+  // Mermaid bakes the active palette into the SVG at render time, so a live
+  // theme/accent switch must bust the de-dup guard and re-render. PlantUML
+  // output is theme-independent — keep its key theme-free to avoid refetches.
+  const themeMode = useThemeStore((s) => s.mode);
+  const accentKey = useThemeStore((s) => s.accent.key);
+  const renderKey = isMermaid
+    ? `${themeMode}|${accentKey}\n${debouncedSource}`
+    : debouncedSource;
   useEffect(() => {
     if (!isDiagram || !showDiagramPreview || collapsed) return;
     if (!debouncedSource.trim()) {
@@ -99,8 +108,8 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
       setPreviewError('');
       return;
     }
-    if (previewSourceRef.current === debouncedSource) return;
-    previewSourceRef.current = debouncedSource;
+    if (previewSourceRef.current === renderKey) return;
+    previewSourceRef.current = renderKey;
     let cancelled = false;
     const renderFn = isMermaid ? renderMermaid : fetchPlantumlSvg;
     renderFn(debouncedSource)
@@ -118,7 +127,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
     return () => {
       cancelled = true;
     };
-  }, [debouncedSource, isDiagram, isMermaid, showDiagramPreview, collapsed]);
+  }, [debouncedSource, renderKey, isDiagram, isMermaid, showDiagramPreview, collapsed]);
 
   const replaceDiagramSource = useCallback(
     (template: string) => {
