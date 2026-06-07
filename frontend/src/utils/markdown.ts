@@ -295,6 +295,11 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'text', 'tspan', 'defs', 'marker', 'foreignObject', 'use', 'symbol', 'clipPath',
     'linearGradient', 'radialGradient', 'stop', 'mask', 'pattern', 'image', 'desc',
     'title', 'style',
+    // SVG filter primitives — mermaid emits <filter> defs; stripping the def
+    // while a ``style="filter:url(#id)"`` reference survives leaves a dangling
+    // filter, which can stop the referencing element painting at all.
+    'filter', 'feFlood', 'feGaussianBlur', 'feComposite', 'feMerge', 'feMergeNode',
+    'feOffset', 'feColorMatrix', 'feDropShadow', 'feBlend',
     // KaTeX uses span/svg + class for HTML-only output; allow ``annotation``
     // so users who embed MathML round-trip cleanly too.
     'annotation', 'semantics', 'mrow', 'mi', 'mo', 'mn', 'msup', 'msub', 'mfrac',
@@ -317,7 +322,16 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'stroke-opacity', 'preserveAspectRatio', 'xmlns', 'xmlns:xlink', 'xlink:href',
     'gradientUnits', 'gradientTransform', 'offset', 'stop-color', 'stop-opacity',
     'marker-end', 'marker-start', 'orient', 'refX', 'refY', 'markerWidth', 'markerHeight',
-    'font-family', 'font-size', 'text-anchor', 'dominant-baseline', 'pointer-events',
+    'markerUnits', 'font-family', 'font-size', 'text-anchor', 'dominant-baseline',
+    'pointer-events', 'aria-roledescription',
+    // SVG text row offsets — mermaid (htmlLabels:false) positions each label
+    // row with ``dy="1.1em"``; stripping it stacked every row 1.1em too high,
+    // so node borders struck straight through their own labels.
+    'dy', 'dx', 'alignment-baseline', 'font-style', 'font-weight',
+    'fill-rule', 'clip-rule', 'clip-path',
+    // filter primitive attrs (see filter tags above)
+    'in', 'in2', 'result', 'mode', 'operator', 'flood-color', 'flood-opacity',
+    'stdDeviation', 'filterUnits', 'primitiveUnits',
   ],
   ALLOW_DATA_ATTR: false,
   // Block all event handlers (onclick=, onerror=, …) even on otherwise allowed tags.
