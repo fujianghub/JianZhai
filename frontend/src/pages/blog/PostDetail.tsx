@@ -752,9 +752,10 @@ export default function PostDetail() {
             />
           )}
           {isHtmlDoc && (htmlBody.trim() || htmlOriginalUrl) ? (
-            // HTML 文档：优先用 <iframe src={attachment.url}> 走真实文档 URL，
-            // 让相对路径资源 / Tailwind / JS 全部按浏览器原生方式加载；只有
-            // 纯 raw_content（admin 新建模板）才走 srcDoc 兜底。
+            // HTML 文档：fetch 附件原文 → 注入高度上报 bootstrap + <base>（相对
+            // 路径资源 / Tailwind / JS 照常加载）→ srcDoc 渲染于无 allow-same-origin
+            // 的沙箱（作者 JS 不能碰我们的 cookie/会话）。fetch 失败才退回
+            // <iframe src> 固定窗口；纯 raw_content（admin 新建模板）同走 srcDoc。
             <div className="paper-breakout">
               <HtmlPostReader
                 html={htmlBody}

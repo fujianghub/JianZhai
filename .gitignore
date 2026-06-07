@@ -58,3 +58,4 @@ celerybeat.pid
 
 # 图标设计稿（本地素材，不入库）
 /icon/
+node_modules
