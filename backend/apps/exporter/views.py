@@ -66,12 +66,21 @@ class ExportTaskViewSet(
             target_label=scope_info.label,
             format=fmt,
         )
-        # Hand off to Celery; if the broker is unreachable, fall back to inline execution
-        # so manual testing without a worker still works.
+        # Hand off to Celery; if the broker is unreachable, fall back to inline
+        # execution so manual testing without a worker still works — but only
+        # for lightweight formats. PDF/site spin up Playwright/Chromium (~200MB,
+        # up to 2 min) and would block a request worker, so when the broker is
+        # down we fail those fast with a clear message instead.
+        _HEAVY_FORMATS = {ExportTask.FORMAT_PDF, ExportTask.FORMAT_SITE}
         try:
             run_export.delay(task.id)
         except Exception:  # noqa: BLE001
-            run_export(task.id)
+            if fmt in _HEAVY_FORMATS:
+                task.status = ExportTask.STATUS_FAILED
+                task.error = "导出服务暂不可用（任务队列未运行），请稍后重试该格式。"
+                task.save(update_fields=["status", "error"])
+            else:
+                run_export(task.id)
 
         return Response(self.get_serializer(task).data, status=201)
 

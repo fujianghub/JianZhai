@@ -466,3 +466,19 @@ def make_zip(entries: list[tuple[str, bytes]]) -> bytes:
         for name, data in entries:
             zf.writestr(name, data)
     return buf.getvalue()
+
+
+def stream_zip_to_path(path: "Path", entries) -> int:
+    """Write a zip directly to ``path``, consuming ``entries`` lazily.
+
+    Unlike :func:`make_zip` (which buffers the entire archive in a BytesIO and
+    returns it), this streams each ``(name, bytes)`` entry straight to disk so
+    a large static-site export never holds the full document set + archive in
+    memory at once. ``entries`` may be any iterable/generator of
+    ``(arcname, data)`` — each ``data`` chunk can be freed right after it is
+    written. Returns the resulting file size.
+    """
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, data in entries:
+            zf.writestr(name, data)
+    return path.stat().st_size
