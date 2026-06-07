@@ -49,7 +49,22 @@ def render_toc_list_html(
     tree = build_tree(kb, user=user)
     items: list[str] = []
 
+    def folder_has_selected(folder_node: dict) -> bool:
+        """True if this folder or any descendant holds a selected document.
+
+        Without this guard a partial selection (e.g. one loose doc) would still
+        list every empty folder name in the sidebar TOC even though no document
+        under it was exported.
+        """
+        if any(d["id"] in doc_ids for d in folder_node.get("documents", [])):
+            return True
+        return any(
+            folder_has_selected(child) for child in folder_node.get("children", [])
+        )
+
     def walk_folder(folder_node: dict, depth: int) -> None:
+        if not folder_has_selected(folder_node):
+            return
         name = html.escape(folder_node.get("name") or "")
         items.append(
             f'<li class="export-toc-folder" style="--toc-depth:{depth}">{name}</li>'
