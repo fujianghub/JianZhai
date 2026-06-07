@@ -15,6 +15,7 @@ from apps.editor.models import Attachment
 from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
 from .serializers import (
+    _FMT_HEAD_EXPR,
     DocumentListSerializer,
     DocumentPublishedContentSerializer,
     DocumentSerializer,
@@ -110,6 +111,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
             .select_related("knowledge_base", "folder")
             .prefetch_related(_PRIMARY_ATTACHMENT_PREFETCH)
         )
+        # The list serializer never emits the body; defer the big columns and
+        # annotate a truncated head so ``detect_doc_format`` stays query-free.
+        # retrieve/update keep the full content via the default queryset.
+        if self.action == "list":
+            qs = qs.defer(
+                "raw_content", "published_content", "search_vector"
+            ).annotate(_fmt_head=_FMT_HEAD_EXPR)
         kb = self.request.query_params.get("knowledge_base")
         folder = self.request.query_params.get("folder")
         if kb:

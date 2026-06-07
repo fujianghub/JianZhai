@@ -68,7 +68,10 @@ class PublicPostListSerializer(serializers.ModelSerializer):
         return obj.id in fav_ids
 
     def get_excerpt(self, obj: Document) -> str:
-        content = (obj.published_content or "").strip()
+        # List endpoints defer ``published_content`` and annotate ``_excerpt_head``
+        # (first 400 chars) so reading the excerpt never un-defers the full body.
+        head = getattr(obj, "_excerpt_head", None)
+        content = (head if head is not None else (obj.published_content or "")).strip()
         return content[:180]
 
     def get_knowledge_base(self, obj: Document) -> dict:

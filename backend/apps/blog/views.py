@@ -7,7 +7,7 @@ from apps.accounts.permissions import PublicOrLoginGated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import Substr, TruncMonth
 from django.db.models import Count, Q
 
 # Annotation matching PublicKBSerializer.get_post_count — counts published+public,
@@ -25,7 +25,7 @@ from django.utils.feedgenerator import Rss201rev2Feed
 from xml.sax.saxutils import escape as xml_escape
 
 from apps.knowledge.models import Document, Folder, KnowledgeBase, KnowledgeBaseCategory
-from apps.knowledge.serializers import _favorite_doc_ids_for_user, sort_documents
+from apps.knowledge.serializers import _FMT_HEAD_EXPR, _favorite_doc_ids_for_user, sort_documents
 from apps.linking.models import DocumentLink
 
 from .serializers import PublicKBSerializer, PublicPostDetailSerializer, PublicPostListSerializer
@@ -39,12 +39,12 @@ def _kb_can_manage(kb: KnowledgeBase, user) -> bool:
     return kb.owner_id == user.id
 
 
-def _published_qs():
+def _published_qs(defer_body: bool = False):
     from django.db.models import Prefetch
 
     from apps.editor.models import Attachment
 
-    return (
+    qs = (
         Document.objects.filter(
             status="published",
             visibility="public",
@@ -62,6 +62,15 @@ def _published_qs():
         )
         .order_by("-published_at")
     )
+    if defer_body:
+        # List / tree / archive / sitemap only need metadata + a short excerpt.
+        # Defer the big body columns and annotate a truncated head for
+        # ``detect_doc_format`` (4096) and the excerpt (400 → trimmed to 180).
+        qs = qs.defer("raw_content", "published_content", "search_vector").annotate(
+            _fmt_head=_FMT_HEAD_EXPR,
+            _excerpt_head=Substr("published_content", 1, 400),
+        )
+    return qs
 
 
 def resolve_public_post_by_slug(
@@ -91,7 +100,8 @@ class PublicPostViewSet(
     lookup_field = "slug"
 
     def get_queryset(self):
-        qs = _published_qs()
+        # retrieve needs the full body; list only needs excerpt + metadata.
+        qs = _published_qs(defer_body=self.action != "retrieve")
         kb_slug = self.request.query_params.get("kb")
         if kb_slug:
             qs = qs.filter(knowledge_base__slug=kb_slug)
@@ -279,7 +289,7 @@ class PublicKBTreeView(APIView):
     def get(self, request, slug: str):
         kb = get_object_or_404(KnowledgeBase.objects.filter(visibility="public"), slug=slug)
         docs = list(
-            _published_qs().filter(knowledge_base=kb)
+            _published_qs(defer_body=True).filter(knowledge_base=kb)
         )
         user = request.user
         folder_tree = _build_public_folder_tree(kb, docs, user=user)
@@ -334,7 +344,7 @@ class PublicArchiveView(APIView):
         ]
         # Attach a lightweight post list to each bucket (capped per group).
         for bucket in buckets:
-            posts = _published_qs().filter(
+            posts = _published_qs(defer_body=True).filter(
                 published_at__year=bucket["year"],
                 published_at__month=bucket["month"],
             )[:50]
@@ -483,7 +493,7 @@ def sitemap_xml(request):
         f"  <url><loc>{xml_escape(site + '/archive')}</loc><changefreq>weekly</changefreq></url>",
         f"  <url><loc>{xml_escape(site + '/tags')}</loc><changefreq>weekly</changefreq></url>",
     ]
-    for d in _published_qs()[:500]:
+    for d in _published_qs(defer_body=True)[:500]:
         path = f"/posts/{d.slug}"
         if d.knowledge_base.slug:
             path += f"?kb={d.knowledge_base.slug}"

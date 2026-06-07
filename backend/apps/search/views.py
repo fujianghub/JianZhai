@@ -68,6 +68,9 @@ def search(request):
         .annotate(rank=SearchRank(F("search_vector"), pg_query))
         .select_related("knowledge_base")
         .prefetch_related("tags", "comments")
+        # Snippet uses raw_content; the large published_content + tsvector
+        # columns are never read into Python, so stop transferring them.
+        .defer("published_content", "search_vector")
     )
 
     # Optional filters
