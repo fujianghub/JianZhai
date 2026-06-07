@@ -3810,3 +3810,162 @@ a.jz-meta-full-edit-btn:focus-visible {
     transition: none;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   登录页 — 玻璃 + 古风（翡翠光晕 / 朱砂印章 / 宣纸底）
+   ════════════════════════════════════════════════════════════ */
+.jz-login {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 12% 8%,
+      color-mix(in srgb, var(--jz-accent) 16%, transparent) 0%, transparent 46%),
+    radial-gradient(110% 80% at 92% 96%,
+      color-mix(in srgb, var(--jz-gold) 14%, transparent) 0%, transparent 50%),
+    var(--glass-bg-deep);
+}
+/* 漂浮的柔光团 */
+.jz-login-glow {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  top: -160px;
+  left: -120px;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--jz-accent) 30%, transparent) 0%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  animation: jz-login-float 14s ease-in-out infinite alternate;
+}
+@keyframes jz-login-float {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(80px, 60px) scale(1.12); }
+}
+
+.jz-login-theme {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 5;
+}
+
+.jz-login-card {
+  position: relative;
+  z-index: 2;
+  width: 392px;
+  max-width: 100%;
+  padding: 40px 36px 30px;
+  text-align: center;
+  border-radius: var(--glass-radius-lg);
+  background: var(--glass-surface-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-hero);
+  backdrop-filter: blur(22px) saturate(150%);
+  -webkit-backdrop-filter: blur(22px) saturate(150%);
+}
+
+/* 朱砂方印 */
+.jz-login-seal {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 18px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'PingFang SC', 'Songti SC', 'STSong', serif;
+  font-size: 34px;
+  font-weight: 800;
+  color: #0a1f1a;
+  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  box-shadow:
+    0 10px 26px var(--jz-accent-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+  transition: transform 0.35s cubic-bezier(.34, 1.56, .64, 1);
+}
+.jz-login-card:hover .jz-login-seal {
+  transform: rotate(-6deg) scale(1.06);
+}
+
+.jz-login-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  font-family: 'PingFang SC', 'Songti SC', 'STSong', serif;
+  background: linear-gradient(120deg, var(--glass-text) 0%,
+    color-mix(in srgb, var(--jz-accent) 70%, var(--glass-text)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.jz-login-sub {
+  margin: 8px 0 26px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  color: var(--glass-text-muted);
+}
+
+.jz-login-form {
+  text-align: left;
+}
+.jz-login-form .ant-form-item-label > label {
+  color: var(--glass-text-muted);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.jz-login-form .ant-btn-primary {
+  margin-top: 6px;
+  letter-spacing: 4px;
+  font-weight: 600;
+}
+
+/* 输入框玻璃化（.jz-glass 不带 admin/blog 外壳，需自带一套，暗主题才不会白底） */
+.jz-login-form .ant-input,
+.jz-login-form .ant-input-affix-wrapper,
+.jz-login-form .ant-input-password {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--glass-text) !important;
+}
+.jz-login-form .ant-input-affix-wrapper .ant-input {
+  background: transparent !important;
+  border: none !important;
+}
+.jz-login-form .ant-input::placeholder {
+  color: var(--glass-text-muted);
+  opacity: 0.7;
+}
+.jz-login-form .ant-input:focus,
+.jz-login-form .ant-input-affix-wrapper-focused,
+.jz-login-form .ant-input-affix-wrapper:hover,
+.jz-login-form .ant-input:hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, transparent) !important;
+  box-shadow: 0 0 0 3px var(--jz-accent-glow) !important;
+}
+.jz-login-form .ant-input-password .anticon {
+  color: var(--glass-text-muted);
+}
+
+.jz-login-foot {
+  margin-top: 22px;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: var(--glass-text-muted);
+  opacity: 0.7;
+}
+
+/* 压住浏览器自动填充的黄/蓝底，保持玻璃风格 */
+.jz-login-form input:-webkit-autofill,
+.jz-login-form input:-webkit-autofill:hover,
+.jz-login-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--glass-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--glass-surface) inset;
+  caret-color: var(--glass-text);
+  transition: background-color 9999s ease-in-out 0s;
+}
