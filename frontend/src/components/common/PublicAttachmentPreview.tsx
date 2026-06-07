@@ -7,11 +7,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Spin } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
-import mammoth from 'mammoth';
 import { renderMarkdown, sanitizeHtml } from '@/utils/markdown';
+import { convertDocxToHtml } from '@/utils/docx';
 import { attachmentAbsoluteUrl, previewKind } from '@/api/attachments';
 import type { PublicAttachment } from '@/types';
-import PdfCanvas from './PdfCanvas';
+import PdfCanvas from './LazyPdfCanvas';
 import FullscreenableIframe from './FullscreenableIframe';
 import CodeBlockEnhancer from './CodeBlockEnhancer';
 
@@ -99,8 +99,8 @@ function DocxInline({ url, dl }: { url: string; dl: React.ReactNode }) {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.arrayBuffer();
       })
-      .then((buf) => mammoth.convertToHtml({ arrayBuffer: buf }))
-      .then((r) => !cancelled && setHtml(sanitizeHtml(r.value)))
+      .then((buf) => convertDocxToHtml(buf))
+      .then((value) => !cancelled && setHtml(sanitizeHtml(value)))
       .catch((e) => !cancelled && setErr(e?.message || '解析失败'));
     return () => {
       cancelled = true;

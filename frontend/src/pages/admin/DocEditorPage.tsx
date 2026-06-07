@@ -46,7 +46,7 @@ import HtmlEditor from '@/components/editor/HtmlEditor';
 import DocumentOutline from '@/components/editor/DocumentOutline';
 import FindReplacePanel from '@/components/editor/FindReplacePanel';
 import type { Editor as TiptapEditor } from '@tiptap/core';
-import PdfCanvas from '@/components/common/PdfCanvas';
+import PdfCanvas from '@/components/common/LazyPdfCanvas';
 import BacklinkPanel from '@/components/common/BacklinkPanel';
 import TagPicker from '@/components/common/TagPicker';
 import CommentsPanel from '@/components/common/CommentsPanel';
