@@ -528,6 +528,7 @@ class AIUsageLog(models.Model):
 6. **PG 中文搜索** — `tsvector` 不支持中文分词，写入和查询两端都用 jieba；升级索引逻辑后需 `reindex_search`。
 7. **超级用户跨租户可见** — `scope_queryset` 对 superuser 不过滤；多账号时小心 staff 误操作。
 8. **AI Token 成本** — 默认 `claude-opus-4-7`；控成本可在 `/admin/ai` 切 Haiku 或调低 `max_tokens`（已对接运行时）。
+9. **Vite dev 缓存 desync（编辑器崩溃陷阱）** — 长跑的 dev server（systemd `jianzhai-frontend.service`）与**第二个 vite/vitest 实例**若共用 `node_modules/.vite`，第二实例会以新 `browserHash` 重新预打包进同一目录，而主 server 仍在内存服旧 hash → 编辑器分片懒加载拉到不一致模块副本，**完整编辑**抛 `@codemirror/state multiple instances`、**编辑**抛 `Cannot read properties of null (reading 'useRef')`（React 解析为 null）。这**不是**代码/配置 bug（`vite.config` 的 `dedupe`/`optimizeDeps`/`manualChunks` 仍正确）。防护：并行验证实例（设了 `JZ_API_PROXY_TARGET`）走独立 `cacheDir: node_modules/.vite-verify`（已在 `vite.config.ts`）。**复现时根治**：`systemctl restart jianzhai-frontend.service` + 浏览器 hard-reload（Ctrl+Shift+R 清客户端旧 hash）。**切勿**在主 dev server 运行时于同一 `frontend/` 目录另起共用缓存的 vite/vitest——验证请用带 `JZ_API_PROXY_TARGET` 的实例或独立 node_modules 的 worktree。
 
 ---
 
