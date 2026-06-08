@@ -11,7 +11,7 @@ export interface AccentPreset {
 }
 
 export const ACCENT_PRESETS: AccentPreset[] = [
-  { key: 'jade', label: '翡翠', color: '#059669', bg: '#f5f5f7', bgDark: '#07090f' },
+  { key: 'jade', label: '翡翠', color: '#02b377', bg: '#f5f5f7', bgDark: '#07090f' },
   { key: 'blue', label: '靛蓝', color: '#1677ff', bg: '#fafbfd', bgDark: '#141a24' },
   { key: 'green', label: '苔绿', color: '#52c41a', bg: '#fafdf8', bgDark: '#15201a' },
   { key: 'orange', label: '柿橙', color: '#fa8c16', bg: '#fdfaf6', bgDark: '#211a14' },

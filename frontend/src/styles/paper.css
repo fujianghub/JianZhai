@@ -48,7 +48,7 @@
   background:
     radial-gradient(circle at 25% 35%, rgba(170, 140, 110, 0.07) 0 1px, transparent 2px),
     radial-gradient(circle at 70% 60%, rgba(170, 140, 110, 0.08) 0 1px, transparent 2px),
-    linear-gradient(180deg, #faf4e8 0%, #f5ecd9 100%);
+    linear-gradient(180deg, #fefaf2 0%, #faf2e2 100%);
   color: #3b2f22;
 }
 [data-theme='dark'] .paper-rice {
@@ -121,7 +121,7 @@
   background:
     linear-gradient(135deg, rgba(120, 80, 40, 0.06) 0 8px, transparent 8px 16px),
     linear-gradient(45deg, rgba(120, 80, 40, 0.05) 0 8px, transparent 8px 16px),
-    linear-gradient(180deg, #efd9b3 0%, #e6cb9d 100%);
+    linear-gradient(180deg, #f6e6c4 0%, #eed6ab 100%);
   color: #3b2a14;
 }
 [data-theme='dark'] .paper-kraft {
@@ -136,7 +136,7 @@
   background:
     radial-gradient(ellipse at top, rgba(160, 110, 60, 0.15), transparent 70%),
     radial-gradient(ellipse at bottom, rgba(160, 110, 60, 0.18), transparent 70%),
-    linear-gradient(180deg, #f3e6c8 0%, #e7d4ab 100%);
+    linear-gradient(180deg, #f9efd6 0%, #eedcb8 100%);
   color: #3b2c14;
   border-color: rgba(180, 140, 80, 0.4);
 }

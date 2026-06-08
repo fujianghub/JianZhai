@@ -7,8 +7,8 @@
   border-radius: var(--glass-radius-md, 14px);
   padding: 14px 16px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.05);
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(192%);
+  -webkit-backdrop-filter: blur(14px) saturate(192%);
 }
 [data-theme='dark'] .jz-admin-glass .jz-admin-panel,
 [data-theme='starry'] .jz-admin-glass .jz-admin-panel,
