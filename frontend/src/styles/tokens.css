@@ -1,8 +1,8 @@
 /* ── Palette: Apple 玻璃 · 翡翠重音（博客 + 后台统一） ── */
 :root {
-  --jz-accent: #059669;
-  --jz-accent-soft: #10b981;
-  --jz-accent-glow: rgba(5, 150, 105, 0.25);
+  --jz-accent: #02b377;
+  --jz-accent-soft: #19d191;
+  --jz-accent-glow: rgba(2, 179, 119, 0.34);
   --jz-bg-app: #f5f5f7;
   --jz-text: #1c1c1e;
   --jz-text-muted: #6e6e73;
@@ -10,7 +10,7 @@
   --jz-surface: rgba(255, 255, 255, 0.62);
   --jz-surface-2: rgba(255, 255, 255, 0.82);
   --jz-divider: rgba(60, 60, 67, 0.07);
-  --jz-gold: #94a3b8;
+  --jz-gold: #ecac12;
   /* Code blocks — One Dark Pro (blog / preview); admin glass overrides below */
   --jz-code-bg: #282c34;
   --jz-code-toolbar-bg: #21252b;
@@ -21,9 +21,9 @@
   --jz-code-line-number: #5c6370;
 }
 [data-theme='dark'] {
-  --jz-accent: #10b981;
-  --jz-accent-soft: #34d399;
-  --jz-accent-glow: rgba(16, 185, 129, 0.35);
+  --jz-accent: #2ee79c;
+  --jz-accent-soft: #62efb6;
+  --jz-accent-glow: rgba(46, 231, 156, 0.44);
   --jz-bg-app: #07090f;
   --jz-text: #e6ebf2;
   --jz-text-muted: #8c96a8;
@@ -31,7 +31,7 @@
   --jz-surface: rgba(255, 255, 255, 0.045);
   --jz-surface-2: rgba(255, 255, 255, 0.06);
   --jz-divider: rgba(255, 255, 255, 0.04);
-  --jz-gold: #94a3b8;
+  --jz-gold: #f0c45a;
 }
 
 /* ── Reset ── 浏览器默认 8px body margin 会在四周留白；强制铺满 */
@@ -56,22 +56,22 @@ body {
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
     'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
   background-image:
-    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(5, 150, 105, 0.08) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(59, 130, 246, 0.06) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.06) 0%, transparent 60%);
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(5, 150, 105, 0.19) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(59, 130, 246, 0.14) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.14) 0%, transparent 60%);
   background-attachment: fixed;
 }
 [data-theme='dark'] body {
   background-image:
-    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(16, 185, 129, 0.14) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(96, 165, 250, 0.10) 0%, transparent 60%),
-    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.12) 0%, transparent 60%);
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(16, 185, 129, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(96, 165, 250, 0.19) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.21) 0%, transparent 60%);
 }
 
 /* ── 星空 starry ── 夜空：靛紫深蓝底 + 金紫高光 */
 [data-theme='starry'] {
-  --jz-accent: #c084fc;            /* 紫罗兰 */
-  --jz-accent-soft: #a78bfa;
+  --jz-accent: #d9a6ff;            /* 紫罗兰 */
+  --jz-accent-soft: #c5adff;
   --jz-bg-app: #060914;            /* 深夜空 */
   --jz-text: #e8e6f3;
   --jz-text-muted: #8b8aa8;
@@ -83,14 +83,14 @@ body {
 }
 [data-theme='starry'] body {
   background-image:
-    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124, 96, 200, 0.18) 0, transparent 70%),
-    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(96, 130, 220, 0.12) 0, transparent 70%),
-    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(200, 96, 200, 0.08) 0, transparent 70%);
+    radial-gradient(ellipse 80% 60% at 50% 0%, rgba(124, 96, 200, 0.29) 0, transparent 70%),
+    radial-gradient(ellipse 70% 50% at 0% 100%, rgba(96, 130, 220, 0.21) 0, transparent 70%),
+    radial-gradient(ellipse 60% 40% at 100% 100%, rgba(200, 96, 200, 0.17) 0, transparent 70%);
 }
 
 /* ── 深海 deepsea ── 海底：青绿底 + 浅蓝荧光 */
 [data-theme='deepsea'] {
-  --jz-accent: #5eead4;            /* 浅青 */
+  --jz-accent: #6ff8e4;            /* 浅青 */
   --jz-accent-soft: #2dd4bf;
   --jz-bg-app: #02152a;            /* 深海蓝 */
   --jz-text: #d8f3f8;
@@ -103,7 +103,7 @@ body {
 }
 [data-theme='deepsea'] body {
   background-image:
-    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(94, 234, 212, 0.22) 0, transparent 65%),
-    radial-gradient(ellipse 70% 50% at 30% 50%, rgba(56, 189, 248, 0.10) 0, transparent 65%),
-    radial-gradient(ellipse 70% 50% at 80% 90%, rgba(20, 184, 166, 0.10) 0, transparent 65%);
+    radial-gradient(ellipse 90% 70% at 50% -10%, rgba(94, 234, 212, 0.33) 0, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 30% 50%, rgba(56, 189, 248, 0.19) 0, transparent 65%),
+    radial-gradient(ellipse 70% 50% at 80% 90%, rgba(20, 184, 166, 0.19) 0, transparent 65%);
 }

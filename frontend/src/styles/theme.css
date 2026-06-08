@@ -373,8 +373,8 @@ a:hover { opacity: 0.85; }
   border: 1px solid var(--glass-border, var(--jz-border));
   border-radius: var(--glass-radius, 12px);
   background: var(--glass-surface, var(--jz-surface));
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(192%);
+  -webkit-backdrop-filter: blur(16px) saturate(192%);
   max-height: calc(100vh - 120px);
   overflow: auto;
   scrollbar-width: thin;
@@ -834,8 +834,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-radius: var(--glass-radius, 14px);
   border: 1px solid var(--glass-border, var(--jz-border));
   background: var(--glass-surface, var(--jz-surface));
-  backdrop-filter: blur(14px) saturate(140%);
-  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(192%);
+  -webkit-backdrop-filter: blur(14px) saturate(192%);
   box-shadow: var(--glass-shadow-soft, 0 2px 10px rgba(0, 0, 0, 0.05));
   text-decoration: none;
   transition: transform 140ms ease, background-color 140ms ease,
@@ -1091,10 +1091,10 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-glass,
 .jz-admin-glass,
 .jz-blog-glass {
-  --jz-accent: #059669;
-  --jz-accent-soft: #10b981;
-  --jz-accent-glow: rgba(5, 150, 105, 0.25);
-  --jz-gold: #d97706;
+  --jz-accent: #02b377;
+  --jz-accent-soft: #19d191;
+  --jz-accent-glow: rgba(2, 179, 119, 0.34);
+  --jz-gold: #f2a30f;
 
   --glass-bg-deep:    #f5f5f7;   /* macOS Big Sur 浅灰 */
   --glass-bg-mid:     #ffffff;
@@ -1139,10 +1139,10 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='deepsea'] .jz-glass,
 [data-theme='deepsea'] .jz-admin-glass,
 [data-theme='deepsea'] .jz-blog-glass {
-  --jz-accent: #10b981;
-  --jz-accent-soft: #34d399;
-  --jz-accent-glow: rgba(16, 185, 129, 0.35);
-  --jz-gold: #94a3b8;
+  --jz-accent: #2ee79c;
+  --jz-accent-soft: #62efb6;
+  --jz-accent-glow: rgba(46, 231, 156, 0.44);
+  --jz-gold: #f0c45a;
 
   --glass-bg-deep: #07090f;
   --glass-bg-mid:  #0e1320;
@@ -1250,8 +1250,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* ── 侧栏 ────────────────────────────────────────────────────────────── */
 .jz-admin-glass .jz-admin-sider.ant-layout-sider {
   background: var(--glass-surface) !important;
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(186%);
+  -webkit-backdrop-filter: blur(24px) saturate(186%);
   border-right: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow-soft);
   position: relative;
@@ -1373,8 +1373,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* ── 顶栏 ────────────────────────────────────────────────────────────── */
 .jz-admin-glass .jz-admin-header.ant-layout-header {
   background: var(--glass-surface) !important;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(192%);
+  -webkit-backdrop-filter: blur(20px) saturate(192%);
   border-bottom: 1px solid var(--glass-border);
   box-shadow: inset 0 -1px 0 var(--glass-divider);
   height: 64px;
@@ -1468,8 +1468,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   margin-bottom: 16px;
   padding: 14px 16px;
   background: var(--glass-surface);
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(192%);
+  -webkit-backdrop-filter: blur(18px) saturate(192%);
   border: 1px solid var(--glass-border);
   border-radius: var(--glass-radius-lg);
   box-shadow: var(--glass-shadow-soft);
@@ -1596,8 +1596,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   padding: 12px;
   min-height: 360px;
   background: var(--glass-surface);
-  backdrop-filter: blur(16px) saturate(140%);
-  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(192%);
+  -webkit-backdrop-filter: blur(16px) saturate(192%);
   box-shadow: var(--glass-shadow-soft);
   position: relative;
   overflow: hidden;
@@ -1656,8 +1656,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* ── Card：玻璃面 ───────────────────────────────────────────────────── */
 .jz-admin-glass .ant-card {
   background: var(--glass-surface) !important;
-  backdrop-filter: blur(18px) saturate(140%);
-  -webkit-backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(192%);
+  -webkit-backdrop-filter: blur(18px) saturate(192%);
   border: 1px solid var(--glass-border) !important;
   border-radius: var(--glass-radius-lg) !important;
   box-shadow: var(--glass-shadow-card) !important;
@@ -2178,8 +2178,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .ant-select-dropdown {
   /* 亮色：白底半透明；暗色：深色半透明（被下面 [data-theme=...] 块覆盖） */
   background: rgba(255, 255, 255, 0.95) !important;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(192%);
+  -webkit-backdrop-filter: blur(20px) saturate(192%);
   border: 1px solid var(--glass-border) !important;
   border-radius: 12px !important;
   box-shadow: var(--glass-shadow-card) !important;
@@ -2230,8 +2230,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   padding-left: var(--jz-blog-content-pad-x, 24px) !important;
   padding-right: var(--jz-blog-content-pad-x, 24px) !important;
   background: var(--glass-surface-strong, color-mix(in srgb, var(--jz-surface) 78%, transparent)) !important;
-  backdrop-filter: blur(20px) saturate(150%);
-  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(186%);
+  -webkit-backdrop-filter: blur(20px) saturate(186%);
   border-bottom: 1px solid var(--glass-border, var(--jz-border)) !important;
   position: sticky;
   top: 0;
@@ -2712,7 +2712,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-radius: var(--glass-radius, 14px) !important;
   border: 1px solid var(--glass-border, var(--jz-border)) !important;
   background: var(--glass-surface, var(--jz-surface)) !important;
-  backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(192%);
   box-shadow: var(--glass-shadow-card) !important;
   transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease !important;
 }
@@ -2775,8 +2775,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* Reader font / paper picker popovers (portal to body). */
 .jz-glass-popover .ant-popover-inner {
   background: rgba(255, 255, 255, 0.96) !important;
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(192%);
+  -webkit-backdrop-filter: blur(20px) saturate(192%);
   border: 1px solid var(--glass-border, rgba(60, 60, 67, 0.13)) !important;
   border-radius: 12px !important;
   box-shadow: var(--glass-shadow-card, 0 8px 24px rgba(0, 0, 0, 0.1)) !important;
@@ -3828,6 +3828,23 @@ a.jz-meta-full-edit-btn:focus-visible {
       color-mix(in srgb, var(--jz-gold) 14%, transparent) 0%, transparent 50%),
     var(--glass-bg-deep);
 }
+/* 登录页按主题自带调性：星空紫罗兰星云 / 深海青碧荧光
+   （.jz-glass 在 starry/deepsea 下共用暗玻璃且强制翡翠重音；这里就近把重音/底色覆盖回各主题本色，
+    与 [data-theme='x'] .jz-glass 同特异性、靠源码靠后取胜） */
+[data-theme='starry'] .jz-login {
+  --jz-accent: #d9a6ff;
+  --jz-accent-soft: #c5adff;
+  --jz-accent-glow: rgba(217, 166, 255, 0.40);
+  --jz-gold: #d6c2ff;
+  --glass-bg-deep: #060914;
+}
+[data-theme='deepsea'] .jz-login {
+  --jz-accent: #6ff8e4;
+  --jz-accent-soft: #2dd4bf;
+  --jz-accent-glow: rgba(111, 248, 228, 0.40);
+  --jz-gold: #6ff8e4;
+  --glass-bg-deep: #02152a;
+}
 /* 漂浮的柔光团 */
 .jz-login-glow {
   position: absolute;
@@ -3865,8 +3882,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: var(--glass-surface-strong);
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow-hero);
-  backdrop-filter: blur(22px) saturate(150%);
-  -webkit-backdrop-filter: blur(22px) saturate(150%);
+  backdrop-filter: blur(22px) saturate(186%);
+  -webkit-backdrop-filter: blur(22px) saturate(186%);
 }
 
 /* 朱砂方印 */
@@ -3882,7 +3899,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   font-size: 34px;
   font-weight: 800;
   color: #0a1f1a;
-  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   box-shadow:
     0 10px 26px var(--jz-accent-glow),
     0 0 0 1px rgba(255, 255, 255, 0.14) inset;

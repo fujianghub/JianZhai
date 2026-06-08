@@ -1511,7 +1511,7 @@ body.jz-fullscreen-active .jz-admin-content {
 /* 后台玻璃风格下 */
 .jz-admin-glass .jz-doc-more-dropdown {
   background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(20px) saturate(160%);
+  backdrop-filter: blur(20px) saturate(192%);
   border-color: var(--glass-border);
   color: var(--glass-text);
 }
@@ -2192,7 +2192,7 @@ sup.jz-footnote-ref:hover,
 /* 编辑器工具栏：玻璃化 */
 .jz-admin-glass .jz-editor-toolbar {
   background: rgba(255, 255, 255, 0.65) !important;
-  backdrop-filter: blur(10px) saturate(140%);
+  backdrop-filter: blur(10px) saturate(192%);
   border: 1px solid rgba(60, 60, 67, 0.10) !important;
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
 }
@@ -2297,8 +2297,8 @@ sup.jz-footnote-ref:hover,
   padding: 12px 36px;
   margin: 0 -36px 16px;
   background: var(--glass-surface-strong);
-  backdrop-filter: blur(16px) saturate(150%);
-  -webkit-backdrop-filter: blur(16px) saturate(150%);
+  backdrop-filter: blur(16px) saturate(186%);
+  -webkit-backdrop-filter: blur(16px) saturate(186%);
   border-bottom: 1px solid var(--glass-border);
   box-shadow: inset 0 -1px 0 var(--glass-divider);
 }
@@ -2711,7 +2711,7 @@ sup.jz-footnote-ref:hover,
     0 0 0 1px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 7%, transparent),
     0 1px 2px rgba(0, 0, 0, 0.04),
     0 14px 36px rgba(0, 0, 0, 0.07);
-  backdrop-filter: blur(12px) saturate(140%);
+  backdrop-filter: blur(12px) saturate(192%);
 }
 [data-theme='dark']
   .jz-glass
@@ -2743,7 +2743,7 @@ sup.jz-footnote-ref:hover,
 .jz-admin-glass .jz-editor-sidebar,
 .jz-admin-glass .jz-editor-sidebar-floating {
   background: var(--glass-surface, var(--jz-surface)) !important;
-  backdrop-filter: blur(18px) saturate(140%);
+  backdrop-filter: blur(18px) saturate(192%);
   border-color: var(--glass-border, var(--jz-border)) !important;
   border-left: 3px solid var(--jz-doc-accent, var(--jz-accent)) !important;
   border-radius: 10px !important;
@@ -2980,12 +2980,12 @@ html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepse
   .ant-dropdown-menu-item:hover,
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-select-item-option-active {
-  background: rgba(5, 150, 105, 0.08) !important;
+  background: rgba(2, 179, 119, 0.08) !important;
 }
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-select-item-option-selected {
-  background: rgba(5, 150, 105, 0.14) !important;
-  color: #059669 !important;
+  background: rgba(2, 179, 119, 0.14) !important;
+  color: #02b377 !important;
 }
 
 /* tippy 弹层（emoji / slash menu / mention） */
