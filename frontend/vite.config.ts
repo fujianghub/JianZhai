@@ -11,6 +11,15 @@ export default defineConfig(({ mode }) => {
   // 用于并行验证实例把 /api 指到第二个后端，客户端仍走同源相对路径。
   const apiBase =
     env.JZ_API_PROXY_TARGET ?? env.VITE_API_BASE_URL ?? 'http://localhost:8002/api/v1';
+  // A second dev server (the parallel-verify instance, signalled by
+  // JZ_API_PROXY_TARGET) that shares the primary server's
+  // ``node_modules/.vite`` re-optimizes deps into the SAME directory with a
+  // fresh browserHash, while the long-running primary keeps serving the old
+  // hash from memory. Editor chunks then lazily pull mismatched module copies
+  // → "@codemirror/state multiple instances" and React resolving to ``null``
+  // (the useRef crash). Give the verify instance its own cache dir so it can
+  // never clobber the primary's optimized deps.
+  const isVerifyInstance = Boolean(env.JZ_API_PROXY_TARGET);
   // 生产构建常把 VITE_API_BASE_URL 设为同源相对路径（如 /api/v1），此时
   // new URL(相对路径) 会抛 Invalid URL。apiOrigin 仅供 dev 代理 target 使用，
   // 构建期用不到 —— 解析失败时回退到默认本地后端 origin，避免构建崩溃。
@@ -41,6 +50,10 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins,
+    // Isolate the verify instance's optimized-deps cache (see isVerifyInstance
+    // above). ``undefined`` keeps Vite's default ``node_modules/.vite`` for the
+    // primary server.
+    cacheDir: isVerifyInstance ? 'node_modules/.vite-verify' : undefined,
     resolve: {
       // CodeMirror 致命坑：@codemirror/lang-markdown 的 codeLanguages 指向
       // @codemirror/language-data 全量列表，遇到代码块时**懒加载** @codemirror/lang-*。
