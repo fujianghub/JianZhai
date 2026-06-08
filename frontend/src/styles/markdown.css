@@ -1258,42 +1258,55 @@
 .jz-diagram-block .jz-diagram-action {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 5px;
   min-width: 28px;
-  height: 26px;
-  padding: 0 8px;
+  height: 28px;
+  padding: 0 9px;
   border: none;
   background: transparent;
-  border-radius: 5px;
+  border-radius: 7px;
   color: var(--jz-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 12px;
   line-height: 1;
   cursor: pointer;
-  transition: background-color 120ms ease, color 120ms ease;
+  transition: background-color 130ms ease, color 130ms ease;
 }
 .jz-diagram-block .jz-diagram-action-icon-only {
   padding: 0;
-  width: 26px;
-  justify-content: center;
+  width: 28px;
 }
 .jz-diagram-block .jz-diagram-action:hover {
-  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
   color: var(--jz-accent);
+}
+.jz-diagram-block .jz-diagram-action:active {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
 }
 .jz-diagram-block .jz-diagram-action.is-success {
   color: #10b981;
-  background: color-mix(in srgb, #10b981 12%, transparent);
+  background: color-mix(in srgb, #10b981 14%, transparent);
 }
 .jz-diagram-block .jz-diagram-action.is-error {
   color: #ef4444;
+  background: color-mix(in srgb, #ef4444 14%, transparent);
+}
+/* SVG icon for the diagram action row — replaces the old unicode glyphs and
+   inherits ``currentColor`` so hover / success / error states recolour it. */
+.jz-diagram-block .jz-diagram-action-svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: none;
 }
 .jz-diagram-block .jz-diagram-action-icon {
-  font-size: 11px;
-  letter-spacing: 0.5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .jz-diagram-block .jz-diagram-action-label {
   font-size: 12px;
+  font-weight: 500;
   line-height: 1;
 }
 

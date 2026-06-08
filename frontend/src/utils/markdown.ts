@@ -470,6 +470,32 @@ function readRenderPrefs() {
 }
 
 /**
+ * Inline SVG icons for the diagram (mermaid / plantuml) floating action row.
+ * 24×24 viewBox, 1.8px round stroke, ``currentColor`` — matches the JzIcon
+ * house style and replaces the earlier crude unicode glyphs (``</>`` / ``⧉`` /
+ * ``⤓`` / ``⤢``) that rendered inconsistently across fonts and platforms.
+ * Only allowlisted SVG attributes are emitted so DOMPurify keeps them intact.
+ */
+const DIAGRAM_ACTION_ICON_PATHS = {
+  source: '<path d="m8.5 8-4 4 4 4"/><path d="m15.5 8 4 4-4 4"/>',
+  copy:
+    '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/>' +
+    '<path d="M15.5 8.5V6A2.5 2.5 0 0 0 13 3.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>',
+  download: '<path d="M12 3.5v11"/><path d="m7.5 10 4.5 4.5 4.5-4.5"/><path d="M4.5 20.5h15"/>',
+  fullscreen:
+    '<path d="M9 3.5H4.5V8"/><path d="M15 3.5h4.5V8"/>' +
+    '<path d="M9 20.5H4.5V16"/><path d="M15 20.5h4.5V16"/>',
+} as const;
+
+function diagramActionSvg(name: keyof typeof DIAGRAM_ACTION_ICON_PATHS): string {
+  return (
+    `<svg class="jz-diagram-action-svg" viewBox="0 0 24 24" width="16" height="16" ` +
+    `fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ` +
+    `stroke-linejoin="round">${DIAGRAM_ACTION_ICON_PATHS[name]}</svg>`
+  );
+}
+
+/**
  * Wrap highlighted code in a Yuque-style chrome:
  * - top bar with language label + toolbar buttons (copy / wrap / font-size)
  * - line numbers gutter via CSS counters
@@ -516,12 +542,12 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
       `data-lang="${canon}" data-source="${b64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
       `<div class="jz-diagram-actions" role="toolbar" aria-label="图表操作" contenteditable="false">` +
       `<button type="button" class="jz-diagram-action" data-action="${sourceAction}" title="查看源代码" aria-label="查看源代码">` +
-      `<span class="jz-diagram-action-icon" aria-hidden="true">&lt;/&gt;</span>` +
+      `<span class="jz-diagram-action-icon" aria-hidden="true">${diagramActionSvg('source')}</span>` +
       `<span class="jz-diagram-action-label">源码</span>` +
       `</button>` +
-      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="copy" title="复制源代码" aria-label="复制源代码">⧉</button>` +
-      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="diagram-download" title="下载 SVG" aria-label="下载 SVG">⤓</button>` +
-      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="diagram-fullscreen" title="全屏查看 (Esc 退出)" aria-label="全屏查看">⤢</button>` +
+      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="copy" title="复制源代码" aria-label="复制源代码">${diagramActionSvg('copy')}</button>` +
+      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="diagram-download" title="下载 SVG" aria-label="下载 SVG">${diagramActionSvg('download')}</button>` +
+      `<button type="button" class="jz-diagram-action jz-diagram-action-icon-only" data-action="diagram-fullscreen" title="全屏查看 (Esc 退出)" aria-label="全屏查看">${diagramActionSvg('fullscreen')}</button>` +
       `</div>` +
       `<div class="jz-mermaid-canvas" aria-live="polite">` +
       `<div class="jz-mermaid-loading"><span class="jz-mermaid-spinner" aria-hidden="true"></span>${loadingText}</div>` +

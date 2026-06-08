@@ -14,6 +14,23 @@ import { CODE_PREFS_CHANGE_EVENT } from '@/utils/codeBlockPrefs';
 import { openDiagramFullscreen as openDiagramFullscreenOverlay } from '@/utils/diagramFullscreen';
 
 /**
+ * Transient check / cross feedback shown inside a diagram action button after
+ * copy / download. The buttons now carry SVG icons (not glyph text), so we
+ * save & restore ``innerHTML`` rather than ``textContent`` — otherwise the
+ * first click would wipe the icon. These are constant, trusted markup.
+ */
+const DIAGRAM_FEEDBACK_SVG = {
+  check:
+    '<svg class="jz-diagram-action-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="m4.5 12.5 5 5 10-11"/></svg>',
+  cross:
+    '<svg class="jz-diagram-action-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M5.5 5.5 18.5 18.5"/><path d="M18.5 5.5 5.5 18.5"/></svg>',
+} as const;
+
+/**
  * Hook that wires up the per-code-block toolbar rendered by renderCodeBlock.
  */
 export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown) {
@@ -265,21 +282,21 @@ function wireCanvasClickToSource(block: HTMLElement): () => void {
 
 function copyBlockToClipboard(block: HTMLElement, btn: HTMLButtonElement) {
   const text = getCodePlainTextFromBlock(block);
-  const original = btn.textContent;
+  const originalHtml = btn.innerHTML;
   const ok = () => {
     btn.classList.add('is-success');
-    btn.textContent = '✓';
+    btn.innerHTML = DIAGRAM_FEEDBACK_SVG.check;
     window.setTimeout(() => {
       btn.classList.remove('is-success');
-      btn.textContent = original ?? '⧉';
+      btn.innerHTML = originalHtml;
     }, 1500);
   };
   const fail = () => {
     btn.classList.add('is-error');
-    btn.textContent = '×';
+    btn.innerHTML = DIAGRAM_FEEDBACK_SVG.cross;
     window.setTimeout(() => {
       btn.classList.remove('is-error');
-      btn.textContent = original ?? '⧉';
+      btn.innerHTML = originalHtml;
     }, 1500);
   };
   writeCodeToClipboard(text).then(ok, fail);
@@ -315,12 +332,12 @@ function downloadDiagramSvg(block: HTMLElement, btn: HTMLButtonElement): void {
   a.remove();
   URL.revokeObjectURL(url);
 
-  const original = btn.textContent;
+  const originalHtml = btn.innerHTML;
   btn.classList.add('is-success');
-  btn.textContent = '✓';
+  btn.innerHTML = DIAGRAM_FEEDBACK_SVG.check;
   window.setTimeout(() => {
     btn.classList.remove('is-success');
-    btn.textContent = original ?? '⤓';
+    btn.innerHTML = originalHtml;
   }, 1200);
 }
 
