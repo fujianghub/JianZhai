@@ -70,6 +70,23 @@ export default function BlogLayout() {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
 
+  // NOTE: every hook must run on every render. Keep this above the
+  // conditional early returns below — when SITE_REQUIRE_LOGIN flips
+  // ``requireLogin`` to true and we bail out early, a hook declared
+  // *after* the return would be skipped on that render, changing the
+  // hook count between renders and crashing with React error #300
+  // ("Rendered fewer hooks than expected").
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setSearchOpen(true);
+      }
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   // v0.9.8 "friends-only" mode: the deployment was started with
   // SITE_REQUIRE_LOGIN=true. Anonymous visitors to any blog route get
   // bounced to the login page; ``from`` carries the original URL so the
@@ -92,17 +109,6 @@ export default function BlogLayout() {
       />
     );
   }
-
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
 
   return (
     <Layout className="jz-blog-glass jz-glass" style={{ minHeight: '100vh' }}>
