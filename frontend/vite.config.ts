@@ -11,7 +11,15 @@ export default defineConfig(({ mode }) => {
   // 用于并行验证实例把 /api 指到第二个后端，客户端仍走同源相对路径。
   const apiBase =
     env.JZ_API_PROXY_TARGET ?? env.VITE_API_BASE_URL ?? 'http://localhost:8002/api/v1';
-  const apiOrigin = new URL(apiBase).origin;
+  // 生产构建常把 VITE_API_BASE_URL 设为同源相对路径（如 /api/v1），此时
+  // new URL(相对路径) 会抛 Invalid URL。apiOrigin 仅供 dev 代理 target 使用，
+  // 构建期用不到 —— 解析失败时回退到默认本地后端 origin，避免构建崩溃。
+  let apiOrigin = 'http://localhost:8002';
+  try {
+    apiOrigin = new URL(apiBase).origin;
+  } catch {
+    /* 相对路径（生产同源）：保留默认 origin，dev 代理才会用到 */
+  }
   // Opt-in HTTPS for LAN access: Chrome treats LAN-IP HTTP origins as
   // insecure context and pops the "this file may have been tampered with"
   // warning on **every** download (PDF / HTML / ZIP / …) regardless of MIME
