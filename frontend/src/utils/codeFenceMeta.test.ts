@@ -8,6 +8,7 @@ describe('codeFenceMeta', () => {
       title: '',
       collapsed: false,
       theme: '',
+      mermaidTheme: '',
     });
   });
 
@@ -17,6 +18,7 @@ describe('codeFenceMeta', () => {
       title: 'Hello "World"',
       collapsed: true,
       theme: '',
+      mermaidTheme: '',
     });
   });
 
@@ -26,6 +28,27 @@ describe('codeFenceMeta', () => {
       title: 'Demo',
       collapsed: false,
       theme: 'yuque-light',
+      mermaidTheme: '',
+    });
+  });
+
+  it('parses a per-diagram mtheme token without colliding with theme', () => {
+    expect(parseCodeFenceInfo('mermaid mtheme=forest')).toEqual({
+      language: 'mermaid',
+      title: '',
+      collapsed: false,
+      theme: '',
+      mermaidTheme: 'forest',
+    });
+  });
+
+  it('keeps theme and mtheme independent on the same fence', () => {
+    expect(parseCodeFenceInfo('mermaid theme=night-owl mtheme=dark')).toEqual({
+      language: 'mermaid',
+      title: '',
+      collapsed: false,
+      theme: 'night-owl',
+      mermaidTheme: 'dark',
     });
   });
 
@@ -44,6 +67,15 @@ describe('codeFenceMeta', () => {
     );
   });
 
+  it('serializes a per-diagram mtheme token', () => {
+    expect(serializeCodeFenceInfo('mermaid', '', false, '', 'forest')).toBe(
+      'mermaid mtheme=forest'
+    );
+    expect(serializeCodeFenceInfo('mermaid', 'Flow', false, 'one-dark-pro', 'dark')).toBe(
+      'mermaid theme=one-dark-pro mtheme=dark title="Flow"'
+    );
+  });
+
   it('round-trips through parse and serialize', () => {
     const info = serializeCodeFenceInfo('js', 'Demo', false);
     const meta = parseCodeFenceInfo(info);
@@ -51,11 +83,18 @@ describe('codeFenceMeta', () => {
     expect(meta.title).toBe('Demo');
     expect(meta.collapsed).toBe(false);
     expect(meta.theme).toBe('');
+    expect(meta.mermaidTheme).toBe('');
   });
 
-  it('round-trips the theme through parse and serialize', () => {
-    const info = serializeCodeFenceInfo('ts', 'Demo', true, 'darcula');
+  it('round-trips theme + mtheme through parse and serialize', () => {
+    const info = serializeCodeFenceInfo('ts', 'Demo', true, 'darcula', 'neutral');
     const meta = parseCodeFenceInfo(info);
-    expect(meta).toEqual({ language: 'ts', title: 'Demo', collapsed: true, theme: 'darcula' });
+    expect(meta).toEqual({
+      language: 'ts',
+      title: 'Demo',
+      collapsed: true,
+      theme: 'darcula',
+      mermaidTheme: 'neutral',
+    });
   });
 });

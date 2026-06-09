@@ -118,10 +118,43 @@ _DIAGRAM_LANGS = {"mermaid", "plantuml", "puml"}
 # Only Mermaid is rendered to SVG server-side; PlantUML needs a separate server.
 MERMAID_LANGS = {"mermaid"}
 
+# Per-diagram graphic palette pinned via the ``mtheme=`` fence token (frontend
+# CodeBlock ``mermaidTheme`` attribute). Mirrors the frontend allow-list — an
+# unrecognised value is ignored so we never feed arbitrary input to Mermaid.
+_MERMAID_BUILTIN_THEMES = {"default", "base", "dark", "forest", "neutral"}
+_MTHEME_RE = re.compile(r"\bmtheme=([A-Za-z0-9-]+)")
+
 
 def _fence_lang(token) -> str:
     info = (token.info or "").strip()
     return (info.split()[0] if info else "").lower()
+
+
+def _mermaid_theme_from_info(info: str) -> str:
+    """Extract a validated ``mtheme=`` graphic theme from a fence info line."""
+    m = _MTHEME_RE.search(info or "")
+    if not m:
+        return ""
+    theme = m.group(1)
+    return theme if theme in _MERMAID_BUILTIN_THEMES else ""
+
+
+def _apply_mermaid_theme(body: str, theme: str) -> str:
+    """Prepend a Mermaid ``%%{init}%%`` directive pinning this diagram's palette.
+
+    The directive travels with the source so it both (a) overrides the global
+    ``theme:default`` during headless render and (b) makes the source-keyed SVG
+    map distinct per theme. Used identically by ``collect_mermaid_sources`` (the
+    render key) and ``_render_fence`` (the lookup key) so the two always line up.
+    Leaves an author's own leading ``%%{init}%%`` directive untouched.
+    """
+    if not theme:
+        return body
+    if body.lstrip().startswith("%%{init"):
+        return body
+    # Plain concatenation — neither %-formatting (eats ``%%``) nor str.format
+    # (chokes on the ``{`` ``}``) survive this literal cleanly.
+    return '%%{init: {"theme": "' + theme + '"}}%%\n' + body
 
 
 def _render_diagram_source_panel(lang: str, body_text: str, theme: str) -> str:
@@ -147,10 +180,18 @@ def _render_fence(self, tokens, idx, options, env):
     theme = _CODE_THEME["value"]
     if lang.lower() in _DIAGRAM_LANGS:
         body_text = token.content.rstrip("\n")
+        # A per-diagram graphic theme (mtheme=) is baked into the render key as
+        # an init directive, so look up with the same directive-injected source
+        # ``collect_mermaid_sources`` used. PlantUML carries no theme.
+        keyed = (
+            _apply_mermaid_theme(body_text, _mermaid_theme_from_info(info))
+            if lang.lower() in MERMAID_LANGS
+            else body_text
+        )
         # Pre-rendered SVG (keyed by the exact fence body) wins — show the real
         # diagram. Otherwise fall back to the labelled source panel.
         svgs = env.get("diagram_svgs") if isinstance(env, dict) else None
-        svg = svgs.get(body_text) if isinstance(svgs, dict) else None
+        svg = svgs.get(keyed) if isinstance(svgs, dict) else None
         if svg:
             return (
                 f'<div class="jz-diagram jz-diagram-{_escape(lang)}" '
@@ -220,7 +261,10 @@ def collect_mermaid_sources(text: str) -> list[str]:
         if token.type == "fence" and _fence_lang(token) in MERMAID_LANGS:
             body = token.content.rstrip("\n")
             if body.strip():
-                out.append(body)
+                # Bake the pinned graphic theme into the render key so the
+                # headless render honours it and the SVG map stays distinct
+                # per theme. Must match ``_render_fence``'s lookup key exactly.
+                out.append(_apply_mermaid_theme(body, _mermaid_theme_from_info(token.info or "")))
     return out
 
 

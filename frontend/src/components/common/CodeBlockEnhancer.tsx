@@ -59,8 +59,11 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
       if (block.classList.contains('jz-code-mermaid')) {
         // Theme is part of the render signature: a preview-HTML refresh with
         // the same source + theme is a no-op, but a theme switch must re-render
-        // (mermaid bakes colours into the SVG).
-        void hydrateMermaid(block, `${themeMode}:${accentKey}`);
+        // (mermaid bakes colours into the SVG). A per-diagram pinned palette
+        // (data-mermaid-theme) overrides the doc theme/accent in the signature.
+        const graphicTheme = block.dataset.mermaidTheme ?? '';
+        const sig = graphicTheme ? `mt:${graphicTheme}` : `${themeMode}:${accentKey}`;
+        void hydrateMermaid(block, sig, graphicTheme);
         cleanups.push(wireCanvasClickToSource(block));
       } else if (block.classList.contains('jz-code-plantuml')) {
         void hydratePlantuml(block);
@@ -144,7 +147,7 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
  *  can't interleave: only the latest call per canvas is allowed to write. */
 let hydrateSeq = 0;
 
-async function hydrateMermaid(block: HTMLElement, renderSig = '') {
+async function hydrateMermaid(block: HTMLElement, renderSig = '', graphicTheme = '') {
   const canvas = block.querySelector<HTMLElement>('.jz-mermaid-canvas');
   if (!canvas) return;
   const b64 = block.dataset.source ?? '';
@@ -164,7 +167,7 @@ async function hydrateMermaid(block: HTMLElement, renderSig = '') {
   const token = String(++hydrateSeq);
   canvas.dataset.hydrateToken = token;
   try {
-    const svg = await renderMermaid(source);
+    const svg = await renderMermaid(source, graphicTheme);
     if (canvas.dataset.hydrateToken !== token) return; // superseded by a newer call
     // Mermaid's securityLevel:'strict' already sanitizes, but that guarantee
     // lives in a config far from this injection point — re-sanitize here so a

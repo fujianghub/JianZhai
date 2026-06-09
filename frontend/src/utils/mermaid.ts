@@ -18,6 +18,25 @@ let mermaidPromise: Promise<MermaidApi> | null = null;
 let lastTheme: string | null = null;
 let counter = 0;
 
+/** Built-in Mermaid palettes a diagram can be pinned to, independent of the
+ *  document theme. '' = 跟随文档 (the doc-derived palette in ``mermaidConfig``). */
+export const MERMAID_GRAPHIC_THEMES: { id: string; label: string }[] = [
+  { id: '', label: '跟随文档' },
+  { id: 'default', label: '默认' },
+  { id: 'neutral', label: '中性' },
+  { id: 'forest', label: '森林' },
+  { id: 'dark', label: '暗色' },
+  { id: 'base', label: '素雅' },
+];
+
+const BUILTIN_THEMES = new Set(['default', 'base', 'dark', 'forest', 'neutral']);
+
+/** True when ``t`` is a recognised built-in Mermaid theme we may pass to
+ *  ``initialize``. Guards against injecting an arbitrary string. */
+export function isBuiltinMermaidTheme(t: string): boolean {
+  return BUILTIN_THEMES.has(t);
+}
+
 function currentTheme(): string {
   const t = typeof document !== 'undefined' ? document.documentElement.dataset.theme : '';
   return t || 'light';
@@ -153,6 +172,60 @@ function normalizeForMermaid(
   return toHex(r, g, b);
 }
 
+/** Theme-independent layout / safety config shared by the doc-derived palette
+ *  (``mermaidConfig``) and the pinned built-in palettes (``mermaidBuiltinConfig``).
+ *  Pulled out so both paths keep identical spacing, fonts and the critical
+ *  ``htmlLabels:false`` / ``securityLevel:'strict'`` hardening. */
+const MERMAID_LAYOUT = {
+  startOnLoad: false,
+  securityLevel: 'strict' as const,
+  /* Render every label as native SVG ``<text>`` instead of HTML inside
+     ``<foreignObject>``. The reading side re-sanitises Mermaid's output
+     with DOMPurify (CodeBlockEnhancer → sanitizeHtml), and DOMPurify ≥ 2
+     unconditionally strips HTML elements nested in foreignObject as mXSS
+     hardening — which silently deleted EVERY flowchart node / edge /
+     subgraph label. SVG text survives sanitisation and ``<br/>`` still
+     produces line breaks via tspans. */
+  htmlLabels: false,
+  fontFamily:
+    '"Noto Serif SC", "Songti SC", "PingFang SC", system-ui, -apple-system, sans-serif',
+  /* Tighten the per-diagram spacings — mermaid's defaults leave a lot of
+     vertical air between nodes that makes flowcharts look stretched in a
+     notes app. These values bring the gaps in line with what 语雀 / Notion
+     use for inline diagrams. */
+  flowchart: {
+    nodeSpacing: 30,
+    rankSpacing: 40,
+    curve: 'basis' as const,
+    padding: 8,
+  },
+  sequence: {
+    diagramMarginX: 32,
+    diagramMarginY: 8,
+    boxMargin: 8,
+    messageMargin: 28,
+    actorMargin: 60,
+    noteMargin: 6,
+  },
+  gantt: {
+    barGap: 2,
+    topPadding: 24,
+    leftPadding: 75,
+    gridLineStartPadding: 35,
+    fontSize: 11,
+  },
+  classDiagram: { padding: 8 },
+  stateDiagram: { padding: 8 },
+  journey: { boxMargin: 6, diagramMarginX: 32, diagramMarginY: 8 },
+} as const;
+
+/** Clean config for a diagram pinned to a built-in Mermaid palette. Deliberately
+ *  carries NO custom ``themeVariables`` so the built-in theme's own colours win
+ *  — the whole point of "独立图形配色" is to escape the doc-derived tints. */
+function mermaidBuiltinConfig(graphicTheme: string) {
+  return { ...MERMAID_LAYOUT, theme: graphicTheme };
+}
+
 function mermaidConfig(theme: string) {
   // ``base`` is the most malleable mermaid theme; we override the key colors
   // from CSS variables so diagrams sit naturally on any palette.
@@ -208,46 +281,7 @@ function mermaidConfig(theme: string) {
   const edgeLabel = mixColors(surface, isDark ? '#ffffff' : '#000000', 6, backdrop);
   const clusterFill = mixColors(surface, accent, isDark ? 7 : 4, backdrop);
   return {
-    startOnLoad: false,
-    securityLevel: 'strict' as const,
-    /* Render every label as native SVG ``<text>`` instead of HTML inside
-       ``<foreignObject>``. The reading side re-sanitises Mermaid's output
-       with DOMPurify (CodeBlockEnhancer → sanitizeHtml), and DOMPurify ≥ 2
-       unconditionally strips HTML elements nested in foreignObject as mXSS
-       hardening — which silently deleted EVERY flowchart node / edge /
-       subgraph label. SVG text survives sanitisation and ``<br/>`` still
-       produces line breaks via tspans. */
-    htmlLabels: false,
-    fontFamily:
-      '"Noto Serif SC", "Songti SC", "PingFang SC", system-ui, -apple-system, sans-serif',
-    /* Tighten the per-diagram spacings — mermaid's defaults leave a lot of
-       vertical air between nodes that makes flowcharts look stretched in a
-       notes app. These values bring the gaps in line with what 语雀 / Notion
-       use for inline diagrams. */
-    flowchart: {
-      nodeSpacing: 30,
-      rankSpacing: 40,
-      curve: 'basis' as const,
-      padding: 8,
-    },
-    sequence: {
-      diagramMarginX: 32,
-      diagramMarginY: 8,
-      boxMargin: 8,
-      messageMargin: 28,
-      actorMargin: 60,
-      noteMargin: 6,
-    },
-    gantt: {
-      barGap: 2,
-      topPadding: 24,
-      leftPadding: 75,
-      gridLineStartPadding: 35,
-      fontSize: 11,
-    },
-    classDiagram: { padding: 8 },
-    stateDiagram: { padding: 8 },
-    journey: { boxMargin: 6, diagramMarginX: 32, diagramMarginY: 8 },
+    ...MERMAID_LAYOUT,
     themeVariables: {
       // primary = nodes; primaryBorderColor/primaryTextColor follow.
       primaryColor: nodeFill,
@@ -308,19 +342,62 @@ async function loadMermaid(): Promise<MermaidApi> {
       return api;
     });
   }
-  const api = await mermaidPromise;
-  if (lastTheme !== currentTheme()) {
+  return mermaidPromise;
+}
+
+/** Serialise the (initialize → render) critical section. Mermaid keeps a SINGLE
+ *  global config, so a per-diagram theme switch must re-initialise before that
+ *  diagram renders. Without a lock, two concurrent renders with different themes
+ *  could interleave their initialize/render calls and bleed one palette into the
+ *  other. Diagrams are small and few, so sequential rendering is imperceptible. */
+let renderChain: Promise<unknown> = Promise.resolve();
+
+/** @internal — exposed only for unit tests; do not import elsewhere. */
+export const __test__ = {
+  parseColor,
+  mixColors,
+  normalizeForMermaid,
+  compositeOver,
+  mermaidConfig,
+  mermaidBuiltinConfig,
+};
+
+/**
+ * Render a Mermaid source to SVG.
+ *
+ * @param graphicTheme  Optional built-in palette to pin this diagram to
+ *   (``default`` / ``neutral`` / ``forest`` / ``dark`` / ``base``). When empty
+ *   or unrecognised, the diagram follows the document theme (doc-derived
+ *   palette). The choice is per-diagram and isolated — it never affects other
+ *   diagrams on the page.
+ */
+export async function renderMermaid(source: string, graphicTheme = ''): Promise<string> {
+  const api = await loadMermaid();
+  const run = renderChain.then(() => renderMermaidLocked(api, source, graphicTheme));
+  // Keep the chain alive even if this render rejects, so one failed diagram
+  // doesn't wedge every subsequent render.
+  renderChain = run.then(
+    () => undefined,
+    () => undefined,
+  );
+  return run;
+}
+
+async function renderMermaidLocked(
+  api: MermaidApi,
+  source: string,
+  graphicTheme: string,
+): Promise<string> {
+  const pinned = graphicTheme && isBuiltinMermaidTheme(graphicTheme);
+  if (pinned) {
+    // Pin to a clean built-in palette; force the next doc-themed render to
+    // re-initialise (lastTheme = null) since we just clobbered the global config.
+    api.initialize(mermaidBuiltinConfig(graphicTheme));
+    lastTheme = null;
+  } else if (lastTheme !== currentTheme()) {
     api.initialize(mermaidConfig(currentTheme()));
     lastTheme = currentTheme();
   }
-  return api;
-}
-
-/** @internal — exposed only for unit tests; do not import elsewhere. */
-export const __test__ = { parseColor, mixColors, normalizeForMermaid, compositeOver, mermaidConfig };
-
-export async function renderMermaid(source: string): Promise<string> {
-  const api = await loadMermaid();
   // Probe-parse first so syntax errors throw cleanly without mermaid injecting
   // its "bomb" error SVG into the DOM as a side effect — we'd rather surface
   // the message in our own UI than leave orphan error nodes hanging in body.
