@@ -61,8 +61,11 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   const lang = normalizeLanguage((node.attrs.language as string | null) ?? '');
   const title = (node.attrs.title as string | null) ?? '';
   const collapsed = Boolean(node.attrs.collapsed);
+  // Per-block theme overrides the global default. '' = inherit jz-code-theme.
+  const blockTheme = ((node.attrs.theme as string | null) ?? '') as CodeThemeId | '';
 
   const [prefs, setPrefs] = useState<CodeBlockPrefs>(loadCodeBlockPrefs);
+  const effectiveTheme: CodeThemeId = (blockTheme || prefs.theme) as CodeThemeId;
   const [copied, setCopied] = useState<'ok' | 'fail' | null>(null);
   const [moreOpen, setMoreOpen] = useState(false);
   const preRef = useRef<HTMLPreElement>(null);
@@ -253,7 +256,10 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   }, [editor, getPos, node.nodeSize, handleAutoIndent, isDiagram, cycleViewMode]);
 
   const handleSyncStyle = () => {
-    syncCodeBlockStyleToDocument(editor, prefs);
+    // Theme is per-block, so "sync to whole doc" stamps THIS block's theme onto
+    // every code block node and promotes it to the global default for new
+    // blocks. Font / line-height / wrap stay global and are saved as-is.
+    syncCodeBlockStyleToDocument(editor, { ...prefs, theme: effectiveTheme });
     message.success('已同步样式到全文');
     setMoreOpen(false);
   };
@@ -277,7 +283,8 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
     <NodeViewWrapper
       className={blockClass}
       data-lang={lang}
-      data-code-theme={prefs.theme}
+      data-code-theme={effectiveTheme}
+      data-code-theme-explicit={blockTheme ? 'true' : undefined}
     >
       <div className="jz-code-toolbar" contentEditable={false}>
         <button
@@ -404,8 +411,8 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
 
         <span className="jz-code-theme-trigger-wrap">
           <CodeBlockThemeSelect
-            value={prefs.theme}
-            onChange={(v: CodeThemeId) => patchPrefs({ theme: v })}
+            value={effectiveTheme}
+            onChange={(v: CodeThemeId) => updateAttributes({ theme: v })}
             disabled={!editor.isEditable}
           />
         </span>

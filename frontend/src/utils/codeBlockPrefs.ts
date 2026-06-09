@@ -185,7 +185,11 @@ export function initCodeBlockGlobalPrefs() {
 }
 
 export function applyPrefsToBlockElement(block: HTMLElement, prefs: CodeBlockPrefs) {
-  block.dataset.codeTheme = prefs.theme;
+  // Respect a per-block theme baked in at render time — only blocks that
+  // inherit the global default get re-themed when the global pref changes.
+  if (block.dataset.codeThemeExplicit !== 'true') {
+    block.dataset.codeTheme = prefs.theme;
+  }
   block.classList.toggle('is-wrapped', prefs.wrap);
   block.classList.toggle('jz-code-no-line-numbers', !prefs.lineNumbers);
   const pre = block.querySelector<HTMLElement>('.jz-code-pre');
