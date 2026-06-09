@@ -18,6 +18,20 @@ describe('renderMarkdown fenced code Yuque chrome', () => {
     expect(html).toMatch(/hljs-comment|hljs-keyword|hljs-number/);
   });
 
+  it('honours a per-block theme from the fence info and marks it explicit', () => {
+    const md = '```python theme=yuque-light\nx = 1\n```\n';
+    const html = renderMarkdown(md);
+    expect(html).toContain('data-code-theme="yuque-light"');
+    expect(html).toContain('data-code-theme-explicit="true"');
+    expect(html).toContain('Yuque Light');
+  });
+
+  it('omits the explicit marker when no per-block theme is set', () => {
+    const md = '```python\nx = 1\n```\n';
+    const html = renderMarkdown(md);
+    expect(html).not.toContain('data-code-theme-explicit');
+  });
+
   it('normalizes py alias like editor highlighter path', () => {
     expect(normalizeLanguage('py')).toBe('python');
   });

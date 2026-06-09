@@ -246,6 +246,21 @@ export default function RichTextEditor({
               parseHTML: (el) => el.getAttribute('data-collapsed') === 'true',
               renderHTML: (attrs) => (attrs.collapsed ? { 'data-collapsed': 'true' } : {}),
             },
+            // Per-block source-highlighting theme. '' = inherit the global
+            // default (jz-code-theme). An explicit value here overrides it and
+            // is isolated to this block — changing one block no longer recolours
+            // every other code block in the document.
+            theme: {
+              default: '',
+              parseHTML: (el) =>
+                el.getAttribute('data-code-theme-explicit') === 'true'
+                  ? el.getAttribute('data-code-theme') ?? ''
+                  : '',
+              renderHTML: (attrs) =>
+                attrs.theme
+                  ? { 'data-code-theme': attrs.theme, 'data-code-theme-explicit': 'true' }
+                  : {},
+            },
           };
         },
         addNodeView() {
@@ -260,7 +275,8 @@ export default function RichTextEditor({
                 const info = serializeCodeFenceInfo(
                   (node.attrs.language as string) || '',
                   (node.attrs.title as string) || '',
-                  Boolean(node.attrs.collapsed)
+                  Boolean(node.attrs.collapsed),
+                  (node.attrs.theme as string) || ''
                 );
                 state.write('```' + info + '\n');
                 state.text(node.textContent, false);
@@ -279,10 +295,14 @@ export default function RichTextEditor({
                     const token = tokens[idx];
                     const meta = parseCodeFenceInfo((token.info || '').trim());
                     let html = defaultFence(tokens, idx, options, env, self);
-                    if (meta.title || meta.collapsed) {
+                    if (meta.title || meta.collapsed || meta.theme) {
                       const attrs: string[] = [];
                       if (meta.title) attrs.push(`data-title="${escapeFenceAttr(meta.title)}"`);
                       if (meta.collapsed) attrs.push('data-collapsed="true"');
+                      if (meta.theme) {
+                        attrs.push(`data-code-theme="${escapeFenceAttr(meta.theme)}"`);
+                        attrs.push('data-code-theme-explicit="true"');
+                      }
                       html = html.replace(/^<pre>/, `<pre ${attrs.join(' ')}>`);
                     }
                     return html;

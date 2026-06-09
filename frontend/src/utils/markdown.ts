@@ -510,7 +510,12 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
   const canon = normalizeLanguage(meta.language || lang);
   const label = languageLabel(canon);
   const prefs = readRenderPrefs();
-  const themeName = themeLabel(prefs.theme);
+  // Per-block theme (from the fence) overrides the global default. When set, we
+  // also stamp data-code-theme-explicit so the runtime enhancer
+  // (applyPrefsToBlockElement) won't overwrite it with the global theme.
+  const effectiveTheme = meta.theme || prefs.theme;
+  const themeName = themeLabel(effectiveTheme as typeof prefs.theme);
+  const themeExplicitAttr = meta.theme ? ' data-code-theme-explicit="true"' : '';
   const titleText = meta.title.trim() || `${label} · 代码块`;
   const collapsedClass = meta.collapsed ? ' is-collapsed' : '';
   const titleAttr = meta.title ? ` data-title="${escape(meta.title)}"` : '';
@@ -539,7 +544,7 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
       : '正在向 PlantUML 服务请求…';
     return (
       `<div class="jz-code-block jz-diagram-block ${langClass}${collapsedClass}" ` +
-      `data-lang="${canon}" data-source="${b64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
+      `data-lang="${canon}" data-source="${b64}" data-code-theme="${effectiveTheme}"${themeExplicitAttr}${titleAttr}${collapsedAttr}>` +
       `<div class="jz-diagram-actions" role="toolbar" aria-label="图表操作" contenteditable="false">` +
       `<button type="button" class="jz-diagram-action" data-action="${sourceAction}" title="查看源代码" aria-label="查看源代码">` +
       `<span class="jz-diagram-action-icon" aria-hidden="true">${diagramActionSvg('source')}</span>` +
@@ -566,7 +571,7 @@ function renderCodeBlock(code: string, lang: string, fenceInfo?: string): string
     .join('');
 
   return (
-    `<div class="jz-code-block${collapsedClass}${wrapClass}${lineNumClass}" data-lang="${canon}" data-code-source="${sourceB64}" data-code-theme="${prefs.theme}"${titleAttr}${collapsedAttr}>` +
+    `<div class="jz-code-block${collapsedClass}${wrapClass}${lineNumClass}" data-lang="${canon}" data-code-source="${sourceB64}" data-code-theme="${effectiveTheme}"${themeExplicitAttr}${titleAttr}${collapsedAttr}>` +
     renderYuqueToolbar({ label, titleText, themeName }) +
     `<pre class="jz-code-pre hljs"><code class="hljs language-${canon}">${numbered}</code></pre>` +
     `</div>`

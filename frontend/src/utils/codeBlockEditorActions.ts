@@ -35,9 +35,27 @@ export function autoIndentCodeBlock(
     .run();
 }
 
-export function syncCodeBlockStyleToDocument(_editor: Editor, prefs: Partial<CodeBlockPrefs>) {
+export function syncCodeBlockStyleToDocument(editor: Editor, prefs: Partial<CodeBlockPrefs>) {
+  // Global prefs (font / line-height / wrap / line-numbers) + the new default
+  // theme for future blocks.
   saveCodeBlockPrefs(prefs);
   broadcastPrefsChange();
+
+  // Theme is a per-block node attribute, so push it explicitly onto every
+  // existing code block — otherwise blocks that already carry their own theme
+  // would keep it and "同步到全文" would appear to do nothing.
+  const theme = prefs.theme;
+  if (!theme) return;
+  const { state, view } = editor;
+  const tr = state.tr;
+  let changed = false;
+  state.doc.descendants((node, pos) => {
+    if (node.type.name !== 'codeBlock') return;
+    if (node.attrs.theme === theme) return;
+    tr.setNodeMarkup(pos, undefined, { ...node.attrs, theme });
+    changed = true;
+  });
+  if (changed) view.dispatch(tr);
 }
 
 export function syncCodeBlockStyleAndLanguageToDocument(editor: Editor, language: string) {
