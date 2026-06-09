@@ -58,9 +58,15 @@ export function syncCodeBlockStyleToDocument(editor: Editor, prefs: Partial<Code
   if (changed) view.dispatch(tr);
 }
 
-export function syncCodeBlockStyleAndLanguageToDocument(editor: Editor, language: string) {
+export function syncCodeBlockStyleAndLanguageToDocument(
+  editor: Editor,
+  language: string,
+  theme?: string,
+) {
   const prefs = loadCodeBlockPrefs();
-  saveCodeBlockPrefs(prefs);
+  // Promote the source block's theme to the global default (for new blocks),
+  // alongside the other global style prefs.
+  saveCodeBlockPrefs(theme ? { ...prefs, theme: theme as CodeBlockPrefs['theme'] } : prefs);
   broadcastPrefsChange();
 
   const { state, view } = editor;
@@ -68,7 +74,11 @@ export function syncCodeBlockStyleAndLanguageToDocument(editor: Editor, language
   let changed = false;
   state.doc.descendants((node, pos) => {
     if (node.type.name !== 'codeBlock') return;
-    tr.setNodeMarkup(pos, undefined, { ...node.attrs, language });
+    // Stamp language AND (per-block) theme onto every code block. Theme is a
+    // node attribute now, so without this the "样式" half would no-op.
+    const attrs: Record<string, unknown> = { ...node.attrs, language };
+    if (theme) attrs.theme = theme;
+    tr.setNodeMarkup(pos, undefined, attrs);
     changed = true;
   });
   if (changed) view.dispatch(tr);
