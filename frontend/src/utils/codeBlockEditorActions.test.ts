@@ -58,6 +58,18 @@ describe('syncCodeBlockStyleToDocument', () => {
     syncCodeBlockStyleToDocument(editor, { wrap: true });
     expect(markups).toEqual([]);
   });
+
+  it('skips diagram blocks (mermaid / plantuml stay independent)', () => {
+    const { editor, markups } = makeEditor([
+      codeBlock({ language: 'python', theme: '' }),
+      codeBlock({ language: 'mermaid', theme: '' }),
+      codeBlock({ language: 'plantuml', theme: '' }),
+      codeBlock({ language: 'puml', theme: '' }), // alias normalises to plantuml
+    ]);
+    syncCodeBlockStyleToDocument(editor, { theme: 'yuque-light' });
+    // Only the python block (pos 0) is touched; diagrams untouched.
+    expect(markups.map((m) => m.pos)).toEqual([0]);
+  });
 });
 
 describe('syncCodeBlockStyleAndLanguageToDocument', () => {
@@ -82,5 +94,16 @@ describe('syncCodeBlockStyleAndLanguageToDocument', () => {
     expect(markups[0].attrs.language).toBe('go');
     // Theme left untouched when not provided.
     expect(markups[0].attrs.theme).toBe('darcula');
+  });
+
+  it('never rewrites a diagram block language/theme', () => {
+    const { editor, markups } = makeEditor([
+      codeBlock({ language: 'python', theme: '' }),
+      codeBlock({ language: 'mermaid', theme: '' }),
+    ]);
+    syncCodeBlockStyleAndLanguageToDocument(editor, 'rust', 'night-owl');
+    // Mermaid block (pos 1) untouched; only the python block synced.
+    expect(markups.map((m) => m.pos)).toEqual([0]);
+    expect(markups[0].attrs.language).toBe('rust');
   });
 });

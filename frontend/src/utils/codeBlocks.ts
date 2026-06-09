@@ -79,6 +79,14 @@ export function normalizeLanguage(raw: string | null | undefined): string {
   return 'plaintext';
 }
 
+/** True for graphical code blocks (Mermaid / PlantUML) — they render as a
+ *  diagram, not highlighted source, and keep their own per-block appearance
+ *  (graphic theme, language) instead of participating in "同步样式到全文". */
+export function isDiagramLanguage(raw: string | null | undefined): boolean {
+  const canon = normalizeLanguage(raw);
+  return canon === 'mermaid' || canon === 'plantuml';
+}
+
 /**
  * Map our internal slug to the highlight.js language id. hljs doesn't have
  * dedicated jsx/tsx/xml grammars but its JS/TS/HTML grammars cover them.
