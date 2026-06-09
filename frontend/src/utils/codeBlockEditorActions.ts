@@ -7,6 +7,7 @@ import {
   type CodeBlockPrefs,
   type IndentMode,
 } from './codeBlockPrefs';
+import { isDiagramLanguage } from './codeBlocks';
 
 export function autoIndentCodeBlock(
   editor: Editor,
@@ -51,6 +52,9 @@ export function syncCodeBlockStyleToDocument(editor: Editor, prefs: Partial<Code
   let changed = false;
   state.doc.descendants((node, pos) => {
     if (node.type.name !== 'codeBlock') return;
+    // Diagram blocks (Mermaid / PlantUML) keep their own appearance — never
+    // overwrite their theme from a "同步到全文".
+    if (isDiagramLanguage(node.attrs.language as string)) return;
     if (node.attrs.theme === theme) return;
     tr.setNodeMarkup(pos, undefined, { ...node.attrs, theme });
     changed = true;
@@ -74,6 +78,9 @@ export function syncCodeBlockStyleAndLanguageToDocument(
   let changed = false;
   state.doc.descendants((node, pos) => {
     if (node.type.name !== 'codeBlock') return;
+    // Diagram blocks stay independent — don't rewrite their language (you'd
+    // never want a Mermaid block turned into the synced language) or theme.
+    if (isDiagramLanguage(node.attrs.language as string)) return;
     // Stamp language AND (per-block) theme onto every code block. Theme is a
     // node attribute now, so without this the "样式" half would no-op.
     const attrs: Record<string, unknown> = { ...node.attrs, language };
