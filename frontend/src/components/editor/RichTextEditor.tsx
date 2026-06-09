@@ -261,6 +261,15 @@ export default function RichTextEditor({
                   ? { 'data-code-theme': attrs.theme, 'data-code-theme-explicit': 'true' }
                   : {},
             },
+            // Per-diagram Mermaid graphic palette. '' = follow the document
+            // theme. Isolated to this block, so pinning one diagram's colours
+            // never touches the others.
+            mermaidTheme: {
+              default: '',
+              parseHTML: (el) => el.getAttribute('data-mermaid-theme') ?? '',
+              renderHTML: (attrs) =>
+                attrs.mermaidTheme ? { 'data-mermaid-theme': attrs.mermaidTheme } : {},
+            },
           };
         },
         addNodeView() {
@@ -276,7 +285,8 @@ export default function RichTextEditor({
                   (node.attrs.language as string) || '',
                   (node.attrs.title as string) || '',
                   Boolean(node.attrs.collapsed),
-                  (node.attrs.theme as string) || ''
+                  (node.attrs.theme as string) || '',
+                  (node.attrs.mermaidTheme as string) || ''
                 );
                 state.write('```' + info + '\n');
                 state.text(node.textContent, false);
@@ -295,13 +305,16 @@ export default function RichTextEditor({
                     const token = tokens[idx];
                     const meta = parseCodeFenceInfo((token.info || '').trim());
                     let html = defaultFence(tokens, idx, options, env, self);
-                    if (meta.title || meta.collapsed || meta.theme) {
+                    if (meta.title || meta.collapsed || meta.theme || meta.mermaidTheme) {
                       const attrs: string[] = [];
                       if (meta.title) attrs.push(`data-title="${escapeFenceAttr(meta.title)}"`);
                       if (meta.collapsed) attrs.push('data-collapsed="true"');
                       if (meta.theme) {
                         attrs.push(`data-code-theme="${escapeFenceAttr(meta.theme)}"`);
                         attrs.push('data-code-theme-explicit="true"');
+                      }
+                      if (meta.mermaidTheme) {
+                        attrs.push(`data-mermaid-theme="${escapeFenceAttr(meta.mermaidTheme)}"`);
                       }
                       html = html.replace(/^<pre>/, `<pre ${attrs.join(' ')}>`);
                     }

@@ -55,6 +55,42 @@ def test_collect_mermaid_sources_keys_match_render_lookup():
     assert html.count("jz-diagram jz-diagram-mermaid") == 2
 
 
+def test_mtheme_bakes_init_directive_into_render_key_and_lookup():
+    """A ``mtheme=`` fence pins the graphic palette: the collected key carries
+    an init directive, and feeding that exact key back renders the SVG inline."""
+    src = "```mermaid mtheme=forest\ngraph TD\nA-->B\n```\n"
+    sources = collect_mermaid_sources(src)
+    assert sources == ['%%{init: {"theme": "forest"}}%%\ngraph TD\nA-->B']
+    # The renderer's lookup key matches the collected key exactly.
+    svg = '<svg id="x" viewBox="0 0 10 10"></svg>'
+    html = render_markdown(src, diagram_svgs={sources[0]: svg})
+    assert svg in html
+    assert "图表源码" not in html
+
+
+def test_two_diagrams_same_source_different_mtheme_get_distinct_keys():
+    """Identical source + different palette must not collide in the SVG map."""
+    src = (
+        "```mermaid mtheme=forest\ngraph TD\nA-->B\n```\n\n"
+        "```mermaid mtheme=dark\ngraph TD\nA-->B\n```\n"
+    )
+    sources = collect_mermaid_sources(src)
+    assert sources == [
+        '%%{init: {"theme": "forest"}}%%\ngraph TD\nA-->B',
+        '%%{init: {"theme": "dark"}}%%\ngraph TD\nA-->B',
+    ]
+    svgs = {sources[0]: "<svg id='f'/>", sources[1]: "<svg id='d'/>"}
+    html = render_markdown(src, diagram_svgs=svgs)
+    assert "<svg id='f'/>" in html
+    assert "<svg id='d'/>" in html
+
+
+def test_unknown_mtheme_is_ignored_no_directive():
+    """An unrecognised palette is dropped — never injected into the source."""
+    src = "```mermaid mtheme=bogus\ngraph TD\nA-->B\n```\n"
+    assert collect_mermaid_sources(src) == ["graph TD\nA-->B"]
+
+
 def test_collect_mermaid_sources_ignores_plantuml_and_plain_code():
     src = (
         "```plantuml\n@startuml\nA->B\n@enduml\n```\n\n"

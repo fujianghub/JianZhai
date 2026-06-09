@@ -37,7 +37,7 @@ import {
 } from '@/utils/codeBlockPrefs';
 import { message } from '@/utils/notify';
 import { useThemeStore } from '@/stores/theme';
-import { renderMermaid } from '@/utils/mermaid';
+import { renderMermaid, MERMAID_GRAPHIC_THEMES } from '@/utils/mermaid';
 import { fetchPlantumlSvg } from '@/utils/plantuml';
 import {
   cycleDiagramViewMode,
@@ -63,6 +63,8 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   const collapsed = Boolean(node.attrs.collapsed);
   // Per-block theme overrides the global default. '' = inherit jz-code-theme.
   const blockTheme = ((node.attrs.theme as string | null) ?? '') as CodeThemeId | '';
+  // Per-diagram Mermaid graphic palette. '' = follow the document theme.
+  const graphicTheme = (node.attrs.mermaidTheme as string | null) ?? '';
 
   const [prefs, setPrefs] = useState<CodeBlockPrefs>(loadCodeBlockPrefs);
   const effectiveTheme: CodeThemeId = (blockTheme || prefs.theme) as CodeThemeId;
@@ -105,8 +107,13 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   // output is theme-independent — keep its key theme-free to avoid refetches.
   const themeMode = useThemeStore((s) => s.mode);
   const accentKey = useThemeStore((s) => s.accent.key);
+  // A pinned graphic theme bakes its own palette, so it must bust the de-dup
+  // guard too — otherwise switching theme on an unchanged source wouldn't
+  // re-render. When pinned, the doc theme/accent are irrelevant to the output.
   const renderKey = isMermaid
-    ? `${themeMode}|${accentKey}\n${debouncedSource}`
+    ? graphicTheme
+      ? `mt:${graphicTheme}\n${debouncedSource}`
+      : `${themeMode}|${accentKey}\n${debouncedSource}`
     : debouncedSource;
   useEffect(() => {
     if (!isDiagram || !showDiagramPreview || collapsed) return;
@@ -118,8 +125,10 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
     if (previewSourceRef.current === renderKey) return;
     previewSourceRef.current = renderKey;
     let cancelled = false;
-    const renderFn = isMermaid ? renderMermaid : fetchPlantumlSvg;
-    renderFn(debouncedSource)
+    const renderPromise = isMermaid
+      ? renderMermaid(debouncedSource, graphicTheme)
+      : fetchPlantumlSvg(debouncedSource);
+    renderPromise
       .then((svg) => {
         if (cancelled) return;
         setPreviewHtml(svg);
@@ -134,7 +143,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
     return () => {
       cancelled = true;
     };
-  }, [debouncedSource, renderKey, isDiagram, isMermaid, showDiagramPreview, collapsed]);
+  }, [debouncedSource, renderKey, graphicTheme, isDiagram, isMermaid, showDiagramPreview, collapsed]);
 
   const replaceDiagramSource = useCallback(
     (template: string) => {
@@ -341,6 +350,20 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 className="jz-mermaid-type-select"
                 disabled={!editor.isEditable}
               />
+            )}
+            {isMermaid && (
+              <Tooltip title="图形配色（每图独立，跟随文档或锁定内置主题）">
+                <Select
+                  size="small"
+                  value={graphicTheme}
+                  onChange={(v) => updateAttributes({ mermaidTheme: v })}
+                  onClick={(e) => e.stopPropagation()}
+                  options={MERMAID_GRAPHIC_THEMES.map((t) => ({ value: t.id, label: t.label }))}
+                  className="jz-mermaid-theme-select"
+                  aria-label="图形配色"
+                  disabled={!editor.isEditable}
+                />
+              </Tooltip>
             )}
             <span className="jz-diagram-zoom-group">
               <Tooltip title="缩小">

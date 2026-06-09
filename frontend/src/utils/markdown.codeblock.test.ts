@@ -32,6 +32,19 @@ describe('renderMarkdown fenced code Yuque chrome', () => {
     expect(html).not.toContain('data-code-theme-explicit');
   });
 
+  it('emits data-mermaid-theme on a mermaid block pinned via the fence', () => {
+    const md = '```mermaid mtheme=forest\nflowchart TD\nA-->B\n```\n';
+    const html = renderMarkdown(md);
+    expect(html).toContain('jz-code-mermaid');
+    expect(html).toContain('data-mermaid-theme="forest"');
+  });
+
+  it('omits data-mermaid-theme when the diagram follows the document theme', () => {
+    const md = '```mermaid\nflowchart TD\nA-->B\n```\n';
+    const html = renderMarkdown(md);
+    expect(html).not.toContain('data-mermaid-theme');
+  });
+
   it('normalizes py alias like editor highlighter path', () => {
     expect(normalizeLanguage('py')).toBe('python');
   });
