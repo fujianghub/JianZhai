@@ -274,7 +274,10 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   };
 
   const handleSyncStyleAndLang = () => {
-    syncCodeBlockStyleAndLanguageToDocument(editor, lang);
+    // Like handleSyncStyle but also stamps THIS block's language onto every
+    // block. Theme is per-block now, so pass it through too — otherwise the
+    // "样式" half of "同步样式与语言" would silently do nothing.
+    syncCodeBlockStyleAndLanguageToDocument(editor, lang, effectiveTheme);
     message.success('已同步样式与语言到全文');
     setMoreOpen(false);
   };
