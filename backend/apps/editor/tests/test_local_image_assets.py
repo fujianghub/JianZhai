@@ -237,6 +237,73 @@ def test_import_zip_rejects_path_traversal(api_client, owner, kb, settings, tmp_
 
 
 @pytest.mark.django_db
+def test_bundled_md_classified_as_markdown_not_image(settings, tmp_path):
+    """A markdown doc carrying image *assets* must stay doc_format=markdown even
+    when an image is its oldest attachment (regression: whole article was hidden
+    behind a single inline-image preview)."""
+    from apps.knowledge.serializers import detect_doc_format
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    user = User.objects.create_user("fmt", "fmt@e.com", "p")
+    kb = KnowledgeBase.objects.create(owner=user, name="K", slug="k-fmt")
+    doc = Document.objects.create(
+        knowledge_base=kb, title="教程", slug="d-fmt",
+        raw_content="# 教程\n![x](/media/uploads/x.png)\n正文……\n",
+        published_content="# 教程\n![x](/media/uploads/x.png)\n",
+    )
+    # Image attachment created first → it is the "primary" (oldest) attachment.
+    Attachment.objects.create(
+        document=doc, uploaded_by=user,
+        file=SimpleUploadedFile("x.png", PNG_BYTES, content_type="image/png"),
+        original_filename="x.png", kind=Attachment.KIND_IMAGE, mime_type="image/png",
+        size=len(PNG_BYTES),
+    )
+    assert detect_doc_format(doc) == "markdown"
+
+
+@pytest.mark.django_db
+def test_genuine_image_doc_still_image(settings, tmp_path):
+    """A real image upload (no text body) must stay doc_format=image."""
+    from apps.knowledge.serializers import detect_doc_format
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    user = User.objects.create_user("img", "img@e.com", "p")
+    kb = KnowledgeBase.objects.create(owner=user, name="K", slug="k-img")
+    doc = Document.objects.create(
+        knowledge_base=kb, title="photo", slug="d-img", raw_content="", published_content=""
+    )
+    Attachment.objects.create(
+        document=doc, uploaded_by=user,
+        file=SimpleUploadedFile("p.png", PNG_BYTES, content_type="image/png"),
+        original_filename="p.png", kind=Attachment.KIND_IMAGE, mime_type="image/png",
+        size=len(PNG_BYTES),
+    )
+    assert detect_doc_format(doc) == "image"
+
+
+@pytest.mark.django_db
+def test_import_batch_bundle_yields_markdown_format(api_client, owner, kb, settings, tmp_path):
+    """End-to-end: bundled import → created doc reports doc_format=markdown."""
+    from apps.knowledge.serializers import detect_doc_format
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    api_client.force_authenticate(owner)
+    md = "# 教程\n![一](./images/pic.png)\n"
+    files = [
+        SimpleUploadedFile("教程.md", md.encode("utf-8"), content_type="text/markdown"),
+        SimpleUploadedFile("pic.png", PNG_BYTES, content_type="image/png"),
+    ]
+    resp = api_client.post(
+        reverse("api_v1:import-batch"),
+        data={"knowledge_base": kb.id, "files": files, "paths": ["教程/教程.md", "教程/images/pic.png"]},
+        format="multipart",
+    )
+    assert resp.status_code == 201, resp.content
+    doc = Document.objects.get(pk=resp.data["created"][0]["id"])
+    assert detect_doc_format(doc) == "markdown"
+
+
+@pytest.mark.django_db
 def test_import_zip_rejects_non_zip(api_client, owner, kb):
     api_client.force_authenticate(owner)
     zf = SimpleUploadedFile("a.md", b"# hi", content_type="text/markdown")

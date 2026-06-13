@@ -71,6 +71,14 @@ def detect_doc_format(doc: Document) -> str:
     """
     from .html_content import looks_like_html
 
+    # List/tree endpoints ``.defer()`` the big body columns and instead annotate
+    # ``_fmt_head`` (the first 4096 chars via Substr) — enough for
+    # ``looks_like_html`` and the "has a text body?" check below. Reading the
+    # annotation avoids a per-row query that would otherwise un-defer the column.
+    head = getattr(doc, "_fmt_head", None)
+    if head is None:
+        head = (doc.raw_content or "") or (doc.published_content or "")
+
     att = _primary_attachment(doc)
     if att is not None:
         name = (att.original_filename or "").lower()
@@ -83,18 +91,20 @@ def detect_doc_format(doc: Document) -> str:
         if ext == ".docx":
             return "docx"
         if att.kind == "image" or mime.startswith("image/"):
-            # Text-imported docs (md/txt) leave att.kind == "document" with raw_content
-            # populated, so they correctly fall through to markdown below.
-            return "image"
-        return "markdown"
+            # A genuine image document has an image as its primary attachment and
+            # no text body. But a *markdown* doc that merely carries bundled image
+            # assets (``./images/*`` uploaded alongside the .md) also has image
+            # attachments — and depending on upload order one of them can be the
+            # "first" attachment. Those keep their markdown in raw_content, so
+            # classify by body when a text body exists rather than mislabeling the
+            # whole document as an image (which hides the article behind a single
+            # inline image preview).
+            if not head.strip():
+                return "image"
+            # else: has a real text body → fall through to body-based detection
+        else:
+            return "markdown"
 
-    # List/tree endpoints ``.defer()`` the big body columns and instead annotate
-    # ``_fmt_head`` (the first 4096 chars via Substr) — enough for
-    # ``looks_like_html`` which only inspects the leading window. Reading the
-    # annotation avoids a per-row query that would otherwise un-defer the column.
-    head = getattr(doc, "_fmt_head", None)
-    if head is None:
-        head = (doc.raw_content or "") or (doc.published_content or "")
     if looks_like_html(head):
         return "html"
     return "markdown"
