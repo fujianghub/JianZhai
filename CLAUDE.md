@@ -332,7 +332,7 @@ class AIUsageLog(models.Model):
   2. **两步选择器**（新建 ▾ →「导入带图 Markdown」）：弹窗第①步选 `.md`、第②步选图片文件夹（`webkitdirectory`），合并为**一个 importBatch 请求**直发（不经 planUploadChunks 分组）；md 落 KB 根、图片按文件名兜底匹配（文件夹名任意）。
   3. **ZIP 导入**（新建 ▾ →「导入 ZIP（含图片）」）：上传单个 `.zip`，后端 `import_zip` 内存解压（防 zip bomb：单文件 50MB / 解压总量 200MB / ≤500 文件；跳过目录/隐藏/`__MACOSX`/路径穿越/不支持类型并回报 `skipped`）→ 同一打包核心。
   - **修复已导入但缺图的旧文档**：`python manage.py import_local_images --document <id> --images-dir <路径> [--dry-run]`（按文件名匹配、幂等、只补 `/media/` 之外仍坏的引用）。
-  - **坑（doc_format 误判）**：`detect_doc_format` 按「最早上传的附件」判类型；打包后图片附件可能比 `.md` 先创建 → 主附件是图片 → 整篇被判 `image` → 博客端走内联图片预览只显示一张图、不渲染正文。已修：主附件是图片但**有真实文本正文**时按正文判（仍 `markdown`），纯图片（无正文）才判 `image`；读取时计算，旧文档无需重传即恢复。
+  - **坑（主附件是图片资产 → 两处症状）**：打包后图片附件可能比 `.md` 先创建（`created_at` 更早），而 `_primary_attachment` 取「最早附件」→ 主附件被算成图片，引发两个症状：① `detect_doc_format` 判 `image` → 博客走内联图片预览只显示一张图、不渲染正文；② PostDetail 的 `showOriginalAtBottom` 在正文末再渲染一次主附件 → 文末多出一张图。已修（均读取时计算，旧文档无需重传）：`_primary_attachment`（knowledge + blog **各一份**）在文档有真实文本正文时优先取最早的**非图片**附件（.md 源文件）；`detect_doc_format` 亦加正文兜底。纯图片（无正文）仍判 `image`。
 
 ### 模块 2：文档与编辑器 ✅
 
