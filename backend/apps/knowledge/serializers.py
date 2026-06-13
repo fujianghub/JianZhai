@@ -47,7 +47,17 @@ DOC_FORMAT_ORDER = {
 
 
 def _primary_attachment(doc: Document):
-    """Return the oldest attachment, reading from a Prefetch cache if present.
+    """Return the document's defining attachment, reading from a Prefetch cache
+    if present.
+
+    Normally this is the oldest attachment. But a markdown/text document bundled
+    with image *assets* (``./images/*`` uploaded alongside the ``.md``) carries
+    several image attachments — and depending on upload order one of them can be
+    the oldest. Those images are embedded assets, not the document's source file:
+    when the document has a real text body we prefer the oldest **non-image**
+    attachment (the ``.md``) so format detection, the inline-file preview and the
+    "original at bottom" block all key off the source file rather than redundantly
+    surfacing an asset image.
 
     `DocumentViewSet` populates ``ordered_attachments`` via a Prefetch so this
     function avoids issuing a fresh ORDER BY query per document.
@@ -55,9 +65,20 @@ def _primary_attachment(doc: Document):
     if not doc.pk:
         return None
     cached = getattr(doc, "ordered_attachments", None)
-    if cached is not None:
-        return cached[0] if cached else None
-    return doc.attachments.order_by("created_at").first()
+    atts = list(cached) if cached is not None else list(doc.attachments.order_by("created_at"))
+    if not atts:
+        return None
+
+    # Mirror detect_doc_format's body lookup: list endpoints annotate ``_fmt_head``
+    # (deferred body), detail endpoints have the full text loaded.
+    head = getattr(doc, "_fmt_head", None)
+    if head is None:
+        head = (doc.raw_content or "") or (doc.published_content or "")
+    if head and head.strip():
+        for a in atts:
+            if a.kind != "image" and not (a.mime_type or "").startswith("image/"):
+                return a
+    return atts[0]
 
 
 def detect_doc_format(doc: Document) -> str:

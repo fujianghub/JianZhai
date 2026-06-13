@@ -15,18 +15,31 @@ def _tags_summary(obj) -> list[dict]:
 
 
 def _primary_attachment(doc: Document) -> dict | None:
-    """Return the first attachment of a doc (typically the imported source file).
+    """Return the document's defining attachment (typically the imported source).
+
+    Normally the oldest attachment. But a markdown doc bundled with image
+    *assets* (``./images/*`` uploaded next to the ``.md``) carries image
+    attachments that — depending on upload order — can be the oldest; those are
+    embedded assets, not the source file. When the doc has a real text body we
+    prefer the oldest non-image attachment so the reader doesn't echo an asset
+    image as the "original file" at the bottom of the article.
 
     Uses the ``ordered_attachments`` Prefetch populated by blog views when
     present, so list endpoints don't issue a per-doc query.
     """
     cached = getattr(doc, "ordered_attachments", None)
-    if cached is not None:
-        att = cached[0] if cached else None
-    else:
-        att = doc.attachments.order_by("created_at").first()
-    if not att:
+    atts = list(cached) if cached is not None else list(doc.attachments.order_by("created_at"))
+    if not atts:
         return None
+    att = atts[0]
+    head = getattr(doc, "_fmt_head", None)
+    if head is None:
+        head = (doc.raw_content or "") or (doc.published_content or "")
+    if head and head.strip():
+        att = next(
+            (a for a in atts if a.kind != "image" and not (a.mime_type or "").startswith("image/")),
+            att,
+        )
     return {
         "id": att.id,
         "url": att.file.url if att.file else "",
