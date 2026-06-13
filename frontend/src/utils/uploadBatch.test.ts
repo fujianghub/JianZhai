@@ -9,6 +9,7 @@ import {
   checkUploadFile,
   collectDroppedItems,
   collectPickedFiles,
+  planUploadChunks,
   runChunkedImport,
   skippedSummary,
   UPLOAD_ACCEPT,
@@ -209,6 +210,57 @@ describe('collectDroppedItems', () => {
     const out = await collectDroppedItems(dt);
     expect(out.items.map((i) => i.relativePath)).toEqual(['Dir/ok.md']);
     expect(out.skipped).toHaveLength(2);
+  });
+});
+
+describe('planUploadChunks', () => {
+  const item = (rel: string) => ({
+    file: makeFile(rel.split('/').pop() || rel),
+    relativePath: rel,
+  });
+
+  it('含 markdown + 图片的文件夹整组发一个请求（保证改写成立）', () => {
+    const items = [
+      item('教程/教程.md'),
+      item('教程/images/a.png'),
+      item('教程/images/b.svg'),
+      item('教程/images/c.png'),
+    ];
+    const plan = planUploadChunks(items, 2);
+    // 4 个文件本应切成 2 片，但同组含文档+图片 → 整组 1 片
+    expect(plan).toHaveLength(1);
+    expect(plan[0]).toHaveLength(4);
+  });
+
+  it('纯图片文件夹仍按 chunkSize 切片（渐进刷新）', () => {
+    const items = ['p/1.png', 'p/2.png', 'p/3.png'].map(item);
+    const plan = planUploadChunks(items, 2);
+    expect(plan.map((c) => c.length)).toEqual([2, 1]);
+  });
+
+  it('散文件（无目录）按 chunkSize 切片', () => {
+    const items = ['a.md', 'b.md', 'c.md'].map((n) => ({
+      file: makeFile(n),
+      relativePath: '',
+    }));
+    const plan = planUploadChunks(items, 2);
+    expect(plan.map((c) => c.length)).toEqual([2, 1]);
+  });
+
+  it('多个文件夹各自独立分组', () => {
+    const items = [
+      item('A/a.md'),
+      item('A/images/x.png'),
+      item('B/1.png'),
+      item('B/2.png'),
+      item('B/3.png'),
+    ];
+    const plan = planUploadChunks(items, 2);
+    // A 组整发(1 片)，B 组纯图片按 2 切(2 片)
+    expect(plan).toHaveLength(3);
+    expect(plan[0]).toHaveLength(2); // A 组 md+png
+    expect(plan[1]).toHaveLength(2); // B 组前两张
+    expect(plan[2]).toHaveLength(1); // B 组第三张
   });
 });
 

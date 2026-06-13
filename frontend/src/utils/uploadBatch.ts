@@ -36,6 +36,60 @@ export const UPLOAD_ACCEPT = [...UPLOAD_ALLOWED_EXT].join(',');
 
 export const UPLOAD_CHUNK_SIZE = 8;
 
+/**
+ * 文本文档扩展名：这些文件可能用 `![](./images/x.png)` 引用同文件夹内的本地图片，
+ * 服务端导入时需把图片当作该文档的附件并改写相对路径。改写依赖「文档与其图片在
+ * 同一个 import_batch 请求里」，因此含此类文档的文件夹要整组发送（见 planUploadChunks）。
+ */
+const TEXT_DOC_EXT = new Set([
+  '.md', '.markdown', '.html', '.htm', '.txt', '.docx',
+]);
+
+/** 顶层目录段（relativePath 的第一段）；散文件（无目录）归入 '' 组。 */
+function topFolderKey(rel: string | undefined): string {
+  const r = (rel || '').replace(/\\/g, '/');
+  const i = r.indexOf('/');
+  return i > 0 ? r.slice(0, i) : '';
+}
+
+/**
+ * 规划分片：按顶层目录分组，**同时含文本文档与图片的组整组发送**（保证文档与其
+ * 本地图片在同一请求里，服务端才能把 `./images/x.png` 改写为 `/media/…`）；其余
+ * 组（纯文档 / 纯图片 / 散文件）按 chunkSize 切片，保留渐进刷新。
+ */
+export function planUploadChunks(
+  items: BatchImportItem[],
+  chunkSize: number = UPLOAD_CHUNK_SIZE
+): BatchImportItem[][] {
+  const groups = new Map<string, BatchImportItem[]>();
+  const order: string[] = [];
+  for (const it of items) {
+    const key = topFolderKey(it.relativePath);
+    let g = groups.get(key);
+    if (!g) {
+      g = [];
+      groups.set(key, g);
+      order.push(key);
+    }
+    g.push(it);
+  }
+
+  const chunks: BatchImportItem[][] = [];
+  for (const key of order) {
+    const g = groups.get(key)!;
+    const hasText = g.some((it) => TEXT_DOC_EXT.has(extOf(it.file.name)));
+    const hasImage = g.some((it) =>
+      ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(extOf(it.file.name))
+    );
+    if (hasText && hasImage) {
+      chunks.push(g); // 整组一个请求 → 文档与图片同到，改写才成立
+    } else {
+      for (let i = 0; i < g.length; i += chunkSize) chunks.push(g.slice(i, i + chunkSize));
+    }
+  }
+  return chunks;
+}
+
 export interface CollectedUploads {
   items: BatchImportItem[];
   /** 客户端预过滤掉的文件 + 原因（人类可读）。 */
@@ -204,8 +258,8 @@ export async function runChunkedImport(
   const total: BatchImportResult = { created: [], errors: [], folders_created: 0 };
   const totalBytes = items.reduce((s, it) => s + it.file.size, 0) || 1;
   let doneBytes = 0;
-  for (let i = 0; i < items.length; i += chunkSize) {
-    const chunk = items.slice(i, i + chunkSize);
+  const plan = planUploadChunks(items, chunkSize);
+  for (const chunk of plan) {
     const chunkBytes = chunk.reduce((s, it) => s + it.file.size, 0);
     try {
       const r = await importBatch(chunk, kbId, folderId, (loaded, reqTotal) => {

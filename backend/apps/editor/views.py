@@ -324,9 +324,58 @@ def import_batch(request):
     errors: list[dict] = []
     folders_before = Folder.objects.filter(knowledge_base=kb).count()
 
+    rels = [
+        (paths[idx] if idx < len(paths) else "").replace("\\", "/").strip()
+        for idx in range(len(files))
+    ]
+
+    # When the same upload carries both markdown and image files (a dropped
+    # folder of ``教程.md`` + ``images/*.png``), treat the images as *assets* of
+    # the markdown rather than standalone documents: store them as Attachments
+    # and rewrite the markdown's ``![](./images/x.png)`` refs to ``/media/…``.
+    # Images uploaded on their own (media-library bulk add) keep the legacy
+    # one-document-per-image behaviour.
+    from apps.editor.services.local_image_assets import (
+        IMAGE_EXTS,
+        AssetIndex,
+        rewrite_local_image_refs,
+    )
+
+    text_doc_exts = TEXT_IMPORT_EXT | {".docx"}
+    has_text_doc = any(Path(f.name).suffix.lower() in text_doc_exts for f in files)
+
+    asset_index = AssetIndex()
+    asset_attachments: list[Attachment] = []
+
+    if has_text_doc:
+        for idx, f in enumerate(files):
+            if Path(f.name).suffix.lower() not in IMAGE_EXTS:
+                continue
+            if f.size > MAX_UPLOAD_SIZE:
+                errors.append(
+                    {"name": f.name, "detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限"}
+                )
+                continue
+            mime = f.content_type or mimetypes.guess_type(f.name)[0] or ""
+            att = Attachment.objects.create(
+                document=None,
+                uploaded_by=request.user,
+                file=f,
+                original_filename=f.name,
+                kind=Attachment.KIND_IMAGE,
+                mime_type=mime,
+                size=f.size,
+            )
+            asset_index.add(rels[idx] or f.name, att.file.url)
+            asset_attachments.append(att)
+
     for idx, f in enumerate(files):
-        rel = paths[idx] if idx < len(paths) else ""
-        rel = (rel or "").replace("\\", "/").strip()
+        ext = Path(f.name).suffix.lower()
+        # Image assets were already consumed above; don't also make them docs.
+        if has_text_doc and ext in IMAGE_EXTS:
+            continue
+
+        rel = rels[idx]
         parts = [p for p in rel.split("/") if p and p not in {".", ".."}]
         # Last segment is the filename — drop it before walking folders.
         folder_parts = parts[:-1] if len(parts) > 1 else []
@@ -340,7 +389,20 @@ def import_batch(request):
         if isinstance(result, Response):
             errors.append({"name": f.name, "detail": str(result.data.get("detail", "导入失败"))})
             continue
+
+        if ext in {".md", ".markdown"} and asset_attachments:
+            rewrite_local_image_refs(result, asset_index, doc_rel=rel)
         created.append(result)
+
+    # Bind each uploaded image asset to the first document that now references it
+    # so it shows up in that document's attachment list / media library.
+    if asset_attachments and created:
+        for att in asset_attachments:
+            for doc in created:
+                if att.file.url in (doc.raw_content or ""):
+                    att.document = doc
+                    att.save(update_fields=["document"])
+                    break
 
     folders_after = Folder.objects.filter(knowledge_base=kb).count()
     return Response(
