@@ -26,6 +26,7 @@ import {
   DeleteOutlined,
   ExportOutlined,
   FileAddOutlined,
+  FileImageOutlined,
   FolderAddOutlined,
   RocketOutlined,
   StopOutlined,
@@ -48,6 +49,7 @@ import {
   UPLOAD_ACCEPT,
   type CollectedUploads,
 } from '@/utils/uploadBatch';
+import { importBatch, importZip, type BatchImportItem } from '@/api/attachments';
 import KBTreeNav, {
   collectVisibleSelection,
   pruneCascadedSelection,
@@ -76,6 +78,13 @@ export default function KBWorkspace() {
   const [batchProgress, setBatchProgress] = useState<{ loaded: number; total: number } | null>(null);
   const batchInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
+  // 「导入带图 Markdown」两步选择器 + ZIP 导入
+  const [bundleModalOpen, setBundleModalOpen] = useState(false);
+  const [bundleMd, setBundleMd] = useState<File | null>(null);
+  const [bundleImages, setBundleImages] = useState<File[]>([]);
+  const mdInputRef = useRef<HTMLInputElement | null>(null);
+  const bundleImagesInputRef = useRef<HTMLInputElement | null>(null);
+  const zipInputRef = useRef<HTMLInputElement | null>(null);
   const [docForm] = Form.useForm<{
     title: string;
     folder?: number | null;
@@ -236,6 +245,82 @@ export default function KBWorkspace() {
       // 兜底再刷一次 —— 分片中途异常也能看到已落库的文档。
       await refreshTree();
     }
+  }
+
+  /** 共用：跑一次导入请求并统一处理进度 / 提示 / 刷新。 */
+  async function runImport(
+    fn: () => Promise<{
+      created: unknown[];
+      errors: unknown[];
+      folders_created: number;
+      skipped?: string[];
+    }>
+  ) {
+    setImporting(true);
+    setBatchProgress({ loaded: 0, total: 1 });
+    try {
+      const r = await fn();
+      const msg =
+        `已导入 ${r.created.length} 个文件` +
+        (r.folders_created ? ` · 创建 ${r.folders_created} 个文件夹` : '') +
+        (r.errors.length ? ` · ${r.errors.length} 个失败` : '') +
+        (r.skipped?.length ? ` · 跳过 ${r.skipped.length} 个` : '');
+      if (r.errors.length || r.skipped?.length) {
+        message.warning(msg);
+        if (r.errors.length) console.warn('import errors:', r.errors);
+        if (r.skipped?.length) console.warn('import skipped:', r.skipped);
+      } else {
+        message.success(msg);
+      }
+    } catch (err) {
+      message.error(formatApiError(err, '导入失败'));
+    } finally {
+      setImporting(false);
+      setBatchProgress(null);
+      await refreshTree();
+    }
+  }
+
+  /** 仅保留图片类型、≤50MB 的文件（「导入带图 Markdown」第②步用）。 */
+  function pickImageFiles(files: FileList): File[] {
+    const imageExt = /\.(jpe?g|png|gif|webp|svg)$/i;
+    return Array.from(files).filter(
+      (f) => imageExt.test(f.name) && f.size <= 50 * 1024 * 1024
+    );
+  }
+
+  /**
+   * 「导入带图 Markdown」：把第①步选的 .md 与第②步选的图片文件夹**合并为一个
+   * import_batch 请求**发出（同到才能改写相对路径）。md 落在 KB 根、图片转为其
+   * 附件，./images/x.png 自动改写为 /media/…（后端按文件名兜底匹配，文件夹叫
+   * 什么名字都行）。
+   */
+  async function handleBundleImport() {
+    if (!bundleMd) {
+      message.warning('请先选择 Markdown 文档');
+      return;
+    }
+    const items: BatchImportItem[] = [
+      { file: bundleMd, relativePath: bundleMd.name },
+      ...bundleImages.map((f) => ({
+        file: f,
+        relativePath:
+          (f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name,
+      })),
+    ];
+    setBundleModalOpen(false);
+    await runImport(() =>
+      importBatch(items, kbId, null, (loaded, total) => setBatchProgress({ loaded, total }))
+    );
+    setBundleMd(null);
+    setBundleImages([]);
+  }
+
+  /** 「导入 ZIP（含图片）」：上传单个 .zip，后端解压并改写相对图片路径。 */
+  async function handleZipImport(file: File) {
+    await runImport(() =>
+      importZip(file, kbId, null, (loaded, total) => setBatchProgress({ loaded, total }))
+    );
   }
 
   async function handleCreateFolder() {
@@ -477,12 +562,25 @@ export default function KBWorkspace() {
                   label: '上传文件夹（保留目录结构）',
                   onClick: () => folderInputRef.current?.click(),
                 },
+                { type: 'divider' as const },
+                {
+                  key: 'import-md-bundle',
+                  icon: <FileImageOutlined />,
+                  label: '导入带图 Markdown（选文档 + 图片文件夹）',
+                  onClick: () => setBundleModalOpen(true),
+                },
+                {
+                  key: 'import-zip',
+                  icon: <CloudUploadOutlined />,
+                  label: '导入 ZIP 压缩包（含图片）',
+                  onClick: () => zipInputRef.current?.click(),
+                },
                 {
                   key: 'import-hint',
                   disabled: true,
                   label: (
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      也可直接拖拽文件 / 多个文件夹到文档列表
+                      也可直接拖拽含 images 的整个文件夹到文档列表
                     </Text>
                   ),
                 },
@@ -522,6 +620,46 @@ export default function KBWorkspace() {
               if (e.target.files && e.target.files.length) {
                 void handleUpload(collectPickedFiles(e.target.files, true));
               }
+              e.target.value = '';
+            }}
+          />
+          {/* 「导入带图 Markdown」第①步：选单个 .md */}
+          <input
+            ref={mdInputRef}
+            type="file"
+            accept=".md,.markdown"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) setBundleMd(f);
+              e.target.value = '';
+            }}
+          />
+          {/* 「导入带图 Markdown」第②步：选图片文件夹 */}
+          <input
+            ref={bundleImagesInputRef}
+            type="file"
+            multiple
+            // @ts-expect-error — webkitdirectory 非标准属性，主流浏览器支持。
+            webkitdirectory="true"
+            directory="true"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              if (e.target.files && e.target.files.length) {
+                setBundleImages(pickImageFiles(e.target.files));
+              }
+              e.target.value = '';
+            }}
+          />
+          {/* ZIP 导入 */}
+          <input
+            ref={zipInputRef}
+            type="file"
+            accept=".zip"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void handleZipImport(f);
               e.target.value = '';
             }}
           />
@@ -860,6 +998,43 @@ export default function KBWorkspace() {
             <Select allowClear placeholder="（根目录）" options={folderOptions} />
           </Form.Item>
         </Form>
+      </Modal>
+
+      <Modal
+        open={bundleModalOpen}
+        title="导入带图 Markdown"
+        onCancel={() => setBundleModalOpen(false)}
+        onOk={handleBundleImport}
+        okText="开始导入"
+        cancelText="取消"
+        okButtonProps={{ disabled: !bundleMd }}
+      >
+        <Text type="secondary" style={{ fontSize: 13 }}>
+          浏览器不允许网页读取你本地的图片文件夹，所以请分两步把它们一起交给系统：
+          导入时会自动把图片存为该文档的附件，并把 <code>./images/x.png</code> 改写为可访问地址（按文件名匹配，图片文件夹叫什么名字都行）。
+        </Text>
+        <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div>
+            <Button icon={<FileAddOutlined />} onClick={() => mdInputRef.current?.click()}>
+              ① 选择 Markdown 文档
+            </Button>
+            <Text style={{ marginLeft: 10 }}>
+              {bundleMd ? bundleMd.name : <Text type="secondary">未选择（.md / .markdown）</Text>}
+            </Text>
+          </div>
+          <div>
+            <Button icon={<FileImageOutlined />} onClick={() => bundleImagesInputRef.current?.click()}>
+              ② 选择图片文件夹
+            </Button>
+            <Text style={{ marginLeft: 10 }}>
+              {bundleImages.length ? (
+                `已选 ${bundleImages.length} 张图片`
+              ) : (
+                <Text type="secondary">未选择（可选，图片缺失则该图不显示）</Text>
+              )}
+            </Text>
+          </div>
+        </div>
       </Modal>
 
       <Modal

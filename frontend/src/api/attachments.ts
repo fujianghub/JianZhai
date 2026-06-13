@@ -101,6 +101,36 @@ export async function importBatch(
   return data;
 }
 
+export interface ZipImportResult extends BatchImportResult {
+  /** Entries skipped during unpack (hidden/system files, unsupported types, …). */
+  skipped: string[];
+}
+
+/**
+ * Import a single ``.zip`` bundle (markdown + image folders). The server unpacks
+ * it and rewrites each markdown's local ``./images/x.png`` refs to ``/media/…``.
+ */
+export async function importZip(
+  file: File,
+  kbId: number,
+  folderId: number | null = null,
+  onProgress?: (loaded: number, total: number) => void
+): Promise<ZipImportResult> {
+  await ensureCsrf();
+  const fd = new FormData();
+  fd.append('file', file, file.name);
+  fd.append('knowledge_base', String(kbId));
+  if (folderId != null) fd.append('folder', String(folderId));
+  const { data } = await apiClient.post<ZipImportResult>('/imports/zip/', fd, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: BATCH_IMPORT_TIMEOUT_MS,
+    onUploadProgress: (e) => {
+      if (onProgress && e.total) onProgress(e.loaded, e.total);
+    },
+  });
+  return data;
+}
+
 export async function listDocumentAttachments(docId: number): Promise<Attachment[]> {
   const { data } = await apiClient.get<Attachment[]>(`/documents/${docId}/attachments/`);
   return data;

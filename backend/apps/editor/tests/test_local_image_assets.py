@@ -170,3 +170,79 @@ def test_import_batch_images_only_keeps_legacy_behaviour(api_client, owner, kb, 
     assert resp.status_code == 201, resp.content
     # No markdown present → images stay one-document-each (media-library style).
     assert len(resp.data["created"]) == 2
+
+
+# ── integration: import_zip view ──
+
+def _make_zip(files: dict[str, bytes]) -> bytes:
+    import io
+    import zipfile
+
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name, data in files.items():
+            zf.writestr(name, data)
+    return buf.getvalue()
+
+
+@pytest.mark.django_db
+def test_import_zip_bundles_md_and_images(api_client, owner, kb, settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    api_client.force_authenticate(owner)
+
+    md = "# 教程\n![一](./images/pic.png)\n![二](./images/diagram.svg)\n"
+    zip_bytes = _make_zip({
+        "教程/教程.md": md.encode("utf-8"),
+        "教程/images/pic.png": PNG_BYTES,
+        "教程/images/diagram.svg": SVG_BYTES,
+        "教程/__MACOSX/junk": b"x",          # system cruft → skipped
+        "教程/.DS_Store": b"x",               # hidden → skipped
+        "教程/notes.exe": b"x",               # unsupported → skipped
+    })
+    zf = SimpleUploadedFile("bundle.zip", zip_bytes, content_type="application/zip")
+
+    resp = api_client.post(
+        reverse("api_v1:import-zip"),
+        data={"knowledge_base": kb.id, "file": zf},
+        format="multipart",
+    )
+    assert resp.status_code == 201, resp.content
+    assert len(resp.data["created"]) == 1
+    doc = Document.objects.get(pk=resp.data["created"][0]["id"])
+    assert "./images/pic.png" not in doc.raw_content
+    assert doc.raw_content.count("/media/") == 2
+    atts = Attachment.objects.filter(kind=Attachment.KIND_IMAGE)
+    assert atts.count() == 2
+    assert all(a.document_id == doc.id for a in atts)
+    # cruft reported as skipped, not imported
+    assert len(resp.data["skipped"]) == 3
+    assert Document.objects.count() == 1
+
+
+@pytest.mark.django_db
+def test_import_zip_rejects_path_traversal(api_client, owner, kb, settings, tmp_path):
+    settings.MEDIA_ROOT = str(tmp_path)
+    api_client.force_authenticate(owner)
+    zip_bytes = _make_zip({"../evil.md": b"# x", "ok/note.md": b"# ok"})
+    zf = SimpleUploadedFile("b.zip", zip_bytes, content_type="application/zip")
+    resp = api_client.post(
+        reverse("api_v1:import-zip"),
+        data={"knowledge_base": kb.id, "file": zf},
+        format="multipart",
+    )
+    assert resp.status_code == 201, resp.content
+    # only the safe entry imported; traversal entry skipped
+    assert len(resp.data["created"]) == 1
+    assert any("evil.md" in s for s in resp.data["skipped"])
+
+
+@pytest.mark.django_db
+def test_import_zip_rejects_non_zip(api_client, owner, kb):
+    api_client.force_authenticate(owner)
+    zf = SimpleUploadedFile("a.md", b"# hi", content_type="text/markdown")
+    resp = api_client.post(
+        reverse("api_v1:import-zip"),
+        data={"knowledge_base": kb.id, "file": zf},
+        format="multipart",
+    )
+    assert resp.status_code == 415

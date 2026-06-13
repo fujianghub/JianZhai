@@ -327,7 +327,11 @@ class AIUsageLog(models.Model):
 - 折叠 / 展开状态本地持久化
 - KB 大类分组、文档置顶、收藏夹（`FavoritesPage`，后台侧栏「收藏」入口位于知识图谱与导出之间）、多种排序
 - **统一上传体系**（个人空间 KBWorkspace + 博客端 KBPostsPage 共用）：文件选择器（单/多选）、文件夹选择器（保留目录结构）、**拖拽混合上传**（多文件 + 多文件夹，`UploadDropZone` 递归遍历 webkitGetAsEntry）；客户端按后端规则预过滤（18 种扩展名 / 50MB / 跳过隐藏文件）；**分片上传**（默认 8 文件/请求，`utils/uploadBatch.ts`，每片完成即刷新列表渐进出现）；导入请求超时独立放宽（单 5min / 批 30min，全局 axios 仍 30s）
-- **Markdown 本地图片打包**（2026-06-13）：导入的 `.md` 常用本地相对路径引用图片（`![](./images/x.png)`）。**把含 `.md` 的整个文件夹（连同 `images/` 子目录）一起拖入上传**，前端 `planUploadChunks` 会把「同一顶层目录下含文本文档 + 图片」的组**整组发同一个 import_batch 请求**（不被 8 文件边界拆散，否则改写拿不到图片）；后端 `import_batch` 资产感知——图片存为该 MD 文档的 **Attachment（不再变成空文档）**，并用 `services/local_image_assets.py`（`AssetIndex` 按相对路径 + basename 匹配，basename 冲突时拒绝瞎猜）把相对引用改写为 `/media/…`，再把附件 `document` 绑定到引用它的文档。纯图片上传（媒体库）保持「一图一文档」旧行为。**修复已导入但缺图的文档**：把图片放到服务器某目录后 `python manage.py import_local_images --document <id> --images-dir <路径> [--dry-run]`（按文件名匹配、幂等、只补 `/media/` 之外仍坏的引用）。远程 `http(s)` 图仍走 `image_mirror.py`。
+- **Markdown 本地图片打包**（2026-06-13）：导入的 `.md` 常用本地相对路径引用图片（`![](./images/x.png)`）。浏览器沙箱禁止网页读硬盘，故只能把图片随上传一并交给系统。三种入口（均走后端 `_bundle_import_entries` 资产打包核心：图片存为该 MD 的 **Attachment（不再变空文档）**→ 用 `services/local_image_assets.py` 的 `AssetIndex`（相对路径 + basename 匹配，basename 冲突拒绝瞎猜）把相对引用改写为 `/media/…` → 附件 `document` 绑定到引用它的文档；纯图片上传保持「一图一文档」旧行为；远程 `http(s)` 图仍走 `image_mirror.py`）：
+  1. **整文件夹上传/拖拽**：拖含 `.md` 的整个文件夹（连 `images/`），前端 `planUploadChunks` 把「同顶层目录下含文本文档 + 图片」的组**整组发一个 import_batch 请求**（不被 8 文件分片拆散，否则改写拿不到图）。
+  2. **两步选择器**（新建 ▾ →「导入带图 Markdown」）：弹窗第①步选 `.md`、第②步选图片文件夹（`webkitdirectory`），合并为**一个 importBatch 请求**直发（不经 planUploadChunks 分组）；md 落 KB 根、图片按文件名兜底匹配（文件夹名任意）。
+  3. **ZIP 导入**（新建 ▾ →「导入 ZIP（含图片）」）：上传单个 `.zip`，后端 `import_zip` 内存解压（防 zip bomb：单文件 50MB / 解压总量 200MB / ≤500 文件；跳过目录/隐藏/`__MACOSX`/路径穿越/不支持类型并回报 `skipped`）→ 同一打包核心。
+  - **修复已导入但缺图的旧文档**：`python manage.py import_local_images --document <id> --images-dir <路径> [--dry-run]`（按文件名匹配、幂等、只补 `/media/` 之外仍坏的引用）。
 
 ### 模块 2：文档与编辑器 ✅
 
@@ -561,7 +565,7 @@ class AIUsageLog(models.Model):
 | **编辑器高危修复 + 表格保真**（2026-06-07） | 表格**冻结首行/首列**（编辑器/阅读/导出三端 sticky）；`convertLayoutBlocks` 根治 callout 劫持 details/cols/tabs + `::col` 不可解析；`.jz-table-wrap` 滚动容器（预处理/md/导出三路包裹）修宽长表被古书题签 `overflow:hidden` 裁切；Mermaid 净化修复（DOMPurify 剥 foreignObject 致无字 + dy 被剥似删除线 → `htmlLabels:false` + allowlist + 实时跟随四主题） | ✅ |
 | **性能优化 9 Phase**（2026-06-08） | defer 大正文字段（列表/树/版本/博客/搜索）；软删复合索引；消除 N+1；AISettings 单例缓存 + 预算 DB 聚合；公开聚合接口缓存 + 持久连接健康检查；懒加载 pdfjs+mammoth（DocAIPanel chunk 2.25MB→660KB）；getCapabilities 并发去重；富文本打字防抖 + 滚动同步；静态站流式写盘；255+275 测试绿 | ✅ |
 | **布局 + 导出保真**（2026-06-08） | **完整编辑两栏铺满**（≥1280 editor flex:1、大纲改流内 sticky 右栏、正文限宽 860 居中，去 body 内联 flexDirection 放行 row）；**Mermaid 离线导出 SVG**（HTML/PDF/静态站用 headless Chromium + vendored mermaid.min.js 渲为内联 SVG，每次导出仅启动一次浏览器，缺失/语法错误优雅降级源码面板）；图表操作条按钮去玻璃底修复亮色页灰字 | ✅ |
-| **MD 本地图片打包**（2026-06-13） | 导入 `.md` 的 `![](./images/x.png)` 相对图片不再 404：`import_batch` 资产感知（图片→MD 附件、不再变空文档）+ `services/local_image_assets.py` 改写相对路径为 `/media/`；前端 `planUploadChunks` 把「含文本文档 + 图片」的文件夹整组发同一请求（避免分片拆散）；`import_local_images` 管理命令从磁盘目录补图修复旧文档（按文件名匹配 + 幂等 + dry-run）。16 后端 + 14 前端测试绿 | ✅ |
+| **MD 本地图片打包**（2026-06-13） | 导入 `.md` 的 `![](./images/x.png)` 相对图片不再 404。三入口共用 `_bundle_import_entries`（图片→MD 附件、不再变空文档 + `services/local_image_assets.py` 改写为 `/media/`）：①整文件夹上传/拖拽（`planUploadChunks` 整组发同一请求避免分片拆散）；②**两步选择器**（选 .md + 选图片文件夹，合并一个 importBatch 直发）；③**ZIP 导入**（`import_zip` 内存解压 + 防 zip bomb + skipped 回报）；另 `import_local_images` 命令补图修复旧文档。28 后端 + 14 前端测试绿 | ✅ |
 | **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 超大 KB 树分页 / Yjs 协作 | 🔲 |
 
 ---

@@ -277,6 +277,100 @@ def import_file(request):
     return Response(DocumentSerializer(result).data, status=status.HTTP_201_CREATED)
 
 
+def _bundle_import_entries(
+    *,
+    request,
+    kb: KnowledgeBase,
+    root_folder: Folder | None,
+    entries: list[tuple[str, object]],
+) -> tuple[list[Document], list[dict]]:
+    """Import ``(relpath, file)`` entries with markdown-image bundling.
+
+    When the entries carry both a text document (md/html/txt/docx) and image
+    files, the images become *Attachments* of the markdown (not standalone
+    documents) and the markdown's local ``![](./images/x.png)`` refs are
+    rewritten to the resulting ``/media/…`` URLs. Images with no accompanying
+    text document keep the legacy one-document-per-image behaviour.
+
+    ``file`` objects must be Django File-like (``.name``/``.size``/``.read``/
+    ``.seek``; optional ``.content_type``) — both ``UploadedFile`` (batch) and
+    ``SimpleUploadedFile`` (unpacked from a zip) qualify. Folders are
+    auto-created from each entry's relpath. Returns ``(created, errors)``.
+    """
+    from apps.editor.services.local_image_assets import (
+        IMAGE_EXTS,
+        AssetIndex,
+        rewrite_local_image_refs,
+    )
+
+    created: list[Document] = []
+    errors: list[dict] = []
+
+    text_doc_exts = TEXT_IMPORT_EXT | {".docx"}
+    has_text_doc = any(Path(f.name).suffix.lower() in text_doc_exts for _, f in entries)
+
+    asset_index = AssetIndex()
+    asset_attachments: list[Attachment] = []
+
+    if has_text_doc:
+        for rel, f in entries:
+            if Path(f.name).suffix.lower() not in IMAGE_EXTS:
+                continue
+            if f.size > MAX_UPLOAD_SIZE:
+                errors.append(
+                    {"name": f.name, "detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限"}
+                )
+                continue
+            mime = getattr(f, "content_type", None) or mimetypes.guess_type(f.name)[0] or ""
+            att = Attachment.objects.create(
+                document=None,
+                uploaded_by=request.user,
+                file=f,
+                original_filename=f.name,
+                kind=Attachment.KIND_IMAGE,
+                mime_type=mime,
+                size=f.size,
+            )
+            asset_index.add(rel or f.name, att.file.url)
+            asset_attachments.append(att)
+
+    for rel, f in entries:
+        ext = Path(f.name).suffix.lower()
+        # Image assets were already consumed above; don't also make them docs.
+        if has_text_doc and ext in IMAGE_EXTS:
+            continue
+
+        parts = [p for p in rel.split("/") if p and p not in {".", ".."}]
+        # Last segment is the filename — drop it before walking folders.
+        folder_parts = parts[:-1] if len(parts) > 1 else []
+        try:
+            folder = _ensure_folder_path(kb, root_folder, folder_parts)
+        except Exception as exc:  # noqa: BLE001
+            errors.append({"name": f.name, "detail": str(exc)})
+            continue
+
+        result = _create_doc_from_upload(request=request, kb=kb, folder=folder, f=f)
+        if isinstance(result, Response):
+            errors.append({"name": f.name, "detail": str(result.data.get("detail", "导入失败"))})
+            continue
+
+        if ext in {".md", ".markdown"} and asset_attachments:
+            rewrite_local_image_refs(result, asset_index, doc_rel=rel)
+        created.append(result)
+
+    # Bind each uploaded image asset to the first document that now references it
+    # so it shows up in that document's attachment list / media library.
+    if asset_attachments and created:
+        for att in asset_attachments:
+            for doc in created:
+                if att.file.url in (doc.raw_content or ""):
+                    att.document = doc
+                    att.save(update_fields=["document"])
+                    break
+
+    return created, errors
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 @parser_classes([MultiPartParser])
@@ -289,6 +383,10 @@ def import_batch(request):
     ``webkitRelativePath`` for ``<input webkitdirectory>``). Missing/empty paths
     fall back to the bare filename — i.e. the file lands directly under the
     target folder. Folders are auto-created on the path as needed.
+
+    Markdown files that reference local images (``![](./images/x.png)``) get
+    those sibling images bundled as Attachments + rewritten to ``/media/…`` when
+    the images ride in the same request (see ``_bundle_import_entries``).
 
     Response shape::
 
@@ -319,96 +417,134 @@ def import_batch(request):
         )
 
     paths = request.data.getlist("paths") if hasattr(request.data, "getlist") else []
-
-    created: list[Document] = []
-    errors: list[dict] = []
-    folders_before = Folder.objects.filter(knowledge_base=kb).count()
-
     rels = [
         (paths[idx] if idx < len(paths) else "").replace("\\", "/").strip()
         for idx in range(len(files))
     ]
+    entries = list(zip(rels, files))
 
-    # When the same upload carries both markdown and image files (a dropped
-    # folder of ``教程.md`` + ``images/*.png``), treat the images as *assets* of
-    # the markdown rather than standalone documents: store them as Attachments
-    # and rewrite the markdown's ``![](./images/x.png)`` refs to ``/media/…``.
-    # Images uploaded on their own (media-library bulk add) keep the legacy
-    # one-document-per-image behaviour.
-    from apps.editor.services.local_image_assets import (
-        IMAGE_EXTS,
-        AssetIndex,
-        rewrite_local_image_refs,
+    folders_before = Folder.objects.filter(knowledge_base=kb).count()
+    created, errors = _bundle_import_entries(
+        request=request, kb=kb, root_folder=root_folder, entries=entries
     )
-
-    text_doc_exts = TEXT_IMPORT_EXT | {".docx"}
-    has_text_doc = any(Path(f.name).suffix.lower() in text_doc_exts for f in files)
-
-    asset_index = AssetIndex()
-    asset_attachments: list[Attachment] = []
-
-    if has_text_doc:
-        for idx, f in enumerate(files):
-            if Path(f.name).suffix.lower() not in IMAGE_EXTS:
-                continue
-            if f.size > MAX_UPLOAD_SIZE:
-                errors.append(
-                    {"name": f.name, "detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限"}
-                )
-                continue
-            mime = f.content_type or mimetypes.guess_type(f.name)[0] or ""
-            att = Attachment.objects.create(
-                document=None,
-                uploaded_by=request.user,
-                file=f,
-                original_filename=f.name,
-                kind=Attachment.KIND_IMAGE,
-                mime_type=mime,
-                size=f.size,
-            )
-            asset_index.add(rels[idx] or f.name, att.file.url)
-            asset_attachments.append(att)
-
-    for idx, f in enumerate(files):
-        ext = Path(f.name).suffix.lower()
-        # Image assets were already consumed above; don't also make them docs.
-        if has_text_doc and ext in IMAGE_EXTS:
-            continue
-
-        rel = rels[idx]
-        parts = [p for p in rel.split("/") if p and p not in {".", ".."}]
-        # Last segment is the filename — drop it before walking folders.
-        folder_parts = parts[:-1] if len(parts) > 1 else []
-        try:
-            folder = _ensure_folder_path(kb, root_folder, folder_parts)
-        except Exception as exc:  # noqa: BLE001
-            errors.append({"name": f.name, "detail": str(exc)})
-            continue
-
-        result = _create_doc_from_upload(request=request, kb=kb, folder=folder, f=f)
-        if isinstance(result, Response):
-            errors.append({"name": f.name, "detail": str(result.data.get("detail", "导入失败"))})
-            continue
-
-        if ext in {".md", ".markdown"} and asset_attachments:
-            rewrite_local_image_refs(result, asset_index, doc_rel=rel)
-        created.append(result)
-
-    # Bind each uploaded image asset to the first document that now references it
-    # so it shows up in that document's attachment list / media library.
-    if asset_attachments and created:
-        for att in asset_attachments:
-            for doc in created:
-                if att.file.url in (doc.raw_content or ""):
-                    att.document = doc
-                    att.save(update_fields=["document"])
-                    break
-
     folders_after = Folder.objects.filter(knowledge_base=kb).count()
     return Response(
         {
             "created": DocumentSerializer(created, many=True).data,
             "errors": errors,
+            "folders_created": max(0, folders_after - folders_before),
+        },
+        status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST,
+    )
+
+
+# Zip-bundle import limits (uncompressed) — guard against zip bombs.
+ZIP_MAX_TOTAL_BYTES = 200 * 1024 * 1024
+ZIP_MAX_FILES = 500
+
+
+@api_view(["POST"])
+@permission_classes([IsAuthenticated])
+@parser_classes([MultiPartParser])
+def import_zip(request):
+    """Import a single ``.zip`` bundle of markdown file(s) + their image folders.
+
+    The archive is unpacked in memory and fed through the same markdown-image
+    bundling as ``import_batch`` (relative ``./images/x.png`` refs are rewritten
+    to ``/media/…``). Directory entries, hidden files, ``__MACOSX`` cruft, path
+    traversal, unsupported extensions and oversized members are skipped and
+    reported under ``skipped``.
+
+    Response shape mirrors ``import_batch`` plus a ``skipped`` list.
+    """
+    import io
+    import zipfile
+
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    f = request.FILES.get("file")
+    if not f:
+        return Response({"detail": "missing file"}, status=status.HTTP_400_BAD_REQUEST)
+    if Path(f.name).suffix.lower() != ".zip":
+        return Response({"detail": "仅支持 .zip 文件"}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
+    if f.size > MAX_UPLOAD_SIZE:
+        return Response(
+            {"detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限"},
+            status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+        )
+
+    kb_id = request.data.get("knowledge_base")
+    if not kb_id:
+        return Response(
+            {"detail": "knowledge_base is required"}, status=status.HTTP_400_BAD_REQUEST
+        )
+    kb = get_object_or_404(
+        scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner"), pk=kb_id
+    )
+
+    root_folder = None
+    folder_id = request.data.get("folder")
+    if folder_id and str(folder_id).lower() not in {"null", ""}:
+        root_folder = get_object_or_404(
+            Folder.objects.filter(knowledge_base=kb), pk=folder_id
+        )
+
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(f.read()))
+    except zipfile.BadZipFile:
+        return Response({"detail": "无效的 zip 文件"}, status=status.HTTP_400_BAD_REQUEST)
+
+    entries: list[tuple[str, object]] = []
+    skipped: list[str] = []
+    total = 0
+    for info in zf.infolist():
+        if info.is_dir():
+            continue
+        norm = info.filename.replace("\\", "/").strip()
+        segs = norm.split("/")
+        if norm.startswith("/") or ".." in segs:
+            skipped.append(f"{norm}（非法路径）")
+            continue
+        if any(s.startswith(".") and len(s) > 1 for s in segs) or "__MACOSX" in segs:
+            skipped.append(f"{norm}（隐藏/系统文件）")
+            continue
+        ext = Path(norm).suffix.lower()
+        if ext not in ALLOWED_EXT:
+            skipped.append(f"{norm}（不支持的类型）")
+            continue
+        if info.file_size > MAX_UPLOAD_SIZE:
+            skipped.append(f"{norm}（超过 50MB）")
+            continue
+        total += info.file_size
+        if total > ZIP_MAX_TOTAL_BYTES:
+            return Response(
+                {"detail": f"解压后总大小超过 {ZIP_MAX_TOTAL_BYTES // (1024*1024)} MB 上限"},
+                status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            )
+        if len(entries) >= ZIP_MAX_FILES:
+            skipped.append(f"{norm}（超过 {ZIP_MAX_FILES} 文件上限）")
+            continue
+        data = zf.read(info)
+        mime = mimetypes.guess_type(norm)[0] or "application/octet-stream"
+        upfile = SimpleUploadedFile(Path(norm).name, data, content_type=mime)
+        entries.append((norm, upfile))
+
+    if not entries:
+        return Response(
+            {"detail": "zip 内没有可导入的文件", "skipped": skipped},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    folders_before = Folder.objects.filter(knowledge_base=kb).count()
+    created, errors = _bundle_import_entries(
+        request=request, kb=kb, root_folder=root_folder, entries=entries
+    )
+    folders_after = Folder.objects.filter(knowledge_base=kb).count()
+    return Response(
+        {
+            "created": DocumentSerializer(created, many=True).data,
+            "errors": errors,
+            "skipped": skipped,
             "folders_created": max(0, folders_after - folders_before),
         },
         status=status.HTTP_201_CREATED if created else status.HTTP_400_BAD_REQUEST,
