@@ -1254,7 +1254,14 @@ a.jz-meta-full-edit-btn:focus-visible {
   -webkit-backdrop-filter: blur(24px) saturate(186%);
   border-right: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow-soft);
-  position: relative;
+  /* 钉住侧栏（品牌 logo + 菜单）：与顶栏一致用 sticky 而非 fixed —— 留在 flex
+     布局里只需 align-self 不被拉伸、自身满高并 top:0 即可贴住视口，右侧内容照常
+     滚动；菜单超高时内部滚动不被截断。折叠到 0 宽的移动端逻辑不受影响。 */
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  height: 100vh;
+  overflow-y: auto;
   z-index: 5;
 }
 
