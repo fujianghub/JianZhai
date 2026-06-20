@@ -93,6 +93,13 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
       - media_data:/app/media
+      # Export artifacts live at /app/exports (beside MEDIA_ROOT, NOT under it
+      # — keeping them out of /media keeps Caddy's public /media/* route from
+      # serving them unauthenticated). MUST be a shared named volume: the
+      # celery worker writes the file, but the download request lands on this
+      # backend container — without a shared mount it reads an empty dir and
+      # returns a 404 HTML page that the browser saves as the "file".
+      - exports_data:/app/exports
     # NB: must stay on ONE logical line — a YAML folded block keeps the
     # newlines of more-indented lines, and the shell then terminates the
     # command at ``gunicorn jianzhai.wsgi:application`` and silently drops
@@ -126,6 +133,8 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
       - media_data:/app/media
+      # Shared with backend so exports this worker writes are downloadable.
+      - exports_data:/app/exports
     command: celery -A jianzhai worker --loglevel=info --concurrency=2
     depends_on:
       backend:
@@ -163,6 +172,8 @@ volumes:
     name: jianzhai_redis_data
   media_data:
     name: jianzhai_media_data
+  exports_data:
+    name: jianzhai_exports_data
   caddy_data:
     name: jianzhai_caddy_data
   caddy_config:
