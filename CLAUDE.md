@@ -509,6 +509,7 @@ class AIUsageLog(models.Model):
 
 - **友邻可见**：`SITE_REQUIRE_LOGIN`（settings）+ `PublicOrLoginGated` 权限类（逐请求判定）。`true` → 全部 `/public/*` 需登录；`session` 端点回传 `require_login` 供前端 `BlogLayout` 引导登录。
 - **腾讯云部署套件** `infra/`：`backend.Dockerfile`（Gunicorn）、`frontend.Dockerfile`、`docker-compose.prod.yml`（caddy + backend + celery + postgres + redis + backup）、`Caddyfile`（HTTPS 反代 + SPA fallback）、`deploy.sh`、`backup.sh`（每日 `pg_dump`）、`.env.example.prod`、`README.md`（含域名/备案/DNS 指南）。
+- **坑：导出产物目录必须在 backend/celery 间共享卷**（2026-06-20 线上修，提交 `6f6342a`）。`export_root()` = `MEDIA_ROOT` 同级 `exports/`（容器内 `/app/exports`，**刻意不在 `/app/media` 下**——否则会被 Caddy 公开 `/media/*` 路由绕过鉴权服出）。导出由 **celery worker** 异步写盘、但下载请求落在 **backend** 容器；compose 早期只共享了 `media_data:/app/media`，`/app/exports` 是各容器临时层 → celery 写入的文件 backend 看不到 → 下载接口 `path.exists()` 假 → 返回 404 的 179 字节 HTML「Not Found」页，浏览器把它当文件存下 → Windows/Chrome 报「**无法从网站上提取文件**」。**几乎影响所有经 celery 生成的导出**（不止 KB/zip）。修复：给 backend + celery 各挂共享命名卷 `exports_data:/app/exports`（顶层声明 `name: jianzhai_exports_data`）。改 compose 后须 `docker compose up -d backend celery` 重建；旧容器临时层里的导出会丢，重新导出一次即可。
 
 ---
 
