@@ -62,3 +62,6 @@ node_modules
 
 # Claude Code worktrees（本地临时工作树）
 .claude/worktrees/
+
+# Claude Code 第三方 skills（superpowers-zh 等，不入版本库）
+.claude/skills/
