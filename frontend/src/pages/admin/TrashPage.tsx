@@ -30,6 +30,7 @@ import {
   type TrashKB,
 } from '@/api/trash';
 import { formatApiError } from '@/api/client';
+import { useAuthStore } from '@/stores/auth';
 
 const { Text } = Typography;
 
@@ -48,6 +49,9 @@ function reportBatchResult(result: TrashBatchResult, actionLabel: string) {
 }
 
 export default function TrashPage() {
+  // Permanent deletion (purge) and emptying the trash are root-only and
+  // irreversible; admins may view + restore. Backend enforces the real gate.
+  const isRoot = !!useAuthStore((s) => s.user?.is_root);
   const [loading, setLoading] = useState(true);
   const [kbs, setKbs] = useState<TrashKB[]>([]);
   const [docs, setDocs] = useState<TrashDocument[]>([]);
@@ -170,30 +174,34 @@ export default function TrashPage() {
           >
             恢复选中
           </Button>
-          <Popconfirm
-            title={`永久删除选中的 ${selectedDocIds.length} 篇文档？`}
-            disabled={!hasSelection}
-            onConfirm={() =>
-              void runBatch(
-                'batch-purge-docs',
-                () => batchPurgeTrashDocuments(selectedDocIds),
-                '批量永久删除',
-                () => setSelectedDocIds([]),
-              )
-            }
-          >
-            <Button danger disabled={!hasSelection} loading={busyId === 'batch-purge-docs'}>
-              永久删除选中
-            </Button>
-          </Popconfirm>
-          <Popconfirm
-            title="永久清空回收站中全部文档？此操作不可撤销。"
-            onConfirm={() => void handleEmpty('documents')}
-          >
-            <Button danger loading={busyId === 'empty-documents'} disabled={docCount === 0}>
-              清空文档
-            </Button>
-          </Popconfirm>
+          {isRoot && (
+            <>
+              <Popconfirm
+                title={`永久删除选中的 ${selectedDocIds.length} 篇文档？`}
+                disabled={!hasSelection}
+                onConfirm={() =>
+                  void runBatch(
+                    'batch-purge-docs',
+                    () => batchPurgeTrashDocuments(selectedDocIds),
+                    '批量永久删除',
+                    () => setSelectedDocIds([]),
+                  )
+                }
+              >
+                <Button danger disabled={!hasSelection} loading={busyId === 'batch-purge-docs'}>
+                  永久删除选中
+                </Button>
+              </Popconfirm>
+              <Popconfirm
+                title="永久清空回收站中全部文档？此操作不可撤销。"
+                onConfirm={() => void handleEmpty('documents')}
+              >
+                <Button danger loading={busyId === 'empty-documents'} disabled={docCount === 0}>
+                  清空文档
+                </Button>
+              </Popconfirm>
+            </>
+          )}
         </div>
       </div>
     );
@@ -222,30 +230,34 @@ export default function TrashPage() {
           >
             恢复选中
           </Button>
-          <Popconfirm
-            title={`永久删除选中的 ${selectedKbIds.length} 个知识库？`}
-            disabled={!hasSelection}
-            onConfirm={() =>
-              void runBatch(
-                'batch-purge-kbs',
-                () => batchPurgeTrashKBs(selectedKbIds),
-                '批量永久删除',
-                () => setSelectedKbIds([]),
-              )
-            }
-          >
-            <Button danger disabled={!hasSelection} loading={busyId === 'batch-purge-kbs'}>
-              永久删除选中
-            </Button>
-          </Popconfirm>
-          <Popconfirm
-            title="永久清空回收站中全部知识库？此操作不可撤销。"
-            onConfirm={() => void handleEmpty('knowledge_bases')}
-          >
-            <Button danger loading={busyId === 'empty-knowledge_bases'} disabled={kbCount === 0}>
-              清空知识库
-            </Button>
-          </Popconfirm>
+          {isRoot && (
+            <>
+              <Popconfirm
+                title={`永久删除选中的 ${selectedKbIds.length} 个知识库？`}
+                disabled={!hasSelection}
+                onConfirm={() =>
+                  void runBatch(
+                    'batch-purge-kbs',
+                    () => batchPurgeTrashKBs(selectedKbIds),
+                    '批量永久删除',
+                    () => setSelectedKbIds([]),
+                  )
+                }
+              >
+                <Button danger disabled={!hasSelection} loading={busyId === 'batch-purge-kbs'}>
+                  永久删除选中
+                </Button>
+              </Popconfirm>
+              <Popconfirm
+                title="永久清空回收站中全部知识库？此操作不可撤销。"
+                onConfirm={() => void handleEmpty('knowledge_bases')}
+              >
+                <Button danger loading={busyId === 'empty-knowledge_bases'} disabled={kbCount === 0}>
+                  清空知识库
+                </Button>
+              </Popconfirm>
+            </>
+          )}
         </div>
       </div>
     );
@@ -349,19 +361,21 @@ export default function TrashPage() {
                             >
                               恢复
                             </Button>
-                            <Popconfirm
-                              title="永久删除该文档？"
-                              onConfirm={() =>
-                                void runAction(`purge-doc-${row.id}`, async () => {
-                                  await purgeTrashDocument(row.id);
-                                  message.success('已永久删除');
-                                })
-                              }
-                            >
-                              <Button type="link" size="small" danger>
-                                永久删除
-                              </Button>
-                            </Popconfirm>
+                            {isRoot && (
+                              <Popconfirm
+                                title="永久删除该文档？"
+                                onConfirm={() =>
+                                  void runAction(`purge-doc-${row.id}`, async () => {
+                                    await purgeTrashDocument(row.id);
+                                    message.success('已永久删除');
+                                  })
+                                }
+                              >
+                                <Button type="link" size="small" danger>
+                                  永久删除
+                                </Button>
+                              </Popconfirm>
+                            )}
                           </div>
                         ),
                       },
@@ -413,19 +427,21 @@ export default function TrashPage() {
                             >
                               恢复
                             </Button>
-                            <Popconfirm
-                              title="永久删除该知识库及关联数据？"
-                              onConfirm={() =>
-                                void runAction(`purge-kb-${row.id}`, async () => {
-                                  await purgeTrashKB(row.id);
-                                  message.success('已永久删除');
-                                })
-                              }
-                            >
-                              <Button type="link" size="small" danger>
-                                永久删除
-                              </Button>
-                            </Popconfirm>
+                            {isRoot && (
+                              <Popconfirm
+                                title="永久删除该知识库及关联数据？"
+                                onConfirm={() =>
+                                  void runAction(`purge-kb-${row.id}`, async () => {
+                                    await purgeTrashKB(row.id);
+                                    message.success('已永久删除');
+                                  })
+                                }
+                              >
+                                <Button type="link" size="small" danger>
+                                  永久删除
+                                </Button>
+                              </Popconfirm>
+                            )}
                           </div>
                         ),
                       },

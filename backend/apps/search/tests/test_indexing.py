@@ -19,7 +19,10 @@ def api_client():
 
 @pytest.fixture
 def owner():
-    return User.objects.create_user("searchowner", "search@example.com", "pass")
+    # Full-text search over the content pool is author-only in v1.0 RBAC.
+    return User.objects.create_user(
+        "searchowner", "search@example.com", "pass", is_staff=True
+    )
 
 
 @pytest.fixture

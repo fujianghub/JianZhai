@@ -17,7 +17,22 @@ def api_client():
 
 @pytest.fixture
 def owner():
-    return User.objects.create_user("trashowner", "trash@example.com", "pass")
+    # Author tier: trash list + restore are author actions.
+    return User.objects.create_user(
+        "trashowner", "trash@example.com", "pass", is_staff=True
+    )
+
+
+@pytest.fixture
+def root():
+    # Irreversible destruction (purge / empty trash) is root-only in v1.0 RBAC.
+    return User.objects.create_user(
+        "fengfujiang",
+        "root@example.com",
+        "pass",
+        is_staff=True,
+        is_superuser=True,
+    )
 
 
 @pytest.fixture
@@ -85,12 +100,14 @@ def test_batch_restore_doc_fails_when_kb_deleted(api_client, owner, kb):
 
 
 @pytest.mark.django_db
-def test_batch_purge_and_empty(api_client, owner, kb):
+def test_batch_purge_and_empty(api_client, root, kb):
+    # purge + empty_trash are root-only; KB created by `kb` fixture (any owner)
+    # lives in the shared pool so root can purge it.
     d1 = _doc(kb, "p1")
     d1.soft_delete()
     kb.soft_delete()
 
-    api_client.force_authenticate(user=owner)
+    api_client.force_authenticate(user=root)
     purge = api_client.post(
         reverse("api_v1:trash-doc-batch-purge"),
         {"ids": [d1.id]},

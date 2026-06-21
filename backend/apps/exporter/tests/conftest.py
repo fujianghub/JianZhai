@@ -10,7 +10,13 @@ User = get_user_model()
 
 @pytest.fixture
 def owner(db):
-    return User.objects.create_user("exportuser", "export@example.com", "pass")
+    # v1.0 RBAC: authoring content lives in a single shared pool gated by
+    # is_staff (the "author" tier). An export "owner" must therefore be an
+    # author or scope_queryset returns an empty set and collect_for_scope
+    # finds nothing.
+    return User.objects.create_user(
+        "exportuser", "export@example.com", "pass", is_staff=True
+    )
 
 
 @pytest.fixture

@@ -1,26 +1,30 @@
-"""Ownership-scoping helper shared across all owner-aware querysets.
+"""Content-scoping helper shared across all author-owned querysets.
 
-The app's data model uses ``knowledge_base__owner`` (or direct ``owner`` on
-Tag etc.) for tenant isolation. Originally every viewset filtered by the
-current user, but that locks superusers out of admin-created data when there
-are multiple staff accounts. Superusers bypass the filter; everyone else is
-scoped to their own data.
+v1.0 RBAC: the authoring side is a **single shared content pool**. All
+authors (``is_staff`` — admin + root) see and edit the whole pool; normal
+users (readers) own no creative content and get an empty queryset here.
+Anonymous likewise.
+
+Note the ``field`` argument is now only kept for call-site compatibility —
+scoping is role-based, not owner-based, so the lookup path is no longer used
+to filter. Reader-facing surfaces that must stay accessible to normal users
+(comments on / favorites of public docs) deliberately do NOT route through
+this helper; they resolve documents by blog visibility instead.
 """
 from __future__ import annotations
 
 
 def scope_queryset(qs, user, field: str = "knowledge_base__owner"):
-    """Restrict ``qs`` to objects owned (directly or transitively) by ``user``.
+    """Restrict ``qs`` to the shared authoring content pool for ``user``.
 
-    - Anonymous → empty queryset.
-    - Superuser → unchanged queryset (cross-tenant view).
-    - Anyone else → ``qs.filter(<field>=user)``.
+    - Author (``is_staff`` → admin + root) → unchanged queryset (full pool).
+    - Normal user / anonymous → empty queryset.
 
-    ``field`` is the ORM lookup that resolves to a User; default is the
-    Document/Folder pattern via ``knowledge_base__owner``.
+    ``field`` is accepted for backwards-compatible call sites but no longer
+    affects the result (scoping is role-based, not owner-based).
     """
     if not getattr(user, "is_authenticated", False):
         return qs.none()
-    if user.is_superuser:
+    if getattr(user, "is_staff", False):
         return qs
-    return qs.filter(**{field: user})
+    return qs.none()

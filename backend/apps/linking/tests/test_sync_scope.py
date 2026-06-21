@@ -18,12 +18,18 @@ def api_client():
 
 @pytest.fixture
 def owner_a():
-    return User.objects.create_user("owner_a", "a@example.com", "pass")
+    return User.objects.create_user("owner_a", "a@example.com", "pass", is_staff=True)
 
 
 @pytest.fixture
 def owner_b():
-    return User.objects.create_user("owner_b", "b@example.com", "pass")
+    return User.objects.create_user("owner_b", "b@example.com", "pass", is_staff=True)
+
+
+@pytest.fixture
+def reader():
+    # Non-staff reader — no authoring rights, including the backlinks surface.
+    return User.objects.create_user("link_reader", "reader@example.com", "pass")
 
 
 @pytest.fixture
@@ -88,20 +94,29 @@ def test_sync_skips_soft_deleted_target(owner_a, kb_a):
 
 
 @pytest.mark.django_db
-def test_backlinks_no_cross_tenant_leak(api_client, owner_a, owner_b, kb_a, kb_b):
-    """Cross-owner links must not appear in backlinks for the foreign doc."""
-    foreign = _doc(kb_b, title="Foreign", slug="foreign")
+def test_backlinks_endpoint_is_author_only(api_client, owner_a, reader, kb_a):
+    """v1.0 RBAC: backlinks is an authoring surface.
+
+    A non-staff reader is rejected (403); an author sees the real backlinks.
+    """
+    target = _doc(kb_a, title="Target", slug="target")
     source = _doc(
         kb_a,
         title="Source",
         slug="source",
-        raw_content=f"ref @[Foreign](doc:{foreign.id})",
+        raw_content=f"ref @[Target](doc:{target.id})",
     )
     sync_document_links(source.id)
-    assert not DocumentLink.objects.filter(source=source, target=foreign).exists()
+    assert DocumentLink.objects.filter(source=source, target=target).exists()
 
-    api_client.force_authenticate(user=owner_b)
-    url = reverse("api_v1:document-backlinks", args=[foreign.id])
+    url = reverse("api_v1:document-backlinks", args=[target.id])
+
+    # Reader → forbidden.
+    api_client.force_authenticate(user=reader)
+    assert api_client.get(url).status_code == 403
+
+    # Author → sees the inbound link from the shared pool.
+    api_client.force_authenticate(user=owner_a)
     resp = api_client.get(url)
     assert resp.status_code == 200
-    assert resp.data == []
+    assert [row["source"]["id"] for row in resp.data] == [source.id]

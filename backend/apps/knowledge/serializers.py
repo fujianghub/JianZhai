@@ -31,7 +31,10 @@ def _assert_owned(serializer, obj, owner_id):
     user = getattr(request, "user", None)
     if user is None or not user.is_authenticated:
         raise serializers.ValidationError("未认证")
-    if user.is_superuser:
+    # Authors share one content pool — any staff user may reference any
+    # author's KB/folder. Normal users own no content (and can't reach the
+    # authoring viewsets anyway); the owner check below stays as defence.
+    if user.is_staff:
         return obj
     if owner_id != user.id:
         raise serializers.ValidationError("无权引用该资源")

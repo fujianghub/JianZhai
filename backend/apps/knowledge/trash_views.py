@@ -3,9 +3,9 @@ from __future__ import annotations
 from django.shortcuts import get_object_or_404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.permissions import IsContentAuthor, IsRoot
 from apps.accounts.scoping import scope_queryset
 
 from .models import Document, Folder, KnowledgeBase
@@ -110,7 +110,7 @@ def _parse_ids(request) -> list[int]:
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def trash_list(request):
     """List soft-deleted KBs and documents with independent pagination."""
     kb_page, kb_page_size = _paginate_params(request, "kb")
@@ -141,7 +141,7 @@ def trash_list(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def restore_knowledge_base(request, pk: int):
     kb = get_object_or_404(_kb_trash_qs(request.user), pk=pk)
     kb.is_deleted = False
@@ -151,7 +151,7 @@ def restore_knowledge_base(request, pk: int):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRoot])
 def purge_knowledge_base(request, pk: int):
     kb = get_object_or_404(_kb_trash_qs(request.user), pk=pk)
     kb.delete()
@@ -159,7 +159,7 @@ def purge_knowledge_base(request, pk: int):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def restore_document(request, pk: int):
     doc = get_object_or_404(_doc_trash_qs(request.user), pk=pk)
     err = _restore_document_or_error(doc)
@@ -169,7 +169,7 @@ def restore_document(request, pk: int):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRoot])
 def purge_document(request, pk: int):
     doc = get_object_or_404(_doc_trash_qs(request.user), pk=pk)
     doc.delete()
@@ -177,7 +177,7 @@ def purge_document(request, pk: int):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def batch_restore_knowledge_bases(request):
     ids = _parse_ids(request)
     qs = _kb_trash_qs(request.user).filter(pk__in=ids)
@@ -197,7 +197,7 @@ def batch_restore_knowledge_bases(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRoot])
 def batch_purge_knowledge_bases(request):
     ids = _parse_ids(request)
     qs = _kb_trash_qs(request.user).filter(pk__in=ids)
@@ -215,7 +215,7 @@ def batch_purge_knowledge_bases(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def batch_restore_documents(request):
     ids = _parse_ids(request)
     qs = _doc_trash_qs(request.user).filter(pk__in=ids)
@@ -236,7 +236,7 @@ def batch_restore_documents(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRoot])
 def batch_purge_documents(request):
     ids = _parse_ids(request)
     qs = _doc_trash_qs(request.user).filter(pk__in=ids)
@@ -254,7 +254,7 @@ def batch_purge_documents(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsRoot])
 def empty_trash(request):
     scope = request.data.get("scope", "all")
     if scope not in ("documents", "knowledge_bases", "all"):

@@ -40,6 +40,7 @@ class LoginThrottle(AnonRateThrottle):
 
 from .avatar import avatar_storage_name, process_avatar_image
 from .models import UserProfile
+from .permissions import IsRoot, is_root_admin
 
 User = get_user_model()
 
@@ -55,7 +56,7 @@ def _avatar_url_for(user) -> str | None:
 
 
 def _serialize_user(user) -> dict:
-    from .permissions import is_root_admin
+    from .permissions import get_role, is_root_admin
     return {
         "id": user.id,
         "username": user.username,
@@ -66,6 +67,8 @@ def _serialize_user(user) -> dict:
         # disable destructive buttons for non-root admins acting on
         # the root account.
         "is_root": is_root_admin(user),
+        # v1.0 RBAC — single canonical role the frontend gates menus/routes on.
+        "role": get_role(user),
         "is_active": user.is_active,
         "avatar_url": _avatar_url_for(user),
     }
@@ -291,7 +294,7 @@ class IsSuperUser(BasePermission):
 
 
 @api_view(["GET"])
-@permission_classes([IsSuperUser])
+@permission_classes([IsRoot])
 def system_info(request):
     """Live counts + runtime info for the superuser-only 架构总览 page.
 
@@ -351,6 +354,7 @@ class UserSerializer(serializers.ModelSerializer):
     # later via PATCH but new accounts must have a real address.
     email = serializers.EmailField(required=True, allow_blank=False)
     is_root = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -363,14 +367,19 @@ class UserSerializer(serializers.ModelSerializer):
             "is_superuser",
             "is_active",
             "is_root",
+            "role",
             "date_joined",
             "last_login",
         ]
-        read_only_fields = ["id", "date_joined", "last_login", "is_superuser", "is_root"]
+        read_only_fields = ["id", "date_joined", "last_login", "is_superuser", "is_root", "role"]
 
     def get_is_root(self, obj) -> bool:
         from .permissions import is_root_admin
         return is_root_admin(obj)
+
+    def get_role(self, obj) -> str:
+        from .permissions import get_role
+        return get_role(obj)
 
     def create(self, validated_data):
         password = validated_data.pop("password", None)
@@ -411,6 +420,25 @@ class UserViewSet(viewsets.ModelViewSet):
     serializer_class = UserSerializer
     permission_classes = [IsStaffUser]
 
+    def get_queryset(self):
+        # Visibility scoping: root sees everyone; a non-root admin sees only
+        # plain normal users plus themselves (never the root or other admins).
+        qs = User.objects.order_by("id")
+        if is_root_admin(self.request.user):
+            return qs
+        from django.db.models import Q
+        return qs.filter(
+            Q(is_staff=False, is_superuser=False) | Q(pk=self.request.user.pk)
+        )
+
+    def perform_create(self, serializer):
+        # Only root may mint admins; a non-root admin can create plain users.
+        if serializer.validated_data.get("is_staff") and not is_root_admin(
+            self.request.user
+        ):
+            raise serializers.ValidationError("只有根管理员可以创建管理员")
+        serializer.save()
+
     def perform_destroy(self, instance):
         from .permissions import can_manage_user, is_root_admin
         if is_root_admin(instance):
@@ -439,6 +467,12 @@ class UserViewSet(viewsets.ModelViewSet):
             allowed, reason = can_manage_user(actor, instance)
             if not allowed:
                 raise serializers.ValidationError(reason)
+        # Granting / revoking the admin (is_staff) role is root-only — a
+        # non-root admin must not be able to promote a user to peer or demote.
+        if not is_root_admin(actor):
+            new_is_staff = serializer.validated_data.get("is_staff", instance.is_staff)
+            if new_is_staff != instance.is_staff:
+                raise serializers.ValidationError("只有根管理员可以授予/撤销管理员身份")
         serializer.save()
 
     @action(detail=True, methods=["post"], url_path="disable")

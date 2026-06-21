@@ -34,7 +34,9 @@ from .serializers import PublicKBSerializer, PublicPostDetailSerializer, PublicP
 def _kb_can_manage(kb: KnowledgeBase, user) -> bool:
     if not user or not getattr(user, "is_authenticated", False):
         return False
-    if getattr(user, "is_superuser", False):
+    # Authors (admin + root) share one content pool — any staff user can
+    # manage any KB from the blog editing entry.
+    if getattr(user, "is_staff", False):
         return True
     return kb.owner_id == user.id
 

@@ -23,9 +23,11 @@ def root_user(db):
 
 @pytest.fixture
 def admin_user(db):
+    # v1.0 RBAC: an "admin" is the author tier — is_staff, NOT is_superuser.
+    # Only the single root admin is a superuser.
     return User.objects.create_user(
         username="admin", password="adminpass1234", email="admin@example.com",
-        is_staff=True, is_superuser=True,
+        is_staff=True, is_superuser=False,
     )
 
 
@@ -79,10 +81,20 @@ def test_root_can_manage_other_superuser(root_user, admin_user):
     assert allowed
 
 
-def test_admin_cannot_manage_other_superuser(admin_user, root_user):
+def test_admin_cannot_manage_root(admin_user, root_user):
     allowed, reason = can_manage_user(admin_user, root_user)
     assert not allowed
-    assert "根管理员" in reason
+    assert "普通用户" in reason
+
+
+def test_admin_cannot_manage_other_admin(admin_user, db):
+    """A non-root admin may manage ONLY plain normal users — not peers."""
+    other_admin = User.objects.create_user(
+        username="admin2", password="x", is_staff=True, is_superuser=False,
+    )
+    allowed, reason = can_manage_user(admin_user, other_admin)
+    assert not allowed
+    assert "普通用户" in reason
 
 
 def test_admin_can_manage_regular_user(admin_user, member_user):
@@ -109,18 +121,22 @@ def test_root_can_disable_admin(root_user, admin_user):
 def test_admin_cannot_disable_root(admin_user, root_user):
     c = client_as(admin_user)
     r = c.post(f"/api/v1/auth/users/{root_user.id}/disable/")
-    assert r.status_code == 403
+    # Root is invisible to a non-root admin (get_queryset hides it) → 404,
+    # which is a stronger guarantee than the old 403.
+    assert r.status_code in {403, 404}
 
 
-def test_admin_cannot_disable_other_admin(admin_user, root_user):
-    """Even setting aside root, a non-root superuser can't disable
-    another superuser. We use ``staff`` as the second non-root super."""
-    other_super = User.objects.create_user(
-        username="other_super", password="x", is_staff=True, is_superuser=True,
+def test_admin_cannot_disable_other_admin(admin_user, db):
+    """A non-root admin can't disable another admin — they aren't even
+    visible in the admin's user list."""
+    other_admin = User.objects.create_user(
+        username="other_admin", password="x", is_staff=True, is_superuser=False,
     )
     c = client_as(admin_user)
-    r = c.post(f"/api/v1/auth/users/{other_super.id}/disable/")
-    assert r.status_code == 403
+    r = c.post(f"/api/v1/auth/users/{other_admin.id}/disable/")
+    assert r.status_code in {403, 404}
+    other_admin.refresh_from_db()
+    assert other_admin.is_active is True
 
 
 def test_admin_can_disable_member(admin_user, member_user):
@@ -145,7 +161,7 @@ def test_root_cannot_be_disabled_by_anyone(admin_user, root_user):
     """Even via crafted API, root must stay enabled."""
     c = client_as(admin_user)
     r = c.post(f"/api/v1/auth/users/{root_user.id}/disable/")
-    assert r.status_code in {400, 403}
+    assert r.status_code in {400, 403, 404}
     root_user.refresh_from_db()
     assert root_user.is_active is True
 
@@ -178,7 +194,7 @@ def test_admin_cannot_reset_root_password(admin_user, root_user):
         {"new_password": "newsecret123"},
         format="json",
     )
-    assert r.status_code == 403
+    assert r.status_code in {403, 404}
 
 
 def test_reset_rejects_short_password(admin_user, member_user):

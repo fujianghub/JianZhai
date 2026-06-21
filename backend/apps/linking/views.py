@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from django.shortcuts import get_object_or_404
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.permissions import IsContentAuthor
 from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document
 
@@ -13,7 +13,7 @@ from .serializers import BacklinkSerializer
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def backlinks(request, doc_id: int):
     """List documents that link TO the given document."""
     doc = get_object_or_404(
@@ -28,7 +28,7 @@ def backlinks(request, doc_id: int):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def graph(request):
     """Knowledge-graph endpoint: returns the full doc/link graph in one shot.
 

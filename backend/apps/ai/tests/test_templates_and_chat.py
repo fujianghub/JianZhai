@@ -16,12 +16,15 @@ User = get_user_model()
 
 @pytest.fixture
 def alice(db):
-    return User.objects.create_user(username="alice", password="x")
+    # AI usage (templates / conversations / run / estimate / usage) is an
+    # author-only surface under v1.0 RBAC → is_staff. Per-user owner isolation
+    # of templates/conversations is still exercised between two authors.
+    return User.objects.create_user(username="alice", password="x", is_staff=True)
 
 
 @pytest.fixture
 def bob(db):
-    return User.objects.create_user(username="bob", password="x")
+    return User.objects.create_user(username="bob", password="x", is_staff=True)
 
 
 @pytest.fixture
@@ -223,22 +226,42 @@ def test_estimate_endpoint(alice_client):
 
 
 @pytest.mark.django_db
-def test_budget_blocks_when_exceeded(alice_client, alice, monkeypatch):
-    """When daily_budget is set and prior usage exceeds it, /run/ returns 429."""
+def test_budget_enforced_for_non_staff_and_maps_to_429(alice_client, monkeypatch):
+    """Budget enforcement mechanism + its 429 mapping.
+
+    v1.0 RBAC tension: the AI endpoints are author-only (is_staff) and
+    ``check_daily_budget`` deliberately *bypasses* staff (see
+    ``test_budget_does_not_block_staff``). That means the budget cap can no
+    longer be reached for a normal user through the HTTP endpoint — the only
+    accounts that may call /run/ are exactly the ones the cap exempts. (Flagged
+    in the migration report as a real model gap, not a stale test.)
+
+    So we verify the two halves separately, both still real:
+      1. the budget mechanism still raises for a non-staff (reader) account;
+      2. the /run/ view maps ``AIBudgetExceeded`` to HTTP 429.
+    """
     s = AISettings.load()
     s.daily_budget_usd_per_user = 0.001  # 0.1 cent — easy to exceed
     s.save()
-    # Seed a prior usage row that costs > 0.001 USD.
+
+    # (1) Mechanism: a non-staff reader over budget triggers the exception.
+    reader = User.objects.create_user(username="budget_reader", password="x")
     AIUsageLog.objects.create(
-        user=alice, operation="polish", model="claude-opus-4-7",
+        user=reader, operation="polish", model="claude-opus-4-7",
         input_tokens=10000, output_tokens=2000, succeeded=True,
     )
-    from apps.ai import services, views
+    from apps.ai.services import AIBudgetExceeded, check_daily_budget
 
-    def fake_run_once(*args, **kwargs):
-        return "should not reach"
+    with pytest.raises(AIBudgetExceeded):
+        check_daily_budget(reader)
 
-    monkeypatch.setattr(views, "run_once", services.run_once)
+    # (2) Mapping: when run_once raises AIBudgetExceeded, /run/ returns 429.
+    from apps.ai import views
+
+    def boom(*args, **kwargs):
+        raise AIBudgetExceeded("over budget")
+
+    monkeypatch.setattr(views, "run_once", boom)
     r = alice_client.post(
         "/api/v1/ai/run/",
         {"operation": "polish", "content": "anything"},

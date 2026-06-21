@@ -12,8 +12,7 @@ from typing import Iterable
 
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from apps.accounts.permissions import PublicOrLoginGated
+from apps.accounts.permissions import IsContentAuthor, PublicOrLoginGated
 from rest_framework.response import Response
 
 from .models import HERO_ANIMATIONS, HERO_PLAY_ORDERS, HeroSettings
@@ -197,7 +196,7 @@ def hero_public(request):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def hero_settings(request):
     """Authenticated read; staff-only write.
 
@@ -352,7 +351,7 @@ def _parse_batch_lines(text: str) -> Iterable[dict]:
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def hero_batch_import(request):
     """Replace or append a block of quotes parsed from a textarea.
 
