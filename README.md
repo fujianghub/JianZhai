@@ -2,13 +2,26 @@
 
 [![tests](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml)
 
-个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10+**，编辑器已追平语雀 · 含安全复审 / 性能优化 9 Phase / Mermaid 离线导出 SVG）。
+个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10+**，编辑器已追平语雀 · 含**四角色权限体系 RBAC** / 安全复审 / 性能优化 9 Phase / Mermaid 离线导出 SVG）。
 
-一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。支持多账号，普通用户按 `owner` 隔离数据；超级用户可跨租户管理；单一**根管理员**位于权限顶端。博客可切「全开放 / 友邻可见（需登录）」两种形态。附带**腾讯云生产部署套件**（见 [`infra/`](infra/)）。
+一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。采用**四角色权限体系（RBAC）**：根 root / 管理员 admin（作者）/ 普通用户 user（读者）/ 匿名 anon —— **作者共享单一内容池**，读者只读博客 + 收藏 + 评论 + 改资料（无创作权），根独占不可逆销毁与全量用户管理。博客可切「全开放 / 友邻可见（需登录）」两种形态。附带**腾讯云生产部署套件**（见 [`infra/`](infra/)）。
 
-> 详细架构与开发指南见 [CLAUDE.md](./CLAUDE.md)。  
-> 超级管理员登录后台后，可在 **[架构总览](http://localhost:3001/admin/overview)** 查看实时统计、技术栈与系统架构图（简单版 Mermaid + 详细 SVG）。  
-> 仓库内可一键种子公开 KB「简斋·开发指南」：正文源文件在 [`docs/dev-guide/`](docs/dev-guide/)，执行 `python manage.py seed_architecture_kb` 后访问 http://localhost:3001/kb/dev-guide
+## 文档
+
+| 面向 | 文件 |
+|------|------|
+| **AI 助手 / 贡献者操作手册**（不变量 + 怎么干活 + 指针） | [CLAUDE.md](./CLAUDE.md) |
+| 架构 / 数据模型 / URL / 时序 / 扩展索引 | [docs/architecture.md](docs/architecture.md) |
+| 编辑器（Tiptap / CM6 / 表格 / KaTeX / Mermaid） | [docs/editor.md](docs/editor.md) |
+| AI 多供应商（模型 / 降级 / 预算 / 用量 / 价格） | [docs/ai.md](docs/ai.md) |
+| 全文搜索 + 导出（5 格式 + anthology + 离线 SVG） | [docs/export-search.md](docs/export-search.md) |
+| 视觉系统 / 主题 / 题记 / 图标 / 布局 | [docs/frontend.md](docs/frontend.md) |
+| 部署运维 + LAN HTTPS + 安全控制点 | [docs/deployment.md](docs/deployment.md) |
+| **权限 / RBAC 权威清单** | [docs/permissions.md](docs/permissions.md) |
+| 版本历史 | [docs/CHANGELOG.md](docs/CHANGELOG.md) |
+
+> 公开 KB「简斋·开发指南」正文源在 [`docs/dev-guide/`](docs/dev-guide/)（含 `simple.md` 上手 / `detailed.md` 详解），执行 `python manage.py seed_architecture_kb` 后访问 http://localhost:3001/kb/dev-guide。
+> 根 / 管理员登录后台可在 **[架构总览](http://localhost:3001/admin/overview)** 查看实时统计与系统架构图。
 
 ## 主要能力
 
@@ -24,7 +37,7 @@
 | **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG**（HTML/PDF/静态站，headless Chromium + vendored mermaid，缺失时降级源码面板）；PlantUML 仍为代码块 |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；4 套主题 + 纸张样式；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
-| **账号** | 单一**根管理员**（不可禁用/删除）+ 超管 + 员工分级；新建账号**邮箱必填**；用户自助改密码/邮箱/用户名/头像 |
+| **账号 / 权限** | **四角色 RBAC**：根（唯一、不可禁用/删除、独占删 KB/大类/永久删/清空回收站）/ 管理员（作者，共享内容池）/ 普通用户（读者，无创作权）/ 匿名；用户管理可见范围按角色收口；新建账号**邮箱必填**；自助改密码/邮箱/用户名/头像。详见 [docs/permissions.md](docs/permissions.md) |
 | **组织** | KB **大类**分组、文档置顶、收藏夹（博客 `/favorites` + 后台侧栏「收藏」入口）、多种排序、回收站 UI |
 | **题记管理** | `/admin/hero`：dnd-kit **整行拖拽排序**、批量导入 / **导出备份**、预览翻看、播放顺序（随机洗牌 / 顺序） |
 | **视觉** | 博客：宣纸朱砂古风；后台：玄黑·玻璃拟态 + 翡翠重音；**100% 自制图标**（`JzIcon` 50 枚 + 侧栏设计稿 `JzIconKit` 15 枚，tone 十色三主题联动）；PWA + 印章 favicon |
@@ -147,7 +160,7 @@ cd backend && python manage.py seed_architecture_kb
 
 ## 开发约定
 
-- **后端**：每个 Django app 独立 `models.py` / `serializers.py` / `views.py` / `urls.py`；多租户用 `apps.accounts.scoping.scope_queryset`
+- **后端**：每个 Django app 独立 `models.py` / `serializers.py` / `views.py` / `urls.py`；内容访问用 `apps.accounts.scoping.scope_queryset`（**角色制共享池**：作者 `is_staff` 看全部、读者/匿名空集，不再按 owner 隔离）
 - **前端**：公共逻辑放在 `src/api`、`src/components/common`、`src/utils`；后台菜单与博客导航优先使用 `JzIcon`
 - **格式化**：Ruff + Black（Python），Prettier + ESLint（TS）
 - **文档 slug**：库内按 KB 唯一；公开详情 API 支持 `?kb=<kb_slug>`，全局重复时按发布时间取最新一篇
@@ -169,6 +182,8 @@ cd backend && python manage.py seed_architecture_kb
 | **编辑器追平语雀** | MD 源码模式换 **CodeMirror 6**（浮动格式条/智能列表/表格辅助/行级滚动同步/`EditorSurface` 适配层）+ **Live Preview** 就地渲染；富文本表格单元格染色 + 悬浮行列 + grip 拖移 + 冻结首行列 + `.jz-table-wrap` 滚动；`convertLayoutBlocks` 根治 callout 劫持 |
 | **安全复审 + 性能 9 Phase** | 六领域安全加固（TLS/闸门/`raw_content`/AI 预算预留/iframe 去同源）；defer 大正文 + 软删索引 + 消 N+1 + AI 缓存 + 公开缓存 + 拆 chunk + 请求去重 + 编辑器防抖 + 导出流式（255+275 测试绿） |
 | **Mermaid 导出 SVG + 两栏铺满** | HTML/PDF/静态站把 Mermaid 块离线渲为内联 SVG（headless Chromium + vendored mermaid）；完整编辑两栏铺满（正文限宽 + 大纲右栏 sticky）；Mermaid 净化修复（foreignObject/dy）；图表操作条亮色灰字修复 |
+| **MD 本地图片打包** | 导入 `.md` 的 `./images/x.png` 相对图不再 404：整文件夹 / 两步选择器 / ZIP 三入口共用资产打包（图→附件 + 改写为 `/media/`）|
+| **四角色权限体系 RBAC** | 根 / 管理员 / 普通用户 / 匿名（`get_role` 唯一入口 + `IsContentAuthor`/`IsRoot`）；`scope_queryset` 由 owner 隔离改**作者共享单一池**；普通用户=读者；删除分级（删 KB/大类/永久删/清空回收站=仅根）；权威清单 `docs/permissions.md` |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
