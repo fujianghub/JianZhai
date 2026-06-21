@@ -35,6 +35,17 @@ describe('injectHtmlReaderBootstrap', () => {
     expect(HTML_READER_BOOTSTRAP).toContain('DOMContentLoaded');
   });
 
+  it('bootstrap measures immediately on execution, before the DOMContentLoaded scan', () => {
+    // The injected <script> sits right before </body>, so the body above it is
+    // already parsed when it runs. An immediate ``scan()`` clears the parent's
+    // fallback warning without waiting for DOMContentLoaded (which author
+    // <head> CDN scripts / fonts can delay past the timer).
+    // The immediate ``scan();`` directly precedes the deferred ``ready(scan);``
+    // — this exact adjacency is unique to the immediate call (the ``scan();``
+    // inside scheduleScan's setTimeout is not followed by ready()).
+    expect(HTML_READER_BOOTSTRAP).toContain('scan();ready(scan)');
+  });
+
   it('bootstrap intercepts in-document anchor clicks (scroll instead of navigate)', () => {
     // With an http(s) base, "#sec" would resolve to the base URL and reload
     // the raw file — the bootstrap must capture those clicks.

@@ -50,8 +50,14 @@ interface Props {
 
 /** Default fallback height when no meta arrives within ``FALLBACK_DELAY_MS``
  *  — caps roughly at the original fixed-frame size so the page is still
- *  readable even if the bootstrap was blocked by a page-level CSP. */
-const FALLBACK_DELAY_MS = 3000;
+ *  readable even if the bootstrap was blocked by a page-level CSP.
+ *
+ *  The bootstrap now posts an immediate height on script execution (no longer
+ *  gated on DOMContentLoaded), so a working document reports within
+ *  milliseconds. This timer is therefore a genuine "script never ran" backstop
+ *  — kept generous (8s) so a merely slow-but-working document never flashes the
+ *  false warning before its first post lands. */
+const FALLBACK_DELAY_MS = 8000;
 
 /** A pleasant default size for iframes whose document we can't introspect
  *  (fetch-failure fallback, or bootstrap blocked). Keeps the embed taller

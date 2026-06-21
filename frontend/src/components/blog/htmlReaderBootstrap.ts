@@ -80,6 +80,14 @@ export const HTML_READER_BOOTSTRAP = [
   '}catch(e){}',
   'var pending=0;',
   'function scheduleScan(){if(pending)return;pending=setTimeout(function(){pending=0;scan();},50);}',
+  // Measure immediately on script execution — this <script> sits right before
+  // </body>, so all body content above it is already parsed and measurable.
+  // Waiting for DOMContentLoaded (below) let author <head> resources (CDN
+  // scripts / web fonts) delay the first height report past the parent's
+  // fallback timer, flashing a false "script blocked" warning. An immediate
+  // post clears that; DOMContentLoaded/load/ResizeObserver then refine the
+  // height (images/fonts settling), and applyMeta on the parent dedupes.
+  'scan();',
   'ready(scan);',
   'if(window.ResizeObserver){try{new ResizeObserver(scheduleScan).observe(document.documentElement);}catch(e){}}',
   'window.addEventListener(\'message\',function(e){',
