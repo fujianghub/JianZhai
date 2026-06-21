@@ -15,8 +15,8 @@
 | 后端端口 | 8002 |
 | 前端端口 | 3001 |
 | 仓库结构 | Monorepo（`backend/` + `frontend/`） |
-| 实现阶段 | v0.9.10 + **编辑器追平语雀**（MD 源码改 CodeMirror 6 + Live Preview + 表格单元格染色/悬浮行列/冻结首行列）、**安全复审批次**（六领域加固）、**性能优化 9 Phase**、**Mermaid 离线导出 SVG**、**完整编辑两栏铺满**（叠加 v0.9.9 根管理员、v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商、图标体系定稿） |
-| 多用户 | 支持。普通账号按 `owner` 隔离；`is_superuser` 跨租户可见；单一**根管理员**（`ROOT_ADMIN_USERNAME`）位于权限顶端，不可被禁用/删除 |
+| 实现阶段 | v0.9.10 + **四角色权限体系 RBAC**（根/管理员/普通用户/匿名，详见 `docs/permissions.md`）、**编辑器追平语雀**（MD 源码改 CodeMirror 6 + Live Preview + 表格单元格染色/悬浮行列/冻结首行列）、**安全复审批次**（六领域加固）、**性能优化 9 Phase**、**Mermaid 离线导出 SVG**、**完整编辑两栏铺满**（叠加 v0.9.9 根管理员、v0.9.8 腾讯云部署 + 友邻闸门、v0.9.7 AI 多供应商、图标体系定稿） |
+| 多用户 | **四角色 RBAC**（见模块 12 / `docs/permissions.md`）：**普通用户=读者**（只浏览博客 + 收藏 + 评论 + 个人资料，无创作权）；**管理员=作者**（`is_staff`，共享单一内容池，可建改/软删文档，但不可删 KB/大类/清空回收站）；**根**（`ROOT_ADMIN_USERNAME`，唯一 `is_superuser`）位权限顶端、独占不可逆销毁与全量用户管理、不可被禁用/删除；匿名仅公开博客（受友邻闸门） |
 | 博客形态 | 全开放（匿名）或**友邻可见**（`SITE_REQUIRE_LOGIN=true` → 需登录），由 `PublicOrLoginGated` 权限类逐请求判定 |
 | 核心理念 | **一份内容两形态**：`raw_content`（私人笔记）+ `published_content`（发布版） |
 
@@ -438,15 +438,23 @@ class AIUsageLog(models.Model):
 
 `GET /api/v1/links/graph/` 返回节点+边 → `KnowledgeGraphPage` 用 `react-force-graph-2d` 渲染；按 KB 着色 / 过滤。
 
-### 模块 12：多用户与权限 ✅（v0.9.9 根管理员 + 账号自服务）
+### 模块 12：多用户与四角色权限 ✅（v1.0 RBAC；权威清单见 `docs/permissions.md`）
 
-- `accounts.UserViewSet` 管理；session + CSRF；`apps/accounts/scoping.py` 隔离。
-- **权限分级**（`apps/accounts/permissions.py`）：
-  - **根管理员** `is_root_admin(user)` = `is_superuser` 且 username == `ROOT_ADMIN_USERNAME`；只有根可禁用/降权/重置**其他超管**，且根本身不可被禁用/删除。
-  - `can_manage_user(actor, target)` 统一裁决：非根员工不能动超管/彼此；禁止自我降权/自禁用。
-  - 权限类 `IsStaffUser` / `IsSuperUser` / `PublicOrLoginGated`（友邻闸门）。
-- **邮箱必填**：`UserSerializer.email` 在新建时 `required=True, allow_blank=False`（已有账号仍可 PATCH 留空）。
-- **账号自服务**（均需登录，校验当前密码）：`POST /auth/me/change-password|change-email|change-username/` + `/auth/me/avatar/`；`me` 返回 `is_root`。前端 `ProfilePage` 提供改密码/邮箱/用户名/头像 Tab。
+> **唯一事实来源**：`apps/accounts/permissions.py::get_role(user) → 'anon'|'user'|'admin'|'root'`。后端是唯一安全边界，前端按 `role` 收口仅为体验。
+
+- **四角色**：
+  - **匿名 anon**：未登录，仅公开博客（受友邻闸门）。
+  - **普通用户 user（读者）**：登录、`is_staff=False`。只浏览博客、收藏/评论公开文档、改自己资料；**无任何创作权**。
+  - **管理员 admin（作者）**：`is_staff=True`、非 superuser。建改 KB/文件夹/文档、上传/导入、AI、导出、题记、用户管理；可软删文档/文件夹（移回收站）。
+  - **根 root**：`is_superuser` 且 username==`ROOT_ADMIN_USERNAME`，全局唯一、不可被禁用/删除。
+- **内容空间 = 作者共享单一池**（关键架构）：`scope_queryset` 改为**角色制**——作者（`is_staff`）看/编辑全部共享内容，普通用户/匿名空集；**不再按 owner 隔离作者之间**。个人性数据（AI 对话/模板、收藏、个人资料）仍按 user 隔离。
+- **删除分级**：软删文档/文件夹 + 回收站还原 = 作者；**删 KB、删大类、永久删除(purge)、清空回收站 = 仅根**（`IsRoot`）。
+- **读者例外**（不走作者 scope）：收藏(`DocumentViewSet.favorite/favorites`)、评论(`comments._commentable_doc`)按博客可见性取公开文档，普通用户可正常用。
+- **权限类**（`permissions.py`）：`IsContentAuthor`(=`is_staff`，作者) / `IsRoot`(=`is_root_admin`) / `PublicOrLoginGated`（友邻闸门）。
+- **用户管理**（`UserViewSet`）：可见范围 root→全部、admin→普通用户+自己（看不到根/其他管理员）；`can_manage_user` 非根 actor 只能管纯普通用户；**建/提拔管理员（写 `is_staff`）= 仅根**；自我状态变更走自服务。`me`/`UserSerializer` 返回 `role`。根账号不可被禁用/删除、只能本人改。
+- **降级迁移** `accounts/migrations/0006`：把历史非根超管降为管理员（`is_staff`），幂等、reverse 为 noop。
+- **邮箱必填**：`UserSerializer.email` 新建时 `required=True`（已有账号可 PATCH 留空）。
+- **账号自服务**（均需登录，校验当前密码）：`POST /auth/me/change-password|change-email|change-username/` + `/auth/me/avatar/`。前端 `ProfilePage` 提供对应 Tab；`RequireAuthor` 守卫把读者挡在创作路由外、后台只渲染「收藏 / 个人资料」。
 
 ### 模块 13：AI 助手 ✅（v0.9.7 多供应商全面增强）
 
@@ -533,7 +541,7 @@ class AIUsageLog(models.Model):
 4. **大文档性能** — 编辑器 10k+ 字时仍流畅，但建议未来对超长文档启用 Tiptap lazy rendering。
 5. **PDF 导出资源** — Playwright 单次启动约 200MB；Celery 串行处理。`pip install -e .[pdf]` + `playwright install chromium`。
 6. **PG 中文搜索** — `tsvector` 不支持中文分词，写入和查询两端都用 jieba；升级索引逻辑后需 `reindex_search`。
-7. **超级用户跨租户可见** — `scope_queryset` 对 superuser 不过滤；多账号时小心 staff 误操作。
+7. **内容池为角色制共享（v1.0 RBAC）** — `scope_queryset` 现按 `is_staff` 放行（作者共享全部内容、普通用户空集），**不再按 owner 隔离作者之间**；其 `field` 参数保留但不再过滤。改动内容查询/写入守卫时务必同步遵守此语义（含 `serializers._assert_owned`、`blog._kb_can_manage`）。读者可访问的收藏/评论端点**故意绕过**该 helper、按博客可见性取文档——勿误改回 scope。AI 日预算对端点流量失效是「AI 仅作者 + 管理员绕过预算」两条规格的预期后果（非 bug）。详见 `docs/permissions.md`。
 8. **AI Token 成本** — 默认 `claude-opus-4-7`；控成本可在 `/admin/ai` 切 Haiku 或调低 `max_tokens`（已对接运行时）。
 9. **Vite dev 缓存 desync（编辑器崩溃陷阱）** — 长跑的 dev server（systemd `jianzhai-frontend.service`）与**第二个 vite/vitest 实例**若共用 `node_modules/.vite`，第二实例会以新 `browserHash` 重新预打包进同一目录，而主 server 仍在内存服旧 hash → 编辑器分片懒加载拉到不一致模块副本，**完整编辑**抛 `@codemirror/state multiple instances`、**编辑**抛 `Cannot read properties of null (reading 'useRef')`（React 解析为 null）。这**不是**代码/配置 bug（`vite.config` 的 `dedupe`/`optimizeDeps`/`manualChunks` 仍正确）。防护：并行验证实例（设了 `JZ_API_PROXY_TARGET`）走独立 `cacheDir: node_modules/.vite-verify`（已在 `vite.config.ts`）。**复现时根治**：`systemctl restart jianzhai-frontend.service` + 浏览器 hard-reload（Ctrl+Shift+R 清客户端旧 hash）。**切勿**在主 dev server 运行时于同一 `frontend/` 目录另起共用缓存的 vite/vitest——验证请用带 `JZ_API_PROXY_TARGET` 的实例或独立 node_modules 的 worktree。
 
@@ -568,6 +576,7 @@ class AIUsageLog(models.Model):
 | **性能优化 9 Phase**（2026-06-08） | defer 大正文字段（列表/树/版本/博客/搜索）；软删复合索引；消除 N+1；AISettings 单例缓存 + 预算 DB 聚合；公开聚合接口缓存 + 持久连接健康检查；懒加载 pdfjs+mammoth（DocAIPanel chunk 2.25MB→660KB）；getCapabilities 并发去重；富文本打字防抖 + 滚动同步；静态站流式写盘；255+275 测试绿 | ✅ |
 | **布局 + 导出保真**（2026-06-08） | **完整编辑两栏铺满**（≥1280 editor flex:1、大纲改流内 sticky 右栏、正文限宽 860 居中，去 body 内联 flexDirection 放行 row）；**Mermaid 离线导出 SVG**（HTML/PDF/静态站用 headless Chromium + vendored mermaid.min.js 渲为内联 SVG，每次导出仅启动一次浏览器，缺失/语法错误优雅降级源码面板）；图表操作条按钮去玻璃底修复亮色页灰字 | ✅ |
 | **MD 本地图片打包**（2026-06-13） | 导入 `.md` 的 `![](./images/x.png)` 相对图片不再 404。三入口共用 `_bundle_import_entries`（图片→MD 附件、不再变空文档 + `services/local_image_assets.py` 改写为 `/media/`）：①整文件夹上传/拖拽（`planUploadChunks` 整组发同一请求避免分片拆散）；②**两步选择器**（选 .md + 选图片文件夹，合并一个 importBatch 直发）；③**ZIP 导入**（`import_zip` 内存解压 + 防 zip bomb + skipped 回报）；另 `import_local_images` 命令补图修复旧文档。28 后端 + 14 前端测试绿 | ✅ |
+| **四角色权限体系 RBAC**（2026-06-21） | 根/管理员/普通用户/匿名四角色（`get_role` 唯一入口 + `IsContentAuthor`/`IsRoot` 权限类）；`scope_queryset` 由 owner 隔离改**作者共享单一内容池**；**普通用户=读者**（只读博客+收藏+评论+资料，无创作权，后台仅「收藏/个人资料」）；删除分级（软删=作者，删 KB/大类/永久删/清空回收站=仅根）；用户管理可见范围（admin 仅见普通用户+自己、建/提拔管理员仅根）；读者收藏/评论绕过作者 scope；迁移 0006 降级历史非根超管；前端 `RequireAuthor` 守卫；权威清单 `docs/permissions.md`；后端 315 + 前端 300 测试绿。合并 main（e26baf7） | ✅ |
 | **v1.0 候选** | 增量自动保存 / Tiptap lazy rendering / 超大 KB 树分页 / Yjs 协作 | 🔲 |
 
 ---
@@ -629,5 +638,5 @@ VITE_MEDIA_BASE_URL=http://localhost:8002/media
 
 ---
 
-**文档版本**：v3.13（对应实现 v0.9.10 + 编辑器换 CM6 / 追赶语雀 / 安全复审 / 性能 9 Phase / Mermaid 导出 SVG / 两栏铺满 / MD 本地图片打包）  
-**最后更新**：2026-06-13
+**文档版本**：v3.14（对应实现 v0.9.10 + 编辑器换 CM6 / 追赶语雀 / 安全复审 / 性能 9 Phase / Mermaid 导出 SVG / 两栏铺满 / MD 本地图片打包 / **四角色权限体系 RBAC**）  
+**最后更新**：2026-06-21
