@@ -33,6 +33,7 @@ import TagPicker from '@/components/common/TagPicker';
 import ColorField from '@/components/common/ColorField';
 import { resolveTagColor } from '@/utils/tagColor';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import { useAuthStore } from '@/stores/auth';
 
 const { Paragraph, Text } = Typography;
 
@@ -47,6 +48,9 @@ type KBFormValues = {
 
 export default function KBListPage() {
   const navigate = useNavigate();
+  // Deleting a KB / category is root-only (irreversible structural change);
+  // hide the buttons for non-root authors. Backend enforces the real gate.
+  const isRoot = !!useAuthStore((s) => s.user?.is_root);
   const [items, setItems] = useState<KnowledgeBase[]>([]);
   const [categories, setCategories] = useState<KBCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -210,9 +214,11 @@ export default function KBListPage() {
             <Tooltip title="导出">
               <Button size="small" icon={<ExportOutlined />} onClick={() => setExportTarget(kb)} />
             </Tooltip>
-            <Popconfirm title="删除该知识库？" onConfirm={() => handleDelete(kb.id)}>
-              <Button size="small" danger icon={<DeleteOutlined />} />
-            </Popconfirm>
+            {isRoot && (
+              <Popconfirm title="删除该知识库？" onConfirm={() => handleDelete(kb.id)}>
+                <Button size="small" danger icon={<DeleteOutlined />} />
+              </Popconfirm>
+            )}
           </Space>
         }
       >
@@ -506,22 +512,24 @@ export default function KBListPage() {
                 >
                   编辑
                 </Button>
-                <Popconfirm
-                  title="删除该大类？关联知识库将变为未分类"
-                  onConfirm={async () => {
-                    try {
-                      await kbsApi.deleteKBCategory(c.id);
-                      message.success('已删除');
-                      void refresh();
-                    } catch (err) {
-                      message.error(formatApiError(err));
-                    }
-                  }}
-                >
-                  <Button size="small" danger>
-                    删除
-                  </Button>
-                </Popconfirm>
+                {isRoot && (
+                  <Popconfirm
+                    title="删除该大类？关联知识库将变为未分类"
+                    onConfirm={async () => {
+                      try {
+                        await kbsApi.deleteKBCategory(c.id);
+                        message.success('已删除');
+                        void refresh();
+                      } catch (err) {
+                        message.error(formatApiError(err));
+                      }
+                    }}
+                  >
+                    <Button size="small" danger>
+                      删除
+                    </Button>
+                  </Popconfirm>
+                )}
               </Space>
             </div>
           ))}

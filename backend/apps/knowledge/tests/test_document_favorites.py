@@ -16,12 +16,18 @@ def api_client():
 
 @pytest.fixture
 def owner():
-    return User.objects.create_user("favowner", "favowner@example.com", "pass")
+    # Author tier so toggling favorite resolves the doc via the shared pool
+    # (the favorite toggle's reader path requires public+published docs).
+    return User.objects.create_user(
+        "favowner", "favowner@example.com", "pass", is_staff=True
+    )
 
 
 @pytest.fixture
 def other():
-    return User.objects.create_user("favother", "favother@example.com", "pass")
+    return User.objects.create_user(
+        "favother", "favother@example.com", "pass", is_staff=True
+    )
 
 
 @pytest.fixture
@@ -76,10 +82,24 @@ def test_favorites_excludes_soft_deleted_document(api_client, owner, kb):
 
 
 @pytest.mark.django_db
-def test_favorites_scoped_to_owner_kb(api_client, owner, other):
+def test_favorites_are_per_user_not_kb_scoped(api_client, owner, other):
+    """v1.0 RBAC: favorites are personal, not author/owner-KB scoped.
+
+    A favorite of a doc living in *another* author's KB still shows up for the
+    favoriting user (content is one shared pool), while a different user's
+    favorites never leak in.
+    """
     other_kb = KnowledgeBase.objects.create(owner=other, name="Other", slug="other-kb")
-    doc = _doc(other_kb, "private-doc")
-    DocumentFavorite.objects.create(user=owner, document=doc)
+    cross = _doc(other_kb, "cross-doc", "Cross")
+    owns_kb = KnowledgeBase.objects.create(owner=owner, name="Mine", slug="mine-kb")
+    mine = _doc(owns_kb, "my-doc", "Mine")
+
+    # owner favorites a doc in another author's KB → must appear (shared pool).
+    DocumentFavorite.objects.create(user=owner, document=cross)
+    # `other` favorites a different doc → must NOT appear for `owner`.
+    DocumentFavorite.objects.create(user=other, document=mine)
 
     api_client.force_authenticate(user=owner)
-    assert api_client.get(reverse("api_v1:document-favorites")).data == []
+    data = api_client.get(reverse("api_v1:document-favorites")).data
+    ids = {row["id"] for row in data}
+    assert ids == {cross.id}

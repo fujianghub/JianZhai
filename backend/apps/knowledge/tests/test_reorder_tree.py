@@ -16,7 +16,10 @@ def api_client():
 
 @pytest.fixture
 def owner():
-    return User.objects.create_user("reorderowner", "reorder@example.com", "pass")
+    # Reordering the tree is an authoring action → requires is_staff.
+    return User.objects.create_user(
+        "reorderowner", "reorder@example.com", "pass", is_staff=True
+    )
 
 
 @pytest.fixture

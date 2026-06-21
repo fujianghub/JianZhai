@@ -7,9 +7,9 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, viewsets
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.permissions import IsContentAuthor
 from apps.accounts.scoping import scope_queryset
 
 from .models import ExportTask
@@ -27,7 +27,7 @@ class ExportTaskViewSet(
     mixins.DestroyModelMixin,
     viewsets.GenericViewSet,
 ):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
     serializer_class = ExportTaskSerializer
     pagination_class = None
 
@@ -104,14 +104,18 @@ def download(request, pk: int):
     task = get_object_or_404(ExportTask, pk=pk)
     if not request.user.is_authenticated:
         raise Http404
-    # Owners can download their own. Superusers can cross-tenant download
-    # (matches the documented "is_superuser bypasses scoping" design), but
+    # Exports are an authoring feature — only content authors (staff) may
+    # download, even if a regular user somehow obtained a task id.
+    if not request.user.is_staff:
+        raise Http404
+    # Owners can download their own. Staff can cross-tenant download
+    # (matches the documented "staff bypasses scoping" design), but
     # log the access so the audit trail is searchable if the box ever moves
     # to multi-tenant mode. Other users get a 404 (not 403 — keeps the IDOR
     # surface flat: an enumerator can't tell "exists but not yours" from "no
     # such id").
     if task.owner_id != request.user.id:
-        if not request.user.is_superuser:
+        if not request.user.is_staff:
             raise Http404
         log.info(
             "export.download cross_tenant: user=%s task=%s owner=%s",

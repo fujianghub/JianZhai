@@ -137,6 +137,10 @@ export default function AdminLayout() {
           selectedKeys={[selectedKey]}
           className="jz-admin-menu"
           items={[
+            // Author tier (admin + root). Normal users (readers) only ever
+            // see 收藏 + 个人资料 below.
+            ...(user?.is_staff
+              ? [
             {
               key: 'dashboard',
               icon: menuIcon(
@@ -161,6 +165,8 @@ export default function AdminLayout() {
               ),
               label: <Link to="/admin/graph">知识图谱</Link>,
             },
+              ]
+              : []),
             {
               key: 'favorites',
               icon: menuIcon(
@@ -169,6 +175,8 @@ export default function AdminLayout() {
               ),
               label: <Link to="/admin/favorites">收藏</Link>,
             },
+            ...(user?.is_staff
+              ? [
             {
               key: 'exports',
               icon: menuIcon(
@@ -193,6 +201,8 @@ export default function AdminLayout() {
               ),
               label: <Link to="/admin/ai">AI 助手</Link>,
             },
+              ]
+              : []),
             ...(user?.is_staff
               ? [{
                   key: 'users',

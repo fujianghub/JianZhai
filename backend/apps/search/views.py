@@ -3,9 +3,9 @@ from __future__ import annotations
 from django.contrib.postgres.search import SearchQuery, SearchRank
 from django.db.models import F
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.permissions import IsContentAuthor
 from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document
 
@@ -51,7 +51,7 @@ def _snippet(text: str, tokens: list[str]) -> str:
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def search(request):
     raw_q = (request.query_params.get("q") or "").strip()[:MAX_QUERY_CHARS]
     if not raw_q:

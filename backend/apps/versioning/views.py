@@ -3,10 +3,10 @@ from __future__ import annotations
 from django.db import transaction
 from django.shortcuts import get_object_or_404
 from rest_framework import status
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.accounts.permissions import IsContentAuthor
 from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document
 
@@ -23,7 +23,7 @@ def _get_owned_document(user, doc_id: int) -> Document:
 
 
 class VersionListCreate(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
 
     def get(self, request, doc_id: int):
         doc = _get_owned_document(request.user, doc_id)
@@ -46,7 +46,7 @@ class VersionListCreate(APIView):
 
 
 class VersionDetail(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
 
     def get(self, request, doc_id: int, vid: int):
         doc = _get_owned_document(request.user, doc_id)
@@ -57,7 +57,7 @@ class VersionDetail(APIView):
 class VersionDiff(APIView):
     """Return two snapshots side-by-side. Client (diff-match-patch) renders the visual diff."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
 
     def get(self, request, doc_id: int):
         doc = _get_owned_document(request.user, doc_id)
@@ -88,7 +88,7 @@ class VersionDiff(APIView):
 class VersionRestore(APIView):
     """Snapshot the current state, then overwrite raw_content with the target version."""
 
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
 
     @transaction.atomic
     def post(self, request, doc_id: int, vid: int):

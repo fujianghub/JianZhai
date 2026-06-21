@@ -36,10 +36,10 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
+from apps.accounts.permissions import IsContentAuthor
 from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document, KnowledgeBase
 
@@ -209,7 +209,7 @@ def _budget_response(exc: AIBudgetExceeded) -> Response:
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIWriteThrottle])
 def run(request):
     if not is_enabled():
@@ -237,7 +237,7 @@ def run(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIWriteThrottle])
 def stream(request):
     if not is_enabled():
@@ -275,7 +275,7 @@ def stream(request):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIWriteThrottle])
 def chat(request):
     """Streaming multi-turn chat.
@@ -355,7 +355,7 @@ def _save_chat_turn(user, conversation_id, user_message: str, reply: str, model:
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def capabilities(request):
     """Tell the frontend which operations + models + user templates are available."""
@@ -403,7 +403,7 @@ def _usage_qs(request, days_param: str | None = None, model_param: str | None = 
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def usage(request):
     """Aggregated usage stats. Admin sees everyone; others only their own."""
@@ -544,7 +544,7 @@ def usage(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def usage_csv(request):
     """CSV export of usage rows (admin gets all, users get own)."""
@@ -583,7 +583,7 @@ def usage_csv(request):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def settings_view(request):
     if not request.user.is_staff:
@@ -651,7 +651,7 @@ def _template_serialize(t: AIPromptTemplate) -> dict:
 
 
 @api_view(["GET", "POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def templates_list(request):
     if request.method == "GET":
@@ -683,7 +683,7 @@ def templates_list(request):
 
 
 @api_view(["GET", "PATCH", "DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def template_detail(request, pk):
     t = get_object_or_404(AIPromptTemplate, pk=pk, owner=request.user)
@@ -739,7 +739,7 @@ def _conv_serialize(c: AIConversation, *, with_messages: bool = False) -> dict:
 
 
 @api_view(["GET", "DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def conversations_list(request):
     if request.method == "DELETE":
@@ -751,7 +751,7 @@ def conversations_list(request):
 
 
 @api_view(["GET", "DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def conversation_detail(request, pk):
     c = get_object_or_404(AIConversation, pk=pk, user=request.user)
@@ -765,7 +765,7 @@ def conversation_detail(request, pk):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @throttle_classes([AIReadThrottle])
 def estimate(request):
     """Pre-call token + cost preview. Body: { content, extra?, model? }.

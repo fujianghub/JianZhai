@@ -9,9 +9,9 @@ from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.parsers import MultiPartParser
-from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.permissions import IsContentAuthor
 from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document, Folder, KnowledgeBase
 from apps.knowledge.serializers import DocumentSerializer
@@ -83,7 +83,7 @@ def _docx_to_markdown(blob: bytes) -> str:
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @parser_classes([MultiPartParser])
 def upload(request):
     f = request.FILES.get("file")
@@ -123,7 +123,7 @@ def upload(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def document_attachments(request, doc_id: int):
     doc = get_object_or_404(
         scope_queryset(Document.objects.all(), request.user), pk=doc_id
@@ -133,7 +133,7 @@ def document_attachments(request, doc_id: int):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def my_attachments(request):
     """Media library — all uploads by the current user."""
     qs = Attachment.objects.filter(uploaded_by=request.user)
@@ -144,7 +144,7 @@ def my_attachments(request):
 
 
 @api_view(["DELETE"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def delete_attachment(request, pk: int):
     att = get_object_or_404(Attachment, pk=pk, uploaded_by=request.user)
     try:
@@ -241,7 +241,7 @@ def _create_doc_from_upload(
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @parser_classes([MultiPartParser])
 def import_file(request):
     """Upload a file directly into a KB — creates a new Document and attaches the file.
@@ -372,7 +372,7 @@ def _bundle_import_entries(
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @parser_classes([MultiPartParser])
 def import_batch(request):
     """Batch / folder-aware upload.
@@ -444,7 +444,7 @@ ZIP_MAX_FILES = 500
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 @parser_classes([MultiPartParser])
 def import_zip(request):
     """Import a single ``.zip`` bundle of markdown file(s) + their image folders.
@@ -621,7 +621,7 @@ class _OGParser(HTMLParser):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def link_preview(request):
     """获取 URL 的 OG 卡片信息。
 

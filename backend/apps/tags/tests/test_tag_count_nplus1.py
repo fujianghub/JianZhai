@@ -20,7 +20,8 @@ User = get_user_model()
 
 
 def _setup(n_tags: int, uname: str):
-    owner = User.objects.create_user(uname, f"{uname}@e.com", "pass")
+    # Tag CRUD/list is an authoring surface → author tier (is_staff).
+    owner = User.objects.create_user(uname, f"{uname}@e.com", "pass", is_staff=True)
     kb = KnowledgeBase.objects.create(owner=owner, name="KB", slug=f"kb-{uname}")
     doc = Document.objects.create(knowledge_base=kb, title="D", raw_content="x")
     for i in range(n_tags):

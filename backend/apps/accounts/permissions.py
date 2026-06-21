@@ -33,6 +33,30 @@ def is_root_admin(user) -> bool:
     return bool(target) and user.username == target
 
 
+def get_role(user) -> str:
+    """Resolve the single canonical role string for ``user``.
+
+    The whole permission model derives from this — one source of truth so
+    backend checks and the frontend (via the ``role`` field on ``me``) never
+    drift. Order matters: root is also ``is_staff``/``is_superuser`` so it
+    must be tested before the generic admin branch.
+
+    Returns one of ``"anon" | "user" | "admin" | "root"``.
+
+      - ``root``  → the configured root admin (see :func:`is_root_admin`).
+      - ``admin`` → ``is_staff`` (the "author" tier: full shared content pool).
+      - ``user``  → authenticated reader (no authoring rights).
+      - ``anon``  → not authenticated.
+    """
+    if not user or not getattr(user, "is_authenticated", False):
+        return "anon"
+    if is_root_admin(user):
+        return "root"
+    if getattr(user, "is_staff", False):
+        return "admin"
+    return "user"
+
+
 def can_manage_user(actor, target) -> tuple[bool, str]:
     """Whether ``actor`` is allowed to disable / reset / demote ``target``.
 
@@ -43,8 +67,9 @@ def can_manage_user(actor, target) -> tuple[bool, str]:
       - Nobody can touch themselves through these endpoints (use the
         "change password" self-service flow instead).
       - The root admin can touch anyone but themselves.
-      - Other staff/superusers can touch only NON-superuser accounts —
-        in particular they can't disable each other or the root.
+      - A non-root admin can manage ONLY plain normal users — not other
+        admins, not (other) superusers, not the root. Admins are peers and
+        must not be able to disable / demote one another.
     """
     if not actor or not getattr(actor, "is_authenticated", False):
         return False, "需要登录"
@@ -55,12 +80,35 @@ def can_manage_user(actor, target) -> tuple[bool, str]:
     if is_root_admin(actor):
         # Root can touch anyone but themselves (caught above).
         return True, ""
-    # Non-root staff / superuser.
-    if is_root_admin(target):
-        return False, "只有根管理员可以操作该账号"
-    if target.is_superuser:
-        return False, "只有根管理员可以禁用其他超级管理员"
+    # Non-root admin: target must be a plain normal user.
+    if target.is_staff or target.is_superuser:
+        return False, "只能管理普通用户"
     return True, ""
+
+
+class IsContentAuthor(BasePermission):
+    """Author tier — admin + root. Gates the shared content pool and every
+    authoring surface (KB/doc CRUD, uploads, AI, exports, trash …).
+
+    Equivalent to ``is_staff`` because root is also staff. Normal users
+    (readers) are rejected.
+    """
+
+    message = "需要作者权限"
+
+    def has_permission(self, request, view):
+        u = request.user
+        return bool(u and u.is_authenticated and u.is_staff)
+
+
+class IsRoot(BasePermission):
+    """Root-only — irreversible / structural destruction (delete KB, delete
+    category, purge trash, empty trash) and the system-overview page."""
+
+    message = "仅根管理员可执行此操作"
+
+    def has_permission(self, request, view):
+        return is_root_admin(request.user)
 
 
 class PublicOrLoginGated(BasePermission):

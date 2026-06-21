@@ -9,6 +9,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from apps.accounts.permissions import IsContentAuthor, IsRoot
 from apps.accounts.scoping import scope_queryset
 from apps.editor.models import Attachment
 
@@ -53,8 +54,14 @@ class OwnerScopedMixin:
 class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
     queryset = KnowledgeBase.objects.all()
     serializer_class = KnowledgeBaseSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
     lookup_field = "pk"
+
+    def get_permissions(self):
+        # Deleting a whole KB is structural destruction → root only.
+        if self.action == "destroy":
+            return [IsRoot()]
+        return [IsContentAuthor()]
 
     def get_queryset(self):
         # Annotate the document count for every read action (not just list) so
@@ -86,8 +93,14 @@ class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
 class KnowledgeBaseCategoryViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
     queryset = KnowledgeBaseCategory.objects.all()
     serializer_class = KnowledgeBaseCategorySerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
     lookup_field = "pk"
+
+    def get_permissions(self):
+        # Deleting a category is structural destruction → root only.
+        if self.action == "destroy":
+            return [IsRoot()]
+        return [IsContentAuthor()]
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -96,7 +109,7 @@ class KnowledgeBaseCategoryViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
 class FolderViewSet(viewsets.ModelViewSet):
     queryset = Folder.objects.all()
     serializer_class = FolderSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
 
     def get_queryset(self):
         return scope_queryset(self.queryset, self.request.user)
@@ -107,7 +120,34 @@ class FolderViewSet(viewsets.ModelViewSet):
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
+
+    def get_permissions(self):
+        # Favoriting is a reader capability — any logged-in user may favorite
+        # a public blog doc. These two actions resolve the document by blog
+        # visibility (not the author content pool); see ``favorite``/
+        # ``favorites`` below. Everything else is author-only.
+        if self.action in ("favorite", "favorites"):
+            return [IsAuthenticated()]
+        return [IsContentAuthor()]
+
+    def _readable_doc(self, pk):
+        """Document the current user is allowed to act on as a *reader*.
+
+        Authors see the whole shared pool; normal users (readers) only public,
+        published docs in public KBs — the same set the blog exposes.
+        """
+        user = self.request.user
+        if user.is_staff:
+            qs = scope_queryset(Document.objects.all(), user)
+        else:
+            qs = Document.objects.filter(
+                visibility="public",
+                status="published",
+                knowledge_base__visibility="public",
+                is_deleted=False,
+            )
+        return get_object_or_404(qs, pk=pk)
 
     def get_queryset(self):
         qs = (
@@ -537,8 +577,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"], url_path="favorite")
     def favorite(self, request, pk=None):
-        """Toggle per-user favorite for this document."""
-        doc = self.get_object()
+        """Toggle per-user favorite for this document (reader capability)."""
+        doc = self._readable_doc(pk)
         fav, created = DocumentFavorite.objects.get_or_create(
             user=request.user, document=doc
         )
@@ -551,16 +591,18 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["get"], url_path="favorites")
     def favorites(self, request):
-        """List documents the current user has favorited (scoped by KB ownership)."""
-        # Single query: the KB-ownership scope is applied via the relation path
-        # instead of fetching ids then re-filtering in a second round-trip.
-        favs = scope_queryset(
+        """List the documents the current user has personally favorited.
+
+        Favorites are per-user (not author-scoped) — a reader's favorites of
+        public docs must show up even though they own no content pool.
+        """
+        favs = (
             DocumentFavorite.objects.filter(
                 user=request.user, document__is_deleted=False
-            ),
-            request.user,
-            field="document__knowledge_base__owner",
-        ).select_related("document", "document__knowledge_base").order_by("-created_at")
+            )
+            .select_related("document", "document__knowledge_base")
+            .order_by("-created_at")
+        )
         return Response(FavoriteDocumentSerializer(favs, many=True).data)
 
     @action(detail=False, methods=["get"], url_path="mentions")
@@ -585,7 +627,7 @@ class DocumentViewSet(viewsets.ModelViewSet):
 
 
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def reorder_tree(request):
     """Batch reorder folders/documents within a knowledge base."""
     serializer = ReorderRequestSerializer(data=request.data)
@@ -669,7 +711,7 @@ def reorder_tree(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def document_templates(request):
     """Built-in document templates for the new-doc dialog.
 

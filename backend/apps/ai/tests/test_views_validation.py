@@ -16,7 +16,8 @@ User = get_user_model()
 
 @pytest.fixture
 def user(db):
-    return User.objects.create_user("aiuser", "ai@example.com", "pass")
+    # AI endpoints are author-only (is_staff) under v1.0 RBAC.
+    return User.objects.create_user("aiuser", "ai@example.com", "pass", is_staff=True)
 
 
 @pytest.fixture

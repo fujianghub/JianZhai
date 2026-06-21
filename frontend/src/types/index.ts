@@ -170,9 +170,14 @@ export interface SessionUser {
    *  UI uses this to show the 🛡 root badge and hide destructive
    *  buttons targeting the root account. */
   is_root?: boolean;
+  /** v1.0 RBAC — single canonical role: anon | user | admin | root.
+   *  Menus and route guards gate on this. */
+  role?: UserRole;
   is_active?: boolean;
   avatar_url?: string | null;
 }
+
+export type UserRole = 'anon' | 'user' | 'admin' | 'root';
 
 export interface User {
   id: number;
@@ -182,6 +187,7 @@ export interface User {
   is_superuser: boolean;
   is_active: boolean;
   is_root?: boolean;
+  role?: UserRole;
   date_joined: string;
   last_login: string | null;
 }

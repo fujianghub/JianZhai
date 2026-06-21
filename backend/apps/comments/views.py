@@ -13,12 +13,30 @@ from .models import Comment
 from .serializers import CommentSerializer, CreateCommentSerializer
 
 
+def _commentable_doc(user, doc_id: int) -> Document:
+    """Document the user may read/comment on.
+
+    Authors see the whole shared content pool; normal users (readers) only
+    public, published docs in public KBs — the same set the blog exposes.
+    Commenting is a reader capability, so this must NOT route normal users
+    through the author-only ``scope_queryset`` (which would 404 them).
+    """
+    if user.is_staff:
+        qs = scope_queryset(Document.objects.all(), user)
+    else:
+        qs = Document.objects.filter(
+            visibility="public",
+            status="published",
+            knowledge_base__visibility="public",
+            is_deleted=False,
+        )
+    return get_object_or_404(qs, pk=doc_id)
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAuthenticated])
 def document_comments(request, doc_id: int):
-    doc = get_object_or_404(
-        scope_queryset(Document.objects.all(), request.user), pk=doc_id
-    )
+    doc = _commentable_doc(request.user, doc_id)
     if request.method == "GET":
         block_id = request.query_params.get("block_id")
         qs = doc.comments.all()
@@ -40,13 +58,10 @@ def document_comments(request, doc_id: int):
 @api_view(["DELETE"])
 @permission_classes([IsAuthenticated])
 def delete_comment(request, pk: int):
-    comment = get_object_or_404(
-        scope_queryset(
-            Comment.objects.all(),
-            request.user,
-            field="document__knowledge_base__owner",
-        ),
-        pk=pk,
-    )
+    comment = get_object_or_404(Comment.objects.all(), pk=pk)
+    # Authors (is_staff) moderate any comment; a normal user may delete only
+    # their own.
+    if not (request.user.is_staff or comment.author_id == request.user.id):
+        return Response(status=status.HTTP_403_FORBIDDEN)
     comment.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)

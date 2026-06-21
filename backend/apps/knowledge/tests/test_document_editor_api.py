@@ -16,7 +16,10 @@ def api_client():
 
 @pytest.fixture
 def owner():
-    return User.objects.create_user("editowner", "editowner@example.com", "pass")
+    # v1.0 RBAC: editing KB content requires the author tier (is_staff).
+    return User.objects.create_user(
+        "editowner", "editowner@example.com", "pass", is_staff=True
+    )
 
 
 @pytest.fixture

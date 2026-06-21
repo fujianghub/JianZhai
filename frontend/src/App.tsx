@@ -4,6 +4,8 @@ import { Spin } from 'antd';
 import BlogLayout from '@/pages/blog/BlogLayout';
 import BlogHome from '@/pages/blog/BlogHome';
 import RequireAuth from '@/pages/admin/RequireAuth';
+import RequireAuthor from '@/components/common/RequireAuthor';
+import RequireSuperuser from '@/components/common/RequireSuperuser';
 import LoginPage from '@/pages/admin/LoginPage';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
@@ -102,19 +104,21 @@ export default function App() {
           </RequireAuth>
         }
       >
-        <Route index element={<AdminDashboard />} />
-        <Route path="kbs" element={<KBListPage />} />
-        <Route path="kbs/:id" element={<KBWorkspace />} />
-        <Route path="kbs/:id/docs/:docId" element={suspended(<DocEditorPage />, '加载编辑器…')} />
-        <Route path="exports" element={<ExportsPage />} />
-        <Route path="users" element={<UsersPage />} />
-        <Route path="overview" element={<SystemOverviewPage />} />
-        <Route path="ai" element={<AIManagementPage />} />
-        <Route path="graph" element={suspended(<KnowledgeGraphPage />, '加载知识图谱…')} />
+        {/* Author-only (admin + root). Normal users are redirected to favorites. */}
+        <Route index element={<RequireAuthor><AdminDashboard /></RequireAuthor>} />
+        <Route path="kbs" element={<RequireAuthor><KBListPage /></RequireAuthor>} />
+        <Route path="kbs/:id" element={<RequireAuthor><KBWorkspace /></RequireAuthor>} />
+        <Route path="kbs/:id/docs/:docId" element={<RequireAuthor>{suspended(<DocEditorPage />, '加载编辑器…')}</RequireAuthor>} />
+        <Route path="exports" element={<RequireAuthor><ExportsPage /></RequireAuthor>} />
+        <Route path="users" element={<RequireAuthor><UsersPage /></RequireAuthor>} />
+        <Route path="overview" element={<RequireSuperuser fallback="/admin/favorites"><SystemOverviewPage /></RequireSuperuser>} />
+        <Route path="ai" element={<RequireAuthor><AIManagementPage /></RequireAuthor>} />
+        <Route path="graph" element={<RequireAuthor>{suspended(<KnowledgeGraphPage />, '加载知识图谱…')}</RequireAuthor>} />
+        {/* Reader-accessible: any logged-in user. */}
         <Route path="profile" element={<ProfilePage />} />
-        <Route path="hero" element={<HeroPage />} />
         <Route path="favorites" element={<FavoritesPage />} />
-        <Route path="trash" element={<TrashPage />} />
+        <Route path="hero" element={<RequireAuthor><HeroPage /></RequireAuthor>} />
+        <Route path="trash" element={<RequireAuthor><TrashPage /></RequireAuthor>} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

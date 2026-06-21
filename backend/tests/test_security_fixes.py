@@ -28,11 +28,16 @@ def api_client():
 
 @pytest.fixture
 def owner():
-    return User.objects.create_user("secowner", "secowner@example.com", "pass12345")
+    # Author tier (is_staff): folder edits/reorder + AI attribution are
+    # author-only authoring surfaces under v1.0 RBAC.
+    return User.objects.create_user(
+        "secowner", "secowner@example.com", "pass12345", is_staff=True
+    )
 
 
 @pytest.fixture
-def other_user():
+def reader():
+    # Plain reader — no authoring rights, owns no content pool.
     return User.objects.create_user("secother", "secother@example.com", "pass12345")
 
 
@@ -180,13 +185,31 @@ def test_change_username_to_root_admin_blocked(api_client):
 
 
 @pytest.mark.django_db
-def test_ai_attribution_drops_unowned_document(owner, other_user, public_kb, public_post):
-    """_owned_fk_id keeps owned ids and drops other tenants' ids."""
+def test_ai_attribution_kept_for_authors_dropped_for_readers(
+    owner, reader, public_kb, public_post
+):
+    """v1.0 RBAC: AI attribution follows the shared content pool.
+
+    Authors (is_staff) see the whole pool, so any real doc/KB id is a valid
+    attribution target and is kept. A reader (non-staff) owns no content pool,
+    so every attribution id resolves to nothing and is dropped — readers can't
+    pollute admin usage stats. Garbage/empty ids always drop.
+    """
     from apps.ai.views import _owned_fk_id
 
+    # Author: shared-pool ids are kept.
     assert _owned_fk_id(Document, owner, public_post.pk) == public_post.pk
-    assert _owned_fk_id(Document, other_user, public_post.pk) is None
-    assert _owned_fk_id(KnowledgeBase, owner, public_kb.pk, owner_field="owner") == public_kb.pk
-    assert _owned_fk_id(KnowledgeBase, other_user, public_kb.pk, owner_field="owner") is None
+    assert (
+        _owned_fk_id(KnowledgeBase, owner, public_kb.pk, owner_field="owner")
+        == public_kb.pk
+    )
+
+    # Reader: no content pool → everything drops.
+    assert _owned_fk_id(Document, reader, public_post.pk) is None
+    assert (
+        _owned_fk_id(KnowledgeBase, reader, public_kb.pk, owner_field="owner") is None
+    )
+
+    # Garbage / empty always drop.
     assert _owned_fk_id(Document, owner, "garbage") is None
     assert _owned_fk_id(Document, owner, None) is None

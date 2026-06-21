@@ -104,7 +104,8 @@ def api_client():
 
 @pytest.fixture
 def owner():
-    return User.objects.create_user("bundleowner", "bo@e.com", "pass")
+    # Import endpoints (import-batch / import-zip) are author-only (is_staff).
+    return User.objects.create_user("bundleowner", "bo@e.com", "pass", is_staff=True)
 
 
 @pytest.fixture

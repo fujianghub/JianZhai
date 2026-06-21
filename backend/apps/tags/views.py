@@ -4,8 +4,7 @@ from django.db.models import Count, Q
 from django.shortcuts import get_object_or_404
 from rest_framework import viewsets
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
-from apps.accounts.permissions import PublicOrLoginGated
+from apps.accounts.permissions import IsContentAuthor, PublicOrLoginGated
 from rest_framework.response import Response
 
 from apps.accounts.scoping import scope_queryset
@@ -40,7 +39,7 @@ def _published_posts_qs():
 
 class TagViewSet(viewsets.ModelViewSet):
     serializer_class = TagSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsContentAuthor]
 
     def get_queryset(self):
         # Annotate the live document count in one query instead of issuing a
@@ -51,7 +50,7 @@ class TagViewSet(viewsets.ModelViewSet):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def document_tags(request, doc_id: int):
     doc = get_object_or_404(
         scope_queryset(Document.objects.all(), request.user), pk=doc_id
@@ -65,7 +64,7 @@ def document_tags(request, doc_id: int):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def kb_tags(request, kb_id: int):
     kb = get_object_or_404(
         scope_queryset(KnowledgeBase.objects.all(), request.user, field="owner"), pk=kb_id
@@ -79,7 +78,7 @@ def kb_tags(request, kb_id: int):
 
 
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsContentAuthor])
 def folder_tags(request, folder_id: int):
     folder = get_object_or_404(
         scope_queryset(Folder.objects.all(), request.user), pk=folder_id
