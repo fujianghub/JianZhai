@@ -11,7 +11,13 @@ interface AuthState {
    *  redirects anonymous visitors to /admin/login. Defaults to false. */
   requireLogin: boolean;
   loadSession: () => Promise<void>;
-  login: (username: string, password: string) => Promise<void>;
+  login: (
+    username: string,
+    password: string,
+    email: string,
+    captchaId: string,
+    captchaX: number,
+  ) => Promise<void>;
   logout: () => Promise<void>;
 }
 
@@ -36,11 +42,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       set({ user: null, loaded: true, loading: false });
     }
   },
-  async login(username, password) {
+  async login(username, password, email, captchaId, captchaX) {
     set({ loading: true });
     try {
       clearPreviewCache(); // discard any previous user's cached previews
-      const res = await authApi.login(username, password);
+      const res = await authApi.login(username, password, email, captchaId, captchaX);
       set({ user: res.user, loaded: true, loading: false });
     } finally {
       set({ loading: false });

@@ -55,6 +55,16 @@ def _avatar_url_for(user) -> str | None:
     return None
 
 
+def _email_matches(user, email: str) -> bool:
+    """The login email must equal the account's stored email (trim +
+    case-insensitive). Accounts with no email on record skip the check so a
+    legacy email-less account isn't locked out."""
+    stored = (user.email or "").strip().lower()
+    if not stored:
+        return True
+    return stored == (email or "").strip().lower()
+
+
 def _serialize_user(user) -> dict:
     from .permissions import get_role, is_root_admin
     return {
@@ -110,13 +120,27 @@ def session(request):
 def login_view(request):
     username = request.data.get("username", "").strip()
     password = request.data.get("password", "")
-    if not username or not password:
+    email = (request.data.get("email") or "").strip()
+    captcha_id = request.data.get("captcha_id", "")
+    captcha_x = request.data.get("captcha_x", None)
+    if not username or not password or not email:
         return Response(
-            {"detail": "username and password are required"},
+            {"detail": "用户名、密码与邮箱均为必填"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    # Bot gate first — cheap, and blocks automated password guessing before we
+    # ever touch the password hash. Single-use: a failed login burns the puzzle.
+    from .captcha import verify_slider
+
+    if not verify_slider(captcha_id, captcha_x):
+        return Response(
+            {"detail": "滑块验证未通过，请重试", "captcha_failed": True},
             status=status.HTTP_400_BAD_REQUEST,
         )
     user = authenticate(request, username=username, password=password)
-    if user is None:
+    # Generic 401 whether the password or the email is wrong — don't reveal
+    # which factor failed.
+    if user is None or not _email_matches(user, email):
         return Response(
             {"detail": "Invalid credentials"}, status=status.HTTP_401_UNAUTHORIZED
         )

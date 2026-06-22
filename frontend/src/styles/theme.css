@@ -3826,7 +3826,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   min-height: 100vh;
   display: grid;
   place-items: center;
-  padding: 24px;
+  padding: 16px;
   overflow: hidden;
   background:
     radial-gradient(120% 90% at 12% 8%,
@@ -3881,9 +3881,9 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-login-card {
   position: relative;
   z-index: 2;
-  width: 392px;
+  width: 464px;
   max-width: 100%;
-  padding: 40px 36px 30px;
+  padding: 34px 36px 26px;
   text-align: center;
   border-radius: var(--glass-radius-lg);
   background: var(--glass-surface-strong);
@@ -3895,15 +3895,15 @@ a.jz-meta-full-edit-btn:focus-visible {
 
 /* 朱砂方印 */
 .jz-login-seal {
-  width: 60px;
-  height: 60px;
-  margin: 0 auto 18px;
-  border-radius: 16px;
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 12px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   font-family: 'PingFang SC', 'Songti SC', 'STSong', serif;
-  font-size: 34px;
+  font-size: 32px;
   font-weight: 800;
   color: #0a1f1a;
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
@@ -3929,8 +3929,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   -webkit-text-fill-color: transparent;
 }
 .jz-login-sub {
-  margin: 8px 0 26px;
-  font-size: 12px;
+  margin: 8px 0 18px;
+  font-size: 14px;
   letter-spacing: 2px;
   color: var(--glass-text-muted);
 }
@@ -3942,6 +3942,26 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--glass-text-muted);
   font-size: 13px;
   letter-spacing: 1px;
+}
+/* 去 label 一屏化：收紧每个字段间距 */
+.jz-login-form .ant-form-item {
+  margin-bottom: 18px;
+}
+/* 整体放大约 120%：抬高输入框/按钮到 ~48px、字号到 16 */
+.jz-login-form .ant-input-affix-wrapper-lg,
+.jz-login-form .ant-btn-lg {
+  min-height: 48px;
+  font-size: 16px;
+}
+/* 前缀线条图标：默认淡灰，聚焦随边框变翡翠 */
+.jz-login-form .ant-input-prefix {
+  color: var(--glass-text-muted);
+  transition: color 0.2s ease;
+  margin-inline-end: 8px;
+  font-size: 18px;
+}
+.jz-login-form .ant-input-affix-wrapper-focused .ant-input-prefix {
+  color: var(--jz-accent);
 }
 .jz-login-form .ant-btn-primary {
   margin-top: 6px;
@@ -3977,8 +3997,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 
 .jz-login-foot {
-  margin-top: 22px;
-  font-size: 11px;
+  margin-top: 14px;
+  font-size: 13px;
   letter-spacing: 3px;
   color: var(--glass-text-muted);
   opacity: 0.7;

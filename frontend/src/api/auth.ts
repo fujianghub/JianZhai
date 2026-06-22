@@ -8,9 +8,36 @@ export async function getSession(): Promise<SessionResponse> {
   return data;
 }
 
-export async function login(username: string, password: string): Promise<SessionResponse> {
+export interface CaptchaPuzzle {
+  id: string;
+  background: string; // data: PNG
+  piece: string; // data: PNG
+  y: number;
+  piece_width: number;
+  width: number;
+  height: number;
+}
+
+export async function getCaptcha(): Promise<CaptchaPuzzle> {
+  const { data } = await apiClient.get<CaptchaPuzzle>('/auth/captcha/');
+  return data;
+}
+
+export async function login(
+  username: string,
+  password: string,
+  email: string,
+  captchaId: string,
+  captchaX: number,
+): Promise<SessionResponse> {
   await ensureCsrf();
-  const { data } = await apiClient.post<SessionResponse>('/auth/login/', { username, password });
+  const { data } = await apiClient.post<SessionResponse>('/auth/login/', {
+    username,
+    password,
+    email,
+    captcha_id: captchaId,
+    captcha_x: captchaX,
+  });
   return data;
 }
 

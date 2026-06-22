@@ -1,6 +1,7 @@
 from django.urls import include, path
 from rest_framework.routers import DefaultRouter
 
+from .captcha import get_captcha
 from .hero import hero_batch_import, hero_settings
 from .views import (
     UserViewSet,
@@ -22,6 +23,7 @@ router.register(r"users", UserViewSet, basename="user")
 urlpatterns = [
     path("csrf/", csrf, name="auth-csrf"),
     path("session/", session, name="auth-session"),
+    path("captcha/", get_captcha, name="auth-captcha"),
     path("login/", login_view, name="auth-login"),
     path("logout/", logout_view, name="auth-logout"),
     path("me/", me, name="auth-me"),

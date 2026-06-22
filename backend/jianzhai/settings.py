@@ -202,6 +202,7 @@ REST_FRAMEWORK = {
         "ai_write": "30/min",
         "ai_read": "120/min",
         "login": "10/min",
+        "captcha": "30/min",
     },
 }
 
