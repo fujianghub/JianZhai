@@ -30,6 +30,7 @@
 | **布局 + 导出保真**（2026-06-08） | 完整编辑两栏铺满；Mermaid 离线导出 SVG（headless Chromium + vendored mermaid.min.js） |
 | **MD 本地图片打包**（2026-06-13） | 导入 `.md` 的 `![](./images/x.png)` 相对图不再 404；三入口共用 `_bundle_import_entries`（图片→MD 附件 + 改写为 `/media/`）：整文件夹上传 / 两步选择器 / ZIP 导入；`import_local_images` 命令补图 |
 | **四角色权限体系 RBAC**（2026-06-21） | 根/管理员/普通用户/匿名（`get_role` 唯一入口 + `IsContentAuthor`/`IsRoot`）；`scope_queryset` 由 owner 隔离改**作者共享单一池**；普通用户=读者；删除分级（删 KB/大类/永久删/清空回收站=仅根）；迁移 0006 降级历史非根超管；权威清单 `docs/permissions.md`。合并 main（e26baf7） |
+| **登录三因子 + 滑块验证码**（2026-06-23） | 登录从「用户名+密码」升级为三因子：+ **邮箱匹配**（须等于账号 `User.email`）+ **服务端古风拼图滑块验证码**（`captcha.py` Pillow 程序化生成、6 古风色板×多背景样式随机、经典拼图块、答案存 Redis 一次性、缺口仅由像素传达防脚本）；前端 `SliderCaptcha`（1:1 像素拖拽 + 进度填充）；登录页去 label 紧凑化 + 线条图标焦点高亮 + 整体放大约 120%。无新模型/迁移。合并 main（e3c0a41） |
 
 ---
 

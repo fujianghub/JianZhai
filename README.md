@@ -37,7 +37,7 @@
 | **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG**（HTML/PDF/静态站，headless Chromium + vendored mermaid，缺失时降级源码面板）；PlantUML 仍为代码块 |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；4 套主题 + 纸张样式；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
-| **账号 / 权限** | **四角色 RBAC**：根（唯一、不可禁用/删除、独占删 KB/大类/永久删/清空回收站）/ 管理员（作者，共享内容池）/ 普通用户（读者，无创作权）/ 匿名；用户管理可见范围按角色收口；新建账号**邮箱必填**；自助改密码/邮箱/用户名/头像。详见 [docs/permissions.md](docs/permissions.md) |
+| **账号 / 权限** | **四角色 RBAC**：根（唯一、不可禁用/删除、独占删 KB/大类/永久删/清空回收站）/ 管理员（作者，共享内容池）/ 普通用户（读者，无创作权）/ 匿名；用户管理可见范围按角色收口；新建账号**邮箱必填**；自助改密码/邮箱/用户名/头像。**登录三因子**：密码 + 邮箱匹配 + 服务端拼图滑块验证码。详见 [docs/permissions.md](docs/permissions.md) |
 | **组织** | KB **大类**分组、文档置顶、收藏夹（博客 `/favorites` + 后台侧栏「收藏」入口）、多种排序、回收站 UI |
 | **题记管理** | `/admin/hero`：dnd-kit **整行拖拽排序**、批量导入 / **导出备份**、预览翻看、播放顺序（随机洗牌 / 顺序） |
 | **视觉** | 博客：宣纸朱砂古风；后台：玄黑·玻璃拟态 + 翡翠重音；**100% 自制图标**（`JzIcon` 50 枚 + 侧栏设计稿 `JzIconKit` 15 枚，tone 十色三主题联动）；PWA + 印章 favicon |
@@ -184,6 +184,7 @@ cd backend && python manage.py seed_architecture_kb
 | **Mermaid 导出 SVG + 两栏铺满** | HTML/PDF/静态站把 Mermaid 块离线渲为内联 SVG（headless Chromium + vendored mermaid）；完整编辑两栏铺满（正文限宽 + 大纲右栏 sticky）；Mermaid 净化修复（foreignObject/dy）；图表操作条亮色灰字修复 |
 | **MD 本地图片打包** | 导入 `.md` 的 `./images/x.png` 相对图不再 404：整文件夹 / 两步选择器 / ZIP 三入口共用资产打包（图→附件 + 改写为 `/media/`）|
 | **四角色权限体系 RBAC** | 根 / 管理员 / 普通用户 / 匿名（`get_role` 唯一入口 + `IsContentAuthor`/`IsRoot`）；`scope_queryset` 由 owner 隔离改**作者共享单一池**；普通用户=读者；删除分级（删 KB/大类/永久删/清空回收站=仅根）；权威清单 `docs/permissions.md` |
+| **登录三因子 + 滑块验证码** | 登录 = 用户名/密码 + **邮箱匹配** + **服务端古风拼图滑块验证码**（Pillow 生成、Redis 一次性答案、缺口仅由像素传达防脚本）；登录页去 label 紧凑化 + 线条图标焦点高亮 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）

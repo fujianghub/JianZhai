@@ -27,7 +27,7 @@
 
 | App | 关键文件 | 职责 |
 |-----|----------|------|
-| `accounts` | `scoping.py` `permissions.py` `hero.py` `views.py` `models.py` | 登录 / Session / 用户 CRUD / **scope_queryset** / **四角色 RBAC** / **友邻闸门** / 账号自服务 / **题记（HeroSettings）** |
+| `accounts` | `scoping.py` `permissions.py` `hero.py` `views.py` `models.py` `captcha.py` | 登录（三因子:密码+邮箱匹配+滑块验证码）/ Session / 用户 CRUD / **scope_queryset** / **四角色 RBAC** / **友邻闸门** / 账号自服务 / **题记（HeroSettings）** |
 | `knowledge` | `models.py` `views.py` `tree.py` `trash_views.py` | `KnowledgeBaseCategory` / `KnowledgeBase` / `Folder` / `Document` 核心 CRUD、`tree/reorder` 调序、回收站 |
 | `editor` | `views.py` `import_word.py` | 附件上传、Word / Markdown / ZIP 导入、本地图片打包 |
 | `versioning` | `services.py` `diff.py` | `DocumentVersion` 快照 + 行级/字符级 diff + 回滚 |
@@ -113,7 +113,7 @@ class DocumentLink(models.Model):
 ## 4. URL 总览（`/api/v1/`）
 
 ```
-auth/            csrf · session(含 require_login) · login · logout · me · system-info(IsRoot)
+auth/            csrf · captcha(滑块取题) · session(含 require_login) · login(三因子:密码+邮箱匹配+滑块) · logout · me · system-info(IsRoot)
 auth/me/         avatar · change-password · change-email · change-username   账号自服务
 auth/hero/  /hero/batch/      题记：员工读写 + 批量导入
 auth/users/                   UserViewSet（可见范围按角色）

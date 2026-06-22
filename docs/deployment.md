@@ -72,13 +72,14 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 |------|------|
 | 权限边界 | **后端是唯一安全边界**；四角色 RBAC 唯一入口 `get_role()`，详见 [permissions.md](./permissions.md) |
 | 友邻闸门 | `PublicOrLoginGated` 逐请求判定；`SITE_REQUIRE_LOGIN=true` 时匿名访问 `/public/*` 返 403 |
+| 登录三因子 | `/auth/login/` = 密码 + **邮箱匹配** + **服务端拼图滑块验证码**（`captcha.py`，Pillow 生成、答案存 Redis 一次性 TTL、缺口仅由像素传达）；先验滑块再验密码，任一错不泄露 |
 | CSRF | `CSRF_COOKIE_HTTPONLY=False`，SPA 读 cookie 写 `X-CSRFToken` |
 | DOMPurify | 公开端 HTML 净化，所有 `<img>` 加 `loading="lazy" decoding="async"` |
 | iframe | `X_FRAME_OPTIONS=SAMEORIGIN`；导出 srcdoc `sandbox="allow-scripts allow-popups allow-forms"` |
 | 上传 | 单文件 50MB；类型区分 image/document/other；`MEDIA_ROOT/uploads/YYYY/MM/uuid.ext` |
 | AI | key 仅后端 `.env`；30/min/user + 每用户日预算（超额 429） |
 | 导出 | `exports/` 刻意不在 `media/` 下；owner/superuser 可下载，跨租户访问写审计日志 |
-| DRF 节流 | 匿名 120/min；AI 写 30/min/user |
+| DRF 节流 | 匿名 120/min；AI 写 30/min/user；登录 `login` 10/min；验证码取题 `captcha` 30/min |
 
 > 主机层加固（SSH 仅密钥 + 新端口 + fail2ban + dnf 自动安全更新 + sysctl）见 memory `project_host_hardening`。
 
