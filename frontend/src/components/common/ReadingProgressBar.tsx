@@ -34,15 +34,22 @@ export default function ReadingProgressBar() {
     };
   }, []);
   return (
-    <div
-      className="jz-reading-progress"
-      role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuenow={Math.round(pct * 100)}
-      aria-label="阅读进度"
-    >
-      <div className="jz-reading-progress-bar" style={{ width: `${pct * 100}%` }} />
-    </div>
+    <>
+      <div
+        className="jz-reading-progress"
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct * 100)}
+        aria-label="阅读进度"
+      >
+        <div className="jz-reading-progress-bar" style={{ width: `${pct * 100}%` }} />
+      </div>
+      {pct > 0.01 && (
+        <span className="jz-reading-progress-pct" aria-hidden>
+          {Math.round(pct * 100)}%
+        </span>
+      )}
+    </>
   );
 }

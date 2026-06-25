@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import type { AdjacentPosts, RelatedPost } from '@/api/blog';
 import { Alert, Breadcrumb, Button, Result, Spin, Tag, Tooltip, Typography } from 'antd';
+import { EyeOutlined } from '@ant-design/icons';
 import { isAxiosError } from 'axios';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import dayjs from 'dayjs';
@@ -31,6 +32,7 @@ import { previewKind } from '@/api/attachments';
 import { useAuthStore } from '@/stores/auth';
 import PaperPicker from '@/components/common/PaperPicker';
 import ReaderFontPicker from '@/components/common/ReaderFontPicker';
+import ReaderLayoutPicker from '@/components/common/ReaderLayoutPicker';
 import PublicAttachmentPreview from '@/components/common/PublicAttachmentPreview';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import KbNavSidebar from '@/components/common/KbNavSidebar';
@@ -40,7 +42,19 @@ import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import TableEnhancer from '@/components/common/TableEnhancer';
 import { paperClassName, getReaderOverride, setReaderOverride } from '@/utils/paper';
 import { resolveTagCssColor } from '@/utils/tagColor';
-import { loadArticleFont, saveArticleFont, stackFor } from '@/utils/articleFont';
+import {
+  ARTICLE_FONT_PRESETS,
+  loadArticleFont,
+  saveArticleFont,
+  stackFor,
+} from '@/utils/articleFont';
+import {
+  clearReaderLayout,
+  DEFAULT_LAYOUT,
+  loadReaderLayout,
+  saveReaderLayout,
+  type ReaderLayout,
+} from '@/utils/readerLayout';
 import { SelectionAI } from '@/components/common/SelectionAI';
 import { DocAIPanel } from '@/components/common/DocAIPanel';
 import ReadingProgressBar from '@/components/common/ReadingProgressBar';
@@ -160,6 +174,11 @@ export default function PostDetail() {
    *  ``saveArticleFont``; the picked stack is applied as a CSS variable on
    *  the article element so it scopes only to this reader's view. */
   const [readerFont, setReaderFont] = useState<string>(loadArticleFont());
+  /** Reader-controlled body layout (font scale / line-height / measure).
+   *  Applied as CSS variables on the article; persisted via ``saveReaderLayout``. */
+  const [layout, setLayout] = useState<ReaderLayout>(loadReaderLayout());
+  /** Distraction-free reading: hides site header/footer + KB/TOC rails. */
+  const [focusMode, setFocusMode] = useState(false);
   /** Auth status determines whether the inline edit button is offered. */
   const authUser = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
@@ -222,6 +241,39 @@ export default function PostDetail() {
     editorSaveRef.current = handle;
   }, []);
 
+  const updateLayout = useCallback((next: ReaderLayout) => {
+    setLayout(next);
+    saveReaderLayout(next);
+  }, []);
+
+  /** Reset every reader-side preference (layout + paper override + body font). */
+  const resetReaderPrefs = useCallback(() => {
+    setLayout({ ...DEFAULT_LAYOUT });
+    clearReaderLayout();
+    setReaderPaperState(null);
+    setReaderOverride(null);
+    const defaultFont = ARTICLE_FONT_PRESETS[0].key;
+    setReaderFont(defaultFont);
+    saveArticleFont(defaultFont);
+  }, []);
+
+  // Focus mode toggles a body class the stylesheet keys off (hides chrome) and
+  // is dismissible via Esc. Reset whenever we leave the article entirely.
+  useEffect(() => {
+    if (focusMode) document.body.classList.add('jz-reader-focus');
+    else document.body.classList.remove('jz-reader-focus');
+    return () => document.body.classList.remove('jz-reader-focus');
+  }, [focusMode]);
+
+  useEffect(() => {
+    if (!focusMode) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') setFocusMode(false);
+    }
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [focusMode]);
+
   const enterEditMode = useCallback(async () => {
     if (!post || !canEdit) return;
     setEditLoading(true);
@@ -257,6 +309,7 @@ export default function PostDetail() {
   useEffect(() => {
     setPageMode('read');
     setEditDoc(null);
+    setFocusMode(false);
   }, [slug, kbSlug]);
 
   useEffect(() => {
@@ -460,6 +513,13 @@ export default function PostDetail() {
   const htmlOriginalUrl = isHtmlDoc ? post.primary_attachment?.url ?? '' : '';
   const showKbRail = kbNavOpen && layoutWide;
   const showTocRail = showToc && tocRailWide;
+  // The reader-layout controls (font scale / line-height / measure) only apply
+  // to the Markdown body; HTML lives in a sandboxed iframe and binary previews
+  // have no body text to reflow.
+  const isMarkdownReadPath = pageMode === 'read' && !isHtmlDoc && !hasInlineFile;
+  // Whether the author-action cluster (edit / full-edit / open-original) is
+  // present — drives the hairline separator after the reading toolbar.
+  const hasAuthorActions = canEdit || !!(isHtmlDoc && htmlOriginalUrl);
 
   const postGridColumns = buildPostGridColumns(
     kbResize.width,
@@ -542,8 +602,18 @@ export default function PostDetail() {
 
         <article
           ref={articleRef}
-          className={`paper ${paperClassName(effectivePaper)} jz-fade-in`}
-          style={{ ['--jz-article-font' as string]: stackFor(readerFont) } as CSSProperties}
+          className={
+            `paper ${paperClassName(effectivePaper)} jz-fade-in` +
+            (isMarkdownReadPath ? ' jz-reader-measured' : '')
+          }
+          style={
+            {
+              ['--jz-article-font' as string]: stackFor(readerFont),
+              ['--jz-reader-scale' as string]: String(layout.fontScale),
+              ['--jz-reader-lh' as string]: String(layout.lineHeight),
+              ['--jz-reader-measure' as string]: layout.measure,
+            } as CSSProperties
+          }
         >
           <header className="jz-post-header" style={{ marginBottom: 12 }}>
             <Title
@@ -635,22 +705,56 @@ export default function PostDetail() {
 
               <span className="jz-meta-spacer" />
 
-              {/* Right-aligned controls. */}
+              {/* Right-aligned controls. Two visually distinct clusters:
+                  a grouped reading-settings toolbar, then (for authors) the
+                  edit actions — separated by a hairline. */}
               <span className="jz-meta-controls">
-                <ReaderFontPicker
-                  value={readerFont}
-                  onChange={(k) => {
-                    setReaderFont(k);
-                    saveArticleFont(k);
-                  }}
-                />
-                <PaperPicker
-                  value={effectivePaper}
-                  onChange={(k) => {
-                    setReaderPaperState(k);
-                    setReaderOverride(k);
-                  }}
-                />
+                <span className="jz-reader-toolbar" role="group" aria-label="阅读设置">
+                  <ReaderFontPicker
+                    value={readerFont}
+                    onChange={(k) => {
+                      setReaderFont(k);
+                      saveArticleFont(k);
+                    }}
+                  />
+                  <PaperPicker
+                    value={effectivePaper}
+                    onChange={(k) => {
+                      setReaderPaperState(k);
+                      setReaderOverride(k);
+                    }}
+                  />
+                  {isMarkdownReadPath && (
+                    <ReaderLayoutPicker
+                      layout={layout}
+                      onChange={updateLayout}
+                      onReset={resetReaderPrefs}
+                    />
+                  )}
+                  {pageMode === 'read' && (
+                    <Tooltip
+                      title={
+                        focusMode
+                          ? '退出专注阅读 (Esc)'
+                          : '专注阅读：隐藏导航栏与侧栏，沉浸读正文'
+                      }
+                    >
+                      <button
+                        type="button"
+                        className={
+                          'jz-reader-control-btn paper-picker-btn' +
+                          (focusMode ? ' is-active' : '')
+                        }
+                        aria-label="专注阅读"
+                        aria-pressed={focusMode}
+                        onClick={() => setFocusMode((v) => !v)}
+                      >
+                        <EyeOutlined />
+                      </button>
+                    </Tooltip>
+                  )}
+                </span>
+                {hasAuthorActions && <span className="jz-meta-vsep" aria-hidden />}
                 {/* HTML-only: link to the original .html attachment for
                     a true "browser tab" experience (some pages depend on
                     full viewport width or have richer scripts). */}
@@ -779,7 +883,10 @@ export default function PostDetail() {
           ) : (
             <div
               className="markdown-preview jz-post-article"
-              style={{ lineHeight: 1.85, fontSize: 16 }}
+              style={{
+                lineHeight: 'var(--jz-reader-lh, 1.85)',
+                fontSize: 'calc(16.5px * var(--jz-reader-scale, 1))',
+              }}
               dangerouslySetInnerHTML={{ __html: rendered.html }}
             />
           )}
@@ -871,7 +978,7 @@ export default function PostDetail() {
         </Tooltip>
       )}
 
-      {!kbNavOpen && (
+      {!kbNavOpen && !focusMode && (
         <Tooltip title="显示文档列表" placement="right">
           <Button
             type="default"
@@ -881,6 +988,20 @@ export default function PostDetail() {
             aria-label="显示文档列表"
             onClick={() => setKbNavOpen(true)}
             className="jz-kbnav-fab"
+          />
+        </Tooltip>
+      )}
+
+      {focusMode && (
+        <Tooltip title="退出专注阅读 (Esc)" placement="left">
+          <Button
+            type="default"
+            shape="circle"
+            size="large"
+            icon={<EyeOutlined />}
+            aria-label="退出专注阅读"
+            onClick={() => setFocusMode(false)}
+            className="jz-focus-exit-fab"
           />
         </Tooltip>
       )}

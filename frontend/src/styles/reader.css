@@ -86,8 +86,204 @@
   box-shadow: 0 0 8px color-mix(in srgb, var(--jz-post-accent, var(--jz-accent)) 55%, transparent);
 }
 
+/* Reader-controlled scroll-progress percentage pill (bottom-left, unobtrusive).
+   Hidden while inline-editing and on narrow viewports where the FABs vanish. */
+.jz-reading-progress-pct {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 1100;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.4;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  background: var(--glass-surface, color-mix(in srgb, var(--jz-surface) 82%, transparent));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  box-shadow: var(--glass-shadow-soft, 0 2px 8px rgba(0, 0, 0, 0.08));
+  backdrop-filter: blur(10px);
+  pointer-events: none;
+  user-select: none;
+}
+@media (max-width: 960px) {
+  .jz-reading-progress-pct { display: none; }
+}
+
+/* ── Reader layout: content measure (max line width, opt-in via picker) ──
+   Only the Markdown reading path carries .jz-reader-measured, so HTML readers
+   and inline file previews keep their full-width breakout behaviour. */
+.jz-post-main .paper.jz-reader-measured {
+  max-width: var(--jz-reader-measure, 100%);
+  margin-inline: auto;
+  transition: max-width 0.25s ease;
+}
+
+/* ── Reader layout popover (font scale / line-height / measure) ── */
+.jz-reader-layout-pop .jz-rl-section { margin-bottom: 12px; }
+.jz-reader-layout-pop .jz-rl-section:last-of-type { margin-bottom: 0; }
+.jz-rl-label {
+  font-size: 12px;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  margin-bottom: 6px;
+}
+.jz-rl-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.jz-rl-pct {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--jz-text);
+}
+.jz-rl-reset { color: var(--glass-text-muted, var(--jz-text-muted)) !important; }
+.jz-rl-reset:hover { color: var(--jz-doc-accent, var(--jz-accent)) !important; }
+
+/* The six controls in the meta row's right cluster — the reading toolbar's
+   four icons (via --jz-tb-accent → --jz-doc-accent) plus the 编辑 / 完整编辑
+   pills — take the site's 翡翠 accent (--jz-accent) rather than the per-KB
+   accent. Scoping the override to .jz-meta-controls recolours exactly those
+   controls and leaves the KB pill + article accent (outside this wrapper) on
+   the KB colour. In the blog glass context --jz-accent is pinned to the unified
+   翡翠 brand emerald (#02b377, via the shared .jz-glass token that outranks the
+   per-theme :root value), so the controls read as a consistent 翡翠绿 across all
+   four themes — no per-theme tweak needed. */
+.jz-post-meta .jz-meta-controls {
+  --jz-doc-accent: var(--jz-accent);
+}
+
+/* ── Reading-settings toolbar ──────────────────────────────────────────────
+   The 4 reading controls (font / paper / layout / focus) read as ONE grouped
+   capsule: frosted, accent-washed, with a top rim-light and soft shadow for
+   tactile depth. Icons rest in the document/KB accent so all six controls in
+   the meta row — these four plus 编辑 / 完整编辑 — share one accent colour and
+   read as a coherent family.
+
+   ``--jz-tb-accent`` (the document/KB accent, falling back to the theme accent)
+   is the single knob driving every accent tone here, so the bar adapts across
+   light · dark · starry · deepsea and across per-KB accents automatically. We
+   override theme.css's per-button circle styling with !important (beats its
+   higher-specificity .jz-blog-glass chain). */
+.jz-post-meta .jz-meta-controls .jz-reader-toolbar {
+  --jz-tb-accent: var(--jz-doc-accent, var(--jz-accent));
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  height: 28px; /* match the 编辑 / 完整编辑 pills exactly */
+  padding: 0 2px;
+  border-radius: 14px; /* same corner family as the edit pills */
+  border: 1px solid color-mix(in srgb, var(--jz-tb-accent) 22%, var(--glass-border, var(--jz-border)));
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--jz-tb-accent) 7%, var(--glass-surface, var(--jz-surface))),
+      color-mix(in srgb, var(--jz-tb-accent) 2%, var(--glass-surface, var(--jz-surface)))
+    );
+  box-shadow:
+    0 2px 8px color-mix(in srgb, var(--jz-tb-accent) 12%, transparent),
+    inset 0 1px 0 color-mix(in srgb, #fff 40%, transparent);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+}
+.jz-reader-toolbar .jz-reader-control-btn {
+  position: relative;
+  width: 30px;
+  height: 22px;
+  border: none !important;
+  border-radius: 11px;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none;
+  color: var(--jz-tb-accent) !important;
+  transition: color 160ms ease, background-color 160ms ease, transform 160ms ease;
+}
+/* Short dividers between segments (hidden around the hovered/active pill). */
+.jz-reader-toolbar .jz-reader-control-btn + .jz-reader-control-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 1px;
+  height: 13px;
+  background: color-mix(in srgb, var(--jz-tb-accent) 24%, var(--glass-divider, var(--jz-divider)));
+}
+.jz-reader-toolbar .jz-reader-control-btn:hover::before,
+.jz-reader-toolbar .jz-reader-control-btn:hover + .jz-reader-control-btn::before,
+.jz-reader-toolbar .jz-reader-control-btn.is-active::before,
+.jz-reader-toolbar .jz-reader-control-btn.is-active + .jz-reader-control-btn::before {
+  opacity: 0;
+}
+.jz-reader-toolbar .jz-reader-control-btn:hover {
+  transform: none !important;
+  color: var(--jz-tb-accent) !important;
+  background: color-mix(in srgb, var(--jz-tb-accent) 16%, transparent) !important;
+}
+.jz-reader-toolbar .jz-reader-control-btn:active {
+  transform: scale(0.92);
+}
+.jz-reader-toolbar .jz-reader-control-btn.is-active {
+  color: var(--jz-tb-accent) !important;
+  background: color-mix(in srgb, var(--jz-tb-accent) 24%, transparent) !important;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jz-tb-accent) 40%, transparent) !important;
+}
+.jz-reader-toolbar .jz-reader-control-btn .anticon {
+  font-size: 17px;
+}
+
+/* Hairline separating the reading toolbar from the author-action cluster. */
+.jz-post-meta .jz-meta-vsep {
+  align-self: center;
+  width: 1px;
+  height: 22px;
+  margin: 0 1px;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--jz-text) 20%, transparent) 22%,
+    color-mix(in srgb, var(--jz-text) 20%, transparent) 78%,
+    transparent
+  );
+  flex-shrink: 0;
+}
+
+/* ── Focus / immersive reading mode ──
+   A body class so the global blog chrome (header/footer, fixed elsewhere) and
+   the post rails collapse, centring the article at its chosen measure. */
+body.jz-reader-focus .blog-header,
+body.jz-reader-focus .jz-blog-footer,
+body.jz-reader-focus .jz-post-aside,
+body.jz-reader-focus .jz-post-layout .jz-post-col-resizer,
+body.jz-reader-focus .jz-toc-fab,
+body.jz-reader-focus .jz-kbnav-fab,
+body.jz-reader-focus .jz-post-main > .ant-breadcrumb {
+  display: none !important;
+}
+/* Rails are display:none above; collapse the grid so the article re-centres. */
+body.jz-reader-focus .jz-post-layout {
+  grid-template-columns: minmax(0, 1fr) !important;
+}
+body.jz-reader-focus .jz-post-main {
+  padding-top: 28px;
+}
+.jz-focus-exit-fab {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 1200;
+  box-shadow: var(--glass-shadow-soft, 0 4px 16px rgba(0, 0, 0, 0.12));
+  background: var(--glass-surface-strong, var(--jz-surface)) !important;
+  backdrop-filter: blur(12px);
+}
+
 /* Inline edit on reader page (Yuque-style read default + E to edit) */
-body.jz-post-inline-edit .jz-reading-progress {
+body.jz-post-inline-edit .jz-reading-progress,
+body.jz-post-inline-edit .jz-reading-progress-pct {
   display: none;
 }
 .jz-post-inline-edit .jz-post-main .paper.jz-post-inline-editor {
