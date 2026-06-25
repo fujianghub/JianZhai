@@ -2292,7 +2292,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-blog-glass .jz-nav-link:hover {
   color: var(--jz-accent);
-  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+  background: transparent;
 }
 .jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon {
   border-color: color-mix(in srgb, var(--jz-accent) 38%, var(--glass-border));
@@ -2303,7 +2303,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-blog-glass .jz-nav-link.active {
   color: var(--jz-accent);
   font-weight: 600;
-  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  background: transparent;
 }
 .jz-blog-glass .jz-nav-link.active .jz-nav-link-icon {
   border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--glass-border));
