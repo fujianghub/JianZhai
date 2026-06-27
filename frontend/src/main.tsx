@@ -22,8 +22,10 @@ function MessageBridge() {
  * gets a fixed accent matching them; light/dark honour the user's chosen
  * accent preset. */
 const MODE_ACCENT: Record<string, string | null> = {
-  starry: '#c084fc',
-  deepsea: '#5eead4',
+  // Must match --jz-accent in tokens.css so AntD's colorPrimary and the
+  // CSS-variable-driven UI agree under these bespoke palettes.
+  starry: '#d9a6ff',
+  deepsea: '#6ff8e4',
 };
 const DARK_MODES = new Set(['dark', 'starry', 'deepsea']);
 
