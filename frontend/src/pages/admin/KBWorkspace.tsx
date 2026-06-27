@@ -281,11 +281,11 @@ export default function KBWorkspace() {
     }
   }
 
-  /** 仅保留图片类型、≤50MB 的文件（「导入带图 Markdown」第②步用）。 */
+  /** 仅保留图片类型、≤2GB 的文件（「导入带图 Markdown」第②步用）。 */
   function pickImageFiles(files: FileList): File[] {
     const imageExt = /\.(jpe?g|png|gif|webp|svg)$/i;
     return Array.from(files).filter(
-      (f) => imageExt.test(f.name) && f.size <= 50 * 1024 * 1024
+      (f) => imageExt.test(f.name) && f.size <= 2 * 1024 * 1024 * 1024
     );
   }
 

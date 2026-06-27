@@ -3,7 +3,7 @@
  *
  * 规则（与后端 apps/editor/views.py 对齐）：
  * - 允许的扩展名 = 图片 + 文档 + 其他（共 18 种）
- * - 单文件 50MB 上限
+ * - 单文件 2GB 上限
  * - 文件夹遍历时跳过隐藏文件/目录（`.` 开头），不浪费上传流量等服务端报错
  *
  * 模式：
@@ -22,7 +22,7 @@ import {
   type BatchImportResult,
 } from '@/api/attachments';
 
-export const UPLOAD_MAX_FILE_SIZE = 50 * 1024 * 1024;
+export const UPLOAD_MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GiB
 
 /** 与后端 ALLOWED_EXT 一一对应。 */
 export const UPLOAD_ALLOWED_EXT = new Set([
@@ -107,7 +107,7 @@ export function checkUploadFile(file: File): string | null {
     return `${file.name}（不支持的类型）`;
   }
   if (file.size > UPLOAD_MAX_FILE_SIZE) {
-    return `${file.name}（超过 50MB 上限）`;
+    return `${file.name}（超过 2GB 上限）`;
   }
   return null;
 }

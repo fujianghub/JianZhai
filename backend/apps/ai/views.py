@@ -111,7 +111,7 @@ ALLOWED_IMAGE_DATA_PREFIXES = tuple(
     f"data:image/{sub};base64," for sub in ("png", "jpeg", "jpg", "webp", "gif")
 )
 # ~7.5MB binary per image once base64-decoded; well within provider limits
-# and keeps an 8-image payload under the global 50MB body cap.
+# and keeps an 8-image payload comfortably under the request body cap.
 MAX_IMAGE_DATA_CHARS = 10_000_000
 
 

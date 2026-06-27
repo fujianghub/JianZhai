@@ -178,7 +178,7 @@ const FEATURE_MODULES: FeatureModule[] = [
   },
   {
     title: '附件与媒体',
-    desc: '上传 / 媒体库 / PDF 内联预览；单文件 50MB',
+    desc: '上传 / 媒体库 / PDF 内联预览；单文件 2GB',
     icon: <JzAttachmentIcon size={24} />,
     tone: 'attach',
   },

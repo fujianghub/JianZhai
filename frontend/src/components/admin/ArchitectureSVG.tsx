@@ -395,7 +395,7 @@ export default function ArchitectureSVG() {
           <DBRow x={1092} y={690} table="uploads/YYYY/MM/uuid.ext" />
           <DBRow x={1092} y={720} table="exports/*.zip · *.pdf · *.docx" />
           <text x={1092} y={758} fontSize={11.5} fill="var(--jz-text-muted)">
-            单文件上限 50 MB · Pillow 缩略图
+            单文件上限 2 GB · Pillow 缩略图
           </text>
           <text x={1092} y={778} fontSize={11.5} fill="var(--jz-text-muted)">
             kind: image / document / other

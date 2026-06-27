@@ -51,7 +51,7 @@ describe('upload rules', () => {
   it('checkUploadFile 拒绝不支持类型与超大文件', () => {
     expect(checkUploadFile(makeFile('a.md'))).toBeNull();
     expect(checkUploadFile(makeFile('a.exe'))).toMatch('不支持');
-    expect(checkUploadFile(makeFile('big.md', UPLOAD_MAX_FILE_SIZE + 1))).toMatch('50MB');
+    expect(checkUploadFile(makeFile('big.md', UPLOAD_MAX_FILE_SIZE + 1))).toMatch('2GB');
   });
 
   it('collectPickedFiles 过滤隐藏文件并按 preserveTree 决定路径', () => {

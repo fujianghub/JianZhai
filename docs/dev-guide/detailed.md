@@ -712,7 +712,7 @@ def scope_queryset(qs, user, field="knowledge_base__owner"):
 | CSRF | `CSRF_COOKIE_HTTPONLY=False`，SPA 读 cookie 写 `X-CSRFToken` |
 | DOMPurify | 公开端 HTML 净化，所有 `<img>` 加 `loading="lazy" decoding="async"` |
 | iframe | `X_FRAME_OPTIONS=SAMEORIGIN`，便于博客内嵌 PDF/HTML；`sandbox="allow-scripts allow-popups allow-forms"` |
-| 上传 | 单文件 50MB；类型区分 image/document/other；`MEDIA_ROOT/uploads/YYYY/MM/uuid.ext` |
+| 上传 | 单文件 2GB；类型区分 image/document/other；`MEDIA_ROOT/uploads/YYYY/MM/uuid.ext` |
 | AI 限流 | `30/min/user`（`UserRateThrottle scope=ai_write`）+ 每用户日预算（超额 429） |
 | 友邻闸门 | `PublicOrLoginGated` 逐请求判定；`SITE_REQUIRE_LOGIN=true` 时匿名访问 `/public/*` 返回 403 |
 | 导出权限 | owner 自己 / superuser；跨租户访问写审计日志 |

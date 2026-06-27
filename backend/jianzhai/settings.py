@@ -276,8 +276,13 @@ if not DEBUG and _site_uses_https:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
-# Upload limits (matches non-functional requirements: 50MB)
-DATA_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
-FILE_UPLOAD_MAX_MEMORY_SIZE = 50 * 1024 * 1024
+# Upload limits. Single-file cap is 2 GiB (enforced app-side via
+# apps.editor.views.MAX_UPLOAD_SIZE). DATA_UPLOAD_MAX_MEMORY_SIZE bounds the
+# request body Django will parse, so it must clear the cap too.
+DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024 * 1024  # 2 GiB
+# In-memory buffer threshold ONLY — files larger than this stream to a temp
+# file on disk instead of being held in RAM. Deliberately kept small (NOT 1
+# GiB) so a big upload never balloons memory.
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

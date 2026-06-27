@@ -21,8 +21,8 @@ from .serializers import AttachmentSerializer
 
 logger = logging.getLogger(__name__)
 
-# 50 MB hard limit; matches non-functional requirements
-MAX_UPLOAD_SIZE = 50 * 1024 * 1024
+# 2 GiB hard limit per single file
+MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
 ALLOWED_DOC_EXT = {".pdf", ".doc", ".docx", ".html", ".htm", ".md", ".markdown", ".txt"}
 ALLOWED_OTHER_EXT = {".zip", ".csv", ".json", ".xml"}
@@ -513,7 +513,7 @@ def import_zip(request):
             skipped.append(f"{norm}（不支持的类型）")
             continue
         if info.file_size > MAX_UPLOAD_SIZE:
-            skipped.append(f"{norm}（超过 50MB）")
+            skipped.append(f"{norm}（超过 2GB）")
             continue
         total += info.file_size
         if total > ZIP_MAX_TOTAL_BYTES:
