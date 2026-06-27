@@ -185,6 +185,7 @@ cd backend && python manage.py seed_architecture_kb
 | **MD 本地图片打包** | 导入 `.md` 的 `./images/x.png` 相对图不再 404：整文件夹 / 两步选择器 / ZIP 三入口共用资产打包（图→附件 + 改写为 `/media/`）|
 | **四角色权限体系 RBAC** | 根 / 管理员 / 普通用户 / 匿名（`get_role` 唯一入口 + `IsContentAuthor`/`IsRoot`）；`scope_queryset` 由 owner 隔离改**作者共享单一池**；普通用户=读者；删除分级（删 KB/大类/永久删/清空回收站=仅根）；权威清单 `docs/permissions.md` |
 | **登录三因子 + 滑块验证码** | 登录 = 用户名/密码 + **邮箱匹配** + **服务端古风拼图滑块验证码**（Pillow 生成、Redis 一次性答案、缺口仅由像素传达防脚本）；登录页去 label 紧凑化 + 线条图标焦点高亮 |
+| **用户标签 + KB/大类朋友圈式可见性** | 作者给读者打 `UserTag`（用户列表按标签/搜索筛选，标签对读者隐藏）；KB/大类三态受众 `audience_mode`（全员可见 / 部分不可见 / 仅部分可见，按用户 + 标签定向）——`apps/knowledge/audience.py` 统一收口全部读者入口（列表/直链/搜索/收藏/评论/RSS），作者绕过；受众名单禁含作者（400 防误触） |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）

@@ -17,6 +17,36 @@ class UserProfile(models.Model):
         return f"Profile({self.user_id})"
 
 
+class UserTag(models.Model):
+    """An author-assigned label on reader accounts (WeChat-contact style).
+
+    Global / shared across authors — same role-based shared pool philosophy as
+    the content scoping (``apps.accounts.scoping``): any staff user manages the
+    one tag vocabulary, no per-owner isolation. Tags drive both user-list
+    filtering and the KB/category audience targeting (``include`` / ``exclude``
+    by tag). They are author-facing only; readers never see their own tags.
+
+    The reverse accessor is ``user.account_tags`` — NOT ``user.tags``, which is
+    already taken by ``apps.tags.Tag.owner`` (content tags).
+    """
+
+    name = models.CharField(max_length=50, unique=True)
+    color = models.CharField(max_length=20, blank=True)  # "#1677ff" etc.
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        related_name="account_tags",
+        blank=True,
+    )
+
+    class Meta:
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
 # ── Hero quote settings ────────────────────────────────────────────────────
 #
 # The blog homepage shows a 题记 ("epigraph") banner at the top — one quote

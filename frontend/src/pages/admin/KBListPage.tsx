@@ -26,16 +26,31 @@ import {
 } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import * as kbsApi from '@/api/kbs';
+import * as usersApi from '@/api/users';
 import { formatApiError } from '@/api/client';
-import type { KBCategory, KnowledgeBase, Visibility } from '@/types';
+import type {
+  AudienceMode,
+  KBCategory,
+  KnowledgeBase,
+  User,
+  UserTag,
+  Visibility,
+} from '@/types';
 import ExportDialog from '@/components/common/ExportDialog';
 import TagPicker from '@/components/common/TagPicker';
 import ColorField from '@/components/common/ColorField';
+import AudienceControl from '@/components/admin/AudienceControl';
 import { resolveTagColor } from '@/utils/tagColor';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import { useAuthStore } from '@/stores/auth';
 
 const { Paragraph, Text } = Typography;
+
+type AudienceFormValues = {
+  audience_mode?: AudienceMode;
+  audience_user_ids?: number[];
+  audience_tag_ids?: number[];
+};
 
 type KBFormValues = {
   name: string;
@@ -44,7 +59,13 @@ type KBFormValues = {
   accent_color?: string;
   cover_image?: string;
   category_id?: number | null;
-};
+} & AudienceFormValues;
+
+type CategoryFormValues = {
+  name: string;
+  description?: string;
+  accent_color?: string;
+} & AudienceFormValues;
 
 export default function KBListPage() {
   const navigate = useNavigate();
@@ -60,8 +81,11 @@ export default function KBListPage() {
   const [exportTarget, setExportTarget] = useState<KnowledgeBase | null>(null);
   const [editing, setEditing] = useState<KnowledgeBase | null>(null);
   const [categoryModal, setCategoryModal] = useState(false);
-  const [categoryForm] = Form.useForm<{ name: string; description?: string; accent_color?: string }>();
+  const [categoryForm] = Form.useForm<CategoryFormValues>();
   const [editingCategory, setEditingCategory] = useState<KBCategory | null>(null);
+  // Audience targeting options (WeChat-Moments visibility): readers + user tags.
+  const [audienceUsers, setAudienceUsers] = useState<User[]>([]);
+  const [userTags, setUserTags] = useState<UserTag[]>([]);
 
   async function refresh() {
     setLoading(true);
@@ -76,6 +100,20 @@ export default function KBListPage() {
 
   useEffect(() => {
     void refresh();
+    // Audience pickers need the reader + tag vocabulary; load once. Failures
+    // are non-fatal (the KB form still works, just without targeting options).
+    void (async () => {
+      try {
+        const [u, t] = await Promise.all([usersApi.listUsers(), usersApi.listUserTags()]);
+        // Only readers are targetable — authors (admin/root) share the whole
+        // content pool and always bypass audience filtering, so offering them
+        // here would be a no-op (and confusing).
+        setAudienceUsers(u.filter((x) => !x.is_staff && !x.is_superuser));
+        setUserTags(t);
+      } catch {
+        /* non-fatal */
+      }
+    })();
   }, []);
 
   const grouped = useMemo(() => {
@@ -142,6 +180,9 @@ export default function KBListPage() {
       accent_color: kb.accent_color || '#1677ff',
       cover_image: kb.cover_image,
       category_id: kb.category?.id ?? null,
+      audience_mode: kb.audience_mode ?? 'all',
+      audience_user_ids: (kb.audience_users ?? []).map((u) => u.id),
+      audience_tag_ids: (kb.audience_tags ?? []).map((t) => t.id),
     });
   }
 
@@ -377,6 +418,7 @@ export default function KBListPage() {
           <Form.Item label="主题色" name="accent_color">
             <ColorField />
           </Form.Item>
+          <AudienceControl users={audienceUsers} tags={userTags} />
           {editing && (
             <Form.Item label="标签">
               <TagPicker target={{ kind: 'kb', id: editing.id }} />
@@ -422,6 +464,7 @@ export default function KBListPage() {
           <Form.Item label="主题色" name="accent_color">
             <ColorField />
           </Form.Item>
+          <AudienceControl users={audienceUsers} tags={userTags} />
         </Form>
       </Modal>
 
@@ -452,6 +495,7 @@ export default function KBListPage() {
           <Form.Item label="标题色" name="accent_color">
             <ColorField />
           </Form.Item>
+          <AudienceControl users={audienceUsers} tags={userTags} />
           <Button type="primary" htmlType="submit">
             {editingCategory ? '更新大类' : '添加大类'}
           </Button>
@@ -507,6 +551,9 @@ export default function KBListPage() {
                       name: c.name,
                       description: c.description,
                       accent_color: c.accent_color,
+                      audience_mode: c.audience_mode ?? 'all',
+                      audience_user_ids: (c.audience_users ?? []).map((u) => u.id),
+                      audience_tag_ids: (c.audience_tags ?? []).map((t) => t.id),
                     });
                   }}
                 >

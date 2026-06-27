@@ -2,14 +2,30 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from django.contrib.auth import get_user_model
 from django.db import transaction
 from django.db.models import Value
 from django.db.models.functions import Coalesce, NullIf, Substr
 from django.utils import timezone
 from rest_framework import serializers
 
+from apps.accounts.models import UserTag
+
+User = get_user_model()
+
 from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
+
+
+def _brief_audience_users(obj) -> list[dict]:
+    return [{"id": u.id, "username": u.username} for u in obj.audience_users.all()]
+
+
+def _brief_audience_tags(obj) -> list[dict]:
+    return [
+        {"id": t.id, "name": t.name, "color": t.color}
+        for t in obj.audience_tags.all()
+    ]
 
 # Truncated body head for format detection on list/tree endpoints that
 # ``.defer()`` the full ``raw_content`` / ``published_content`` columns.
@@ -134,7 +150,53 @@ def detect_doc_format(doc: Document) -> str:
     return "markdown"
 
 
-class KnowledgeBaseCategorySerializer(serializers.ModelSerializer):
+class AudienceSerializerMixin(serializers.ModelSerializer):
+    """Shared WeChat-Moments-style audience fields for KB / category.
+
+    Read: ``audience_mode`` + brief ``audience_users`` / ``audience_tags``.
+    Write: ``audience_mode`` + ``audience_user_ids`` / ``audience_tag_ids``
+    (PK lists). DRF's ModelSerializer sets the M2M automatically via ``source``.
+    """
+
+    audience_users = serializers.SerializerMethodField()
+    audience_tags = serializers.SerializerMethodField()
+    audience_user_ids = serializers.PrimaryKeyRelatedField(
+        source="audience_users",
+        queryset=User.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    audience_tag_ids = serializers.PrimaryKeyRelatedField(
+        source="audience_tags",
+        queryset=UserTag.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+
+    def validate_audience_user_ids(self, value):
+        """Reject authors from the audience list — they always bypass the
+        filter (shared content pool), so targeting them is a silent no-op that
+        reads like a bug. Fail loudly instead of accepting a meaningless rule.
+        Tag targeting is left unguarded: a tag may legitimately group readers
+        even if some authors also carry it (authors just bypass regardless)."""
+        staff = [u for u in value if u.is_staff]
+        if staff:
+            names = "、".join(u.username for u in staff)
+            raise serializers.ValidationError(
+                f"管理员（作者）始终可见全部内容，不能加入可见范围名单：{names}"
+            )
+        return value
+
+    def get_audience_users(self, obj) -> list[dict]:
+        return _brief_audience_users(obj)
+
+    def get_audience_tags(self, obj) -> list[dict]:
+        return _brief_audience_tags(obj)
+
+
+class KnowledgeBaseCategorySerializer(AudienceSerializerMixin):
     class Meta:
         model = KnowledgeBaseCategory
         fields = [
@@ -144,13 +206,18 @@ class KnowledgeBaseCategorySerializer(serializers.ModelSerializer):
             "description",
             "accent_color",
             "order",
+            "audience_mode",
+            "audience_users",
+            "audience_tags",
+            "audience_user_ids",
+            "audience_tag_ids",
             "created_at",
             "updated_at",
         ]
         read_only_fields = ["id", "slug", "created_at", "updated_at"]
 
 
-class KnowledgeBaseSerializer(serializers.ModelSerializer):
+class KnowledgeBaseSerializer(AudienceSerializerMixin):
     document_count = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
     category = KnowledgeBaseCategorySerializer(read_only=True)
@@ -176,6 +243,11 @@ class KnowledgeBaseSerializer(serializers.ModelSerializer):
             "category_id",
             "doc_sort_mode",
             "order",
+            "audience_mode",
+            "audience_users",
+            "audience_tags",
+            "audience_user_ids",
+            "audience_tag_ids",
             "document_count",
             "tags",
             "created_at",

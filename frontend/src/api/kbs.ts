@@ -1,5 +1,6 @@
 import { apiClient, ensureCsrf } from './client';
 import type {
+  AudienceWriteFields,
   DocSortMode,
   KBCategory,
   KBTree,
@@ -11,6 +12,10 @@ import type {
 } from '@/types';
 import type { Tag as ApiTag } from './tags';
 
+/** Create/update payloads accept the audience write fields (PK lists). */
+export type KBWritePayload = Partial<KnowledgeBase> & Partial<AudienceWriteFields>;
+export type KBCategoryWritePayload = Partial<KBCategory> & Partial<AudienceWriteFields>;
+
 export async function listKBs(): Promise<KnowledgeBase[]> {
   const { data } = await apiClient.get<Paginated<KnowledgeBase>>('/kbs/');
   return data.results;
@@ -21,7 +26,7 @@ export async function getKB(id: number): Promise<KnowledgeBase> {
   return data;
 }
 
-export async function createKB(payload: Partial<KnowledgeBase>): Promise<KnowledgeBase> {
+export async function createKB(payload: KBWritePayload): Promise<KnowledgeBase> {
   await ensureCsrf();
   const { data } = await apiClient.post<KnowledgeBase>('/kbs/', payload);
   return data;
@@ -29,7 +34,7 @@ export async function createKB(payload: Partial<KnowledgeBase>): Promise<Knowled
 
 export async function updateKB(
   id: number,
-  payload: Partial<KnowledgeBase>
+  payload: KBWritePayload
 ): Promise<KnowledgeBase> {
   await ensureCsrf();
   const { data } = await apiClient.patch<KnowledgeBase>(`/kbs/${id}/`, payload);
@@ -65,7 +70,7 @@ export async function listKBCategories(): Promise<KBCategory[]> {
 }
 
 export async function createKBCategory(
-  payload: Partial<KBCategory>,
+  payload: KBCategoryWritePayload,
 ): Promise<KBCategory> {
   await ensureCsrf();
   const { data } = await apiClient.post<KBCategory>('/kb-categories/', payload);
@@ -74,7 +79,7 @@ export async function createKBCategory(
 
 export async function updateKBCategory(
   id: number,
-  payload: Partial<KBCategory>,
+  payload: KBCategoryWritePayload,
 ): Promise<KBCategory> {
   await ensureCsrf();
   const { data } = await apiClient.patch<KBCategory>(`/kb-categories/${id}/`, payload);

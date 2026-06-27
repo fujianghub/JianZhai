@@ -53,6 +53,7 @@
 7. **友邻闸门**：所有 `/api/v1/public/*` 经 `PublicOrLoginGated`；`SITE_REQUIRE_LOGIN` **默认 `true`**（匿名 403 + 前端跳登录页），设 `false` 才放开匿名。前端 `BlogLayout` 与 `DocLinkResolver`(`/d/:id`) 均按此重定向。
 8. **AI Key 仅后端 `.env`，前端永不持有**；所有调用走 `apps/ai/` 代理。
 9. **登录三因子**：`/api/v1/auth/login/` = 用户名+密码 + **邮箱匹配**（须等于该账号 `User.email`，去空格不区分大小写；无邮箱旧账号跳过）+ **服务端拼图滑块验证码**（`apps/accounts/captcha.py`，Pillow 程序化生成、答案存 Redis 一次性 TTL 120s、缺口仅由像素传达）。先验滑块 → 再验密码/邮箱；任一错统一 401/400 **不泄露是哪项**。取题端点 `GET /auth/captcha/`（独立 `captcha` 限流 30/min；登录仍 `login` 10/min）。前端拖拽**严格 1:1 像素**（改画布尺寸要同步、勿用 CSS scale/zoom 否则对不齐）。无新模型/迁移。
+10. **读者受众可见性（朋友圈式）**：KB 与大类各有 `audience_mode`（`all`/`exclude`/`include`，默认 `all` 向后兼容）+ `audience_users`/`audience_tags`（按用户 + `UserTag` 定向）。`apps/knowledge/audience.py` 的 `visible_documents/visible_kbs/visible_categories` 是**唯一收口点**——所有读者入口（blog `_published_qs`、公开 KB/大类、收藏、评论；search 是作者专属无需收口）都必须经它过滤，新增读者入口务必接入，否则直链/搜索泄露。**作者（`is_staff`）一律绕过**（可见性仅对读者）；文档可见 ⇔ KB 可见且（无大类或大类可见）；匿名白名单不可见、黑名单可见。序列化器禁止把作者加入受众名单（`validate_audience_user_ids` → 400）。用户标签 `UserTag` 反向名是 **`account_tags`**（`User.tags` 已被内容标签 `apps/tags` 占用）。
 
 ---
 
@@ -90,4 +91,4 @@
 
 ---
 
-**最后更新**：2026-06-26（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式）
+**最后更新**：2026-06-27（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式 + 默认要求登录 + 用户标签/KB 大类朋友圈式可见性）

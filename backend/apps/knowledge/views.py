@@ -13,6 +13,7 @@ from apps.accounts.permissions import IsContentAuthor, IsRoot
 from apps.accounts.scoping import scope_queryset
 from apps.editor.models import Attachment
 
+from .audience import visible_documents
 from .concurrency import VersionConflictError
 from .models import Document, DocumentFavorite, Folder, KnowledgeBase, KnowledgeBaseCategory
 from .serializers import (
@@ -75,7 +76,7 @@ class KnowledgeBaseViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
                     filter=Q(documents__is_deleted=False),
                 )
             )
-            .prefetch_related("tags")
+            .prefetch_related("tags", "audience_users", "audience_tags")
         )
 
     def perform_create(self, serializer):
@@ -101,6 +102,10 @@ class KnowledgeBaseCategoryViewSet(OwnerScopedMixin, viewsets.ModelViewSet):
         if self.action == "destroy":
             return [IsRoot()]
         return [IsContentAuthor()]
+
+    def get_queryset(self):
+        # Prefetch the audience M2M to avoid an N+1 when serializing the list.
+        return super().get_queryset().prefetch_related("audience_users", "audience_tags")
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -141,11 +146,14 @@ class DocumentViewSet(viewsets.ModelViewSet):
         if user.is_staff:
             qs = scope_queryset(Document.objects.all(), user)
         else:
-            qs = Document.objects.filter(
-                visibility="public",
-                status="published",
-                knowledge_base__visibility="public",
-                is_deleted=False,
+            qs = visible_documents(
+                Document.objects.filter(
+                    visibility="public",
+                    status="published",
+                    knowledge_base__visibility="public",
+                    is_deleted=False,
+                ),
+                user,
             )
         return get_object_or_404(qs, pk=pk)
 

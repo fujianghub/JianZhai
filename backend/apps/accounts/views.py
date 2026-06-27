@@ -39,7 +39,7 @@ class LoginThrottle(AnonRateThrottle):
     scope = "login"
 
 from .avatar import avatar_storage_name, process_avatar_image
-from .models import UserProfile
+from .models import UserProfile, UserTag
 from .permissions import IsRoot, is_root_admin
 
 User = get_user_model()
@@ -369,6 +369,15 @@ def system_info(request):
     )
 
 
+class UserTagSerializer(serializers.ModelSerializer):
+    """Author-managed labels on reader accounts. Global / shared pool."""
+
+    class Meta:
+        model = UserTag
+        fields = ["id", "name", "color", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
 class UserSerializer(serializers.ModelSerializer):
     # Plain-text on input only — never echoed back. Optional on update.
     password = serializers.CharField(
@@ -379,6 +388,16 @@ class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(required=True, allow_blank=False)
     is_root = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
+    # Author-facing only (this serializer is reachable solely through the
+    # staff-gated UserViewSet — readers never see their own tags).
+    tags = UserTagSerializer(source="account_tags", many=True, read_only=True)
+    tag_ids = serializers.PrimaryKeyRelatedField(
+        queryset=UserTag.objects.all(),
+        many=True,
+        write_only=True,
+        required=False,
+        source="account_tags",
+    )
 
     class Meta:
         model = User
@@ -392,6 +411,8 @@ class UserSerializer(serializers.ModelSerializer):
             "is_active",
             "is_root",
             "role",
+            "tags",
+            "tag_ids",
             "date_joined",
             "last_login",
         ]
@@ -406,21 +427,27 @@ class UserSerializer(serializers.ModelSerializer):
         return get_role(obj)
 
     def create(self, validated_data):
+        tags = validated_data.pop("account_tags", None)
         password = validated_data.pop("password", None)
         if not password:
             raise serializers.ValidationError({"password": "新建用户必须设置密码"})
         user = User(**validated_data)
         user.set_password(password)
         user.save()
+        if tags is not None:
+            user.account_tags.set(tags)
         return user
 
     def update(self, instance, validated_data):
+        tags = validated_data.pop("account_tags", None)
         password = validated_data.pop("password", None)
         for k, v in validated_data.items():
             setattr(instance, k, v)
         if password:
             instance.set_password(password)
         instance.save()
+        if tags is not None:
+            instance.account_tags.set(tags)
         return instance
 
 
@@ -447,13 +474,23 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Visibility scoping: root sees everyone; a non-root admin sees only
         # plain normal users plus themselves (never the root or other admins).
-        qs = User.objects.order_by("id")
-        if is_root_admin(self.request.user):
-            return qs
-        from django.db.models import Q
-        return qs.filter(
-            Q(is_staff=False, is_superuser=False) | Q(pk=self.request.user.pk)
-        )
+        qs = User.objects.order_by("id").prefetch_related("account_tags")
+        if not is_root_admin(self.request.user):
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(is_staff=False, is_superuser=False) | Q(pk=self.request.user.pk)
+            )
+        # WeChat-style filtering: by tag id and/or by username/email search.
+        tag = self.request.query_params.get("tag")
+        if tag:
+            qs = qs.filter(account_tags__id=tag)
+        search = (self.request.query_params.get("search") or "").strip()
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(username__icontains=search) | Q(email__icontains=search)
+            )
+        return qs.distinct()
 
     def perform_create(self, serializer):
         # Only root may mint admins; a non-root admin can create plain users.
@@ -560,3 +597,17 @@ class UserViewSet(viewsets.ModelViewSet):
         target.set_password(new)
         target.save(update_fields=["password"])
         return Response({"ok": True, "detail": f"已重置 {target.username} 的密码"})
+
+
+class UserTagViewSet(viewsets.ModelViewSet):
+    """CRUD for the shared user-tag vocabulary — staff (author) only.
+
+    Tags are global (no per-owner isolation), matching the shared content
+    pool. Assigning a tag to a specific user happens through ``UserViewSet``
+    (``tag_ids``) and is gated by the same ``can_manage_user`` rules; here we
+    only manage the vocabulary itself (create / rename / recolor / delete).
+    """
+
+    queryset = UserTag.objects.all()
+    serializer_class = UserTagSerializer
+    permission_classes = [IsStaffUser]

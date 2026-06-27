@@ -1,9 +1,41 @@
 export type Visibility = 'private' | 'public';
+/** WeChat-Moments-style reader audience for a KB / category. */
+export type AudienceMode = 'all' | 'exclude' | 'include';
 export type DocumentStatus = 'draft' | 'published';
+
+/** Author-assigned label on a reader account (WeChat-contact style). */
+export interface UserTag {
+  id: number;
+  name: string;
+  color: string;
+  created_at?: string;
+}
+
+/** Brief audience target shapes returned by KB/category read serializers. */
+export interface AudienceUserBrief {
+  id: number;
+  username: string;
+}
+export interface AudienceTagBrief {
+  id: number;
+  name: string;
+  color: string;
+}
+export interface AudienceFields {
+  audience_mode: AudienceMode;
+  audience_users: AudienceUserBrief[];
+  audience_tags: AudienceTagBrief[];
+}
+/** Write shape for KB/category audience (PK lists, not nested objects). */
+export interface AudienceWriteFields {
+  audience_mode: AudienceMode;
+  audience_user_ids: number[];
+  audience_tag_ids: number[];
+}
 export type DocFormat = 'markdown' | 'html' | 'pdf' | 'docx' | 'image';
 export type DocSortMode = 'custom' | 'title' | 'created_at' | 'updated_at' | 'doc_format';
 
-export interface KBCategory {
+export interface KBCategory extends Partial<AudienceFields> {
   id: number;
   name: string;
   slug: string;
@@ -33,7 +65,7 @@ export interface PublicTagSummary {
   color: string;
 }
 
-export interface KnowledgeBase {
+export interface KnowledgeBase extends Partial<AudienceFields> {
   id: number;
   name: string;
   slug: string;
@@ -188,6 +220,8 @@ export interface User {
   is_active: boolean;
   is_root?: boolean;
   role?: UserRole;
+  /** Author-assigned labels (author-facing only; never sent to readers). */
+  tags?: UserTag[];
   date_joined: string;
   last_login: string | null;
 }

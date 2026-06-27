@@ -4,6 +4,7 @@ from rest_framework.routers import DefaultRouter
 from .captcha import get_captcha
 from .hero import hero_batch_import, hero_settings
 from .views import (
+    UserTagViewSet,
     UserViewSet,
     avatar_me,
     change_email_me,
@@ -19,6 +20,7 @@ from .views import (
 
 router = DefaultRouter()
 router.register(r"users", UserViewSet, basename="user")
+router.register(r"user-tags", UserTagViewSet, basename="user-tag")
 
 urlpatterns = [
     path("csrf/", csrf, name="auth-csrf"),

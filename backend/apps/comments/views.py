@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from apps.accounts.scoping import scope_queryset
+from apps.knowledge.audience import visible_documents
 from apps.knowledge.models import Document
 
 from .models import Comment
@@ -24,11 +25,14 @@ def _commentable_doc(user, doc_id: int) -> Document:
     if user.is_staff:
         qs = scope_queryset(Document.objects.all(), user)
     else:
-        qs = Document.objects.filter(
-            visibility="public",
-            status="published",
-            knowledge_base__visibility="public",
-            is_deleted=False,
+        qs = visible_documents(
+            Document.objects.filter(
+                visibility="public",
+                status="published",
+                knowledge_base__visibility="public",
+                is_deleted=False,
+            ),
+            user,
         )
     return get_object_or_404(qs, pk=doc_id)
 

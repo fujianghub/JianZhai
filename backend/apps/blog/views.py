@@ -24,6 +24,7 @@ from django.http import HttpResponse
 from django.utils.feedgenerator import Rss201rev2Feed
 from xml.sax.saxutils import escape as xml_escape
 
+from apps.knowledge.audience import visible_categories, visible_documents, visible_kbs
 from apps.knowledge.models import Document, Folder, KnowledgeBase, KnowledgeBaseCategory
 from apps.knowledge.serializers import _FMT_HEAD_EXPR, _favorite_doc_ids_for_user, sort_documents
 from apps.linking.models import DocumentLink
@@ -41,10 +42,11 @@ def _kb_can_manage(kb: KnowledgeBase, user) -> bool:
     return kb.owner_id == user.id
 
 
-def _published_qs(defer_body: bool = False):
+def _published_qs(defer_body: bool = False, *, user=None):
     from django.db.models import Prefetch
 
     from apps.editor.models import Attachment
+    from apps.knowledge.audience import visible_documents
 
     qs = (
         Document.objects.filter(
@@ -64,6 +66,11 @@ def _published_qs(defer_body: bool = False):
         )
         .order_by("-published_at")
     )
+    # Audience gate (WeChat-Moments style): hide KBs/categories the reader
+    # isn't allowed to see. Authors (is_staff) bypass. ``user=None`` is treated
+    # as anonymous (fail-closed) — every reader-facing call site must pass the
+    # request user so logged-in readers keep their whitelist access.
+    qs = visible_documents(qs, user)
     if defer_body:
         # List / tree / archive / sitemap only need metadata + a short excerpt.
         # Defer the big body columns and annotate a truncated head for
@@ -103,7 +110,7 @@ class PublicPostViewSet(
 
     def get_queryset(self):
         # retrieve needs the full body; list only needs excerpt + metadata.
-        qs = _published_qs(defer_body=self.action != "retrieve")
+        qs = _published_qs(defer_body=self.action != "retrieve", user=self.request.user)
         kb_slug = self.request.query_params.get("kb")
         if kb_slug:
             qs = qs.filter(knowledge_base__slug=kb_slug)
@@ -130,12 +137,13 @@ class PublicKBViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
     lookup_field = "slug"
 
     def get_queryset(self):
-        return (
+        return visible_kbs(
             KnowledgeBase.objects.filter(visibility="public")
             .select_related("category")
             .prefetch_related("tags")
             .annotate(_post_count=_POST_COUNT_ANNOTATION)
-            .order_by("order", "id")
+            .order_by("order", "id"),
+            self.request.user,
         )
 
 
@@ -150,11 +158,14 @@ class PublicKBCategoriesView(APIView):
         # Fetch every public KB once (with post counts + tags + category) and
         # group in Python, instead of one annotated query per category.
         all_kbs = list(
-            KnowledgeBase.objects.filter(visibility="public", is_deleted=False)
-            .select_related("category")
-            .prefetch_related("tags")
-            .annotate(_post_count=_POST_COUNT_ANNOTATION)
-            .order_by("order", "id")
+            visible_kbs(
+                KnowledgeBase.objects.filter(visibility="public", is_deleted=False)
+                .select_related("category")
+                .prefetch_related("tags")
+                .annotate(_post_count=_POST_COUNT_ANNOTATION)
+                .order_by("order", "id"),
+                request.user,
+            )
         )
         by_category: dict[int | None, list] = {}
         for kb in all_kbs:
@@ -162,12 +173,19 @@ class PublicKBCategoriesView(APIView):
 
         groups = []
         # Categories that actually have public KBs, in their configured order.
+        # A KB grouped under a category the reader can't see is shown as
+        # uncategorized rather than leaking the hidden category's name.
         seen_cat_ids = {cid for cid in by_category if cid is not None}
+        visible_cat_ids: set[int] = set()
         if seen_cat_ids:
             categories = (
-                KnowledgeBaseCategory.objects.filter(id__in=seen_cat_ids)
+                visible_categories(
+                    KnowledgeBaseCategory.objects.filter(id__in=seen_cat_ids),
+                    request.user,
+                )
                 .order_by("order", "id")
             )
+            visible_cat_ids = {c.id for c in categories}
             for cat in categories:
                 kbs = by_category.get(cat.id, [])
                 if kbs:
@@ -184,7 +202,12 @@ class PublicKBCategoriesView(APIView):
                             "knowledge_bases": PublicKBSerializer(kbs, many=True).data,
                         }
                     )
-        uncategorized = by_category.get(None, [])
+        # Uncategorized = KBs with no category PLUS KBs whose category is hidden
+        # from this reader (so their KBs still surface, just ungrouped).
+        uncategorized = list(by_category.get(None, []))
+        for cid, kbs in by_category.items():
+            if cid is not None and cid not in visible_cat_ids:
+                uncategorized.extend(kbs)
         if uncategorized:
             groups.append(
                 {
@@ -289,9 +312,12 @@ class PublicKBTreeView(APIView):
     permission_classes = [PublicOrLoginGated]
 
     def get(self, request, slug: str):
-        kb = get_object_or_404(KnowledgeBase.objects.filter(visibility="public"), slug=slug)
+        kb = get_object_or_404(
+            visible_kbs(KnowledgeBase.objects.filter(visibility="public"), request.user),
+            slug=slug,
+        )
         docs = list(
-            _published_qs(defer_body=True).filter(knowledge_base=kb)
+            _published_qs(defer_body=True, user=request.user).filter(knowledge_base=kb)
         )
         user = request.user
         folder_tree = _build_public_folder_tree(kb, docs, user=user)
@@ -323,7 +349,7 @@ class PublicPostByIdView(APIView):
     permission_classes = [PublicOrLoginGated]
 
     def get(self, request, doc_id: int):
-        doc = get_object_or_404(_published_qs(), pk=doc_id)
+        doc = get_object_or_404(_published_qs(user=request.user), pk=doc_id)
         return Response({"id": doc.id, "slug": doc.slug, "title": doc.title})
 
 
@@ -332,20 +358,31 @@ class PublicArchiveView(APIView):
 
     permission_classes = [PublicOrLoginGated]
 
-    # User-invariant (no per-user favorite context) public aggregate — cache
-    # with a short TTL so the multi-query bucket build doesn't run per request.
+    # Audience filtering makes the archive reader-dependent, so the cache key
+    # is scoped per audience: authors share one key, anonymous another, and
+    # each logged-in reader their own (visibility can differ by their tags).
     CACHE_KEY = "blog:archive:v1"
     CACHE_TTL = 120
+
+    def _cache_key(self, user) -> str:
+        if getattr(user, "is_staff", False):
+            scope = "author"
+        elif getattr(user, "is_authenticated", False):
+            scope = f"u{user.id}"
+        else:
+            scope = "anon"
+        return f"{self.CACHE_KEY}:{scope}"
 
     def get(self, request):
         from django.core.cache import cache
 
-        cached = cache.get(self.CACHE_KEY)
+        cache_key = self._cache_key(request.user)
+        cached = cache.get(cache_key)
         if cached is not None:
             return Response(cached)
 
         qs = (
-            _published_qs()
+            _published_qs(user=request.user)
             .annotate(month=TruncMonth("published_at"))
             .values("month")
             .annotate(count=Count("id"))
@@ -357,12 +394,12 @@ class PublicArchiveView(APIView):
         ]
         # Attach a lightweight post list to each bucket (capped per group).
         for bucket in buckets:
-            posts = _published_qs(defer_body=True).filter(
+            posts = _published_qs(defer_body=True, user=request.user).filter(
                 published_at__year=bucket["year"],
                 published_at__month=bucket["month"],
             )[:50]
             bucket["posts"] = PublicPostListSerializer(posts, many=True).data
-        cache.set(self.CACHE_KEY, buckets, self.CACHE_TTL)
+        cache.set(cache_key, buckets, self.CACHE_TTL)
         return Response(buckets)
 
 
@@ -392,7 +429,7 @@ def rss_feed(request):
         description="个人知识库与博客",
         language="zh-CN",
     )
-    for d in _published_qs()[:50]:
+    for d in _published_qs(user=request.user)[:50]:
         feed.add_item(
             title=d.title,
             link=request.build_absolute_uri(f"/posts/{d.slug}"),
@@ -410,10 +447,13 @@ class PublicPostRelatedView(APIView):
 
     def get(self, request, slug: str):
         kb_slug = request.query_params.get("kb")
-        post = resolve_public_post_by_slug(_published_qs(), slug, kb_slug)
-        base_qs = _published_qs().exclude(pk=post.pk)
+        post = resolve_public_post_by_slug(_published_qs(user=request.user), slug, kb_slug)
+        base_qs = _published_qs(user=request.user).exclude(pk=post.pk)
         if kb_slug:
             base_qs = base_qs.filter(knowledge_base__slug=kb_slug)
+        # Backlink/mention candidates come from DocumentLink, not _published_qs,
+        # so they need the same audience gate or a hidden KB's doc could leak.
+        audience_ok = visible_documents(Document.objects.all(), request.user)
 
         seen: set[int] = set()
         items: list[dict] = []
@@ -456,6 +496,7 @@ class PublicPostRelatedView(APIView):
                 source__knowledge_base__visibility="public",
                 source__knowledge_base__is_deleted=False,
                 source__is_deleted=False,
+                source__in=audience_ok,
             )
             .order_by("-created_at")[:5]
         ):
@@ -471,6 +512,7 @@ class PublicPostRelatedView(APIView):
                 target__knowledge_base__visibility="public",
                 target__knowledge_base__is_deleted=False,
                 target__is_deleted=False,
+                target__in=audience_ok,
             )
             .order_by("-created_at")[:5]
         ):
@@ -507,7 +549,7 @@ def sitemap_xml(request):
         f"  <url><loc>{xml_escape(site + '/archive')}</loc><changefreq>weekly</changefreq></url>",
         f"  <url><loc>{xml_escape(site + '/tags')}</loc><changefreq>weekly</changefreq></url>",
     ]
-    for d in _published_qs(defer_body=True)[:500]:
+    for d in _published_qs(defer_body=True, user=request.user)[:500]:
         path = f"/posts/{d.slug}"
         if d.knowledge_base.slug:
             path += f"?kb={d.knowledge_base.slug}"
@@ -529,8 +571,8 @@ class PublicPostAdjacentView(APIView):
 
     def get(self, request, slug: str):
         kb_slug = request.query_params.get("kb")
-        post = resolve_public_post_by_slug(_published_qs(), slug, kb_slug)
-        qs = _published_qs()
+        post = resolve_public_post_by_slug(_published_qs(user=request.user), slug, kb_slug)
+        qs = _published_qs(user=request.user)
         # "上一篇" = older (published before this one); qs ordered by -published_at so .first() = most recent older
         older = qs.filter(published_at__lt=post.published_at).first()
         # "下一篇" = newer (published after); need ascending order to get the immediately-next one
@@ -550,7 +592,7 @@ class PublicBacklinksView(APIView):
     permission_classes = [PublicOrLoginGated]
 
     def get(self, request, doc_id: int):
-        target = get_object_or_404(_published_qs(), pk=doc_id)
+        target = get_object_or_404(_published_qs(user=request.user), pk=doc_id)
         links = (
             DocumentLink.objects.filter(target=target)
             .select_related("source", "source__knowledge_base")
@@ -560,6 +602,7 @@ class PublicBacklinksView(APIView):
                 source__knowledge_base__visibility="public",
                 source__knowledge_base__is_deleted=False,
                 source__is_deleted=False,
+                source__in=visible_documents(Document.objects.all(), request.user),
             )
             .order_by("-created_at")
         )

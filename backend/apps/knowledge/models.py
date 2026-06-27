@@ -26,6 +26,18 @@ class AllObjectsManager(models.Manager):
         return SoftDeleteQuerySet(self.model, using=self._db)
 
 
+# Reader-facing audience modes for a KB / category (WeChat-Moments style).
+# ``all`` is the default so existing content keeps its prior "everyone who can
+# reach the blog" behaviour. ``exclude`` = blacklist (hide from the targeted
+# users/tags), ``include`` = whitelist (show only to the targeted users/tags).
+# Targeting + enforcement live in ``apps.knowledge.audience``.
+AUDIENCE_MODES = [
+    ("all", "全员可见"),
+    ("exclude", "部分不可见"),
+    ("include", "仅部分可见"),
+]
+
+
 def _unique_slug(model: type[models.Model], base: str, scope: dict) -> str:
     candidate = slugify(base, allow_unicode=True) or "untitled"
     candidate = candidate[:200]
@@ -50,6 +62,15 @@ class KnowledgeBaseCategory(models.Model):
     description = models.TextField(blank=True)
     accent_color = models.CharField(max_length=20, blank=True)
     order = models.IntegerField(default=0)
+    audience_mode = models.CharField(
+        max_length=10, choices=AUDIENCE_MODES, default="all"
+    )
+    audience_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="+"
+    )
+    audience_tags = models.ManyToManyField(
+        "accounts.UserTag", blank=True, related_name="+"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -107,6 +128,15 @@ class KnowledgeBase(models.Model):
         max_length=20, choices=DOC_SORT_CHOICES, default="custom"
     )
     order = models.IntegerField(default=0)
+    audience_mode = models.CharField(
+        max_length=10, choices=AUDIENCE_MODES, default="all"
+    )
+    audience_users = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, blank=True, related_name="+"
+    )
+    audience_tags = models.ManyToManyField(
+        "accounts.UserTag", blank=True, related_name="+"
+    )
 
     is_deleted = models.BooleanField(default=False)
     deleted_at = models.DateTimeField(null=True, blank=True)
