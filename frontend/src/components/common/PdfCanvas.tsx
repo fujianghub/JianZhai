@@ -21,29 +21,6 @@ import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 
 pdfjs.GlobalWorkerOptions.workerSrc = pdfWorker;
 
-// In dev, bypass Vite's HTTP proxy by talking to the backend directly. The
-// proxy (node-http-proxy under the hood) was observed scrambling responses
-// when the same URL was fetched concurrently — Django logged 4× 200 with the
-// full body, but pdf.js received a 204. Going direct sidesteps that path
-// entirely. Django sets `Access-Control-Allow-Origin: http://localhost:3001`
-// and `…-Allow-Credentials: true`, so cross-origin credentialed XHR is OK.
-const DEV_BACKEND_ORIGIN: string | null = (() => {
-  if (!import.meta.env.DEV) return null;
-  try {
-    const base = import.meta.env.VITE_API_BASE_URL as string | undefined;
-    return new URL(base ?? 'http://localhost:8002/api/v1').origin;
-  } catch {
-    return 'http://localhost:8002';
-  }
-})();
-
-function resolveBackendUrl(url: string): string {
-  if (!DEV_BACKEND_ORIGIN) return url;
-  if (/^https?:\/\//.test(url)) return url;
-  if (url.startsWith('/')) return DEV_BACKEND_ORIGIN + url;
-  return url;
-}
-
 interface Props {
   url: string;
   height?: number | string;
@@ -76,12 +53,15 @@ export default function PdfCanvas({ url, height = 'min(calc(100vh - 200px), 1100
     };
   }, [fullscreen]);
 
-  // Resolve to backend-direct URL in dev (see DEV_BACKEND_ORIGIN above) and
-  // append a per-mount nonce to defeat any stale `(204)` entry the browser
-  // disk cache might have from earlier sessions.
+  // Fetch through the same-origin URL so the request rides the Vite dev proxy
+  // (which bridges /media → the HTTP backend). Going direct to http://…:8002
+  // breaks under `pnpm dev:https` (HTTPS page → HTTP fetch = mixed-content
+  // block → "Failed to fetch") and from LAN devices (their localhost ≠ the
+  // dev host). The proxy's old concurrent-response scrambling is already fixed
+  // by the keep-alive-off agent in vite.config. Append a per-mount nonce to
+  // defeat any stale `(204)` entry the browser disk cache might still hold.
   const fetchUrl = useMemo(() => {
-    const resolved = resolveBackendUrl(url);
-    return resolved + (resolved.includes('?') ? '&' : '?') + '_=' + Date.now();
+    return url + (url.includes('?') ? '&' : '?') + '_=' + Date.now();
   }, [url]);
 
   useEffect(() => {
@@ -93,13 +73,12 @@ export default function PdfCanvas({ url, height = 'min(calc(100vh - 200px), 1100
     setPage(1);
     (async () => {
       try {
-        // Fetch the bytes ourselves so we control credentials/CORS exactly.
-        // pdf.js's internal XHR layer was inconsistent here: on cross-origin
-        // fetches to the dev backend it would surface as "Failed to fetch"
-        // even when curl saw a clean 200 + CORS headers.
+        // Fetch the bytes ourselves so we control credentials exactly, then
+        // hand the ArrayBuffer to pdf.js — its internal XHR layer was flaky
+        // here (surfaced "Failed to fetch" even on a clean 200). Same-origin
+        // request, so the session cookie rides along for the auth gate.
         const resp = await fetch(fetchUrl, {
           credentials: 'include',
-          mode: 'cors',
         });
         if (cancelled) return;
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
