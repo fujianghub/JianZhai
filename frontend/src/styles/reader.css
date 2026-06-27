@@ -326,6 +326,53 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   color: var(--jz-doc-accent, var(--jz-accent)) !important;
   border-left-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 50%, transparent) !important;
 }
+
+/* PDF continuous-scroll page slots — a blank white sheet until the canvas
+   paints. No overflow:hidden so a taller-than-estimated page isn't clipped.
+   scroll-margin keeps a jumped-to page clear of the sticky toolbar. */
+.jz-pdf-page {
+  border-radius: 4px;
+  scroll-margin-top: 56px;
+}
+
+/* PDF reader outline rail — lives inside the canvas flex row (not a sticky page
+   rail like the MD reader's), so it sizes to the canvas height and scrolls on
+   its own. Reuses .jz-toc-link colors for parity with the Markdown TOC. */
+.jz-pdf-toc {
+  flex: 0 0 220px;
+  width: 220px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 10px;
+  background: var(--glass-surface, color-mix(in srgb, var(--jz-surface) 70%, transparent));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  border-left: 3px solid var(--jz-doc-accent, var(--jz-accent));
+  border-radius: 8px;
+  scrollbar-width: thin;
+}
+.jz-pdf-toc::-webkit-scrollbar {
+  width: 6px;
+}
+.jz-pdf-toc::-webkit-scrollbar-thumb {
+  background: var(--glass-divider, var(--jz-divider));
+  border-radius: 3px;
+}
+/* Flow mode: the rail sticks beside the scrolling page (like the MD reader's
+   right rail) instead of stretching the canvas row. */
+.jz-pdf-toc--sticky {
+  position: sticky;
+  top: 56px;
+  align-self: flex-start;
+  max-height: calc(100vh - 72px);
+}
+
+@media (max-width: 720px) {
+  /* Narrow embeds: keep the rail readable but slimmer. */
+  .jz-pdf-toc {
+    flex-basis: 180px;
+    width: 180px;
+  }
+}
 .jz-kb-nav-link:hover {
   background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 6%, transparent) !important;
   color: var(--jz-doc-accent, var(--jz-accent)) !important;

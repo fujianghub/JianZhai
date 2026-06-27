@@ -45,7 +45,8 @@ export default function PublicAttachmentPreview({ att }: { att: PublicAttachment
   };
 
   if (kind === 'pdf') {
-    return <PdfCanvas url={url} />;
+    // Flow into the reading page so the whole page scrolls like a note.
+    return <PdfCanvas url={url} scroll="page" />;
   }
   if (kind === 'image') {
     return (

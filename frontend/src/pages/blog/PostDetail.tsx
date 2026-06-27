@@ -511,6 +511,11 @@ export default function PostDetail() {
     ? !!htmlMeta?.plainText
     : !hasInlineFile && !!post.published_content;
   const htmlOriginalUrl = isHtmlDoc ? post.primary_attachment?.url ?? '' : '';
+  // PDF docs get the same "open in a real browser tab" affordance as HTML —
+  // the native viewer is handy for printing / full-window reading.
+  const isPdfDoc =
+    !isHtmlDoc && !!post.primary_attachment && previewKind(post.primary_attachment) === 'pdf';
+  const pdfOriginalUrl = isPdfDoc ? post.primary_attachment?.url ?? '' : '';
   const showKbRail = kbNavOpen && layoutWide;
   const showTocRail = showToc && tocRailWide;
   // The reader-layout controls (font scale / line-height / measure) only apply
@@ -519,7 +524,8 @@ export default function PostDetail() {
   const isMarkdownReadPath = pageMode === 'read' && !isHtmlDoc && !hasInlineFile;
   // Whether the author-action cluster (edit / full-edit / open-original) is
   // present — drives the hairline separator after the reading toolbar.
-  const hasAuthorActions = canEdit || !!(isHtmlDoc && htmlOriginalUrl);
+  const hasAuthorActions =
+    canEdit || !!(isHtmlDoc && htmlOriginalUrl) || !!(isPdfDoc && pdfOriginalUrl);
 
   const postGridColumns = buildPostGridColumns(
     kbResize.width,
@@ -766,6 +772,22 @@ export default function PostDetail() {
                       ghost
                       icon={<JzExportIcon size={14} strokeWidth={2} />}
                       href={htmlOriginalUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="jz-edit-btn jz-meta-edit-btn"
+                    >
+                      在新标签打开
+                    </Button>
+                  </Tooltip>
+                )}
+                {isPdfDoc && pdfOriginalUrl && (
+                  <Tooltip title="在新标签页用浏览器打开 PDF（原生阅读器）">
+                    <Button
+                      size="small"
+                      type="primary"
+                      ghost
+                      icon={<JzExportIcon size={14} strokeWidth={2} />}
+                      href={pdfOriginalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="jz-edit-btn jz-meta-edit-btn"

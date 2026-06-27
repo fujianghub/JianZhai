@@ -15,6 +15,7 @@ const PdfCanvas = lazy(() => import('./PdfCanvas'));
 interface Props {
   url: string;
   height?: number | string;
+  scroll?: 'inner' | 'page';
 }
 
 export default function LazyPdfCanvas(props: Props) {
