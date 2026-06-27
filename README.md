@@ -36,6 +36,7 @@
 | **评论** | 文档级 + 段落级（`block_id`） |
 | **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG**（HTML/PDF/静态站，headless Chromium + vendored mermaid，缺失时降级源码面板）；PlantUML 仍为代码块 |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；4 套主题 + 纸张样式；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
+| **阅读器定制** | 读者侧分组工具条（字体/纸张/排版/专注，等高 28px）；**排版三件套**字号缩放 / 行距 / 版心宽度 + 一键重置（落 localStorage、CSS 变量 scope 到 `<article>`、不触碰文档）；**专注/沉浸模式**隐藏导航与侧栏、Esc 退出；阅读进度条带百分比 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
 | **账号 / 权限** | **四角色 RBAC**：根（唯一、不可禁用/删除、独占删 KB/大类/永久删/清空回收站）/ 管理员（作者，共享内容池）/ 普通用户（读者，无创作权）/ 匿名；用户管理可见范围按角色收口；新建账号**邮箱必填**；自助改密码/邮箱/用户名/头像。**登录三因子**：密码 + 邮箱匹配 + 服务端拼图滑块验证码。详见 [docs/permissions.md](docs/permissions.md) |
 | **组织** | KB **大类**分组、文档置顶、收藏夹（博客 `/favorites` + 后台侧栏「收藏」入口）、多种排序、回收站 UI |
@@ -185,6 +186,7 @@ cd backend && python manage.py seed_architecture_kb
 | **MD 本地图片打包** | 导入 `.md` 的 `./images/x.png` 相对图不再 404：整文件夹 / 两步选择器 / ZIP 三入口共用资产打包（图→附件 + 改写为 `/media/`）|
 | **四角色权限体系 RBAC** | 根 / 管理员 / 普通用户 / 匿名（`get_role` 唯一入口 + `IsContentAuthor`/`IsRoot`）；`scope_queryset` 由 owner 隔离改**作者共享单一池**；普通用户=读者；删除分级（删 KB/大类/永久删/清空回收站=仅根）；权威清单 `docs/permissions.md` |
 | **登录三因子 + 滑块验证码** | 登录 = 用户名/密码 + **邮箱匹配** + **服务端古风拼图滑块验证码**（Pillow 生成、Redis 一次性答案、缺口仅由像素传达防脚本）；登录页去 label 紧凑化 + 线条图标焦点高亮 |
+| **阅读排版定制 + 专注模式** | 博客阅读设置收为分组工具条胶囊；**排版三件套**字号缩放 / 行距 / 版心宽度 + 一键重置（CSS 变量 scope 到 `<article>`、仅 Markdown 阅读路径）；专注/沉浸阅读模式（隐藏导航与侧栏、Esc 退出）；阅读进度条加百分比 |
 | **用户标签 + KB/大类朋友圈式可见性** | 作者给读者打 `UserTag`（用户列表按标签/搜索筛选，标签对读者隐藏）；KB/大类三态受众 `audience_mode`（全员可见 / 部分不可见 / 仅部分可见，按用户 + 标签定向）——`apps/knowledge/audience.py` 统一收口全部读者入口（列表/直链/搜索/收藏/评论/RSS），作者绕过；受众名单禁含作者（400 防误触） |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 

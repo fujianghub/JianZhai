@@ -71,7 +71,25 @@ class HeroSettings(models.Model):
 
 ---
 
-## 5. favicon + PWA
+## 5. 博客阅读器体验（v0.9.11，2026-06-26）
+
+读者侧（`pages/blog/PostDetail.tsx`）阅读设置收为一条等高 28px 分组工具条胶囊 `.jz-reader-toolbar`，与「编辑」钮同高，四组并排：
+
+| 组 | 组件 | 图标 | 作用 |
+|----|------|------|------|
+| 字体 | `ReaderFontPicker` | `FontColors` | 正文字体族（`articleFont.ts`） |
+| 纸张 | `PaperPicker` | `File` 纸页 | 纸张底纹（`paper.ts`） |
+| 排版 | `ReaderLayoutPicker` | — | 字号缩放 / 行距 / 版心宽度 + 一键重置 |
+| 专注 | toggle | `Eye` | 沉浸阅读模式 |
+
+- **排版三件套**（`utils/readerLayout.ts`）：字号 5 档 `FONT_SCALE_STEPS` 步进、行距 3 档（紧凑/标准/宽松）、版心 3 档（窄 720 / 适中 860 / 满栏 100%，默认满栏）。落 `localStorage`、以 CSS 变量写在 `<article>` 上 scope 到当前读者视图，**绝不触碰持久化文档**。
+- **仅 Markdown 阅读路径消费**：HTML 阅读器在 sandbox iframe 内，父页无法 restyle；二进制预览无正文可缩放。
+- **专注模式**：`focusMode` 给 `<body>` 挂 `.jz-reader-focus` 类（样式表据此隐藏导航栏与侧栏），`Esc` 退出，右下角退出 FAB `.jz-focus-exit-fab`。
+- 阅读进度条 `ReadingProgressBar` 带百分比读数。
+
+---
+
+## 6. favicon + PWA
 
 - `public/favicon.svg` — 朱砂印章（径向渐变印泥 + 颗粒滤镜 + 四角磨痕 + 双线印框 + 压痕「簡」）
 - `public/manifest.webmanifest` + apple-touch-icon + theme-color
@@ -79,7 +97,7 @@ class HeroSettings(models.Model):
 
 ---
 
-## 6. 布局要点
+## 7. 布局要点
 
 - **完整编辑两栏铺满**（≥1280）：editor `flex:1`、大纲改流内 sticky 右栏、正文限宽 860 居中
 - **坑**：`.jz-doc-body` 内联 `flexDirection` 会盖掉 CSS media query，必须删（见 memory `project_doc_editor_fill_layout`）
