@@ -762,11 +762,13 @@ export default function PostDetail() {
                   <Tooltip title="在新标签页打开原 HTML 文件（浏览器原生体验）">
                     <Button
                       size="small"
+                      type="primary"
+                      ghost
                       icon={<JzExportIcon size={14} strokeWidth={2} />}
                       href={htmlOriginalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="jz-meta-edit-btn"
+                      className="jz-edit-btn jz-meta-edit-btn"
                     >
                       在新标签打开
                     </Button>
