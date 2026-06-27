@@ -65,8 +65,12 @@ def public_post(public_kb):
 # ── 1. friend gate on feed/sitemap ──────────────────────────────────────
 
 
+@override_settings(SITE_REQUIRE_LOGIN=False)
 @pytest.mark.django_db
-def test_feed_and_sitemap_open_by_default(api_client, public_post):
+def test_feed_and_sitemap_open_when_gate_off(api_client, public_post):
+    """With the friends-only gate explicitly disabled, feed/sitemap are
+    open to anonymous visitors. (The product default is now gated — see
+    test_feed_and_sitemap_gated_when_friends_only.)"""
     assert api_client.get("/feed.xml").status_code == 200
     assert api_client.get("/sitemap.xml").status_code == 200
 
@@ -87,6 +91,7 @@ def test_feed_and_sitemap_gated_when_friends_only(api_client, owner, public_post
 # ── 2. public端不得回退到 raw_content ───────────────────────────────────
 
 
+@override_settings(SITE_REQUIRE_LOGIN=False)
 @pytest.mark.django_db
 def test_public_html_post_never_serves_raw_content(api_client, public_kb):
     """An HTML-format published doc whose published_content is empty must NOT

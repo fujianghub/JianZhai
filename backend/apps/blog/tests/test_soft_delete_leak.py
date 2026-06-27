@@ -14,6 +14,13 @@ from apps.knowledge.models import Document, KnowledgeBase
 User = pytest.importorskip("django.contrib.auth").get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def _open_blog(settings):
+    """Anonymous public-blog regression tests; the product default now
+    gates the blog, so open it for this module."""
+    settings.SITE_REQUIRE_LOGIN = False
+
+
 @pytest.fixture
 def api_client():
     return APIClient()

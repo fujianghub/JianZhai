@@ -17,6 +17,13 @@ pytestmark = pytest.mark.django_db
 User = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def _open_blog(settings):
+    """These cache tests exercise anonymous public endpoints; the product
+    default now gates them, so open the blog for this module."""
+    settings.SITE_REQUIRE_LOGIN = False
+
+
 def _public_doc():
     owner = User.objects.create_user("pub", "pub@e.com", "x")
     kb = KnowledgeBase.objects.create(

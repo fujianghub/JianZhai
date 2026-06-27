@@ -23,13 +23,24 @@ def alice(db):
 # ── Session endpoint surfaces the flag ────────────────────────────────
 
 
-def test_session_endpoint_includes_require_login_default_false(db):
+def test_session_endpoint_includes_require_login_default_true(db):
+    """The product default is friends-only: with no env override the
+    session endpoint must advertise ``require_login: true`` so the SPA
+    bounces anonymous visitors to the login page."""
     c = APIClient()
     r = c.get("/api/v1/auth/session/")
     assert r.status_code == 200
     body = r.json()
     assert body["authenticated"] is False
-    assert body["require_login"] is False
+    assert body["require_login"] is True
+
+
+def test_blog_public_endpoints_closed_by_default(db):
+    """Pin the production default: without any ``SITE_REQUIRE_LOGIN``
+    override, anonymous access to a public endpoint is gated."""
+    c = APIClient()
+    r = c.get("/api/v1/public/posts/")
+    assert r.status_code in {401, 403}
 
 
 @override_settings(SITE_REQUIRE_LOGIN=True)

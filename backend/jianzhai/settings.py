@@ -48,12 +48,12 @@ SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 DEBUG = _env_bool("DEBUG", default=True)
 ALLOWED_HOSTS = _env_list("ALLOWED_HOSTS", ["localhost", "127.0.0.1"])
 
-# v0.9.8 — private-blog mode. When ``true`` (production default for the
-# friends-only deployment), every ``/api/v1/public/*`` endpoint requires a
-# logged-in session; the frontend SPA's BlogLayout redirects anonymous
-# visitors to /admin/login.  Local dev defaults to false so contributors
-# don't need to log in just to view the homepage.
-SITE_REQUIRE_LOGIN = _env_bool("SITE_REQUIRE_LOGIN", default=False)
+# v0.9.8 — private-blog mode. When ``true`` (the default), every
+# ``/api/v1/public/*`` endpoint requires a logged-in session and the
+# frontend SPA's BlogLayout redirects anonymous visitors to /admin/login —
+# so no article is visible without logging in. Set ``SITE_REQUIRE_LOGIN=false``
+# in .env to open the blog back up to anonymous visitors.
+SITE_REQUIRE_LOGIN = _env_bool("SITE_REQUIRE_LOGIN", default=True)
 
 # v0.9.9 — "root admin" identity. The user whose username matches this
 # value is the only one who can disable / reset-password / demote OTHER

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.test import override_settings
 from rest_framework.test import APIClient
 
 from apps.accounts.hero import _parse_batch_lines, _split_attribution
@@ -213,6 +214,7 @@ def anon_client():
     return APIClient()
 
 
+@override_settings(SITE_REQUIRE_LOGIN=False)
 def test_public_hero_unauthenticated_ok(anon_client, db):
     r = anon_client.get("/api/v1/public/hero/")
     assert r.status_code == 200
@@ -404,6 +406,7 @@ def test_play_order_defaults_to_random():
     assert HeroSettings.load().play_order == "random"
 
 
+@override_settings(SITE_REQUIRE_LOGIN=False)
 def test_public_hero_includes_play_order(anon_client, db):
     body = anon_client.get("/api/v1/public/hero/").json()
     assert body["play_order"] == "random"

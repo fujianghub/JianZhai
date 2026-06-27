@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Result, Spin } from 'antd';
-import { Navigate, useParams } from 'react-router-dom';
+import { Navigate, useLocation, useParams } from 'react-router-dom';
 import { getDocument } from '@/api/docs';
 import { resolvePublicById } from '@/api/linking';
 import { useAuthStore } from '@/stores/auth';
@@ -20,7 +20,8 @@ type Resolution =
  */
 export default function DocLinkResolver() {
   const { id } = useParams<{ id: string }>();
-  const { user, loaded, loadSession } = useAuthStore();
+  const { user, loaded, loadSession, requireLogin } = useAuthStore();
+  const location = useLocation();
   const [resolution, setResolution] = useState<Resolution>(null);
 
   useEffect(() => {
@@ -62,6 +63,11 @@ export default function DocLinkResolver() {
     };
   }, [loaded, user, id]);
 
+  // Friends-only mode (SITE_REQUIRE_LOGIN): /d/:id lives outside BlogLayout,
+  // so bounce anonymous visitors to the login page just like BlogLayout does.
+  if (loaded && requireLogin && !user) {
+    return <Navigate to="/admin/login" replace state={{ from: location.pathname }} />;
+  }
   if (!loaded || resolution === null) {
     return (
       <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh' }}>
