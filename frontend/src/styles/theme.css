@@ -999,9 +999,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 
 .jz-hero-sub {
-  margin-top: 20px;        /* 36 → 20 */
-  padding-top: 14px;       /* 20 → 14 */
-  border-top: 1px dashed var(--jz-divider);
+  margin-top: 24px;        /* 题记与藏经阁间距：去虚线后并入此处 */
+  padding-top: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
