@@ -103,19 +103,6 @@ interface Mote {
   maxLife: number;
 }
 /** a big soft defocused foreground orb */
-interface Bokeh {
-  x: number;
-  y: number;
-  r: number;
-  ramp: RGB[];
-  u: number;
-  phase: number;
-  driftX: number;
-  driftY: number;
-  driftSpeed: number;
-  a: number;
-}
-
 /** lerp two RGB triples */
 function mix(c1: RGB, c2: RGB, t: number): RGB {
   return [c1[0] + (c2[0] - c1[0]) * t, c1[1] + (c2[1] - c1[1]) * t, c1[2] + (c2[2] - c1[2]) * t];
@@ -188,7 +175,6 @@ function buildStarry(
   let stars: Star[] = [];
   let nebulae: Nebula[] = [];
   let motes: Mote[] = [];
-  let bokeh: Bokeh[] = [];
   let planets: Planet[] = [];
   const shooting: Shooting[] = [];
   let nextShoot = rand(1.5, 4);
@@ -309,12 +295,12 @@ function buildStarry(
       };
     }
 
-    const n = w < 720 ? 2 : 3;
+    const n = w < 720 ? 6 : 10; // density ×2 (cloud count doubled)
     for (let i = 0; i < n; i++) {
       const [cx, cy] = bandPoint(rand(-0.55, 0.55), rand(-0.6, 0.6));
       const puffs: NebulaPuff[] = [];
-      const baseN = 2 + ((Math.random() * 2) | 0); // 2–3 soft round base puffs
-      const wispN = 3 + ((Math.random() * 2) | 0); // 3–4 wispy filaments
+      const baseN = 3 + ((Math.random() * 2) | 0); // 3–4 soft round base puffs (+50%)
+      const wispN = 5 + ((Math.random() * 2) | 0); // 5–6 wispy filaments (+50%)
       for (let j = 0; j < baseN; j++) puffs.push(makePuff('base'));
       for (let j = 0; j < wispN; j++) puffs.push(makePuff('wisp'));
       puffs.push(makePuff('core'));
@@ -322,7 +308,7 @@ function buildStarry(
         x: cx,
         y: cy,
         ramp: pickRamp(),
-        a: rand(0.1, 0.17),
+        a: rand(0.05, 0.085), // brightness −50%
         phase: rand(0, TAU),
         driftX: rand(18, 42),
         driftY: rand(14, 32),
@@ -353,7 +339,7 @@ function buildStarry(
       x: ax,
       y: ay,
       ramp: pickRamp(),
-      a: 0.05,
+      a: 0.025, // ambient wash brightness −50%
       phase: rand(0, TAU),
       driftX: rand(20, 40),
       driftY: rand(12, 26),
@@ -383,25 +369,6 @@ function buildStarry(
     motes = Array.from({ length: n }, () => makeMote(true));
   }
 
-  function buildBokeh() {
-    const n = w < 720 ? 4 : 6;
-    bokeh = Array.from({ length: n }, () => {
-      const [x, y] = bandPoint(rand(-0.7, 0.7), rand(-0.85, 0.85));
-      return {
-        x,
-        y,
-        r: rand(42, 92),
-        ramp: pickRamp(),
-        u: rand(0, 1),
-        phase: rand(0, TAU),
-        driftX: rand(22, 52),
-        driftY: rand(14, 34),
-        driftSpeed: rand(0.01, 0.026),
-        a: rand(0.04, 0.09),
-      };
-    });
-  }
-
   function buildPlanets() {
     const palette: ReadonlyArray<[number, number, number]> = [
       [255, 180, 140],
@@ -425,7 +392,6 @@ function buildStarry(
   buildField();
   buildNebulae();
   buildMotes();
-  buildBokeh();
   buildPlanets();
 
   function spawnShoot() {
@@ -512,7 +478,6 @@ function buildStarry(
       buildField();
       buildNebulae();
       buildMotes();
-      buildBokeh();
       buildPlanets();
     },
     frame(dt, t) {
@@ -545,28 +510,28 @@ function buildStarry(
           const u2 = p.u + 0.18 * Math.sin(t * 0.05 + p.phase + n.phase);
           let col = rampColor(n.ramp, u2);
           if (p.core) {
-            a *= 1.8;
+            a *= 1.3;
             col = mix(col, WARM, 0.45); // warm glowing heart
             const [hr, hg, hb] = mix(col, WARM, 0.3);
             // soft bloom halo
             const bloomR = rr * 3;
             const bg = ctx.createRadialGradient(px, py, 0, px, py, bloomR);
-            bg.addColorStop(0, `rgba(${hr | 0},${hg | 0},${hb | 0},${a * 0.5})`);
+            bg.addColorStop(0, `rgba(${hr | 0},${hg | 0},${hb | 0},${a * 0.3})`);
             bg.addColorStop(1, `rgba(${hr | 0},${hg | 0},${hb | 0},0)`);
             ctx.fillStyle = bg;
             ctx.beginPath();
             ctx.arc(px, py, bloomR, 0, TAU);
             ctx.fill();
             // radiating light shafts, slowly rotating + pulsing
-            for (let s = 0; s < 5; s++) {
-              const sa = (s / 5) * TAU + t * 0.05 + n.phase;
+            for (let s = 0; s < 3; s++) {
+              const sa = (s / 3) * TAU + t * 0.05 + n.phase;
               const len = rr * (2.4 + 0.6 * Math.sin(t * 0.6 + s));
               ctx.save();
               ctx.translate(px, py);
               ctx.rotate(sa);
               ctx.scale(1, 0.12); // thin ray
               const sg = ctx.createRadialGradient(0, 0, 0, 0, 0, len);
-              sg.addColorStop(0, `rgba(${hr | 0},${hg | 0},${hb | 0},${a * 0.35})`);
+              sg.addColorStop(0, `rgba(${hr | 0},${hg | 0},${hb | 0},${a * 0.2})`);
               sg.addColorStop(1, `rgba(${hr | 0},${hg | 0},${hb | 0},0)`);
               ctx.fillStyle = sg;
               ctx.beginPath();
@@ -621,25 +586,6 @@ function buildStarry(
         ctx.fill();
       }
 
-      // ── bokeh: big soft defocused foreground orbs (hollow bright rim) ──
-      ctx.globalCompositeOperation = 'lighter';
-      for (const bk of bokeh) {
-        const px = bk.x + Math.sin(t * bk.driftSpeed + bk.phase) * bk.driftX + pointer.x * 24;
-        const py =
-          bk.y + Math.cos(t * bk.driftSpeed * 0.85 + bk.phase) * bk.driftY + pointer.y * 16 + scrollShift(0.14);
-        const [r, g, b] = rampColor(bk.ramp, bk.u);
-        const a = bk.a * (0.8 + 0.2 * Math.sin(t * 0.2 + bk.phase));
-        const grad = ctx.createRadialGradient(px, py, 0, px, py, bk.r);
-        grad.addColorStop(0, `rgba(${r | 0},${g | 0},${b | 0},${a * 0.35})`);
-        grad.addColorStop(0.7, `rgba(${r | 0},${g | 0},${b | 0},${a * 0.5})`);
-        grad.addColorStop(0.92, `rgba(${r | 0},${g | 0},${b | 0},${a})`);
-        grad.addColorStop(1, `rgba(${r | 0},${g | 0},${b | 0},0)`);
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(px, py, bk.r, 0, TAU);
-        ctx.fill();
-      }
-
       drawMoon();
 
       // ── stars: wheel + scintillation + parallax + chromatic spikes ──
@@ -662,32 +608,33 @@ function buildStarry(
         let spike = 0;
         if (s.scint) {
           spike = Math.pow(Math.max(0, Math.sin(t * s.spikeFreq + s.twPhase)), 24);
-          bri += spike * 1.4;
+          bri += spike * 0.8;
         }
-        const a = Math.min(1, s.baseA * bri);
+        let a = Math.min(0.8, s.baseA * bri);
+        if (s.bright) a *= 0.5; // dim the standout bright stars −50%
         const [r, g, b] = STAR_COLORS[s.ci];
         if (s.bright) {
-          blitGlow(ctx, sprites[s.ci], x, y, s.r * 6, a * 0.6);
+          blitGlow(ctx, sprites[s.ci], x, y, s.r * 6, a * 0.4);
           if (s.r > 2.4) {
             const len = s.r * 7 * (0.6 + 0.6 * tw);
             // chromatic diffraction spikes: red/blue offset when scintillating
             const off = 0.6 + spike * 1.5;
             ctx.lineWidth = 0.8;
-            ctx.strokeStyle = `rgba(255,120,120,${a * 0.4})`;
+            ctx.strokeStyle = `rgba(255,120,120,${a * 0.25})`;
             ctx.beginPath();
             ctx.moveTo(x - len, y - off);
             ctx.lineTo(x + len, y - off);
             ctx.moveTo(x - off, y - len);
             ctx.lineTo(x - off, y + len);
             ctx.stroke();
-            ctx.strokeStyle = `rgba(120,160,255,${a * 0.4})`;
+            ctx.strokeStyle = `rgba(120,160,255,${a * 0.25})`;
             ctx.beginPath();
             ctx.moveTo(x - len, y + off);
             ctx.lineTo(x + len, y + off);
             ctx.moveTo(x + off, y - len);
             ctx.lineTo(x + off, y + len);
             ctx.stroke();
-            ctx.strokeStyle = `rgba(255,255,255,${a * 0.6})`;
+            ctx.strokeStyle = `rgba(255,255,255,${a * 0.4})`;
             ctx.beginPath();
             ctx.moveTo(x - len, y);
             ctx.lineTo(x + len, y);
