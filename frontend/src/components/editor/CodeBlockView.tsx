@@ -106,14 +106,13 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
   // theme/accent switch must bust the de-dup guard and re-render. PlantUML
   // output is theme-independent — keep its key theme-free to avoid refetches.
   const themeMode = useThemeStore((s) => s.mode);
-  const accentKey = useThemeStore((s) => s.accent.key);
   // A pinned graphic theme bakes its own palette, so it must bust the de-dup
   // guard too — otherwise switching theme on an unchanged source wouldn't
-  // re-render. When pinned, the doc theme/accent are irrelevant to the output.
+  // re-render. When pinned, the doc theme is irrelevant to the output.
   const renderKey = isMermaid
     ? graphicTheme
       ? `mt:${graphicTheme}\n${debouncedSource}`
-      : `${themeMode}|${accentKey}\n${debouncedSource}`
+      : `${themeMode}\n${debouncedSource}`
     : debouncedSource;
   useEffect(() => {
     if (!isDiagram || !showDiagramPreview || collapsed) return;

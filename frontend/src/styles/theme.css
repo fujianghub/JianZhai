@@ -4028,3 +4028,73 @@ a.jz-meta-full-edit-btn:focus-visible {
     min-height: 112px;
   }
 }
+
+/* ── 主题切换器 ── 单按钮 + 下拉菜单（图标按主题专属色调） */
+.jz-theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 11px;
+  border-radius: 9px;
+  border: 1px solid var(--jz-border);
+  background: transparent;
+  color: var(--jz-text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  transition:
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+.jz-theme-switch:hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-border));
+  background: color-mix(in srgb, var(--jz-accent) 9%, transparent);
+  color: var(--jz-text);
+  box-shadow: 0 1px 8px color-mix(in srgb, var(--jz-accent) 16%, transparent);
+}
+.jz-theme-switch:active {
+  transform: translateY(0.5px);
+}
+.jz-theme-switch__ico {
+  display: inline-flex;
+  font-size: 15px;
+  transition: transform 0.25s ease;
+}
+.jz-theme-switch:hover .jz-theme-switch__ico {
+  transform: rotate(-12deg) scale(1.08);
+}
+.jz-theme-switch__caret {
+  font-size: 10px;
+  opacity: 0.5;
+  transition: opacity 0.2s ease;
+}
+.jz-theme-switch:hover .jz-theme-switch__caret {
+  opacity: 0.85;
+}
+
+/* 下拉菜单项：标签 + 当前项对勾 */
+.jz-theme-menu .ant-dropdown-menu {
+  min-width: 132px;
+  padding: 5px;
+  border-radius: 11px;
+}
+.jz-theme-menu .ant-dropdown-menu-item {
+  border-radius: 7px;
+}
+.jz-theme-menu .ant-dropdown-menu-item .ant-dropdown-menu-item-icon {
+  font-size: 15px;
+}
+.jz-theme-item {
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  min-width: 70px;
+}
+.jz-theme-check {
+  font-size: 12px;
+  color: var(--jz-accent);
+}

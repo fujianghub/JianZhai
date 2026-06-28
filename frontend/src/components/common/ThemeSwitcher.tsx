@@ -1,11 +1,13 @@
-import { Popover, Segmented, Space, Tooltip } from 'antd';
+import { Dropdown } from 'antd';
+import type { MenuProps } from 'antd';
 import {
-  BgColorsOutlined,
+  CheckOutlined,
+  DownOutlined,
   MoonOutlined,
   StarOutlined,
   SunOutlined,
 } from '@ant-design/icons';
-import { ACCENT_PRESETS, useThemeStore, type ThemeMode } from '@/stores/theme';
+import { useThemeStore, type ThemeMode } from '@/stores/theme';
 
 /** Inline wave SVG — antd has no first-class water/wave icon. */
 function WaveIcon() {
@@ -35,6 +37,16 @@ function WaveIcon() {
   );
 }
 
+/** Each theme carries a signature hue so the menu reads at a glance and the
+ * trigger echoes the active theme. starry/deepsea mirror the colorPrimary set
+ * in main.tsx; light/dark use legible mid-tones that work on either menu bg. */
+const THEME_TINT: Record<ThemeMode, string> = {
+  light: '#f0a020', // 暖金 · 日
+  dark: '#7b8bd4', // 靛蓝 · 月
+  starry: '#c79bff', // 紫 · 星
+  deepsea: '#2bc3ad', // 青 · 浪
+};
+
 const MODE_OPTIONS = [
   { value: 'light',   label: '亮色',   icon: <SunOutlined /> },
   { value: 'dark',    label: '暗色',   icon: <MoonOutlined /> },
@@ -43,75 +55,43 @@ const MODE_OPTIONS = [
 ] as const;
 
 export default function ThemeSwitcher() {
-  const { mode, accent, setMode, setAccent } = useThemeStore();
+  const { mode, setMode } = useThemeStore();
+  const current = MODE_OPTIONS.find((o) => o.value === mode) ?? MODE_OPTIONS[0];
 
-  const palette = (
-    <div style={{ width: 220 }}>
-      <div style={{ marginBottom: 8, color: 'var(--jz-text-muted)', fontSize: 12 }}>主题色</div>
-      <Space wrap>
-        {ACCENT_PRESETS.map((p) => (
-          <Tooltip key={p.key} title={p.label}>
-            <button
-              type="button"
-              onClick={() => setAccent(p.key)}
-              aria-label={p.label}
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: '50%',
-                border:
-                  accent.key === p.key ? '2px solid var(--jz-accent)' : '2px solid transparent',
-                background: p.color,
-                cursor: 'pointer',
-                padding: 0,
-                outline: 'none',
-                boxShadow: '0 1px 4px rgba(0,0,0,0.15)',
-              }}
-            />
-          </Tooltip>
-        ))}
-      </Space>
-    </div>
-  );
+  const items: MenuProps['items'] = MODE_OPTIONS.map((o) => ({
+    key: o.value,
+    icon: (
+      <span style={{ color: THEME_TINT[o.value], display: 'inline-flex', fontSize: 15 }}>
+        {o.icon}
+      </span>
+    ),
+    label: (
+      <span className="jz-theme-item">
+        <span>{o.label}</span>
+        {o.value === mode && <CheckOutlined className="jz-theme-check" />}
+      </span>
+    ),
+  }));
 
   return (
-    <Space size={8} align="center">
-      <Segmented
-        size="small"
-        value={mode}
-        onChange={(v) => setMode(v as ThemeMode)}
-        options={MODE_OPTIONS.map((o) => ({
-          value: o.value,
-          label: (
-            <Tooltip title={o.label}>
-              <span style={{ display: 'inline-flex', padding: '0 2px', fontSize: 14 }}>
-                {o.icon}
-              </span>
-            </Tooltip>
-          ),
-        }))}
-      />
-      <Popover content={palette} trigger="click" placement="bottomRight">
-        <Tooltip title="主题色">
-          <button
-            type="button"
-            aria-label="主题色"
-            style={{
-              width: 28,
-              height: 28,
-              borderRadius: '50%',
-              border: '1px solid var(--jz-border)',
-              background: 'transparent',
-              color: 'var(--jz-text-muted)',
-              cursor: 'pointer',
-              display: 'inline-grid',
-              placeItems: 'center',
-            }}
-          >
-            <BgColorsOutlined />
-          </button>
-        </Tooltip>
-      </Popover>
-    </Space>
+    <Dropdown
+      trigger={['click']}
+      placement="bottomRight"
+      overlayClassName="jz-theme-menu"
+      menu={{
+        items,
+        selectable: true,
+        selectedKeys: [mode],
+        onClick: ({ key }) => setMode(key as ThemeMode),
+      }}
+    >
+      <button type="button" className="jz-theme-switch" aria-label="主题" title="主题">
+        <span className="jz-theme-switch__ico" style={{ color: THEME_TINT[current.value] }}>
+          {current.icon}
+        </span>
+        <span className="jz-theme-switch__txt">主题</span>
+        <DownOutlined className="jz-theme-switch__caret" />
+      </button>
+    </Dropdown>
   );
 }

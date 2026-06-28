@@ -41,7 +41,6 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
   // theme-independent and skip the round-trip via the data-rendered-for
   // guard in hydratePlantuml.
   const themeMode = useThemeStore((s) => s.mode);
-  const accentKey = useThemeStore((s) => s.accent.key);
   useEffect(() => {
     const root = document.querySelector(containerSelector);
     if (!root) return;
@@ -62,7 +61,7 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
         // (mermaid bakes colours into the SVG). A per-diagram pinned palette
         // (data-mermaid-theme) overrides the doc theme/accent in the signature.
         const graphicTheme = block.dataset.mermaidTheme ?? '';
-        const sig = graphicTheme ? `mt:${graphicTheme}` : `${themeMode}:${accentKey}`;
+        const sig = graphicTheme ? `mt:${graphicTheme}` : `${themeMode}`;
         void hydrateMermaid(block, sig, graphicTheme);
         cleanups.push(wireCanvasClickToSource(block));
       } else if (block.classList.contains('jz-code-plantuml')) {
@@ -140,7 +139,7 @@ export function useCodeBlockEnhancer(containerSelector: string, bindKey: unknown
     return () => {
       for (const c of cleanups) c();
     };
-  }, [containerSelector, bindKey, themeMode, accentKey]);
+  }, [containerSelector, bindKey, themeMode]);
 }
 
 /** Monotonic token so overlapping hydrations (e.g. two rapid theme switches)
