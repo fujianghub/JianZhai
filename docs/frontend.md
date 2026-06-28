@@ -1,6 +1,6 @@
 # 简斋 · 视觉系统与题记
 
-> 双形态主题、4 套配色、图标体系（三区三语言）、首页题记轮播、favicon/PWA。
+> 双形态主题、6 套配色（含 2 个环境氛围主题）、图标体系（三区三语言）、首页题记轮播、favicon/PWA。
 > 架构见 [architecture.md](./architecture.md)。
 
 ---
@@ -16,18 +16,27 @@
 
 ---
 
-## 2. 4 套主题
+## 2. 6 套主题
 
-`stores/theme.ts` 写 `document.documentElement.dataset.theme`：
+`stores/theme.ts` 写 `document.documentElement.dataset.theme`（`MODES` 含 `colorScheme` 亮色集合，新增亮色主题须入集合否则原生控件误判暗色）：
 
-| `data-theme` | 主调 |
-|--------------|------|
-| `light` | 宣纸 + 朱砂（默认） |
-| `dark` | 玄黑 + 翡翠 |
-| `starry` | 星空深紫 |
-| `deepsea` | 深海青蓝 |
+| `data-theme` | 主调 | 形态 |
+|--------------|------|------|
+| `light` | 宣纸 + 朱砂（默认） | 亮色 |
+| `dark` | 玄黑 + 翡翠 | 暗色 |
+| `starry` | 星空深紫（Canvas 星场） | 暗色·氛围 |
+| `deepsea` | 深海青蓝（Canvas 海底） | 暗色·氛围 |
+| `springwater` | 春水澄碧（**ogl WebGL 水面 shader** + Canvas 花瓣层） | 亮色·氛围 |
+| `wintersnow` | 雪青冷蓝（Canvas 飘雪 + 积雪累积） | 亮色·氛围 |
 
 Mermaid / 代码块 / KaTeX / heatmap 全读 CSS 变量，主题切换不重建组件。
+
+### 环境氛围层（4 个氛围主题）
+
+- **2D Canvas**（`ambientCanvas.ts` 脚手架：DPR/rAF/隐藏暂停/reduced-motion 单帧/指针滚动视差 + `flow/curl/fbm/noise/makeGlowSprite/makeBokehSprite/makeNoiseTile/drawFilmGrain/drawVignette` 工具）：`StarryNight` / `DeepSea` / `WinterSnow`。
+- **WebGL fragment shader**（`shaderCanvas.ts` 的 ogl 全屏 hook + `waterShader.ts` GLSL）：`SpringWater` 水面 —— 平静水的真实感（角度依赖的天空反射/菲涅尔/连续法线/太阳光带）是 2D canvas 的能力天花板，故用 shader；花瓣/涟漪/柳絮仍走 2D 叠加层。**依赖 `ogl`（~15KB，GLSL 内联为 TS 字符串，未引 vite-plugin-glsl）**。
+- `App.tsx` 在路由外无条件挂载四者，各自按 `data-theme` 自判激活。
+- **亮色氛围主题（春水/冬雪）的玻璃面**须在 `theme.css` 覆盖 `.jz-glass` 的硬编码翡翠重音，否则卡片/登录/后台整体泛绿（基样 `.jz-glass` 把 `--jz-accent` 写死为 `#02b377`）。
 
 ---
 
