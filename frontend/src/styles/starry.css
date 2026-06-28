@@ -35,6 +35,10 @@
 [data-theme='starry'] .ant-layout,
 [data-theme='starry'] .ant-layout-content,
 [data-theme='deepsea'] .ant-layout,
-[data-theme='deepsea'] .ant-layout-content {
+[data-theme='deepsea'] .ant-layout-content,
+[data-theme='springwater'] .ant-layout,
+[data-theme='springwater'] .ant-layout-content,
+[data-theme='wintersnow'] .ant-layout,
+[data-theme='wintersnow'] .ant-layout-content {
   background: transparent !important;
 }

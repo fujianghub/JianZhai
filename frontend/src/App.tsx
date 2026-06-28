@@ -9,6 +9,8 @@ import RequireSuperuser from '@/components/common/RequireSuperuser';
 import LoginPage from '@/pages/admin/LoginPage';
 import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
+import SpringWater from '@/components/common/SpringWater';
+import WinterSnow from '@/components/common/WinterSnow';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 /** Inline loading fallback with a contextual hint — used for heavier chunks
@@ -73,6 +75,8 @@ export default function App() {
     <>
       <StarryNight />
       <DeepSea />
+      <SpringWater />
+      <WinterSnow />
       <ErrorBoundary context="root">
       <Suspense fallback={<RouteFallback />}>
       <Routes>

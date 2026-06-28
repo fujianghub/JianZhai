@@ -176,6 +176,9 @@ importers:
       mermaid:
         specifier: ^11.15.0
         version: 11.15.0
+      ogl:
+        specifier: ^1.0.11
+        version: 1.0.11
       pdfjs-dist:
         specifier: ^5.7.284
         version: 5.7.284
@@ -2447,6 +2450,9 @@ packages:
   object-assign@4.1.1:
     resolution: {integrity: sha512-rJgTQnkUnH1sFw8yT6VSU3zD3sWmu6sZhIseY8VX+GRu3P6F7Fu+JNDoXfklElbLJSnc3FUQHVe4cU5hj+BcUg==}
     engines: {node: '>=0.10.0'}
+
+  ogl@1.0.11:
+    resolution: {integrity: sha512-kUpC154AFfxi16pmZUK4jk3J+8zxwTWGPo03EoYA8QPbzikHoaC82n6pNTbd+oEaJonaE8aPWBlX7ad9zrqLsA==}
 
   option@0.2.4:
     resolution: {integrity: sha512-pkEqbDyl8ou5cpq+VsnQbe/WlEy5qS7xPzMS1U55OCG9KPvwFD46zDbxQIj3egJSFc3D+XhYOPUzz49zQAVy7A==}
@@ -5631,6 +5637,8 @@ snapshots:
   normalize-wheel@1.0.1: {}
 
   object-assign@4.1.1: {}
+
+  ogl@1.0.11: {}
 
   option@0.2.4: {}
 

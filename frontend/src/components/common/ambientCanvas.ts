@@ -207,6 +207,55 @@ export function flow(x: number, y: number, t: number, scale = 0.0016) {
   return { dx, dy };
 }
 
+/**
+ * Curl noise — a divergence-free swirl field derived from the gradient of an
+ * fbm potential (rotated 90°). Unlike `flow()` (a few summed sines, very smooth
+ * and globally coherent) this gives organic, eddying turbulence that looks like
+ * real moving air/water rather than a synchronised wobble. Deterministic, no
+ * randomness (resume-safe). Returns a roughly unit-scale vector; multiply by the
+ * amplitude you want. `scale` sets spatial frequency (smaller = broader swirls).
+ */
+export function curl(x: number, y: number, t: number, scale = 0.0018) {
+  const e = 1.4;
+  const st = t * 0.05;
+  const a = x * scale;
+  const b = y * scale;
+  const n1 = fbm(a + st, b + e, 3);
+  const n2 = fbm(a + st, b - e, 3);
+  const n3 = fbm(a + e, b - st, 3);
+  const n4 = fbm(a - e, b - st, 3);
+  return { dx: (n1 - n2) * 8, dy: (n4 - n3) * 8 };
+}
+
+/**
+ * Pre-render a soft defocused blob (lens-bokeh look) for depth-of-field
+ * particles: bright core → gentle falloff, with an optional faint cool edge so
+ * a pale blob still reads relief on a light background. `rgb`/`edge` are
+ * "r,g,b" strings. Blit big for a near out-of-focus particle, small for a far
+ * crisp one.
+ */
+export function makeBokehSprite(
+  radius: number,
+  rgb: string,
+  coreA = 0.85,
+  edge = '0,0,0',
+  edgeA = 0,
+): HTMLCanvasElement {
+  const d = Math.max(2, Math.ceil(radius * 2));
+  return makeOffscreen(d, d, (cx, w) => {
+    const r = w / 2;
+    const g = cx.createRadialGradient(r, r, 0, r, r, r);
+    g.addColorStop(0, `rgba(${rgb},${coreA})`);
+    g.addColorStop(0.5, `rgba(${rgb},${coreA * 0.45})`);
+    g.addColorStop(0.82, `rgba(${edge},${edgeA})`);
+    g.addColorStop(1, `rgba(${edge},0)`);
+    cx.fillStyle = g;
+    cx.beginPath();
+    cx.arc(r, r, r, 0, TAU);
+    cx.fill();
+  });
+}
+
 /** deterministic 2D hash in [0,1) */
 function hash2(ix: number, iy: number) {
   const s = Math.sin(ix * 127.1 + iy * 311.7) * 43758.5453;
@@ -291,8 +340,56 @@ export function blitGlow(
   ctx.globalAlpha = 1;
 }
 
-/** soft cinematic vignette: edges darkened, centre untouched. Drawn last. */
-export function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number, strength = 0.5) {
+/** a static tile of monochrome noise for cheap film grain (built once) */
+export function makeNoiseTile(size = 96): HTMLCanvasElement {
+  return makeOffscreen(size, size, (cx, tw, th) => {
+    const img = cx.createImageData(tw, th);
+    for (let i = 0; i < img.data.length; i += 4) {
+      const v = (Math.random() * 255) | 0;
+      img.data[i] = v;
+      img.data[i + 1] = v;
+      img.data[i + 2] = v;
+      img.data[i + 3] = 255;
+    }
+    cx.putImageData(img, 0, 0);
+  });
+}
+
+/** overlay film grain by tiling a noise sprite; jitter (ox,oy) per frame so it
+ * shimmers. `overlay` blend nudges pixels both lighter and darker → the subtle
+ * sensor texture that reads as "real". Keep alpha low so text stays legible. */
+export function drawFilmGrain(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  tile: HTMLCanvasElement,
+  alpha: number,
+  ox = 0,
+  oy = 0,
+) {
+  const pat = ctx.createPattern(tile, 'repeat');
+  if (!pat) return;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = 'overlay';
+  ctx.translate(ox, oy);
+  ctx.fillStyle = pat;
+  ctx.fillRect(-ox, -oy, w, h);
+  ctx.restore();
+  ctx.globalAlpha = 1;
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+/** soft cinematic vignette: edges tinted toward `rgb`, centre untouched. Drawn
+ * last. `rgb` defaults to black (dark scenes); pass a light "r,g,b" to fade the
+ * edges to a pale haze instead (light scenes). */
+export function drawVignette(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  strength = 0.5,
+  rgb = '0,0,0',
+) {
   const g = ctx.createRadialGradient(
     w / 2,
     h / 2,
@@ -301,8 +398,8 @@ export function drawVignette(ctx: CanvasRenderingContext2D, w: number, h: number
     h / 2,
     Math.max(w, h) * 0.72,
   );
-  g.addColorStop(0, 'rgba(0,0,0,0)');
-  g.addColorStop(1, `rgba(0,0,0,${strength})`);
+  g.addColorStop(0, `rgba(${rgb},0)`);
+  g.addColorStop(1, `rgba(${rgb},${strength})`);
   ctx.globalCompositeOperation = 'source-over';
   ctx.fillStyle = g;
   ctx.fillRect(0, 0, w, h);

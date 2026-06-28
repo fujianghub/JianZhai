@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-export type ThemeMode = 'light' | 'dark' | 'starry' | 'deepsea';
+export type ThemeMode = 'light' | 'dark' | 'starry' | 'deepsea' | 'springwater' | 'wintersnow';
 
 const MODE_KEY = 'jianzhai:themeMode';
 
@@ -10,7 +10,18 @@ interface ThemeState {
   toggleMode: () => void;
 }
 
-const MODES: readonly ThemeMode[] = ['light', 'dark', 'starry', 'deepsea'] as const;
+const MODES: readonly ThemeMode[] = [
+  'light',
+  'dark',
+  'starry',
+  'deepsea',
+  'springwater',
+  'wintersnow',
+] as const;
+
+/** Themes that paint on a pale background — `color-scheme` must stay `light` so
+ * native form controls / scrollbars don't flip to dark. Everything else is dark. */
+const LIGHT_MODES = new Set<ThemeMode>(['light', 'springwater', 'wintersnow']);
 
 function loadMode(): ThemeMode {
   if (typeof localStorage === 'undefined') return 'light';
@@ -27,7 +38,7 @@ function applyToDocument(mode: ThemeMode) {
   document.documentElement.dataset.theme = mode;
   // Each theme's palette (including --jz-accent) is defined by the CSS file via
   // [data-theme=...] selectors — no inline overrides needed.
-  document.documentElement.style.colorScheme = mode === 'light' ? 'light' : 'dark';
+  document.documentElement.style.colorScheme = LIGHT_MODES.has(mode) ? 'light' : 'dark';
 }
 
 export const useThemeStore = create<ThemeState>((set, get) => {

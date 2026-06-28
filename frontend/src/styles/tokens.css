@@ -107,3 +107,46 @@ body {
     radial-gradient(ellipse 70% 50% at 30% 50%, rgba(56, 189, 248, 0.19) 0, transparent 65%),
     radial-gradient(ellipse 70% 50% at 80% 90%, rgba(20, 184, 166, 0.19) 0, transparent 65%);
 }
+
+/* ── 春水 springwater ── 亮色：澄碧水面 + 暖阳柳金（浅底，Canvas 飞花/涟漪叠加） */
+[data-theme='springwater'] {
+  --jz-accent: #12b8a0;            /* 春水青 */
+  --jz-accent-soft: #4fd6c0;
+  --jz-accent-glow: rgba(18, 184, 160, 0.30);
+  --jz-bg-app: #eef6f3;            /* 苍青宣纸 */
+  --jz-text: #1a2b28;
+  --jz-text-muted: #5c726d;
+  --jz-border: rgba(20, 80, 70, 0.13);
+  --jz-surface: rgba(255, 255, 255, 0.66);
+  --jz-surface-2: rgba(255, 255, 255, 0.84);
+  --jz-divider: rgba(20, 80, 70, 0.07);
+  --jz-gold: #e0a94b;              /* 柳金 */
+}
+[data-theme='springwater'] body {
+  background-image:
+    radial-gradient(ellipse 70% 50% at 0% 0%, rgba(18, 184, 160, 0.16) 0, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100% 0%, rgba(96, 165, 250, 0.10) 0, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(224, 169, 75, 0.10) 0, transparent 60%);
+}
+
+/* ── 冬雪 wintersnow ── 亮色：皎雪冰蓝 + 寒梅一点红（浅底，Canvas 落雪叠加） */
+[data-theme='wintersnow'] {
+  --jz-accent: #6a93cf;            /* 冰蓝 */
+  --jz-accent-soft: #9bbce6;
+  --jz-accent-glow: rgba(106, 147, 207, 0.28);
+  --jz-bg-app: #cdd9ea;            /* 柔和灰蓝雪天（A2：白雪有所衬托） */
+  --jz-text: #1f2630;
+  --jz-text-muted: #5a6678;
+  --jz-border: rgba(40, 60, 90, 0.12);
+  --jz-surface: rgba(255, 255, 255, 0.74);
+  --jz-surface-2: rgba(255, 255, 255, 0.9);
+  --jz-divider: rgba(40, 60, 90, 0.06);
+  --jz-gold: #c2455f;              /* 寒梅红 */
+}
+[data-theme='wintersnow'] body {
+  background-image:
+    /* 顶部更沉的灰蓝天空 → 白雪在上半部清晰可辨；向下渐隐到浅雪地 */
+    linear-gradient(180deg, rgba(120, 144, 184, 0.42) 0%, rgba(120, 144, 184, 0) 58%),
+    radial-gradient(ellipse 60% 50% at 0% 100%, rgba(206, 218, 236, 0.22) 0, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 100% 92%, rgba(194, 69, 95, 0.06) 0, transparent 60%);
+}

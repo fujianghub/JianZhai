@@ -25,6 +25,8 @@ const MODE_ACCENT: Record<string, string> = {
   dark: '#02b377',
   starry: '#d9a6ff',
   deepsea: '#6ff8e4',
+  springwater: '#12b8a0',
+  wintersnow: '#6a93cf',
 };
 const DEFAULT_ACCENT = '#02b377';
 const DARK_MODES = new Set(['dark', 'starry', 'deepsea']);

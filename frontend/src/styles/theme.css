@@ -1128,6 +1128,28 @@ a.jz-meta-full-edit-btn:focus-visible {
   --jz-icon-spot: var(--jz-accent);
 }
 
+/* LIGHT-THEME GLASS（春水 / 冬雪）—— 仍用浅玻璃表面，但基样硬编码的翡翠重音会
+   把卡片/登录/后台整体染绿；这里把重音/金/底色覆盖回各主题本色（与基样同特异性、
+   靠 data-theme 前缀提权胜出），消除绿色冲突。 */
+[data-theme='springwater'] .jz-glass,
+[data-theme='springwater'] .jz-admin-glass,
+[data-theme='springwater'] .jz-blog-glass {
+  --jz-accent: #12b8a0;
+  --jz-accent-soft: #4fd6c0;
+  --jz-accent-glow: rgba(18, 184, 160, 0.30);
+  --jz-gold: #e0a94b;
+  --glass-bg-deep: #e6f1ed;
+}
+[data-theme='wintersnow'] .jz-glass,
+[data-theme='wintersnow'] .jz-admin-glass,
+[data-theme='wintersnow'] .jz-blog-glass {
+  --jz-accent: #6a93cf;
+  --jz-accent-soft: #9bbce6;
+  --jz-accent-glow: rgba(106, 147, 207, 0.30);
+  --jz-gold: #c2455f;
+  --glass-bg-deep: #d6e0ee;
+}
+
 /* DARK GLASS（dark / starry / deepsea 都用同一套深色玻璃，仅光晕色调微调）*/
 [data-theme='dark'] .jz-glass,
 [data-theme='dark'] .jz-admin-glass,
