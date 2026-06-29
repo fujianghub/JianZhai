@@ -2351,7 +2351,7 @@ sup.jz-footnote-ref:hover,
 }
 .jz-admin-glass .jz-doc-header-bar .ant-segmented-item-selected,
 .jz-blog-glass .jz-doc-header-bar .ant-segmented-item-selected {
-  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
   color: #ffffff !important;
   box-shadow: 0 2px 10px var(--jz-accent-glow) !important;
 }

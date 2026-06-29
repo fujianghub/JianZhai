@@ -219,6 +219,48 @@
     linear-gradient(180deg, #2c2418 0%, #221b10 100%);
   color: #e3cf9c;
 }
+/* ── 春水 springwater ── 暖纸（宣纸/牛皮/羊皮）会在冷青亮主题里露暖黄；
+   改为苍青调的浅纸，保留纸张分量但不撞色。冷纸（信笺/横线/点阵/大理石）本就
+   接近纯白，回退 :root 即安全，无需覆盖。 */
+[data-theme='springwater'] .paper-rice {
+  background: linear-gradient(180deg, #f3f9f6 0%, #e5f0eb 100%);
+  color: #1a2b28;
+}
+[data-theme='springwater'] .paper-kraft {
+  background:
+    linear-gradient(135deg, rgba(20, 110, 95, 0.05) 0 8px, transparent 8px 16px),
+    linear-gradient(180deg, #eef5f1 0%, #dfece6 100%);
+  color: #1c2e29;
+}
+[data-theme='springwater'] .paper-parchment {
+  background:
+    radial-gradient(ellipse at top, rgba(20, 130, 110, 0.10), transparent 70%),
+    radial-gradient(ellipse at bottom, rgba(20, 130, 110, 0.12), transparent 70%),
+    linear-gradient(180deg, #f1f8f4 0%, #e2efe8 100%);
+  color: #1d3029;
+  border-color: rgba(20, 130, 110, 0.32);
+}
+
+/* ── 冬雪 wintersnow ── 暖纸改为冰蓝调皎白纸，呼应冷蓝主题。 */
+[data-theme='wintersnow'] .paper-rice {
+  background: linear-gradient(180deg, #f8fbff 0%, #eaf1fb 100%);
+  color: #1f2630;
+}
+[data-theme='wintersnow'] .paper-kraft {
+  background:
+    linear-gradient(135deg, rgba(40, 70, 120, 0.05) 0 8px, transparent 8px 16px),
+    linear-gradient(180deg, #f0f5fc 0%, #e1eaf7 100%);
+  color: #232b36;
+}
+[data-theme='wintersnow'] .paper-parchment {
+  background:
+    radial-gradient(ellipse at top, rgba(60, 100, 160, 0.10), transparent 70%),
+    radial-gradient(ellipse at bottom, rgba(60, 100, 160, 0.12), transparent 70%),
+    linear-gradient(180deg, #f4f8ff 0%, #e5eef9 100%);
+  color: #212835;
+  border-color: rgba(60, 100, 160, 0.30);
+}
+
 /* Headings / quotes inside tinted papers on dark themes need lighter borders
    so they don't disappear against the deep paper colour. */
 [data-theme='dark'] .paper-rice .markdown-preview h1,

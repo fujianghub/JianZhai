@@ -779,6 +779,12 @@
   background: rgba(255, 255, 255, 0.05);
   border-color: var(--jz-border);
 }
+/* 春水 / 冬雪为冷亮主题，暖米色工具栏会撞色 → 改用各自玻璃表面 + 本色描边 */
+[data-theme='springwater'] .jz-post-inline-editor .jz-editor-toolbar,
+[data-theme='wintersnow'] .jz-post-inline-editor .jz-editor-toolbar {
+  background: var(--jz-surface-2);
+  border-color: var(--jz-border);
+}
 
 /* ── Quick insert menu (+ popover) ── */
 .jz-insert-menu-popover .ant-popover-inner {

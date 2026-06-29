@@ -29,7 +29,7 @@ export default function UserAvatar({ user, size = 28, className }: Props) {
         src
           ? undefined
           : {
-              background: 'linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%)',
+              background: 'linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%)',
               fontSize: size <= 28 ? 12 : 14,
             }
       }

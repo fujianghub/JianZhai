@@ -24,10 +24,10 @@
 /* ── 个人空间工作台首页 ───────────────────────────────────────────────── */
 .jz-admin-glass .jz-dash-hero {
   background:
-    radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at bottom left, rgba(58, 110, 165, 0.12) 0%, transparent 55%),
+    radial-gradient(ellipse at top right, color-mix(in srgb, var(--jz-accent) 22%, transparent) 0%, transparent 55%),
+    radial-gradient(ellipse at bottom left, color-mix(in srgb, var(--jz-accent-soft) 14%, transparent) 0%, transparent 55%),
     var(--glass-surface) !important;
-  border: 1px solid rgba(16, 185, 129, 0.3) !important;
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 30%, transparent) !important;
   box-shadow: var(--glass-shadow-hero) !important;
   border-radius: var(--glass-radius-lg, 18px);
   padding: 28px 30px;
@@ -42,7 +42,7 @@
   width: 280px;
   height: 280px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.28) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--jz-accent) 28%, transparent) 0%, transparent 70%);
   pointer-events: none;
   filter: blur(22px);
 }

@@ -20,7 +20,7 @@
   width: 28px;
   height: 28px;
   border-radius: 5px;
-  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   color: #0a1f1a;
   font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
   font-weight: 700;
@@ -957,7 +957,7 @@ a.jz-meta-full-edit-btn:focus-visible {
       transparent 0 2px,
       rgba(255, 255, 255, 0.06) 2px 3px
     ),
-    linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+    linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   border: 1.5px solid color-mix(in srgb, var(--jz-accent) 60%, transparent);
   border-radius: 8px;
   color: #0a1f1a;
@@ -1195,6 +1195,25 @@ a.jz-meta-full-edit-btn:focus-visible {
   --jz-code-line-number: #5c6370;
 }
 
+/* 星空 / 深海：复用上面的深色玻璃「表面」（底色/文字/阴影/代码），但把功能重音 accent
+   换成各自 ambient 本色——紫 / 青，而非与 dark 共用的翡翠绿。这样顶栏图标、后台侧栏、
+   按钮、链接、选中态、hero 全部统一为该主题本色，并与 main.tsx 的 AntD colorPrimary
+   （早已是紫/青）对齐。排在共享块之后，同特异性靠顺序胜出，只覆盖 accent 三件套。 */
+[data-theme='starry'] .jz-glass,
+[data-theme='starry'] .jz-admin-glass,
+[data-theme='starry'] .jz-blog-glass {
+  --jz-accent: #d9a6ff;
+  --jz-accent-soft: #c5adff;
+  --jz-accent-glow: rgba(217, 166, 255, 0.40);
+}
+[data-theme='deepsea'] .jz-glass,
+[data-theme='deepsea'] .jz-admin-glass,
+[data-theme='deepsea'] .jz-blog-glass {
+  --jz-accent: #6ff8e4;
+  --jz-accent-soft: #2dd4bf;
+  --jz-accent-glow: rgba(111, 248, 228, 0.38);
+}
+
 /* 玻璃 layout 背景（后台 + 博客） */
 .jz-admin-glass.ant-layout,
 .jz-blog-glass.ant-layout {
@@ -1214,7 +1233,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='deepsea'] .jz-admin-glass.ant-layout,
 [data-theme='deepsea'] .jz-blog-glass.ant-layout {
   background-image:
-    radial-gradient(ellipse 70% 50% at  0%  0%, rgba(16, 185, 129, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 70% 50% at  0%  0%, color-mix(in srgb, var(--jz-accent) 18%, transparent) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 100%  0%, rgba(96, 165, 250, 0.14) 0%, transparent 60%),
     radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.16) 0%, transparent 60%);
 }
@@ -1298,7 +1317,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   width: 42px;
   height: 42px;
   border-radius: 12px;
-  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   color: #0a1f1a;
   display: inline-flex;
   align-items: center;
@@ -1352,13 +1371,13 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item-selected {
   background: linear-gradient(135deg,
-              rgba(16, 185, 129, 0.18) 0%,
-              rgba(16, 185, 129, 0.06) 100%) !important;
+              color-mix(in srgb, var(--jz-accent) 18%, transparent) 0%,
+              color-mix(in srgb, var(--jz-accent) 6%, transparent) 100%) !important;
   color: var(--jz-accent) !important;
   font-weight: 600;
   box-shadow:
-    0 4px 14px rgba(16, 185, 129, 0.15),
-    0 0 0 1px rgba(16, 185, 129, 0.25) inset;
+    0 4px 14px color-mix(in srgb, var(--jz-accent) 15%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--jz-accent) 25%, transparent) inset;
 }
 .jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item-selected::after {
   border-right-color: transparent !important;
@@ -1447,7 +1466,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .jz-admin-search:hover {
   background: var(--glass-surface-strong) !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 35%, transparent) !important;
   color: var(--glass-text) !important;
 }
 .jz-admin-glass .jz-admin-search-kbd {
@@ -1694,11 +1713,11 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .ant-card.ant-card-hoverable:hover {
   transform: translateY(-2px);
-  border-color: rgba(16, 185, 129, 0.3) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 30%, transparent) !important;
   box-shadow:
     0 14px 40px rgba(0, 0, 0, 0.55),
     0 2px 8px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(16, 185, 129, 0.25) inset !important;
+    0 0 0 1px color-mix(in srgb, var(--jz-accent) 25%, transparent) inset !important;
 }
 .jz-admin-glass .ant-card-head {
   background: transparent !important;
@@ -1721,10 +1740,10 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* ── AI 管理页 Hero：更强渐变 ───────────────────────────────────────── */
 .jz-admin-glass .jz-ai-hero {
   background:
-    radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse at top right, color-mix(in srgb, var(--jz-accent) 18%, transparent) 0%, transparent 55%),
     radial-gradient(ellipse at bottom left, rgba(167, 139, 250, 0.12) 0%, transparent 55%),
     var(--glass-surface) !important;
-  border: 1px solid rgba(16, 185, 129, 0.22) !important;
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 22%, transparent) !important;
   box-shadow: var(--glass-shadow-hero) !important;
   position: relative;
   overflow: hidden;
@@ -1737,7 +1756,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   width: 320px;
   height: 320px;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(16, 185, 129, 0.25) 0%, transparent 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--jz-accent) 25%, transparent) 0%, transparent 70%);
   pointer-events: none;
   filter: blur(20px);
 }
@@ -1746,7 +1765,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .jz-overview-hero {
   background:
     radial-gradient(ellipse at top right, rgba(58, 110, 165, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at bottom left, rgba(16, 185, 129, 0.1) 0%, transparent 55%),
+    radial-gradient(ellipse at bottom left, color-mix(in srgb, var(--jz-accent) 10%, transparent) 0%, transparent 55%),
     var(--glass-surface) !important;
   border: 1px solid rgba(58, 110, 165, 0.28) !important;
   box-shadow: var(--glass-shadow-hero) !important;
@@ -1784,7 +1803,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-admin-glass .jz-overview-stat:hover,
 [data-theme='starry'] .jz-admin-glass .jz-overview-stat:hover,
 [data-theme='deepsea'] .jz-admin-glass .jz-overview-stat:hover {
-  border-color: rgba(16, 185, 129, 0.35);
+  border-color: color-mix(in srgb, var(--jz-accent) 35%, transparent);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 
@@ -1798,8 +1817,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
 }
 .jz-admin-glass .jz-feature-card:hover {
-  border-color: rgba(16, 185, 129, 0.45);
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.12);
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, transparent);
+  box-shadow: 0 6px 20px color-mix(in srgb, var(--jz-accent) 12%, transparent);
   transform: translateY(-1px);
 }
 /* Keyboard a11y: cards are primary navigation; surface the focused state. */
@@ -1808,7 +1827,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass a.jz-feature-card:focus-visible {
   outline: 2px solid var(--jz-accent);
   outline-offset: 2px;
-  border-color: rgba(16, 185, 129, 0.45);
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, transparent);
 }
 .jz-admin-glass .jz-feature-card-head {
   display: flex;
@@ -1871,8 +1890,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: #c4b5fd !important;
 }
 .jz-admin-glass .jz-stack-tag--infra {
-  background: rgba(16, 185, 129, 0.12) !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 35%, transparent) !important;
   color: #059669 !important;
 }
 [data-theme='dark'] .jz-admin-glass .jz-stack-tag--infra,
@@ -1903,13 +1922,13 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .jz-model-card.is-active {
   background: linear-gradient(
     135deg,
-    rgba(16, 185, 129, 0.14) 0%,
-    rgba(16, 185, 129, 0.04) 100%
+    color-mix(in srgb, var(--jz-accent) 14%, transparent) 0%,
+    color-mix(in srgb, var(--jz-accent) 4%, transparent) 100%
   ) !important;
-  border-color: rgba(16, 185, 129, 0.5) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 50%, transparent) !important;
   box-shadow:
-    0 0 0 2px rgba(16, 185, 129, 0.45),
-    0 8px 22px rgba(16, 185, 129, 0.2) !important;
+    0 0 0 2px color-mix(in srgb, var(--jz-accent) 45%, transparent),
+    0 8px 22px color-mix(in srgb, var(--jz-accent) 20%, transparent) !important;
 }
 
 /* ── 用量柱状图：翡翠光晕 ───────────────────────────────────────────── */
@@ -1917,9 +1936,9 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: linear-gradient(
     180deg,
     var(--jz-accent) 0%,
-    rgba(16, 185, 129, 0.4) 100%
+    color-mix(in srgb, var(--jz-accent) 40%, transparent) 100%
   );
-  box-shadow: 0 0 8px rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--jz-accent) 30%, transparent);
 }
 
 /* ── 用量热图：GitHub 风格贡献日历 ──────────────────────────────────── */
@@ -2024,23 +2043,23 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .ant-btn:hover {
   background: var(--glass-surface-strong) !important;
-  border-color: rgba(16, 185, 129, 0.4) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 40%, transparent) !important;
   color: var(--jz-accent) !important;
 }
 .jz-admin-glass .ant-btn-sm { height: 28px !important; padding-inline: 10px !important; }
 .jz-admin-glass .ant-btn-primary {
-  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
   border-color: transparent !important;
   color: #062c20 !important;
   box-shadow:
-    0 4px 14px rgba(16, 185, 129, 0.4),
+    0 4px 14px color-mix(in srgb, var(--jz-accent) 40%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
 }
 .jz-admin-glass .ant-btn-primary:hover {
-  background: linear-gradient(135deg, #06d6a0 0%, var(--jz-accent) 100%) !important;
+  background: linear-gradient(135deg, var(--jz-accent-soft) 0%, var(--jz-accent) 100%) !important;
   color: #042820 !important;
   box-shadow:
-    0 6px 20px rgba(16, 185, 129, 0.55),
+    0 6px 20px color-mix(in srgb, var(--jz-accent) 55%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.15) inset !important;
 }
 .jz-admin-glass .ant-btn-round { border-radius: var(--glass-radius-pill) !important; }
@@ -2074,7 +2093,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--glass-text) !important;
 }
 .jz-admin-glass .ant-table-tbody > tr:hover > td {
-  background: rgba(16, 185, 129, 0.06) !important;
+  background: color-mix(in srgb, var(--jz-accent) 6%, transparent) !important;
 }
 .jz-admin-glass .ant-table-row-expand-icon {
   background: var(--glass-surface) !important;
@@ -2095,8 +2114,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   backdrop-filter: blur(8px);
 }
 .jz-admin-glass .ant-tag-success {
-  background: rgba(16, 185, 129, 0.15) !important;
-  border-color: rgba(16, 185, 129, 0.35) !important;
+  background: color-mix(in srgb, var(--jz-accent) 15%, transparent) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 35%, transparent) !important;
   color: var(--jz-accent) !important;
 }
 .jz-glass .ant-tag-warning,
@@ -2132,7 +2151,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-glass .ant-segmented-item-selected,
 .jz-admin-glass .ant-segmented-item-selected,
 .jz-blog-glass .ant-segmented-item-selected {
-  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
   color: #ffffff !important;
   box-shadow: 0 4px 14px var(--jz-accent-glow) !important;
   font-weight: 600;
@@ -2165,7 +2184,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: rgba(255, 255, 255, 0.15) !important;
 }
 .jz-admin-glass .ant-switch-checked {
-  background: linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
   box-shadow: 0 0 12px var(--jz-accent-glow) !important;
 }
 .jz-admin-glass .ant-input,
@@ -2178,8 +2197,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .ant-input:focus,
 .jz-admin-glass .ant-input-number-focused,
 .jz-admin-glass .ant-input-number:hover {
-  border-color: rgba(16, 185, 129, 0.5) !important;
-  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 50%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--jz-accent) 15%, transparent) !important;
 }
 .jz-admin-glass .ant-select-selector {
   background: var(--glass-surface) !important;
@@ -2187,7 +2206,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--glass-text) !important;
 }
 .jz-admin-glass .ant-select:not(.ant-select-disabled):hover .ant-select-selector {
-  border-color: rgba(16, 185, 129, 0.5) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 50%, transparent) !important;
 }
 .jz-admin-glass .ant-radio-button-wrapper {
   background: var(--glass-surface) !important;
@@ -2195,8 +2214,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--glass-text-muted) !important;
 }
 .jz-admin-glass .ant-radio-button-wrapper-checked:not(.ant-radio-button-wrapper-disabled) {
-  background: rgba(16, 185, 129, 0.15) !important;
-  border-color: rgba(16, 185, 129, 0.5) !important;
+  background: color-mix(in srgb, var(--jz-accent) 15%, transparent) !important;
+  border-color: color-mix(in srgb, var(--jz-accent) 50%, transparent) !important;
   color: var(--jz-accent) !important;
 }
 
@@ -2229,16 +2248,16 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .ant-dropdown-menu-item:hover,
 .jz-admin-glass .ant-select-item-option-active {
-  background: rgba(16, 185, 129, 0.12) !important;
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent) !important;
 }
 .jz-admin-glass .ant-select-item-option-selected {
-  background: rgba(16, 185, 129, 0.18) !important;
+  background: color-mix(in srgb, var(--jz-accent) 18%, transparent) !important;
   color: var(--jz-accent) !important;
 }
 
 /* ── Progress ────────────────────────────────────────────────────────── */
 .jz-admin-glass .ant-progress-bg {
-  background: linear-gradient(90deg, var(--jz-accent) 0%, #06d6a0 100%) !important;
+  background: linear-gradient(90deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
 }
 
 /* ── Spin ────────────────────────────────────────────────────────────── */
@@ -3109,7 +3128,7 @@ a.jz-meta-full-edit-btn:focus-visible {
       transparent 0 2px,
       rgba(255, 255, 255, 0.06) 2px 3px
     ),
-    linear-gradient(135deg, var(--jz-accent) 0%, #06d6a0 100%);
+    linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
 }
 /* 简斋 印章 — a hairline highlight on top, plus subtle 浮雕 from a second
    inset shadow. Overrides without breaking the existing base values. */
