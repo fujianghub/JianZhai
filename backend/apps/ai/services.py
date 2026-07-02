@@ -155,6 +155,22 @@ class AIBudgetExceeded(Exception):
     limit — the service itself is healthy."""
 
 
+def _ai_timeout():
+    """HTTP timeout for AI providers.
+
+    Fail fast on a dead upstream (short ``connect``) so a hung DNS/TCP handshake
+    can never tie up a request worker indefinitely, but keep a generous per-read
+    window so long — and especially *streamed* — completions aren't truncated
+    (httpx's read timeout is the gap *between* bytes, not the total duration).
+    Both bounds are overridable via env for slow networks.
+    """
+    import httpx
+
+    connect = float(os.environ.get("AI_HTTP_CONNECT_TIMEOUT", "10"))
+    read = float(os.environ.get("AI_HTTP_READ_TIMEOUT", "120"))
+    return httpx.Timeout(read, connect=connect)
+
+
 def _client():
     """Anthropic client (legacy entry point — kept so existing tests can patch
     `apps.ai.services._client`). Use `_client_for(provider)` for new code."""
@@ -165,7 +181,7 @@ def _client():
         import anthropic  # type: ignore
     except ImportError as e:
         raise AIUnavailable("缺少 anthropic SDK — 运行 `pip install anthropic` 后启用 AI") from e
-    return anthropic.Anthropic(api_key=api_key)
+    return anthropic.Anthropic(api_key=api_key, timeout=_ai_timeout())
 
 
 def _qwen_client():
@@ -180,6 +196,7 @@ def _qwen_client():
     return OpenAI(
         api_key=api_key,
         base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+        timeout=_ai_timeout(),
     )
 
 
