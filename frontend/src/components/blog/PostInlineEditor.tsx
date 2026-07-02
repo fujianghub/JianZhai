@@ -8,7 +8,6 @@ import { paperClassName } from '@/utils/paper';
 import { patchDocumentBody } from '@/utils/documentSave';
 import { updateDocument } from '@/api/docs';
 import type { DocFormat, DocumentDetail, PublicPostDetail } from '@/types';
-import { attachmentAbsoluteUrl } from '@/api/attachments';
 
 interface Props {
   doc: DocumentDetail;
@@ -165,11 +164,4 @@ export default function PostInlineEditor({
       />
     </div>
   );
-}
-
-/** Resolve primary attachment URL for HTML legacy hydration. */
-export function resolvePostPrimaryUrl(post: PublicPostDetail): string | null {
-  const att = post.primary_attachment;
-  if (!att?.url) return null;
-  return attachmentAbsoluteUrl(att.url);
 }

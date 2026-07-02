@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+} from 'react';
 import type { AdjacentPosts, RelatedPost } from '@/api/blog';
 import { Alert, Breadcrumb, Button, Result, Spin, Tag, Tooltip, Typography } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
@@ -23,9 +32,10 @@ import * as kbsApi from '@/api/kbs';
 import { message } from '@/utils/notify';
 import type { DocumentDetail, PublicPostDetail } from '@/types';
 import { patchDocumentTitle } from '@/utils/documentSave';
-import PostInlineEditor, {
-  resolvePostPrimaryUrl,
-} from '@/components/blog/PostInlineEditor';
+import { resolvePostPrimaryUrl } from '@/components/blog/postPrimaryUrl';
+// Lazy: the inline editor pulls the Tiptap/CodeMirror stack (~0.8MB). Readers
+// only load it when they actually switch a post into edit mode.
+const PostInlineEditor = lazy(() => import('@/components/blog/PostInlineEditor'));
 import type { EditorSaveHandle } from '@/components/editor/editorSaveLifecycle';
 import { readingMinutes, renderMarkdownWithToc, wordCount } from '@/utils/markdown';
 import { previewKind } from '@/api/attachments';
@@ -55,8 +65,14 @@ import {
   saveReaderLayout,
   type ReaderLayout,
 } from '@/utils/readerLayout';
-import { SelectionAI } from '@/components/common/SelectionAI';
-import { DocAIPanel } from '@/components/common/DocAIPanel';
+// Lazy: the AI helpers (selection popover + doc panel) are overlay UI that
+// idles until the reader interacts, so keep them off the initial reader chunk.
+const SelectionAI = lazy(() =>
+  import('@/components/common/SelectionAI').then((m) => ({ default: m.SelectionAI })),
+);
+const DocAIPanel = lazy(() =>
+  import('@/components/common/DocAIPanel').then((m) => ({ default: m.DocAIPanel })),
+);
 import ReadingProgressBar from '@/components/common/ReadingProgressBar';
 import RelatedPostsSection from '@/components/blog/RelatedPostsSection';
 import { applyPageMeta, resetPageMeta } from '@/utils/pageMeta';
@@ -863,15 +879,23 @@ export default function PostDetail() {
                 <Spin tip="加载编辑器…" />
               </div>
             ) : editDoc ? (
-              <PostInlineEditor
-                doc={editDoc}
-                post={post}
-                primaryUrl={primaryUrl}
-                fullEditHref={editHref}
-                onDocChange={setEditDoc}
-                onSaveReady={registerEditorSave}
-                forceSyncRevision={conflictSyncRevision}
-              />
+              <Suspense
+                fallback={
+                  <div style={{ display: 'grid', placeItems: 'center', minHeight: 200 }}>
+                    <Spin tip="加载编辑器…" />
+                  </div>
+                }
+              >
+                <PostInlineEditor
+                  doc={editDoc}
+                  post={post}
+                  primaryUrl={primaryUrl}
+                  fullEditHref={editHref}
+                  onDocChange={setEditDoc}
+                  onSaveReady={registerEditorSave}
+                  forceSyncRevision={conflictSyncRevision}
+                />
+              </Suspense>
             ) : null
           ) : (
             <>
@@ -1036,7 +1060,7 @@ export default function PostDetail() {
       {/* Selection-driven AI helper — only for authenticated readers so we
           don't burn API tokens on anonymous traffic. */}
       {authUser && (
-        <>
+        <Suspense fallback={null}>
           <SelectionAI
             scopeRef={articleRef}
             contextProvider={() =>
@@ -1053,7 +1077,7 @@ export default function PostDetail() {
             }
             title={pageMode === 'edit' && editDoc ? editDoc.title : post?.title}
           />
-        </>
+        </Suspense>
       )}
     </div>
   );

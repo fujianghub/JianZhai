@@ -1,6 +1,7 @@
 """jieba-based pre-tokenization so PostgreSQL tsvector can handle Chinese."""
 from __future__ import annotations
 
+from functools import lru_cache
 from html.parser import HTMLParser
 from typing import Iterable
 
@@ -58,11 +59,27 @@ def _strip_html_tags(html: str) -> str:
     return parser.get()
 
 
+def _segment(text: str) -> str:
+    tokens = (t.strip() for t in jieba.cut_for_search(text) if t and t.strip())
+    return " ".join(_iter_unique(tokens))
+
+
+@lru_cache(maxsize=512)
+def _segment_cached(text: str) -> str:
+    return _segment(text)
+
+
 def segment(text: str) -> str:
     if not text:
         return ""
-    tokens = (t.strip() for t in jieba.cut_for_search(text) if t and t.strip())
-    return " ".join(_iter_unique(tokens))
+    # Cache short inputs only — search *queries* are short and often repeated,
+    # and jieba tokenization is CPU-heavy. Document *bodies* (via
+    # ``update_search_vector``) are large and unique per doc, so caching them
+    # would waste memory for a near-zero hit rate. Tokenization is deterministic,
+    # so a process-global cache stays correct across requests.
+    if len(text) <= 256:
+        return _segment_cached(text)
+    return _segment(text)
 
 
 def _iter_unique(items: Iterable[str]) -> Iterable[str]:

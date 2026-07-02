@@ -37,13 +37,36 @@ def _is_author(user) -> bool:
     return bool(getattr(user, "is_staff", False))
 
 
+def _user_tag_ids(user) -> list[int]:
+    """The reader's own ``UserTag`` ids, memoised on the user for the request.
+
+    ``_apply_audience`` runs once per KB and once per category, and a single
+    reader-facing request (e.g. the archive view) fans out to many
+    ``visible_documents`` calls — each previously re-ran ``account_tags``. The
+    id list is identical every time within a request, so cache it on the
+    request-scoped ``user`` instance. ``request.user`` is rebuilt per request,
+    so this never leaks across requests.
+    """
+    cached = getattr(user, "_cached_account_tag_ids", None)
+    if cached is not None:
+        return cached
+    tag_ids = list(user.account_tags.values_list("id", flat=True))
+    try:
+        user._cached_account_tag_ids = tag_ids
+    except (AttributeError, TypeError):
+        # Some auth backends hand back objects that reject attribute writes;
+        # fall back to recomputing rather than failing the request.
+        pass
+    return tag_ids
+
+
 def _targeted_q(user) -> Q:
     """Q matching rows whose audience set contains ``user`` (by id or by tag)."""
     if not getattr(user, "is_authenticated", False):
         # Anonymous readers carry no identity and no tags — they can never be
         # targeted. ``pk__in=[]`` is a guaranteed-empty match.
         return Q(pk__in=[])
-    tag_ids = list(user.account_tags.values_list("id", flat=True))
+    tag_ids = _user_tag_ids(user)
     return Q(audience_users=user.id) | Q(audience_tags__in=tag_ids)
 
 
