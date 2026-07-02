@@ -31,6 +31,8 @@
 
 Mermaid / 代码块 / KaTeX / heatmap 全读 CSS 变量，主题切换不重建组件。
 
+> **切换器**：`ThemeSwitcher.tsx` 为**单按钮 + 下拉菜单**（六项，触发钮图标按主题专属色调、当前项打勾），取代旧「4 宫格 Segmented + 主题色 Popover」。**用户自选 accent preset 体系已删除**（`stores/theme.ts` 不再有 `AccentPreset`/`ACCENT_PRESETS`/`accent`/`setAccent`，`applyToDocument` 只写 `data-theme` + `colorScheme`），调色全交 CSS token；`main.tsx` 的 AntD `colorPrimary` 按 mode 取固定色（`MODE_ACCENT`，须等于该主题 `--jz-accent`，light/dark 回退翡翠）。
+
 ### 环境氛围层（4 个氛围主题）
 
 - **2D Canvas**（`ambientCanvas.ts` 脚手架：DPR/rAF/隐藏暂停/reduced-motion 单帧/指针滚动视差 + `flow/curl/fbm/noise/makeGlowSprite/makeBokehSprite/makeNoiseTile/drawFilmGrain/drawVignette` 工具）：`StarryNight` / `DeepSea` / `WinterSnow`。
@@ -106,6 +108,15 @@ class HeroSettings(models.Model):
 - **仅 Markdown 阅读路径消费**：HTML 阅读器在 sandbox iframe 内，父页无法 restyle；二进制预览无正文可缩放。
 - **专注模式**：`focusMode` 给 `<body>` 挂 `.jz-reader-focus` 类（样式表据此隐藏导航栏与侧栏），`Esc` 退出，右下角退出 FAB `.jz-focus-exit-fab`。
 - 阅读进度条 `ReadingProgressBar` 带百分比读数。
+
+### PDF 阅读器（`PdfCanvas.tsx` / `PdfTocPanel.tsx`，2026-06-27）
+
+附件为 PDF 时博客/作者阅读页用 pdf.js 自渲，关键能力：
+
+- **目录侧栏**：`utils/pdfOutline.ts` 解析 PDF 内嵌书签（named / explicit dest → 页码，含 6 单测），渲染为侧栏（样式复用 MD 文档 `.jz-toc`）。
+- **整页连续滚动**（`scroll="page"`）：去掉旧的单页固定框 + 上/下页按钮，连续纵向渲染（`IntersectionObserver` 懒渲染 + 占位 slot），铺进文档流随整窗滚动，工具栏吸顶常驻、目录侧栏 sticky；首帧不自动跳转以免越过文章头。
+- **适宽 / 适页高**切换；`devicePixelRatio` 限幅防大图爆内存。
+- **在新标签打开**：工具栏与阅读页头部各有按钮，跳浏览器原生 PDF 阅读器；预览走同源代理（修 HTTPS dev 下 `Failed to fetch`）。
 
 ---
 

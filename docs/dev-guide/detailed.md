@@ -629,18 +629,20 @@ return response
 | 后台 | `.jz-admin-glass` | **Apple 玄黑·玻璃拟态** + 翡翠 `#10b981` 重音；大圆角 14-18px + 颜色偏移柔阴影 + `backdrop-filter: blur` |
 | 博客 | `.jz-blog-glass` | 宣纸 `#f3ebd6` + 朱砂 `#b94a3b` 古风；保留 v0.5 之前主调 |
 
-### 12.2 4 套主题
+### 12.2 6 套主题
 
 `stores/theme.ts` 写 `document.documentElement.dataset.theme`：
 
-| `data-theme` | 主调 |
-|--------------|------|
-| `light` | 宣纸 + 朱砂（默认） |
-| `dark` | 玄黑 + 翡翠 |
-| `starry` | 星空深紫 |
-| `deepsea` | 深海青蓝 |
+| `data-theme` | 主调 | 形态 |
+|--------------|------|------|
+| `light` | 宣纸 + 朱砂（默认） | 亮色 |
+| `dark` | 玄黑 + 翡翠 | 暗色 |
+| `starry` | 星空深紫（Canvas 星场粒子） | 暗色·氛围 |
+| `deepsea` | 深海青蓝（Canvas 海底粒子） | 暗色·氛围 |
+| `springwater` | 春水澄碧（ogl WebGL 水面 shader + Canvas 花瓣） | 亮色·氛围 |
+| `wintersnow` | 雪青冷蓝（Canvas 飘雪 + 积雪累积） | 亮色·氛围 |
 
-Mermaid / 代码块 / KaTeX / heatmap 全部读 CSS 变量，主题切换不需要重建组件。
+Mermaid / 代码块 / KaTeX / heatmap 全部读 CSS 变量，主题切换不需要重建组件。切换器为单按钮下拉，调色全交 CSS token（无用户自选 accent preset）。
 
 ### 12.3 图标体系（2026-06-06 定稿，100% 自制）
 
