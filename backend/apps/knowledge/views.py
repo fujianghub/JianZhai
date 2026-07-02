@@ -529,6 +529,13 @@ class DocumentViewSet(viewsets.ModelViewSet):
             for t in doc.tags.all()
         ]
 
+        # Fold the two link-direction COUNTs into a single aggregate query
+        # (was two separate round-trips).
+        link_counts = DocumentLink.objects.aggregate(
+            outgoing=Count("id", filter=Q(source=doc)),
+            incoming=Count("id", filter=Q(target=doc)),
+        )
+
         return Response({
             "word_count": wc,
             "char_count": len(body),
@@ -543,8 +550,8 @@ class DocumentViewSet(viewsets.ModelViewSet):
             "edits_last_7d": edits_last_7d,
             "structure": analyze_structure(body),
             "links": {
-                "outgoing_count": DocumentLink.objects.filter(source=doc).count(),
-                "incoming_count": DocumentLink.objects.filter(target=doc).count(),
+                "outgoing_count": link_counts["outgoing"],
+                "incoming_count": link_counts["incoming"],
             },
             "tags": tags,
         })

@@ -43,7 +43,10 @@ def document_comments(request, doc_id: int):
     doc = _commentable_doc(request.user, doc_id)
     if request.method == "GET":
         block_id = request.query_params.get("block_id")
-        qs = doc.comments.all()
+        # ``select_related("author")`` avoids an N+1 — CommentSerializer emits
+        # the author for every row, so without it each comment triggers its own
+        # SELECT on the user table.
+        qs = doc.comments.select_related("author").all()
         if block_id is not None:
             qs = qs.filter(block_id=block_id)
         return Response(CommentSerializer(qs, many=True).data)

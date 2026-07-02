@@ -9,12 +9,14 @@ units (user / tag) × anonymous + author bypass.
 from __future__ import annotations
 
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.urls import reverse
 from django.utils import timezone
 from rest_framework.test import APIClient
 
 from apps.accounts.models import UserTag
-from apps.knowledge.audience import visible_documents, visible_kbs
+from apps.knowledge.audience import _user_tag_ids, visible_documents, visible_kbs
 from apps.knowledge.models import (
     Document,
     KnowledgeBase,
@@ -219,3 +221,22 @@ def test_comments_blocked_for_hidden_kb(api, public_kb, reader_out):
     api.force_authenticate(user=reader_out)
     resp = api.get(reverse("api_v1:document-comments", args=[post.id]))
     assert resp.status_code == 404
+
+
+# ── perf regression: reader tag ids are memoised per request ────────────────
+
+@pytest.mark.django_db
+def test_user_tag_ids_cached_per_user_instance(reader_in, tag):
+    """``_user_tag_ids`` hits the DB once per user instance, then caches.
+
+    The archive view fans out to many ``visible_documents`` calls per request,
+    each of which re-derived the reader's tag ids. Caching on the request-scoped
+    user instance collapses those to a single query.
+    """
+    tag.users.add(reader_in)
+    with CaptureQueriesContext(connection) as ctx:
+        first = _user_tag_ids(reader_in)
+        second = _user_tag_ids(reader_in)
+    assert first == second == [tag.id]
+    # Second lookup must be served from the per-instance cache, not the DB.
+    assert len(ctx.captured_queries) == 1
