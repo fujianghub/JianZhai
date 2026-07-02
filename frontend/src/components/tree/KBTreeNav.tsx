@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useRef } from 'react';
 import { Button, Tag, Tooltip, Tree } from 'antd';
 import {
   FileTextOutlined,
@@ -329,15 +329,32 @@ export default function KBTreeNav({
     [filteredTree]
   );
 
+  // Stabilise the parent's (KBWorkspace) callbacks so the ``data`` memo below
+  // doesn't rebuild the entire tree on every parent render — those handlers are
+  // plain functions recreated each render. Presence is preserved: folderNode /
+  // docNode hide their buttons when a handler is absent, so we gate each stable
+  // wrapper on whether the prop is currently supplied. A ref keeps the wrappers
+  // calling the latest parent callback (no stale closures).
+  const cbRef = useRef({ onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite });
+  cbRef.current = { onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite };
+  const sEditFolderTags = useCallback((f: TreeFolder) => cbRef.current.onEditFolderTags?.(f), []);
+  const sExportFolder = useCallback((f: TreeFolder) => cbRef.current.onExportFolder?.(f), []);
+  const sTogglePin = useCallback((d: TreeDocument) => cbRef.current.onTogglePin?.(d), []);
+  const sToggleFavorite = useCallback((d: TreeDocument) => cbRef.current.onToggleFavorite?.(d), []);
+  const editFolderTagsCb = onEditFolderTags ? sEditFolderTags : undefined;
+  const exportFolderCb = onExportFolder ? sExportFolder : undefined;
+  const togglePinCb = onTogglePin ? sTogglePin : undefined;
+  const toggleFavoriteCb = onToggleFavorite ? sToggleFavorite : undefined;
+
   const data = useMemo<DataNode[]>(() => {
     const q = filterQuery ?? '';
     return [
       ...filteredTree.folders.map((f) =>
-        folderNode(f, q, onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite)
+        folderNode(f, q, editFolderTagsCb, exportFolderCb, togglePinCb, toggleFavoriteCb)
       ),
-      ...filteredTree.documents.map((d) => docNode(d, q, onTogglePin, onToggleFavorite)),
+      ...filteredTree.documents.map((d) => docNode(d, q, togglePinCb, toggleFavoriteCb)),
     ];
-  }, [filteredTree, filterQuery, onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite]);
+  }, [filteredTree, filterQuery, editFolderTagsCb, exportFolderCb, togglePinCb, toggleFavoriteCb]);
 
   return (
     <Tree

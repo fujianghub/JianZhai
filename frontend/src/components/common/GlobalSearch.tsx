@@ -5,17 +5,32 @@ import { search as searchApi, type SearchResult } from '@/api/search';
 
 const { Text } = Typography;
 
+/** Compile the token list + split regex for a query. Cached (single-entry) so
+ *  a render that highlights N results — each calling ``highlight`` for title
+ *  and snippet — compiles the regex once, not 2N times. ``String.split`` with a
+ *  /g regex doesn't rely on ``lastIndex``, so reusing the RegExp is safe. */
+let _hlCache: { q: string; tokens: string[]; re: RegExp | null } | null = null;
+function compileHighlight(query: string): { tokens: string[]; re: RegExp | null } {
+  const q = (query || '').trim();
+  if (_hlCache && _hlCache.q === q) return _hlCache;
+  const tokens = Array.from(new Set(q.split(/\s+/).filter((t) => t.length > 0)))
+    .sort((a, b) => b.length - a.length);
+  let re: RegExp | null = null;
+  if (tokens.length > 0) {
+    const escaped = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    re = new RegExp(`(${escaped.join('|')})`, 'gi');
+  }
+  _hlCache = { q, tokens, re };
+  return _hlCache;
+}
+
 /** Wrap each query token occurrence in <mark> so search hits visually pop in
  *  result titles and snippets. Case-insensitive; longest tokens first so
  *  "JianZhai" matches before "Jian" creates two side-by-side highlights. */
 function highlight(text: string, query: string): ReactNode {
-  const q = (query || '').trim();
-  if (!q || !text) return text;
-  const tokens = Array.from(new Set(q.split(/\s+/).filter((t) => t.length > 0)))
-    .sort((a, b) => b.length - a.length);
-  if (tokens.length === 0) return text;
-  const escaped = tokens.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
-  const re = new RegExp(`(${escaped.join('|')})`, 'gi');
+  if (!query || !text) return text;
+  const { tokens, re } = compileHighlight(query);
+  if (!re || tokens.length === 0) return text;
   const parts = text.split(re);
   return parts.map((p, i) =>
     p && tokens.some((t) => t.toLowerCase() === p.toLowerCase())

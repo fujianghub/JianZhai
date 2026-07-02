@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Empty } from 'antd';
 import type { Editor } from '@tiptap/core';
 import { computeHeadingNumbers } from '@/utils/headingNumber';
@@ -38,12 +38,12 @@ export default function DocumentOutline({ editor, source, sourceKind = 'markdown
     [numbering, headings],
   );
 
-  // Tiptap：editor.on('update') 重新抽取
+  // Tiptap：内容变（update）才重抽标题；光标移动（selectionUpdate）只更新高亮位。
+  // 抽标题要遍历整篇 ProseMirror 文档，光标每动一次都全文遍历在大文档上很浪费。
+  const headingsRef = useRef<Heading[]>([]);
   useEffect(() => {
     if (!editor) return;
-    const recompute = () => {
-      const hs = extractTiptapHeadings(editor);
-      setHeadings(hs);
+    const computeActive = (hs: Heading[]) => {
       const anchor = editor.state.selection.anchor;
       let best: number | null = null;
       for (const h of hs) {
@@ -52,12 +52,19 @@ export default function DocumentOutline({ editor, source, sourceKind = 'markdown
       }
       setActivePos(best);
     };
-    recompute();
-    editor.on('update', recompute);
-    editor.on('selectionUpdate', recompute);
+    const recomputeAll = () => {
+      const hs = extractTiptapHeadings(editor);
+      headingsRef.current = hs;
+      setHeadings(hs);
+      computeActive(hs);
+    };
+    const recomputeActive = () => computeActive(headingsRef.current);
+    recomputeAll();
+    editor.on('update', recomputeAll);
+    editor.on('selectionUpdate', recomputeActive);
     return () => {
-      editor.off('update', recompute);
-      editor.off('selectionUpdate', recompute);
+      editor.off('update', recomputeAll);
+      editor.off('selectionUpdate', recomputeActive);
     };
   }, [editor]);
 
