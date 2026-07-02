@@ -240,6 +240,11 @@ class Document(models.Model):
     # Empty string means use the default (plain).
     paper_style = models.CharField(max_length=40, blank=True, default="")
 
+    # Yuque-style hierarchical heading numbering. Display-only: numbers are
+    # computed at render time from the heading hierarchy and never written into
+    # raw_content/published_content. Per-document opt-in, default off.
+    heading_numbering = models.BooleanField(default=False)
+
     search_vector = SearchVectorField(null=True, blank=True)
 
     order = models.IntegerField(default=0)

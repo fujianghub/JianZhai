@@ -445,7 +445,10 @@ export default function PostDetail() {
   }, [post, kbSlug]);
 
   const rendered = useMemo(
-    () => (post ? renderMarkdownWithToc(post.published_content) : { html: '', toc: [] }),
+    () =>
+      post
+        ? renderMarkdownWithToc(post.published_content, { numbering: post.heading_numbering })
+        : { html: '', toc: [] },
     [post],
   );
 

@@ -12,6 +12,8 @@ interface Props {
   source: string;
   kind: LivePreviewKind;
   paperStyle?: string;
+  /** Yuque-style hierarchical heading numbering (display-only). */
+  numbering?: boolean;
   /** Show heading TOC when markdown has headings. */
   showToc?: boolean;
   className?: string;
@@ -32,6 +34,7 @@ export default function LivePreviewPane({
   source,
   kind,
   paperStyle,
+  numbering = false,
   showToc = true,
   className,
   scrollRef,
@@ -68,9 +71,9 @@ export default function LivePreviewPane({
   const { html, toc } = useMemo(() => {
     if (kind !== 'markdown') return { html: '', toc: [] };
     return sourceMap
-      ? renderMarkdownForEditor(debouncedSource)
-      : renderMarkdownWithToc(debouncedSource);
-  }, [debouncedSource, kind, sourceMap]);
+      ? renderMarkdownForEditor(debouncedSource, { numbering })
+      : renderMarkdownWithToc(debouncedSource, { numbering });
+  }, [debouncedSource, kind, sourceMap, numbering]);
 
   if (kind === 'html') {
     return (

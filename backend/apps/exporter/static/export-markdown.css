@@ -327,3 +327,48 @@
 .export-html-embed {
   margin: 0.5em 0;
 }
+
+/* ── 章节自动编号（显示层）+ 内联目录 [TOC] / [TOC:section] ── */
+.jz-markdown.export-markdown .jz-heading-num {
+  color: #b94a3b;
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.4em;
+  font-weight: inherit;
+}
+.jz-markdown.export-markdown .jz-inline-toc {
+  margin: 1.2em 0;
+  padding: 12px 16px;
+  border: 1px solid #ececec;
+  border-radius: 8px;
+  background: #fbf9f4;
+}
+.jz-markdown.export-markdown .jz-inline-toc-title {
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: #1f1f1f;
+  border-bottom: 1px solid #ecdcc4;
+  padding-bottom: 6px;
+  margin-bottom: 8px;
+}
+.jz-markdown.export-markdown .jz-inline-toc ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.jz-markdown.export-markdown .jz-inline-toc li {
+  margin: 3px 0;
+  line-height: 1.7;
+}
+.jz-markdown.export-markdown .jz-inline-toc li a {
+  color: #1f1f1f;
+  text-decoration: none;
+}
+.jz-markdown.export-markdown .jz-inline-toc li a:hover { color: #1677ff; }
+.jz-markdown.export-markdown .jz-inline-toc .jz-toc-num {
+  color: #b94a3b;
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.4em;
+}
+.jz-markdown.export-markdown .jz-inline-toc .jz-inline-toc-l2 { padding-left: 1.2em; }
+.jz-markdown.export-markdown .jz-inline-toc .jz-inline-toc-l3 { padding-left: 2.4em; }
+.jz-markdown.export-markdown .jz-inline-toc .jz-inline-toc-l4 { padding-left: 3.6em; }

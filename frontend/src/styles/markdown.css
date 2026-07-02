@@ -2078,3 +2078,18 @@
 .markdown-preview .jz-inline-toc .jz-inline-toc-l2 { padding-left: 1.2em; }
 .markdown-preview .jz-inline-toc .jz-inline-toc-l3 { padding-left: 2.4em; }
 .markdown-preview .jz-inline-toc .jz-inline-toc-l4 { padding-left: 3.6em; }
+
+/* ---- 章节自动编号（显示层，Yuque 式） ---- */
+/* Reader / export: the number is injected as a real span inside the heading. */
+.jz-heading-num {
+  color: var(--jz-accent);
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.4em;
+  font-weight: inherit;
+}
+/* Inline [TOC] + section TOC list numbers. */
+.jz-inline-toc .jz-toc-num {
+  color: var(--jz-accent);
+  font-variant-numeric: tabular-nums;
+  margin-right: 0.4em;
+}

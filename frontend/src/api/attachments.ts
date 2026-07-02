@@ -40,17 +40,33 @@ export async function uploadFile(file: File, documentId?: number): Promise<Attac
  * Document, fills raw_content for text formats, and attaches the file. Returns
  * the new Document.
  */
+/** Parsing options chosen in the import dialog. Applied server-side. */
+export interface ImportParseOptions {
+  /** Turn on Yuque-style heading numbering for the imported doc(s). */
+  headingNumbering?: boolean;
+  /** Prepend a whole-document ``[TOC]`` to the imported markdown. */
+  insertToc?: boolean;
+}
+
+/** Append the parse options as FormData fields (only when truthy). */
+function appendImportOptions(fd: FormData, options?: ImportParseOptions): void {
+  if (options?.headingNumbering) fd.append('heading_numbering', 'true');
+  if (options?.insertToc) fd.append('insert_toc', 'true');
+}
+
 export async function importFileAsDoc(
   file: File,
   kbId: number,
   folderId: number | null = null,
-  onProgress?: (loaded: number, total: number) => void
+  onProgress?: (loaded: number, total: number) => void,
+  options?: ImportParseOptions
 ): Promise<{ id: number; title: string; folder: number | null; knowledge_base: number }> {
   await ensureCsrf();
   const fd = new FormData();
   fd.append('file', file);
   fd.append('knowledge_base', String(kbId));
   if (folderId != null) fd.append('folder', String(folderId));
+  appendImportOptions(fd, options);
   const { data } = await apiClient.post('/imports/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: UPLOAD_TIMEOUT_MS,
@@ -81,12 +97,14 @@ export async function importBatch(
   items: BatchImportItem[],
   kbId: number,
   folderId: number | null = null,
-  onProgress?: (loaded: number, total: number) => void
+  onProgress?: (loaded: number, total: number) => void,
+  options?: ImportParseOptions
 ): Promise<BatchImportResult> {
   await ensureCsrf();
   const fd = new FormData();
   fd.append('knowledge_base', String(kbId));
   if (folderId != null) fd.append('folder', String(folderId));
+  appendImportOptions(fd, options);
   for (const it of items) {
     fd.append('files', it.file, it.file.name);
     fd.append('paths', it.relativePath ?? '');
@@ -114,13 +132,15 @@ export async function importZip(
   file: File,
   kbId: number,
   folderId: number | null = null,
-  onProgress?: (loaded: number, total: number) => void
+  onProgress?: (loaded: number, total: number) => void,
+  options?: ImportParseOptions
 ): Promise<ZipImportResult> {
   await ensureCsrf();
   const fd = new FormData();
   fd.append('file', file, file.name);
   fd.append('knowledge_base', String(kbId));
   if (folderId != null) fd.append('folder', String(folderId));
+  appendImportOptions(fd, options);
   const { data } = await apiClient.post<ZipImportResult>('/imports/zip/', fd, {
     headers: { 'Content-Type': 'multipart/form-data' },
     timeout: BATCH_IMPORT_TIMEOUT_MS,

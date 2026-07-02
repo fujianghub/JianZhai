@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Empty } from 'antd';
 import type { Editor } from '@tiptap/core';
+import { computeHeadingNumbers } from '@/utils/headingNumber';
 
 interface Heading {
   level: number;
@@ -18,6 +19,8 @@ interface Props {
   sourceKind?: 'markdown' | 'html';
   /** Markdown/HTML mode: parent supplies a callback to scroll/seek the textarea. */
   onSeek?: (pos: number) => void;
+  /** Prefix each entry with its Yuque-style hierarchical number. */
+  numbering?: boolean;
 }
 
 /**
@@ -27,9 +30,13 @@ interface Props {
  *
  * 渲染：每个标题一行按钮，按 level 缩进；空文档显示 Empty。
  */
-export default function DocumentOutline({ editor, source, sourceKind = 'markdown', onSeek }: Props) {
+export default function DocumentOutline({ editor, source, sourceKind = 'markdown', onSeek, numbering = false }: Props) {
   const [headings, setHeadings] = useState<Heading[]>([]);
   const [activePos, setActivePos] = useState<number | null>(null);
+  const numbers = useMemo(
+    () => (numbering ? computeHeadingNumbers(headings.map((h) => h.level)) : []),
+    [numbering, headings],
+  );
 
   // Tiptap：editor.on('update') 重新抽取
   useEffect(() => {
@@ -98,7 +105,10 @@ export default function DocumentOutline({ editor, source, sourceKind = 'markdown
           <span className="jz-outline-bullet" aria-hidden>
             {h.level === 1 ? '●' : h.level === 2 ? '○' : '·'}
           </span>
-          <span className="jz-outline-text">{h.text || '(无标题文字)'}</span>
+          <span className="jz-outline-text">
+            {numbers[i] ? <span className="jz-outline-num">{numbers[i]} </span> : null}
+            {h.text || '(无标题文字)'}
+          </span>
         </button>
       ))}
     </nav>

@@ -40,7 +40,7 @@
 | 数学公式行内 | `$expr$`（防 currency 误识） | `MathNode.tsx` |
 | 折叠块 | `:::details 标题` ↔ `<details>` | `DetailsBlock.ts` |
 | 分栏 / 标签页 | `:::cols-2` / `:::tabs` | `Columns.ts` / `Tabs.ts` |
-| 内联 TOC | `[TOC]` | `InlineToc.ts` |
+| 内联 TOC | `[TOC]`（全文）/ `[TOC:section]`（本节子树） | `InlineToc.ts` |
 | 文档卡片 | `[[doc-card:ID]]` | `DocCardEmbed.tsx` |
 | 缩进 / 字号 / 字体 | Tab、工具栏下拉 | `Indent.ts` / `FontSize.ts` / `FontFamily.ts` |
 | 上下标 | `^x^` / `~x~` | tiptap 内置 |
@@ -114,3 +114,28 @@
 ### 离线导出为 SVG
 
 导出 HTML/PDF/静态站时，`exporter/services/diagram_render.py` 用 headless Chromium + vendored `static/vendor/mermaid.min.js` 把 `` ```mermaid `` 块批量渲为**内联 SVG**（每次导出仅启动一次浏览器）；缺 Chromium/语法错误时降级「图表源码」面板。PlantUML 仍为源码面板。详见 [export-search.md](./export-search.md)。
+
+---
+
+## 7. 章节自动编号 + 目录生成（语雀式）
+
+### 章节编号 = 显示层（不落盘）
+
+序号**不写入** `raw_content`/`published_content`，源码保持干净 `## yy`；由渲染层实时计算前缀，增删标题自动重排。每篇文档独立开关 `Document.heading_numbering`（迁移 `knowledge 0008`）+ 编辑器工具栏「编号」Switch。
+
+- **权威算法** `utils/headingNumber.ts`：`nextHeadingNumber`（增量步进）+ `computeHeadingNumbers`（批量），栈压缩——深度=祖先栈层数而非 markdown 原始级数，`h1→h2→h4` 得 `1 / 1.1 / 1.1.1`（跳过的 h3 不占位），`h1→h1` 得 `2`。**四端复用同一套**保证一致：
+  - **阅读器**：`utils/markdown.ts` `heading_open` 规则 env 维护编号栈 → 注入 `<span class="jz-heading-num">` + `TocEntry.numbering`；`renderMarkdownWithToc(src, { numbering })` 的 **LRU 缓存 key 必须并入 numbering 标志**（否则开关切换命中脏缓存）。
+  - **CM6 源码**：`codemirror/extensions/headingNumber.ts` ViewPlugin widget（`Compartment` 开关）。
+  - **Tiptap 富文本**：`HeadingNumber.ts` ProseMirror 插件 node decoration（`data-jz-num` attr + CSS `::before`），`setHeadingNumbering` meta 命令切换、不重建编辑器。
+  - **大纲 / 目录面板**：`DocumentOutline` / `TocPanel` 前缀编号。
+
+### 目录生成（可跳转）
+
+- **全文目录** `[TOC]`（沿用）+ **本节目录** `[TOC:section]`（只列所在标题的子树）。`InlineToc.ts` 加 `scope` attr；斜杠 `/目录`、`/本节目录` 双端可插（CM6 靠 `markdownSlashActions.ts` `MD_OVERRIDE_INSERTS`，富文本靠 `slashCommandRegistry.ts` `insertToc`/`insertSectionToc`）。
+- **展开**：`markdown.ts` `expandTocPlaceholders` 位置感知——拦截 `html_block` 记录占位符在标题序列中的位置（`env._tocMarks`），section 取「紧邻在前标题」的子树，**复用 `heading_open` 已分配的锚点 id**（不重算 slug，避免去重后缀不一致）。
+
+### 导入选项 + 导出端 + 内联编辑
+
+- **导入**：上传下拉两复选框（章节编号 / 文首插入全文目录）→ `attachments.ts`/`uploadBatch.ts` 透传 → `editor/views.py` `_parse_import_options`（编号置字段；insert_toc 对 markdown 类在文首 prepend `[TOC]`，唯一文本改写）。
+- **导出端对齐**：`exporter/services/markdown_render.py` 补齐 heading 锚点 + 编号栈 + `[TOC]`/`[TOC:section]` 展开（离线 HTML/PDF/静态站，读 `doc.heading_numbering`）。**坑**：markdown-it-py 的 `self.renderToken(tokens, idx, options, env)` 必须带 `env`（前端不用）；`common.py` 有两个 `render_markdown`（wrapper + 底层，都要接 `numbering`）。
+- **普通编辑（内联 `PostInlineEditor`）**：博客内联「编辑」原只写 `raw_content`，但博客渲染 `published_content`（后端 `_apply_update` **故意不同步** raw→published）→ 内联插的目录/编辑上不了博客。修复 = `documentSave.ts` `patchDocumentBody` 一次 `updateDocument` **双写** `raw_content`+`published_content`（`_apply_update` 收两字段只 bump 一次 version）。

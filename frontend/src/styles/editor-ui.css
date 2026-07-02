@@ -786,6 +786,15 @@
   border-color: var(--jz-border);
 }
 
+/* 内联编辑「章节编号」开关行 */
+.jz-post-inline-editor .jz-post-inline-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
 /* ── Quick insert menu (+ popover) ── */
 .jz-insert-menu-popover .ant-popover-inner {
   padding: 0 !important;

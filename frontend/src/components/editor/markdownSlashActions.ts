@@ -16,6 +16,10 @@ const MD_OVERRIDE_INSERTS: Record<string, string> = {
   'columns-3': '\n:::cols-3\n第一栏\n::col\n第二栏\n::col\n第三栏\n:::\n\n',
   tabs: '\n:::tabs\n::tab 标签一\n内容一\n::tab 标签二\n内容二\n:::\n\n',
   footnote: '正文[^1]\n\n[^1]: 脚注内容\n',
+  // TOC placeholders are richTextOnly in the registry, but the CM6 source
+  // editor can still emit the literal marker (the reader expands it).
+  toc: '[TOC]\n\n',
+  'toc-section': '[TOC:section]\n\n',
 };
 
 /** 在 MD 模式经特殊交互（弹选择器/Modal）完成、而非纯文本插入的命令。 */
@@ -104,8 +108,6 @@ export function getMarkdownInsertForCommand(item: SlashCommandItem): string | nu
       return ':::color1\n\n:::\n';
     case 'details':
       return ':::details 摘要\n\n内容\n:::\n';
-    case 'toc':
-      return '[TOC]\n\n';
     case 'math-block':
       return '$$\n\n$$\n';
     case 'math-inline':

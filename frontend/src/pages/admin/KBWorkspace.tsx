@@ -76,6 +76,8 @@ export default function KBWorkspace() {
   const [newFolderModal, setNewFolderModal] = useState(false);
   const [importing, setImporting] = useState(false);
   const [batchProgress, setBatchProgress] = useState<{ loaded: number; total: number } | null>(null);
+  // 导入解析选项（对所有上传/导入入口生效）：章节自动编号 + 文首插入全文目录。
+  const [importOptions, setImportOptions] = useState({ headingNumbering: true, insertToc: true });
   const batchInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   // 「导入带图 Markdown」两步选择器 + ZIP 导入
@@ -223,12 +225,19 @@ export default function KBWorkspace() {
     setImporting(true);
     setBatchProgress({ loaded: 0, total: 1 });
     try {
-      const result = await runChunkedImport(collected.items, kbId, null, {
-        onProgress: (loaded, total) => setBatchProgress({ loaded, total }),
-        onChunkDone: async () => {
-          await refreshTree();
+      const result = await runChunkedImport(
+        collected.items,
+        kbId,
+        null,
+        {
+          onProgress: (loaded, total) => setBatchProgress({ loaded, total }),
+          onChunkDone: async () => {
+            await refreshTree();
+          },
         },
-      });
+        undefined,
+        importOptions,
+      );
       const msg = `已导入 ${result.created.length} 个文件` +
         (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
         (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
@@ -310,7 +319,13 @@ export default function KBWorkspace() {
     ];
     setBundleModalOpen(false);
     await runImport(() =>
-      importBatch(items, kbId, null, (loaded, total) => setBatchProgress({ loaded, total }))
+      importBatch(
+        items,
+        kbId,
+        null,
+        (loaded, total) => setBatchProgress({ loaded, total }),
+        importOptions,
+      )
     );
     setBundleMd(null);
     setBundleImages([]);
@@ -319,7 +334,13 @@ export default function KBWorkspace() {
   /** 「导入 ZIP（含图片）」：上传单个 .zip，后端解压并改写相对图片路径。 */
   async function handleZipImport(file: File) {
     await runImport(() =>
-      importZip(file, kbId, null, (loaded, total) => setBatchProgress({ loaded, total }))
+      importZip(
+        file,
+        kbId,
+        null,
+        (loaded, total) => setBatchProgress({ loaded, total }),
+        importOptions,
+      )
     );
   }
 
@@ -582,6 +603,35 @@ export default function KBWorkspace() {
                     <Text type="secondary" style={{ fontSize: 12 }}>
                       也可直接拖拽含 images 的整个文件夹到文档列表
                     </Text>
+                  ),
+                },
+                { type: 'divider' as const },
+                {
+                  key: 'opt-numbering',
+                  label: (
+                    <Checkbox
+                      checked={importOptions.headingNumbering}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) =>
+                        setImportOptions((o) => ({ ...o, headingNumbering: e.target.checked }))
+                      }
+                    >
+                      章节自动编号
+                    </Checkbox>
+                  ),
+                },
+                {
+                  key: 'opt-toc',
+                  label: (
+                    <Checkbox
+                      checked={importOptions.insertToc}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) =>
+                        setImportOptions((o) => ({ ...o, insertToc: e.target.checked }))
+                      }
+                    >
+                      文首插入全文目录
+                    </Checkbox>
                   ),
                 },
               ],

@@ -218,6 +218,174 @@ def _render_table_close(self, tokens, idx, options, env) -> str:
     return "</table>\n</div>\n"
 
 
+# ── heading anchors + numbering + [TOC] expansion ─────────────────────────
+# Mirrors the frontend reader pipeline (``frontend/src/utils/markdown.ts`` +
+# ``utils/headingNumber.ts``) so exported HTML/PDF/site get the same anchor ids,
+# Yuque-style hierarchical numbers and expanded tables of contents.
+
+# Keep byte-for-byte parity with the frontend ``slugify``: lowercase, spaces →
+# dash, strip a fixed punctuation set, keep CJK intact, collapse dashes.
+_SLUG_STRIP = re.compile(r"[!@#$%^&*()+={}\[\]|\\;:'\",.<>/?`~]")
+_SLUG_SPACE = re.compile(r"\s+")
+_SLUG_DASHES = re.compile(r"-+")
+
+
+def _slugify(text: str) -> str:
+    s = _SLUG_SPACE.sub("-", (text or "").strip().lower())
+    s = _SLUG_STRIP.sub("", s)
+    s = _SLUG_DASHES.sub("-", s).strip("-")
+    return s or "section"
+
+
+def _next_heading_number(stack: list[list[int]], level: int, min_l: int = 1, max_l: int = 6) -> str:
+    """Advance the numbering cursor by one heading (see ``nextHeadingNumber``).
+
+    ``stack`` entries are ``[level, count]``. Depth follows nesting depth, not
+    raw markdown level, so ``h1→h2→h4`` yields ``1 / 1.1 / 1.1.1``.
+    """
+    if level < min_l or level > max_l:
+        return ""
+    while stack and stack[-1][0] > level:
+        stack.pop()
+    if stack and stack[-1][0] == level:
+        stack[-1][1] += 1
+    else:
+        stack.append([level, 1])
+    return ".".join(str(c) for _, c in stack)
+
+
+def _heading_text(inline_token) -> str:
+    if inline_token is None:
+        return ""
+    children = getattr(inline_token, "children", None)
+    if children:
+        return "".join(c.content for c in children if c.type in ("text", "code_inline"))
+    return inline_token.content or ""
+
+
+def _render_heading_open(self, tokens, idx, options, env):
+    token = tokens[idx]
+    level = int(token.tag[1:])  # h2 → 2
+    text = _heading_text(tokens[idx + 1] if idx + 1 < len(tokens) else None)
+
+    # Advance the numbering cursor for EVERY heading so depth stays correct even
+    # when h5/h6 sit between numbered ones; only h1–h4 surface a visible number.
+    number = ""
+    if env.get("numbering"):
+        number = _next_heading_number(env.setdefault("_num_stack", []), level)
+
+    if level <= 4 and text:
+        ids = env.setdefault("_ids", {})
+        toc = env.setdefault("toc", [])
+        base = _slugify(text)
+        n = ids.get(base, 0)
+        anchor = base if n == 0 else f"{base}-{n}"
+        ids[base] = n + 1
+        token.attrSet("id", anchor)
+        toc.append({"id": anchor, "level": level, "text": text, "numbering": number or None})
+        if number:
+            return (
+                self.renderToken(tokens, idx, options, env)
+                + f'<span class="jz-heading-num">{_escape(number)}</span> '
+            )
+    return self.renderToken(tokens, idx, options, env)
+
+
+_TOC_MARK_RE = re.compile(r'data-jz-toc="(section)?"')
+
+
+def _render_html_block(self, tokens, idx, options, env):
+    """Record ``[TOC]`` / ``[TOC:section]`` placeholder positions in document
+    order (``at`` = headings seen so far) so a section TOC can later scope to the
+    subtree under its enclosing heading. Non-TOC html blocks pass through."""
+    content = tokens[idx].content
+    m = _TOC_MARK_RE.search(content)
+    if m:
+        env.setdefault("_toc_marks", []).append(
+            {"scope": "section" if m.group(1) == "section" else "all", "at": len(env.get("toc", []))}
+        )
+    return content
+
+
+# Whole-line ``[TOC]`` / ``[TOC:section]`` → placeholder divs (mirrors the
+# frontend ``convertBlockPlaceholders``). Only outside fenced code.
+_TOC_LINE_RE = re.compile(r"^\[TOC\]\s*$")
+_TOC_SECTION_LINE_RE = re.compile(r"^\[TOC:section\]\s*$")
+
+
+def _convert_toc_placeholders(src: str) -> str:
+    if "[TOC]" not in src and "[TOC:section]" not in src:
+        return src
+    out: list[str] = []
+    in_fence = False
+    for line in src.split("\n"):
+        stripped = line.strip()
+        if stripped.startswith("```") or stripped.startswith("~~~"):
+            in_fence = not in_fence
+            out.append(line)
+            continue
+        if not in_fence:
+            if _TOC_LINE_RE.match(line):
+                out.append('<div data-jz-toc="" class="jz-inline-toc-placeholder"></div>')
+                continue
+            if _TOC_SECTION_LINE_RE.match(line):
+                out.append('<div data-jz-toc="section" class="jz-inline-toc-placeholder"></div>')
+                continue
+        out.append(line)
+    return "\n".join(out)
+
+
+_TOC_PLACEHOLDER_RE = re.compile(r'<div data-jz-toc="(section)?"[^>]*></div>')
+
+
+def _render_toc_list(entries: list[dict]) -> str:
+    if not entries:
+        return ""
+    min_level = min(e["level"] for e in entries)
+    items = []
+    for e in entries:
+        num = e.get("numbering")
+        num_html = f'<span class="jz-toc-num">{_escape(num)}</span> ' if num else ""
+        items.append(
+            f'<li class="jz-inline-toc-l{e["level"] - min_level + 1}">'
+            f'<a href="#{_escape(e["id"])}">{num_html}{html.escape(e["text"], quote=False)}</a></li>'
+        )
+    return (
+        '<div class="jz-inline-toc"><div class="jz-inline-toc-title">目录</div><ul>'
+        + "".join(items)
+        + "</ul></div>"
+    )
+
+
+def _section_entries(toc: list[dict], at: int) -> list[dict]:
+    anchor_idx = at - 1
+    if anchor_idx < 0 or anchor_idx >= len(toc):
+        return []
+    anchor_level = toc[anchor_idx]["level"]
+    out: list[dict] = []
+    for k in range(at, len(toc)):
+        if toc[k]["level"] <= anchor_level:
+            break
+        out.append(toc[k])
+    return out
+
+
+def _expand_toc_placeholders(html_str: str, toc: list[dict], marks: list[dict]) -> str:
+    if "data-jz-toc" not in html_str:
+        return html_str
+    counter = {"i": 0}
+
+    def repl(match: re.Match) -> str:
+        i = counter["i"]
+        counter["i"] += 1
+        mark = marks[i] if i < len(marks) else None
+        scope = mark["scope"] if mark else ("section" if match.group(1) == "section" else "all")
+        entries = _section_entries(toc, mark["at"]) if (scope == "section" and mark) else toc
+        return _render_toc_list(entries)
+
+    return _TOC_PLACEHOLDER_RE.sub(repl, html_str)
+
+
 def _build_renderer() -> MarkdownIt:
     md = MarkdownIt("commonmark", {"breaks": True, "linkify": True, "html": True})
     gfm_plugin(md)
@@ -234,6 +402,8 @@ def _build_renderer() -> MarkdownIt:
     md.add_render_rule("fence", _render_fence)
     md.add_render_rule("table_open", _render_table_open)
     md.add_render_rule("table_close", _render_table_close)
+    md.add_render_rule("heading_open", _render_heading_open)
+    md.add_render_rule("html_block", _render_html_block)
     return md
 
 
@@ -273,6 +443,7 @@ def render_markdown(
     *,
     code_theme: str | None = None,
     diagram_svgs: dict[str, str] | None = None,
+    numbering: bool = False,
 ) -> str:
     """Preprocess + render Markdown to an HTML fragment.
 
@@ -285,13 +456,22 @@ def render_markdown(
     ``diagram_svgs`` maps a Mermaid fence body to its pre-rendered SVG (see
     ``collect_mermaid_sources`` + ``diagram_render``); matched blocks render as
     inline SVG, unmatched ones fall back to the source panel.
+
+    ``numbering`` enables Yuque-style hierarchical heading numbering (from the
+    document's ``heading_numbering`` flag). Headings always get anchor ids and
+    ``[TOC]`` / ``[TOC:section]`` placeholders always expand — numbering only
+    controls whether the visible ``1.2.1`` prefixes appear.
     """
-    prepared = preprocess_markdown(text)
+    prepared = _convert_toc_placeholders(preprocess_markdown(text))
     previous = _CODE_THEME["value"]
     if code_theme:
         _CODE_THEME["value"] = code_theme
-    env = {"diagram_svgs": diagram_svgs or {}}
+    env: dict = {"diagram_svgs": diagram_svgs or {}, "numbering": numbering}
     try:
-        return _rewrite_doc_links(_RENDERER.render(prepared, env))
+        rendered = _RENDERER.render(prepared, env)
+        rendered = _expand_toc_placeholders(
+            rendered, env.get("toc", []), env.get("_toc_marks", [])
+        )
+        return _rewrite_doc_links(rendered)
     finally:
         _CODE_THEME["value"] = previous

@@ -63,6 +63,8 @@
 - **Tiptap 表格保真**：带色/表级样式表条件序列化为原生 HTML（含 `.jz-table-wrap` + `data-jz-*`），无色保持干净 GFM；**docx 导出彩色/间距会丢**（已知限制）。
 - **MD 本地图片导入**：须拖**整个含 `.md` 的文件夹**（图片随上传一起交给后端打包，浏览器沙箱读不了硬盘）；旧文档缺图用 `manage.py import_local_images` 补。
 - **AI 日预算对端点流量失效** = 「AI 仅作者 + 管理员绕过预算」两条规格的预期后果，非 bug。
+- **博客内联「普通编辑」双写**：博客渲染 `published_content`，而 `raw_content` 自动保存**故意不同步**到 published（`_apply_update` 注释；`get_published_content` 不回退 raw）。故内联编辑（`PostInlineEditor`）走 `patchDocumentBody` **一次 PATCH 双写** raw+published（version 只 +1），否则内联的编辑/`[TOC]` 上不了博客。完整编辑器仍是「编 raw、显式发布」不受影响。
+- **章节编号 = 显示层**：序号不写入 `raw/published_content`；改编号逻辑须四端同步（阅读 `markdown.ts heading_open` / CM6 `extensions/headingNumber.ts` / Tiptap `HeadingNumber.ts` / 导出 `markdown_render.py`），算法唯一源 `utils/headingNumber.ts`。`renderMarkdownWithToc` 的 LRU key 必须含 numbering 标志。详见 docs/editor.md §7。
 
 ---
 
@@ -91,4 +93,4 @@
 
 ---
 
-**最后更新**：2026-06-29（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式 + 默认要求登录 + 用户标签/KB 大类朋友圈式可见性 + 6 套主题：星空/深海重写为 Canvas 粒子 + 春水 ogl WebGL 水面 shader + 冬雪 Canvas 飘雪/积雪；主题切换器合并为单按钮下拉 + 移除用户自选 accent preset 体系（调色全交 CSS token）+ PDF 阅读器目录/整页滚动/新标签打开 + 单文件上传上限 2GB，详见 docs/frontend.md §2/§5）
+**最后更新**：2026-07-02（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式 + 默认要求登录 + 用户标签/KB 大类朋友圈式可见性 + 6 套主题 + PDF 阅读器 + 单文件 2GB + **章节自动编号（显示层/每篇开关/嵌套深度压缩，`utils/headingNumber.ts` 四端一致）+ 目录生成（`[TOC]` 全文 / `[TOC:section]` 本节）+ 导入选项 + 导出端对齐 + 内联「普通编辑」双写 raw/published**，详见 docs/editor.md §7 与 frontend.md §2/§5）

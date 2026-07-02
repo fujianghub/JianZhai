@@ -42,6 +42,33 @@ export async function patchDocumentRawContent(
   }
 }
 
+/**
+ * Blog inline ("普通编辑") save: write the body to BOTH ``raw_content`` and
+ * ``published_content`` in a single PATCH so the edit is immediately visible on
+ * the blog (which renders published_content) AND stays in sync with the private
+ * working copy — so a later full-editor 发布 won't clobber it with stale raw.
+ * The server's ``_apply_update`` accepts both fields and bumps ``version`` once.
+ */
+export async function patchDocumentBody(
+  doc: DocumentDetail,
+  content: string,
+  onConflict?: VersionConflictHandler,
+): Promise<DocumentDetail> {
+  try {
+    return await docsApi.updateDocument(doc.id, {
+      raw_content: content,
+      published_content: content,
+      expected_version: doc.version,
+    });
+  } catch (err: unknown) {
+    if (handleVersionConflict(err, onConflict)) {
+      /* thrown above */
+    }
+    message.error(formatApiError(err, '保存失败'));
+    throw err;
+  }
+}
+
 export async function patchPublishedContent(
   doc: DocumentDetail,
   publishedContent: string,

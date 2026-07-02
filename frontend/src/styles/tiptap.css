@@ -358,6 +358,29 @@
   overflow-y: auto;
   font-size: 13px;
 }
+/* ---- 章节自动编号（显示层，Yuque 式） ---- */
+/* Tiptap rich-text: number is a node decoration attr, surfaced via ::before so
+   the document text stays clean (numbers never enter the serialized markdown). */
+.tiptap .jz-has-heading-num::before {
+  content: attr(data-jz-num) '  ';
+  color: var(--jz-accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: inherit;
+  white-space: pre;
+}
+/* CodeMirror source editor: atomic widget after the ``#`` markers. */
+.jz-cm-heading-num {
+  color: var(--jz-accent);
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+/* Outline panel prefix. */
+.jz-outline-num {
+  color: var(--jz-accent);
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
 .jz-outline-item {
   display: flex;
   align-items: center;

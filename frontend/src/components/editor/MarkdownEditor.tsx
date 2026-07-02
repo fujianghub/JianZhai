@@ -29,6 +29,7 @@ import { listKeymap } from './codemirror/extensions/listKeymap';
 import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
 import { tableAssistKeymap } from './codemirror/extensions/tableAssist';
 import { livePreview } from './codemirror/extensions/livePreview';
+import { headingNumber } from './codemirror/extensions/headingNumber';
 import {
   addColumnAfter,
   addRowAfter,
@@ -80,6 +81,8 @@ interface Props {
   onSurfaceReady?: (handle: EditorSurfaceHandle | null) => void;
   /** Paper-style preset key applied to the preview pane. */
   paperStyle?: string;
+  /** Yuque-style hierarchical heading numbering (display-only). */
+  headingNumbering?: boolean;
   /** Register saveNow for parent flush-before-publish / mode switch. */
   onSaveReady?: (handle: EditorSaveHandle | null) => void;
 }
@@ -108,6 +111,7 @@ export default function MarkdownEditor({
   documentId,
   onSurfaceReady,
   paperStyle,
+  headingNumbering = false,
   onSaveReady,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
@@ -140,12 +144,17 @@ export default function MarkdownEditor({
   /** Live Preview（就地渲染）开关 + 实例级 Compartment（挂载时装配进 CM）。 */
   const [lpOn, setLpOn] = useState<boolean>(loadLivePreviewOn);
   const lpCompartmentRef = useRef(new Compartment());
+  /** 章节自动编号（显示层）——实例级 Compartment，挂载时按 prop 装配，切换时 reconfigure。 */
+  const hnCompartmentRef = useRef(new Compartment());
+  const headingNumberingRef = useRef(headingNumbering);
+  headingNumberingRef.current = headingNumbering;
   const cmExtraExtensions = useMemo(
     () => [
       tableAssistKeymap,
       listKeymap,
       inlineFormatKeymap,
       lpCompartmentRef.current.of(loadLivePreviewOn() ? livePreview() : []),
+      hnCompartmentRef.current.of(headingNumberingRef.current ? headingNumber() : []),
     ],
     [],
   );
@@ -163,6 +172,12 @@ export default function MarkdownEditor({
       return next;
     });
   }, []);
+  // Reconfigure the heading-numbering compartment when the doc toggle flips.
+  useEffect(() => {
+    viewRef.current?.dispatch({
+      effects: hnCompartmentRef.current.reconfigure(headingNumbering ? headingNumber() : []),
+    });
+  }, [headingNumbering]);
   /** callout 记住上次颜色（语雀同款）。 */
   const [lastCallout, setLastCallout] = useState<string>(() => {
     try {
@@ -1018,6 +1033,7 @@ export default function MarkdownEditor({
             source={value}
             kind="markdown"
             paperStyle={paperStyle}
+            numbering={headingNumbering}
             showToc={layoutMode === 'preview'}
             sourceMap
             className="jz-md-editor-preview"

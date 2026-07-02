@@ -14,6 +14,11 @@ import mdFootnote from 'markdown-it-footnote';
 import mdMultimdTable from 'markdown-it-multimd-table';
 import DOMPurify from 'dompurify';
 import katex from 'katex';
+import {
+  createHeadingNumberState,
+  nextHeadingNumber,
+  type HeadingNumberState,
+} from './headingNumber';
 // KaTeX's own stylesheet — without this the public blog reader has unstyled
 // math (MathNode.tsx imports the same sheet for the editor; this duplicate
 // import is dedup'd by Vite). Loaded eagerly so first-paint math doesn't FOUC.
@@ -642,38 +647,89 @@ function addImgLazyAttrs(html: string): string {
   });
 }
 
-/** Matches the ``[TOC]`` placeholder div emitted by ``convertBlockPlaceholders``. */
-const TOC_PLACEHOLDER_RE = /<div data-jz-toc=""[^>]*><\/div>/g;
+/** Matches both the whole-document ``[TOC]`` and the section ``[TOC:section]``
+ * placeholder divs emitted by ``convertBlockPlaceholders``. */
+const TOC_PLACEHOLDER_RE = /<div data-jz-toc="(section)?"[^>]*><\/div>/g;
 
-/** Expand the ``[TOC]`` placeholder into a real nested heading list. The env
- * ``toc`` is collected by the ``heading_open`` rule during the same render. */
-function expandInlineToc(html: string, toc: TocEntry[]): string {
-  if (!html.includes('data-jz-toc')) return html;
-  if (!toc.length) return html.replace(TOC_PLACEHOLDER_RE, '');
-  const minLevel = Math.min(...toc.map((t) => t.level));
-  const items = toc
+/** A ``[TOC]`` placeholder recorded during render, in document order.
+ *  ``at`` = number of headings that preceded it (i.e. index into ``env.toc``);
+ *  for a section TOC the enclosing heading is ``toc[at - 1]``. */
+export interface TocMark {
+  scope: 'all' | 'section';
+  at: number;
+}
+
+/** Render a nested ``<ul>`` for the given TOC entries. ``minLevel`` normalises
+ *  indentation so a section subtree starting at H2 still indents from 0. */
+function renderTocList(entries: TocEntry[]): string {
+  if (!entries.length) return '';
+  const minLevel = Math.min(...entries.map((t) => t.level));
+  const items = entries
     .map(
       (t) =>
         `<li class="jz-inline-toc-l${t.level - minLevel + 1}">` +
-        `<a href="#${escAttr(t.id)}">${escape(t.text)}</a></li>`,
+        `<a href="#${escAttr(t.id)}">` +
+        (t.numbering ? `<span class="jz-toc-num">${escape(t.numbering)}</span> ` : '') +
+        `${escape(t.text)}</a></li>`,
     )
     .join('');
-  return html.replace(
-    TOC_PLACEHOLDER_RE,
-    `<div class="jz-inline-toc"><div class="jz-inline-toc-title">目录</div><ul>${items}</ul></div>`,
-  );
+  return `<div class="jz-inline-toc"><div class="jz-inline-toc-title">目录</div><ul>${items}</ul></div>`;
 }
 
-export function renderMarkdown(source: string): string {
-  const env: { toc: TocEntry[] } = { toc: [] };
+/** Collect the heading subtree under a section TOC anchor: every following
+ *  heading deeper than the enclosing heading, stopping at the first sibling
+ *  (same-or-shallower level). */
+function sectionEntries(toc: TocEntry[], at: number): TocEntry[] {
+  const anchorIdx = at - 1;
+  if (anchorIdx < 0 || anchorIdx >= toc.length) return [];
+  const anchorLevel = toc[anchorIdx].level;
+  const out: TocEntry[] = [];
+  for (let k = at; k < toc.length; k++) {
+    if (toc[k].level <= anchorLevel) break;
+    out.push(toc[k]);
+  }
+  return out;
+}
+
+/** Expand ``[TOC]`` / ``[TOC:section]`` placeholders into real heading lists.
+ *  ``toc`` (headings) and ``marks`` (placeholder positions) are both collected
+ *  in document order during the same render, so the i-th regex match lines up
+ *  with the i-th mark. */
+function expandTocPlaceholders(html: string, toc: TocEntry[], marks: TocMark[]): string {
+  if (!html.includes('data-jz-toc')) return html;
+  let i = 0;
+  return html.replace(TOC_PLACEHOLDER_RE, (_full, scopeCap: string | undefined) => {
+    const mark = marks[i++];
+    const scope: 'all' | 'section' =
+      mark?.scope ?? (scopeCap === 'section' ? 'section' : 'all');
+    const entries = scope === 'section' && mark ? sectionEntries(toc, mark.at) : toc;
+    return renderTocList(entries);
+  });
+}
+
+export interface RenderOptions {
+  /** Enable Yuque-style hierarchical heading numbering (display-only). */
+  numbering?: boolean;
+}
+
+export function renderMarkdown(source: string, opts: RenderOptions = {}): string {
+  const env: { toc: TocEntry[]; numbering?: boolean; _tocMarks?: TocMark[] } = {
+    toc: [],
+    numbering: opts.numbering,
+  };
   const html = md.render(preprocessMarkdown(source ?? ''), env);
-  return addImgLazyAttrs(sanitize(expandInlineToc(html, env.toc)));
+  return addImgLazyAttrs(
+    sanitize(expandTocPlaceholders(html, env.toc, env._tocMarks ?? [])),
+  );
 }
 
 export interface TocEntry {
   id: string;
   level: number;
   text: string;
+  /** Hierarchical section number (e.g. "1.2.1"), present only when the
+   *  document has heading numbering enabled. */
+  numbering?: string;
 }
 
 /* ------------------------------------------------------------------ *
@@ -698,24 +754,33 @@ const renderCache = new Map<string, { html: string; toc: TocEntry[] }>();
  * a deterministic, document-unique `id` attribute so the TOC links scroll to
  * the right spot via the URL fragment.
  */
-export function renderMarkdownWithToc(source: string): { html: string; toc: TocEntry[] } {
+export function renderMarkdownWithToc(
+  source: string,
+  opts: RenderOptions = {},
+): { html: string; toc: TocEntry[] } {
   const raw = source ?? '';
-  const cached = renderCache.get(raw);
+  // The numbering flag changes the rendered HTML + TOC, so it MUST be part of
+  // the cache key — otherwise toggling numbering returns a stale cached render.
+  const key = (opts.numbering ? 'N|' : '') + raw;
+  const cached = renderCache.get(key);
   if (cached) {
     // Bump for LRU: re-insert so it becomes the most-recently-used. Map
     // iteration order = insertion order so deleting + re-adding moves the
     // entry to the tail in O(1).
-    renderCache.delete(raw);
-    renderCache.set(raw, cached);
+    renderCache.delete(key);
+    renderCache.set(key, cached);
     return cached;
   }
-  const env: { toc: TocEntry[] } = { toc: [] };
+  const env: { toc: TocEntry[]; numbering?: boolean; _tocMarks?: TocMark[] } = {
+    toc: [],
+    numbering: opts.numbering,
+  };
   const html = md.render(preprocessMarkdown(raw), env);
   const result = {
-    html: addImgLazyAttrs(sanitize(expandInlineToc(html, env.toc))),
+    html: addImgLazyAttrs(sanitize(expandTocPlaceholders(html, env.toc, env._tocMarks ?? []))),
     toc: env.toc,
   };
-  renderCache.set(raw, result);
+  renderCache.set(key, result);
   // Evict the oldest if over capacity. ``Map.keys().next()`` is O(1).
   if (renderCache.size > RENDER_CACHE_MAX) {
     const oldest = renderCache.keys().next().value;
@@ -734,27 +799,35 @@ export function renderMarkdownWithToc(source: string): { html: string; toc: TocE
  * Deliberately NOT routed through the renderMarkdownWithToc LRU — the
  * annotated HTML must never leak into blog/export renders.
  */
-export function renderMarkdownForEditor(source: string): {
+export function renderMarkdownForEditor(
+  source: string,
+  opts: RenderOptions = {},
+): {
   html: string;
   toc: TocEntry[];
   preprocessed: string;
 } {
   const raw = source ?? '';
-  const cached = editorRenderCache.get(raw);
+  const key = (opts.numbering ? 'N|' : '') + raw;
+  const cached = editorRenderCache.get(key);
   if (cached) {
-    editorRenderCache.delete(raw);
-    editorRenderCache.set(raw, cached);
+    editorRenderCache.delete(key);
+    editorRenderCache.set(key, cached);
     return cached;
   }
   const preprocessed = preprocessMarkdown(raw);
-  const env: { toc: TocEntry[]; jzSourceMap: boolean } = { toc: [], jzSourceMap: true };
+  const env: { toc: TocEntry[]; jzSourceMap: boolean; numbering?: boolean } = {
+    toc: [],
+    jzSourceMap: true,
+    numbering: opts.numbering,
+  };
   const html = md.render(preprocessed, env);
   const result = {
     html: addImgLazyAttrs(sanitize(html)),
     toc: env.toc,
     preprocessed,
   };
-  editorRenderCache.set(raw, result);
+  editorRenderCache.set(key, result);
   if (editorRenderCache.size > EDITOR_RENDER_CACHE_MAX) {
     const oldest = editorRenderCache.keys().next().value;
     if (oldest !== undefined) editorRenderCache.delete(oldest);
@@ -1028,12 +1101,16 @@ export function convertLayoutBlocks(src: string): string {
  * inline code stay literal. Fenced code is excluded at the call site.
  */
 export function convertBlockPlaceholders(src: string): string {
-  if (!src.includes('[TOC]') && !src.includes('[[doc-card:')) return src;
+  if (!src.includes('[TOC]') && !src.includes('[TOC:section]') && !src.includes('[[doc-card:'))
+    return src;
   return src
     .split('\n')
     .map((line) => {
       if (/^\[TOC\]\s*$/.test(line)) {
         return '<div data-jz-toc="" class="jz-inline-toc-placeholder"></div>';
+      }
+      if (/^\[TOC:section\]\s*$/.test(line)) {
+        return '<div data-jz-toc="section" class="jz-inline-toc-placeholder"></div>';
       }
       const card = line.match(/^\[\[doc-card:(\d+)\]\]\s*$/);
       if (card) {
@@ -1468,8 +1545,23 @@ md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
         .join('')
     : inline?.content || '';
 
+  const e = env as {
+    toc?: TocEntry[];
+    _ids?: Map<string, number>;
+    numbering?: boolean;
+    _numState?: HeadingNumberState;
+  };
+
+  // Advance the numbering cursor for EVERY heading (all levels) so the depth
+  // stays correct even when h5/h6 sit between numbered headings; only h1–h4
+  // actually surface a visible number (matching the id/TOC range below).
+  let number = '';
+  if (e.numbering) {
+    e._numState ??= createHeadingNumberState();
+    number = nextHeadingNumber(e._numState, level);
+  }
+
   if (level <= 4 && text) {
-    const e = env as { toc?: TocEntry[]; _ids?: Map<string, number> };
     e._ids ??= new Map<string, number>();
     e.toc ??= [];
     const base = slugify(text);
@@ -1477,9 +1569,38 @@ md.renderer.rules.heading_open = (tokens, idx, options, env, self) => {
     const id = n === 0 ? base : `${base}-${n}`;
     e._ids.set(base, n + 1);
     token.attrSet('id', id);
-    e.toc.push({ id, level, text });
+    e.toc.push({ id, level, text, numbering: number || undefined });
+    if (number) {
+      // Inject the number as real text right after the opening tag so it
+      // survives copy/paste and offline export (no CSS ::before reliance).
+      return (
+        self.renderToken(tokens, idx, options) +
+        `<span class="jz-heading-num">${number}</span> `
+      );
+    }
   }
   return self.renderToken(tokens, idx, options);
+};
+
+// Intercept the ``[TOC]`` / ``[TOC:section]`` placeholder html_block to record
+// its position in the heading sequence (``env.toc.length`` at render time), in
+// document order. ``expandTocPlaceholders`` consumes these to scope a section
+// TOC to the subtree under its enclosing heading.
+const _defaultHtmlBlock = md.renderer.rules.html_block;
+md.renderer.rules.html_block = (tokens, idx, options, env, self) => {
+  const content = tokens[idx].content;
+  const m = /data-jz-toc="(section)?"/.exec(content);
+  if (m) {
+    const e = env as { toc?: TocEntry[]; _tocMarks?: TocMark[] };
+    e._tocMarks ??= [];
+    e._tocMarks.push({
+      scope: m[1] === 'section' ? 'section' : 'all',
+      at: e.toc?.length ?? 0,
+    });
+  }
+  return _defaultHtmlBlock
+    ? _defaultHtmlBlock(tokens, idx, options, env, self)
+    : tokens[idx].content;
 };
 
 export function wordCount(source: string): number {

@@ -52,6 +52,21 @@ def test_anthology_layout_grid_and_resizable_toc(owner, kb):
 
 
 @pytest.mark.django_db
+def test_heading_numbering_flag_flows_into_export(owner, kb):
+    # A document with heading_numbering=True exports with visible numbers +
+    # anchors; the [TOC] marker expands to a linked heading list.
+    doc = make_doc(kb, "numbered", published="[TOC]\n\n# A\n\n## B\n\n#### C\n")
+    doc.heading_numbering = True
+    doc.save(update_fields=["heading_numbering"])
+    scope = collect_for_scope(owner=owner, scope="kb", target_id=kb.id)
+    html = html_export.render_html(scope)
+    assert '<span class="jz-heading-num">1.1</span>' in html
+    assert '<span class="jz-heading-num">1.1.1</span>' in html  # compacted h4
+    assert "jz-inline-toc" in html
+    assert '<span class="jz-toc-num">1</span>' in html
+
+
+@pytest.mark.django_db
 def test_kb_markdown_renders_headings_and_callout(owner, kb):
     make_doc(
         kb,
@@ -61,7 +76,8 @@ def test_kb_markdown_renders_headings_and_callout(owner, kb):
     scope = collect_for_scope(owner=owner, scope="kb", target_id=kb.id)
     html = html_export.render_html(scope)
     assert "jz-markdown export-markdown" in html
-    assert "<h2>" in html
+    # Headings now carry anchor ids (for in-doc TOC links) — slug of "Section".
+    assert '<h2 id="section">' in html
     assert "jz-callout" in html
     assert "<table>" in html
     assert "\n## Section\n" not in html

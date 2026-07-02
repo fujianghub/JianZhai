@@ -117,6 +117,7 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
             "knowledge_base",
             "tags",
             "paper_style",
+            "heading_numbering",
             "primary_attachment",
             "doc_format",
         ]

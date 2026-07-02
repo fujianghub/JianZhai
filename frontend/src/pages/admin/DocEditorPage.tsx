@@ -498,6 +498,12 @@ export default function DocEditorPage({
     setDoc(next);
   }
 
+  async function handleHeadingNumberingChange(heading_numbering: boolean) {
+    if (!doc) return;
+    const next = await docsApi.updateDocument(doc.id, { heading_numbering });
+    setDoc(next);
+  }
+
   async function handleRename(title: string) {
     if (!doc || !title.trim()) return;
     const next = await docsApi.updateDocument(doc.id, { title: title.trim() });
@@ -694,6 +700,17 @@ export default function DocEditorPage({
                 variant="borderless"
                 options={PAPER_STYLES.map((p) => ({ value: p.key, label: `${p.label}` }))}
               />
+            </Tooltip>
+            <span className="jz-doc-header-meta-divider" aria-hidden>·</span>
+            <Tooltip title="章节标题自动编号（1 / 1.1 / 1.1.1，仅显示不改源码）">
+              <Space size={4}>
+                <Text type="secondary" style={{ fontSize: 12 }}>编号</Text>
+                <Switch
+                  size="small"
+                  checked={doc.heading_numbering}
+                  onChange={(checked) => void handleHeadingNumberingChange(checked)}
+                />
+              </Space>
             </Tooltip>
           </div>
         </div>
@@ -900,6 +917,7 @@ export default function DocEditorPage({
                   editor={mode === 'rich' ? richEditor : null}
                   source={mode === 'markdown' || mode === 'html' ? editorBody : undefined}
                   sourceKind={mode === 'html' ? 'html' : 'markdown'}
+                  numbering={doc.heading_numbering}
                   onSeek={(pos) => {
                     if (mode === 'html') {
                       htmlSurface?.seekTo(pos);
@@ -1074,6 +1092,7 @@ function EditorSurface({
         documentId={doc.id}
         onEditorReady={onRichEditorReady}
         paperStyle={doc.paper_style}
+        headingNumbering={doc.heading_numbering}
         forceSyncRevision={forceSyncRevision}
         onSaveReady={onSaveReady}
       />
@@ -1088,6 +1107,7 @@ function EditorSurface({
       documentId={doc.id}
       onSurfaceReady={onMarkdownSurfaceReady}
       paperStyle={doc.paper_style}
+      headingNumbering={doc.heading_numbering}
       onSaveReady={onSaveReady}
     />
   );

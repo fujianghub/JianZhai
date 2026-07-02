@@ -40,6 +40,7 @@ import { Columns, Column } from './Columns';
 import { DragToColumns } from './DragToColumns';
 import { EmojiSuggestion } from './EmojiSuggestion';
 import { HeadingFold } from './HeadingFold';
+import { HeadingNumber } from './HeadingNumber';
 import { Tabs, TabPanel } from './Tabs';
 import { DocCardEmbed } from './DocCardEmbed';
 import { LinkCardEmbed } from './LinkCardEmbed';
@@ -162,6 +163,8 @@ interface Props {
   /** Paper-background preset key (see utils/paper.ts). Applied to the editor
    *  shell so the writer sees what the reader will see. */
   paperStyle?: string;
+  /** Yuque-style hierarchical heading numbering (display-only). */
+  headingNumbering?: boolean;
   /** Bump to force external value sync (e.g. 409 conflict) even when focused. */
   forceSyncRevision?: number;
   onSaveReady?: (handle: import('./editorSaveLifecycle').EditorSaveHandle | null) => void;
@@ -178,10 +181,15 @@ export default function RichTextEditor({
   documentId,
   onEditorReady,
   paperStyle,
+  headingNumbering = false,
   forceSyncRevision = 0,
   onSaveReady,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
+  /** Read at editor-creation time for the initial HeadingNumber config; the
+   *  effect below keeps it live afterwards without re-creating the editor. */
+  const headingNumberingRef = useRef(headingNumbering);
+  headingNumberingRef.current = headingNumbering;
   const [mentionOpen, setMentionOpen] = useState(false);
   const setMentionOpenRef = useRef(setMentionOpen);
   useEffect(() => {
@@ -402,6 +410,7 @@ export default function RichTextEditor({
       SlashCommand,
       EmojiSuggestion,
       HeadingFold,
+      HeadingNumber.configure({ enabled: headingNumberingRef.current }),
       FindReplace,
       GlobalDragHandle.configure({
         dragHandleSelector: '.jz-block-drag-handle',
@@ -505,6 +514,13 @@ export default function RichTextEditor({
     if (!editor) return;
     editor.setEditable(!readOnly);
   }, [editor, readOnly]);
+
+  // Keep the display-only heading numbering in sync with the doc toggle without
+  // re-creating the editor (setHeadingNumbering flips the decoration plugin).
+  useEffect(() => {
+    if (!editor) return;
+    editor.commands.setHeadingNumbering(headingNumbering);
+  }, [editor, headingNumbering]);
 
   // Sync external value (409 conflict reload, version restore). Guarded so
   // we never overwrite local edits that are still inside the 200ms debounce.

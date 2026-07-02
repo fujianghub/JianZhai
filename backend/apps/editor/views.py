@@ -176,12 +176,26 @@ def _ensure_folder_path(kb: KnowledgeBase, root: Folder | None, parts: list[str]
     return parent
 
 
+# Markdown-capable text formats where a ``[TOC]`` marker is meaningful.
+_MARKDOWNISH_EXTS = {".md", ".markdown", ".txt", ".docx"}
+
+
+def _parse_import_options(request) -> tuple[bool, bool]:
+    """Read the ``heading_numbering`` / ``insert_toc`` import flags (default off)."""
+    def _flag(name: str) -> bool:
+        return str(request.data.get(name, "")).strip().lower() in {"1", "true", "on", "yes"}
+
+    return _flag("heading_numbering"), _flag("insert_toc")
+
+
 def _create_doc_from_upload(
     *,
     request,
     kb: KnowledgeBase,
     folder: Folder | None,
     f,
+    heading_numbering: bool = False,
+    insert_toc: bool = False,
 ) -> Document | Response:
     """Shared logic for turning one uploaded file into a Document + Attachment."""
     if f.size > MAX_UPLOAD_SIZE:
@@ -205,6 +219,12 @@ def _create_doc_from_upload(
         raw_content = _docx_to_markdown(f.read())
         f.seek(0)
 
+    # Optionally prepend a whole-document TOC marker (markdown-capable text only;
+    # the reader expands ``[TOC]`` into a real heading list). This is the only
+    # content mutation on import — numbering stays a display-only flag.
+    if insert_toc and raw_content and ext in _MARKDOWNISH_EXTS:
+        raw_content = "[TOC]\n\n" + raw_content
+
     # New uploads default to public + published so the document is immediately
     # visible on the blog frontend. The admin can still flip it back to
     # private/draft from the editor.
@@ -217,6 +237,7 @@ def _create_doc_from_upload(
         published_content=raw_content,
         status="published",
         visibility="public",
+        heading_numbering=heading_numbering,
         published_at=now,
     )
     mime = f.content_type or mimetypes.guess_type(f.name)[0] or ""
@@ -271,7 +292,15 @@ def import_file(request):
             Folder.objects.filter(knowledge_base=kb), pk=folder_id
         )
 
-    result = _create_doc_from_upload(request=request, kb=kb, folder=folder, f=f)
+    heading_numbering, insert_toc = _parse_import_options(request)
+    result = _create_doc_from_upload(
+        request=request,
+        kb=kb,
+        folder=folder,
+        f=f,
+        heading_numbering=heading_numbering,
+        insert_toc=insert_toc,
+    )
     if isinstance(result, Response):
         return result
     return Response(DocumentSerializer(result).data, status=status.HTTP_201_CREATED)
@@ -283,6 +312,8 @@ def _bundle_import_entries(
     kb: KnowledgeBase,
     root_folder: Folder | None,
     entries: list[tuple[str, object]],
+    heading_numbering: bool = False,
+    insert_toc: bool = False,
 ) -> tuple[list[Document], list[dict]]:
     """Import ``(relpath, file)`` entries with markdown-image bundling.
 
@@ -349,7 +380,14 @@ def _bundle_import_entries(
             errors.append({"name": f.name, "detail": str(exc)})
             continue
 
-        result = _create_doc_from_upload(request=request, kb=kb, folder=folder, f=f)
+        result = _create_doc_from_upload(
+            request=request,
+            kb=kb,
+            folder=folder,
+            f=f,
+            heading_numbering=heading_numbering,
+            insert_toc=insert_toc,
+        )
         if isinstance(result, Response):
             errors.append({"name": f.name, "detail": str(result.data.get("detail", "导入失败"))})
             continue
@@ -423,9 +461,15 @@ def import_batch(request):
     ]
     entries = list(zip(rels, files))
 
+    heading_numbering, insert_toc = _parse_import_options(request)
     folders_before = Folder.objects.filter(knowledge_base=kb).count()
     created, errors = _bundle_import_entries(
-        request=request, kb=kb, root_folder=root_folder, entries=entries
+        request=request,
+        kb=kb,
+        root_folder=root_folder,
+        entries=entries,
+        heading_numbering=heading_numbering,
+        insert_toc=insert_toc,
     )
     folders_after = Folder.objects.filter(knowledge_base=kb).count()
     return Response(
@@ -535,9 +579,15 @@ def import_zip(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
+    heading_numbering, insert_toc = _parse_import_options(request)
     folders_before = Folder.objects.filter(knowledge_base=kb).count()
     created, errors = _bundle_import_entries(
-        request=request, kb=kb, root_folder=root_folder, entries=entries
+        request=request,
+        kb=kb,
+        root_folder=root_folder,
+        entries=entries,
+        heading_numbering=heading_numbering,
+        insert_toc=insert_toc,
     )
     folders_after = Folder.objects.filter(knowledge_base=kb).count()
     return Response(

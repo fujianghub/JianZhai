@@ -157,13 +157,21 @@ def export_root() -> Path:
     root.mkdir(parents=True, exist_ok=True)
     return root
 
-def render_markdown(text: str, *, diagram_svgs: dict[str, str] | None = None) -> str:
+def render_markdown(
+    text: str,
+    *,
+    diagram_svgs: dict[str, str] | None = None,
+    numbering: bool = False,
+) -> str:
     """Render Markdown to HTML (preprocess + enhanced markdown-it).
 
     ``diagram_svgs`` (Mermaid fence body → pre-rendered SVG) lets HTML/PDF/site
-    exports embed real diagrams instead of source panels.
+    exports embed real diagrams instead of source panels. ``numbering`` enables
+    Yuque-style heading numbering (from the document's ``heading_numbering``).
     """
-    return markdown_render.render_markdown(text, diagram_svgs=diagram_svgs)
+    return markdown_render.render_markdown(
+        text, diagram_svgs=diagram_svgs, numbering=numbering
+    )
 
 
 def build_scope_diagram_svgs(scope: ExportScope) -> dict[str, str]:
@@ -271,7 +279,11 @@ def render_document_body_html(
     md = content
     if not embed_media:
         md = rewrite_markdown_media_paths(md)
-    html = render_markdown(md, diagram_svgs=diagram_svgs)
+    html = render_markdown(
+        md,
+        diagram_svgs=diagram_svgs,
+        numbering=bool(getattr(doc, "heading_numbering", False)),
+    )
     html = rewrite_html_media(
         html,
         embed=embed_media,

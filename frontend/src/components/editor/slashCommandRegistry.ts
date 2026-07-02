@@ -647,13 +647,25 @@ export function buildSlashCommands(): SlashCommandItem[] {
       id: 'toc',
       category: '结构',
       icon: iconText('TOC'),
-      title: '目录',
-      description: aliasDesc('toc', 'ml') || '自动汇总标题',
+      title: '目录（全文）',
+      description: aliasDesc('toc', 'ml') || '自动汇总全文标题',
       aliases: ['toc', 'ml', 'mulu'],
-      keywords: ['table of contents', '目录', '大纲'],
+      keywords: ['table of contents', '目录', '大纲', '全文目录'],
       richTextOnly: true,
       command: ({ editor, range }) =>
         editor.chain().focus().deleteRange(range).insertToc().run(),
+    },
+    {
+      id: 'toc-section',
+      category: '结构',
+      icon: iconText('TOC'),
+      title: '本节目录',
+      description: '汇总当前标题下的子标题',
+      aliases: ['tocs', 'mls', 'benjie'],
+      keywords: ['section table of contents', '本节目录', '章节目录', '子目录'],
+      richTextOnly: true,
+      command: ({ editor, range }) =>
+        editor.chain().focus().deleteRange(range).insertSectionToc().run(),
     },
     {
       id: 'details',

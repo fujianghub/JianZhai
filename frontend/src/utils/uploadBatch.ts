@@ -20,6 +20,7 @@ import {
   importBatch,
   type BatchImportItem,
   type BatchImportResult,
+  type ImportParseOptions,
 } from '@/api/attachments';
 
 export const UPLOAD_MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GiB
@@ -253,7 +254,8 @@ export async function runChunkedImport(
   kbId: number,
   folderId: number | null,
   callbacks: ChunkedImportCallbacks = {},
-  chunkSize: number = UPLOAD_CHUNK_SIZE
+  chunkSize: number = UPLOAD_CHUNK_SIZE,
+  options?: ImportParseOptions
 ): Promise<BatchImportResult> {
   const total: BatchImportResult = { created: [], errors: [], folders_created: 0 };
   const totalBytes = items.reduce((s, it) => s + it.file.size, 0) || 1;
@@ -266,7 +268,7 @@ export async function runChunkedImport(
         // axios 报的是含 multipart 边界的请求字节，按比例折算到本片份额。
         const frac = reqTotal > 0 ? Math.min(1, loaded / reqTotal) : 0;
         callbacks.onProgress?.(doneBytes + frac * chunkBytes, totalBytes);
-      });
+      }, options);
       total.created.push(...r.created);
       total.errors.push(...r.errors);
       total.folders_created += r.folders_created;

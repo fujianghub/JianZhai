@@ -393,6 +393,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "status",
             "visibility",
             "paper_style",
+            "heading_numbering",
             "order",
             "is_pinned",
             "pinned_at",

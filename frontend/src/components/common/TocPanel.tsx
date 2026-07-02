@@ -105,6 +105,11 @@ export default function TocPanel({ toc, articleSelector = '.markdown-preview', o
                 transition: 'color 120ms ease, border-color 120ms ease',
               }}
             >
+              {entry.numbering ? (
+                <span className="jz-toc-num" style={{ opacity: 0.7, marginRight: 6 }}>
+                  {entry.numbering}
+                </span>
+              ) : null}
               {entry.text}
             </a>
           </li>

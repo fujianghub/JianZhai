@@ -152,6 +152,7 @@ export interface DocumentDetail extends DocumentListItem {
   raw_content: string;
   published_content: string;
   paper_style: string;
+  heading_numbering: boolean;
   version: number;
   is_pinned?: boolean;
   primary_attachment: PublicAttachment | null;
@@ -275,6 +276,7 @@ export interface PublicPostDetail {
   knowledge_base: { id: number; name: string; slug: string; accent_color: string };
   tags: PublicTagSummary[];
   paper_style: string;
+  heading_numbering: boolean;
   primary_attachment: PublicAttachment | null;
   doc_format: DocFormat;
 }
