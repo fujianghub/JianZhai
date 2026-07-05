@@ -1,5 +1,13 @@
 import { apiClient } from './client';
-import type { Paginated, PublicPost, PublicPostDetail } from '@/types';
+import type { Paginated, PublicPost, PublicPostDetail, Slide } from '@/types';
+
+/** Poll a PPT/PPTX post's rendered slide images (empty while still converting). */
+export async function fetchPostSlides(postId: number): Promise<Slide[]> {
+  const { data } = await apiClient.get<{ slides: Slide[] }>(
+    `/public/posts/by-id/${postId}/slides/`,
+  );
+  return data.slides;
+}
 
 export async function listPublicPosts(params?: { limit?: number; kb?: string; tag?: string }): Promise<PublicPost[]> {
   const { data } = await apiClient.get<Paginated<PublicPost>>('/public/posts/', { params });

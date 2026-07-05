@@ -185,10 +185,17 @@ export function attachmentAbsoluteUrl(url: string): string {
 }
 
 /** Pick a previewer hint based on filename + mime. */
-export function previewKind(a: Pick<Attachment, 'original_filename' | 'mime_type'>): 'pdf' | 'docx' | 'html' | 'md' | 'image' | 'text' | 'unknown' {
+export function previewKind(a: Pick<Attachment, 'original_filename' | 'mime_type'>): 'pdf' | 'docx' | 'pptx' | 'html' | 'md' | 'image' | 'text' | 'unknown' {
   const lower = a.original_filename.toLowerCase();
   if (lower.endsWith('.pdf') || a.mime_type === 'application/pdf') return 'pdf';
   if (lower.endsWith('.docx')) return 'docx';
+  if (
+    lower.endsWith('.pptx') ||
+    lower.endsWith('.ppt') ||
+    a.mime_type === 'application/vnd.ms-powerpoint' ||
+    a.mime_type.includes('presentationml')
+  )
+    return 'pptx';
   if (lower.endsWith('.html') || lower.endsWith('.htm')) return 'html';
   if (lower.endsWith('.md') || lower.endsWith('.markdown')) return 'md';
   if (a.mime_type.startsWith('image/')) return 'image';

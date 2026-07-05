@@ -8,6 +8,7 @@ const META: Record<DocFormat, { label: string; color: string }> = {
   html: { label: 'HTML', color: '#f97316' },
   pdf: { label: 'PDF', color: '#ef4444' },
   docx: { label: 'DOCX', color: '#6366f1' },
+  pptx: { label: 'PPT', color: '#f59e0b' },
   image: { label: '图片', color: '#a78bfa' },
 };
 

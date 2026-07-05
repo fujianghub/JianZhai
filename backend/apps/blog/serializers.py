@@ -50,6 +50,26 @@ def _primary_attachment(doc: Document) -> dict | None:
     }
 
 
+def _slides_summary(doc: Document) -> list[dict]:
+    """Ordered rendered-slide images for a PPT/PPTX document (empty otherwise).
+
+    Empty while conversion is still running — the reader shows a "转换中"
+    placeholder and polls the slides endpoint until this returns rows.
+    """
+    slides = getattr(doc, "prefetched_slides", None)
+    if slides is None:
+        slides = doc.slides.all()
+    return [
+        {
+            "index": s.index,
+            "url": s.image.url if s.image else "",
+            "width": s.width,
+            "height": s.height,
+        }
+        for s in slides
+    ]
+
+
 class PublicPostListSerializer(serializers.ModelSerializer):
     excerpt = serializers.SerializerMethodField()
     knowledge_base = serializers.SerializerMethodField()
@@ -104,6 +124,7 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
     primary_attachment = serializers.SerializerMethodField()
     doc_format = serializers.SerializerMethodField()
     published_content = serializers.SerializerMethodField()
+    slides = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -120,6 +141,7 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
             "heading_numbering",
             "primary_attachment",
             "doc_format",
+            "slides",
         ]
 
     def get_knowledge_base(self, obj: Document) -> dict:
@@ -139,6 +161,9 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
 
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
+
+    def get_slides(self, obj: Document) -> list[dict]:
+        return _slides_summary(obj)
 
     def get_published_content(self, obj: Document) -> str:
         """HTML posts may have body only in a ``.html`` attachment (legacy docs).

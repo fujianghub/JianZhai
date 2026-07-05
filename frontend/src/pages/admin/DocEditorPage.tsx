@@ -47,6 +47,7 @@ import DocumentOutline from '@/components/editor/DocumentOutline';
 import FindReplacePanel from '@/components/editor/FindReplacePanel';
 import type { Editor as TiptapEditor } from '@tiptap/core';
 import PdfCanvas from '@/components/common/LazyPdfCanvas';
+import LazyPptxReader from '@/components/common/LazyPptxReader';
 import BacklinkPanel from '@/components/common/BacklinkPanel';
 import TagPicker from '@/components/common/TagPicker';
 import CommentsPanel from '@/components/common/CommentsPanel';
@@ -76,7 +77,7 @@ import {
   type EditorSurfaceHandle,
 } from '@/components/editor/surface/EditorSurface';
 
-type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf';
+type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf' | 'pptx';
 type ContentSource = 'raw' | 'published';
 
 function editorModeStorageKey(docId: number, source: ContentSource): string {
@@ -86,7 +87,8 @@ function editorModeStorageKey(docId: number, source: ContentSource): string {
 function loadStoredEditorMode(docId: number, source: ContentSource): EditorMode | null {
   try {
     const v = localStorage.getItem(editorModeStorageKey(docId, source));
-    if (v === 'markdown' || v === 'rich' || v === 'html' || v === 'pdf') return v;
+    if (v === 'markdown' || v === 'rich' || v === 'html' || v === 'pdf' || v === 'pptx')
+      return v;
   } catch {
     /* noop */
   }
@@ -101,6 +103,8 @@ function defaultModeFor(
   switch (format) {
     case 'pdf':
       return 'pdf';
+    case 'pptx':
+      return 'pptx';
     case 'html':
       return 'html';
     case 'docx':
@@ -197,7 +201,7 @@ export default function DocEditorPage({
   }, [contentSource]);
 
   const flushPendingEdits = useCallback(async () => {
-    if (mode !== 'pdf' && editorSaveRef.current) {
+    if (mode !== 'pdf' && mode !== 'pptx' && editorSaveRef.current) {
       await editorSaveRef.current.saveNow();
     }
     if (saveInFlightRef.current) {
@@ -737,6 +741,7 @@ export default function DocEditorPage({
                 { label: '富文本', value: 'rich' },
                 { label: 'HTML', value: 'html' },
                 { label: 'PDF', value: 'pdf' },
+                { label: 'PPT', value: 'pptx' },
               ]}
             />
             <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
@@ -890,7 +895,7 @@ export default function DocEditorPage({
             onSaveReady={registerEditorSave}
           />
         </div>
-        {outlineOpen && mode !== 'pdf' && (
+        {outlineOpen && mode !== 'pdf' && mode !== 'pptx' && (
           <aside className="jz-editor-sidebar jz-editor-sidebar-floating">
             <div className="jz-editor-sidebar-tabs">
               {([
@@ -1057,6 +1062,28 @@ function EditorSurface({
       );
     }
     return <PdfCanvas url={primaryUrl} height="min(78vh, 760px)" />;
+  }
+  if (mode === 'pptx') {
+    if (doc.doc_format !== 'pptx') {
+      return (
+        <MissingAttachment
+          format="PPT"
+          accept=".ppt,.pptx"
+          uploading={uploadingPrimary}
+          onUpload={onUploadPrimary}
+          onSwitchToMarkdown={onSwitchToMarkdown}
+        />
+      );
+    }
+    // View-only slide preview (same reader the blog uses); polls while the
+    // server-side conversion is still running.
+    return (
+      <LazyPptxReader
+        slides={doc.slides ?? []}
+        postId={doc.id}
+        downloadUrl={doc.primary_attachment?.url}
+      />
+    );
   }
   if (mode === 'html') {
     // 新文档：允许直接进入空编辑器（用户从 0 写 HTML）；老文档：若 raw_content

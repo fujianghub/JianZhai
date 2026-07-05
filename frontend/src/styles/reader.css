@@ -141,6 +141,10 @@
   font-variant-numeric: tabular-nums;
   color: var(--jz-text);
 }
+/* Continuous font-scale slider sits under the +/- stepper; the 100% mark
+   label needs a touch of bottom room so it doesn't collide with 行距. */
+.jz-rl-slider { margin: 6px 4px 4px; }
+.jz-rl-slider .ant-slider-mark { font-size: 11px; }
 .jz-rl-reset { color: var(--glass-text-muted, var(--jz-text-muted)) !important; }
 .jz-rl-reset:hover { color: var(--jz-doc-accent, var(--jz-accent)) !important; }
 

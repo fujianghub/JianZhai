@@ -20,6 +20,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential libpq-dev gcc curl \
     && rm -rf /var/lib/apt/lists/*
 
+# LibreOffice (headless) + poppler render PPT/PPTX uploads into per-slide PNGs
+# (see apps/editor/tasks.convert_pptx_to_slides: soffice --convert-to pdf →
+# pdftoppm). These are RUNTIME deps for the celery worker, so this separate
+# layer must survive the build-deps purge below (which only strips
+# build-essential/gcc). fonts-noto-cjk lets Chinese slide text render instead
+# of tofu boxes; the layer is early so it stays cached across code changes.
+# Adds ~400 MB to the image.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        libreoffice-impress poppler-utils fonts-noto-cjk fonts-dejavu \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy only the dependency manifest first so the layer cache survives

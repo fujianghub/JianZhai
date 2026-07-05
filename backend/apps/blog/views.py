@@ -353,6 +353,22 @@ class PublicPostByIdView(APIView):
         return Response({"id": doc.id, "slug": doc.slug, "title": doc.title})
 
 
+class PublicPostSlidesView(APIView):
+    """Ordered slide images for a PPT/PPTX post — polled by the reader while the
+    server-side conversion (LibreOffice → PDF → PNG) is still running.
+
+    Goes through the same friend-gate as the post itself, and only surfaces
+    slides for documents the reader may see (``_published_qs`` + audience)."""
+
+    permission_classes = [PublicOrLoginGated]
+
+    def get(self, request, doc_id: int):
+        from .serializers import _slides_summary
+
+        doc = get_object_or_404(_published_qs(user=request.user), pk=doc_id)
+        return Response({"slides": _slides_summary(doc)})
+
+
 class PublicArchiveView(APIView):
     """Group published+public posts by year/month for the blog archive page."""
 

@@ -24,7 +24,10 @@ logger = logging.getLogger(__name__)
 # 2 GiB hard limit per single file
 MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
-ALLOWED_DOC_EXT = {".pdf", ".doc", ".docx", ".html", ".htm", ".md", ".markdown", ".txt"}
+ALLOWED_DOC_EXT = {
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx",
+    ".html", ".htm", ".md", ".markdown", ".txt",
+}
 ALLOWED_OTHER_EXT = {".zip", ".csv", ".json", ".xml"}
 ALLOWED_EXT = ALLOWED_IMAGE_EXT | ALLOWED_DOC_EXT | ALLOWED_OTHER_EXT
 
@@ -51,35 +54,6 @@ def _decode_text(blob: bytes) -> str:
         except UnicodeDecodeError:
             continue
     return blob.decode("utf-8", errors="replace")
-
-
-def _docx_to_markdown(blob: bytes) -> str:
-    """Convert DOCX bytes to Markdown via mammoth → HTML → markdownify.
-
-    Returns ``""`` on any failure (missing optional deps, malformed file, …)
-    so that bulk imports don't 500 on a single bad upload — the import still
-    creates the Document + Attachment, the user can then re-edit raw_content
-    manually or re-upload.
-    """
-    try:
-        import mammoth  # type: ignore[import-not-found]
-        from markdownify import markdownify  # type: ignore[import-not-found]
-    except ImportError:
-        logger.warning(
-            "mammoth/markdownify not installed — DOCX body will be left empty. "
-            "Install with `pip install mammoth markdownify` to enable extraction."
-        )
-        return ""
-
-    try:
-        result = mammoth.convert_to_html(blob)
-        for msg in result.messages:
-            logger.info("mammoth docx import: %s", msg)
-        html = result.value or ""
-        return markdownify(html, heading_style="ATX", bullets="-").strip()
-    except Exception as exc:  # noqa: BLE001 — mammoth raises many subclasses
-        logger.warning("DOCX → Markdown conversion failed: %s", exc, exc_info=True)
-        return ""
 
 
 @api_view(["POST"])
@@ -212,12 +186,17 @@ def _create_doc_from_upload(
 
     title = Path(f.name).stem or "Untitled"
     raw_content = ""
+    docx_images: list = []
     if ext in TEXT_IMPORT_EXT:
         raw_content = _decode_text(f.read())
         f.seek(0)
     elif ext == ".docx":
-        raw_content = _docx_to_markdown(f.read())
+        from apps.editor.services.docx_import import EMPTY_FALLBACK, convert_docx
+
+        raw_content, docx_images = convert_docx(f.read())
         f.seek(0)
+        if not raw_content.strip():
+            raw_content = EMPTY_FALLBACK
 
     # Optionally prepend a whole-document TOC marker (markdown-capable text only;
     # the reader expands ``[TOC]`` into a real heading list). This is the only
@@ -241,7 +220,7 @@ def _create_doc_from_upload(
         published_at=now,
     )
     mime = f.content_type or mimetypes.guess_type(f.name)[0] or ""
-    Attachment.objects.create(
+    att = Attachment.objects.create(
         document=doc,
         uploaded_by=request.user,
         file=f,
@@ -250,6 +229,18 @@ def _create_doc_from_upload(
         mime_type=mime,
         size=f.size,
     )
+    if docx_images:
+        from apps.editor.services.docx_import import materialize_docx_images
+
+        if materialize_docx_images(doc, docx_images, uploaded_by=request.user):
+            doc.save(update_fields=["raw_content", "published_content", "updated_at"])
+    if ext in {".ppt", ".pptx"}:
+        # Slides render asynchronously (LibreOffice is slow); the reader shows a
+        # "转换中" placeholder and polls until slides appear. Body stays empty —
+        # a pptx is a view-only binary like a PDF.
+        from apps.editor.tasks import convert_pptx_to_slides
+
+        convert_pptx_to_slides.delay(doc.id, att.id)
     if raw_content and ext in {".md", ".markdown"}:
         from apps.editor.services.image_mirror import mirror_images_for_document
 

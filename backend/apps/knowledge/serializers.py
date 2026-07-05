@@ -61,7 +61,8 @@ DOC_FORMAT_ORDER = {
     "html": 1,
     "pdf": 2,
     "docx": 3,
-    "image": 4,
+    "pptx": 4,
+    "image": 5,
 }
 
 
@@ -103,7 +104,7 @@ def _primary_attachment(doc: Document):
 def detect_doc_format(doc: Document) -> str:
     """Classify a document by its primary (first-uploaded) attachment.
 
-    Returns one of: ``pdf``, ``html``, ``docx``, ``image``, ``markdown``.
+    Returns one of: ``pdf``, ``html``, ``docx``, ``pptx``, ``image``, ``markdown``.
     Falls back to ``markdown`` (the default body editor) when the document has
     no attachment or only inline-imported text. When there is no decisive
     attachment, ``raw_content`` / ``published_content`` that looks like HTML
@@ -130,6 +131,11 @@ def detect_doc_format(doc: Document) -> str:
             return "html"
         if ext == ".docx":
             return "docx"
+        if ext in {".ppt", ".pptx"} or mime in {
+            "application/vnd.ms-powerpoint",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        }:
+            return "pptx"
         if att.kind == "image" or mime.startswith("image/"):
             # A genuine image document has an image as its primary attachment and
             # no text body. But a *markdown* doc that merely carries bundled image
@@ -379,6 +385,7 @@ class DocumentListSerializer(serializers.ModelSerializer):
 class DocumentSerializer(serializers.ModelSerializer):
     doc_format = serializers.SerializerMethodField()
     primary_attachment = serializers.SerializerMethodField()
+    slides = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -400,6 +407,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "version",
             "doc_format",
             "primary_attachment",
+            "slides",
             "created_at",
             "updated_at",
             "published_at",
@@ -412,12 +420,24 @@ class DocumentSerializer(serializers.ModelSerializer):
             "pinned_at",
             "doc_format",
             "primary_attachment",
+            "slides",
             "created_at",
             "updated_at",
         ]
 
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
+
+    def get_slides(self, obj: Document) -> list[dict]:
+        return [
+            {
+                "index": s.index,
+                "url": s.image.url if s.image else "",
+                "width": s.width,
+                "height": s.height,
+            }
+            for s in obj.slides.all()
+        ]
 
     def validate_knowledge_base(self, value: KnowledgeBase) -> KnowledgeBase:
         return _assert_owned(self, value, value.owner_id)

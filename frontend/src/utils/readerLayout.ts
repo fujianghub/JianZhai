@@ -30,6 +30,14 @@ export interface LabeledOption<T> {
 /** Discrete font-scale ladder the +/- stepper snaps onto. */
 export const FONT_SCALE_STEPS = [0.875, 1, 1.125, 1.25, 1.4];
 
+/**
+ * Continuous font-scale bounds the slider spans (50%–150% of the design
+ * default). The stepper ladder sits inside this range, so ➖/➕ walk the
+ * discrete stops while the slider can reach the wider clamp ends.
+ */
+export const FONT_SCALE_MIN = 0.5;
+export const FONT_SCALE_MAX = 1.5;
+
 export const LINE_HEIGHT_OPTIONS: LabeledOption<number>[] = [
   { key: 'compact', label: '紧凑', value: 1.6 },
   { key: 'normal', label: '标准', value: 1.85 },
@@ -58,9 +66,7 @@ function num(raw: string | null, fallback: number): number {
 }
 
 export function clampScale(v: number): number {
-  const lo = FONT_SCALE_STEPS[0];
-  const hi = FONT_SCALE_STEPS[FONT_SCALE_STEPS.length - 1];
-  return Math.min(hi, Math.max(lo, v));
+  return Math.min(FONT_SCALE_MAX, Math.max(FONT_SCALE_MIN, v));
 }
 
 export function loadReaderLayout(): ReaderLayout {

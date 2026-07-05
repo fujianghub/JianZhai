@@ -32,7 +32,15 @@ export interface AudienceWriteFields {
   audience_user_ids: number[];
   audience_tag_ids: number[];
 }
-export type DocFormat = 'markdown' | 'html' | 'pdf' | 'docx' | 'image';
+export type DocFormat = 'markdown' | 'html' | 'pdf' | 'docx' | 'pptx' | 'image';
+
+/** One rendered page of a PPT/PPTX presentation (server-side raster). */
+export interface Slide {
+  index: number;
+  url: string;
+  width: number;
+  height: number;
+}
 export type DocSortMode = 'custom' | 'title' | 'created_at' | 'updated_at' | 'doc_format';
 
 export interface KBCategory extends Partial<AudienceFields> {
@@ -156,6 +164,7 @@ export interface DocumentDetail extends DocumentListItem {
   version: number;
   is_pinned?: boolean;
   primary_attachment: PublicAttachment | null;
+  slides?: Slide[];
 }
 
 export interface TreeDocument {
@@ -279,4 +288,5 @@ export interface PublicPostDetail {
   heading_numbering: boolean;
   primary_attachment: PublicAttachment | null;
   doc_format: DocFormat;
+  slides?: Slide[];
 }

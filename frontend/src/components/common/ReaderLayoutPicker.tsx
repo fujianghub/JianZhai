@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { Button, Divider, Popover, Segmented, Tooltip } from 'antd';
+import { Button, Divider, Popover, Segmented, Slider, Tooltip } from 'antd';
 import {
   ControlOutlined,
   MinusOutlined,
@@ -7,9 +7,12 @@ import {
   ReloadOutlined,
 } from '@ant-design/icons';
 import {
+  FONT_SCALE_MAX,
+  FONT_SCALE_MIN,
   FONT_SCALE_STEPS,
   LINE_HEIGHT_OPTIONS,
   MEASURE_OPTIONS,
+  clampScale,
   stepFontScale,
   type ReaderLayout,
 } from '@/utils/readerLayout';
@@ -56,6 +59,18 @@ export default function ReaderLayoutPicker({ layout, onChange, onReset }: Props)
             aria-label="增大字号"
           />
         </div>
+        <Slider
+          className="jz-rl-slider"
+          min={FONT_SCALE_MIN * 100}
+          max={FONT_SCALE_MAX * 100}
+          step={5}
+          value={Math.round(layout.fontScale * 100)}
+          onChange={(v) =>
+            onChange({ ...layout, fontScale: clampScale((v as number) / 100) })
+          }
+          marks={{ 100: '100%' }}
+          tooltip={{ formatter: (v) => `${v}%` }}
+        />
       </Section>
 
       <Section title="行距">

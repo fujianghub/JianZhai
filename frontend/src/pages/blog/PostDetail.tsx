@@ -44,6 +44,7 @@ import PaperPicker from '@/components/common/PaperPicker';
 import ReaderFontPicker from '@/components/common/ReaderFontPicker';
 import ReaderLayoutPicker from '@/components/common/ReaderLayoutPicker';
 import PublicAttachmentPreview from '@/components/common/PublicAttachmentPreview';
+import LazyPptxReader from '@/components/common/LazyPptxReader';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import KbNavSidebar from '@/components/common/KbNavSidebar';
 import TocPanel from '@/components/common/TocPanel';
@@ -497,7 +498,13 @@ export default function PostDetail() {
   // older "the file is the article" behaviour.
   const isHtmlDoc = post.doc_format === 'html';
   const htmlBody = isHtmlDoc ? post.published_content || '' : '';
-  const binaryFormats = new Set(['pdf', 'docx', 'image']);
+  // DOCX now always imports with an editable Markdown body (tables + images
+  // preserved; scanned files get a placeholder body), so it flows through the
+  // Markdown reader like a note — TOC / typography / inline + full editing.
+  // Only genuinely body-less binaries (PDF / image / pptx) keep the "file is the
+  // article" preview. A legacy empty-body DOCX still falls through via the
+  // ``!published_content`` guard below.
+  const binaryFormats = new Set(['pdf', 'pptx', 'image']);
   const hasInlineFile =
     !!post.primary_attachment &&
     !isHtmlDoc &&
@@ -535,6 +542,10 @@ export default function PostDetail() {
   const isPdfDoc =
     !isHtmlDoc && !!post.primary_attachment && previewKind(post.primary_attachment) === 'pdf';
   const pdfOriginalUrl = isPdfDoc ? post.primary_attachment?.url ?? '' : '';
+  // PPT/PPTX: server-rendered slide images shown in a Youdao-style reader
+  // (thumbnail rail + main slide). Slides arrive via ``post.slides``; while the
+  // conversion is still running the reader polls until they appear.
+  const isPptxDoc = !isHtmlDoc && post.doc_format === 'pptx';
   const showKbRail = kbNavOpen && layoutWide;
   const showTocRail = showToc && tocRailWide;
   // The reader-layout controls (font scale / line-height / measure) only apply
@@ -927,6 +938,14 @@ export default function PostDetail() {
               showIcon
               message="该 HTML 文档暂无正文内容，请在后台编辑或重新发布。"
             />
+          ) : isPptxDoc ? (
+            <div className="paper-breakout">
+              <LazyPptxReader
+                slides={post.slides ?? []}
+                postId={post.id}
+                downloadUrl={post.primary_attachment?.url}
+              />
+            </div>
           ) : hasInlineFile && post.primary_attachment ? (
             <div className="paper-breakout">
               <PublicAttachmentPreview att={post.primary_attachment} />
