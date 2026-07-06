@@ -93,4 +93,4 @@
 
 ---
 
-**最后更新**：2026-07-06（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式 + 默认要求登录 + 用户标签/KB 大类朋友圈式可见性 + 6 套主题 + PDF 阅读器 + 单文件 2GB + 章节自动编号（显示层/每篇开关/嵌套深度压缩，`utils/headingNumber.ts` 四端一致）+ 目录生成（`[TOC]` 全文 / `[TOC:section]` 本节）+ 导入选项 + 导出端对齐 + 内联「普通编辑」双写 raw/published + **阅读字号滑块 50–150% + Word 一体化保真导入（修复 docx 正文从未真正提取的 latent bug：mammoth 需 `BytesIO`；表格/图片保真 → 走 MD 阅读管线）+ PPT 有道云式阅读（LibreOffice→pdftoppm PNG + `SlideImage` 模型 + `PptxReader` 轮询，需线上镜像加 libreoffice/poppler）**，详见 docs/editor.md §7 与 frontend.md §2/§5）
+**最后更新**：2026-07-06（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式 + 默认要求登录 + 用户标签/KB 大类朋友圈式可见性 + 6 套主题 + PDF 阅读器 + 单文件 2GB + 章节自动编号（显示层/每篇开关/嵌套深度压缩，`utils/headingNumber.ts` 四端一致）+ 目录生成（`[TOC]` 全文 / `[TOC:section]` 本节）+ 导入选项 + 导出端对齐 + 内联「普通编辑」双写 raw/published + **阅读字号滑块 50–150% + Word 一体化保真导入（修复 docx 正文从未真正提取的 latent bug：mammoth 需 `BytesIO`；表格/图片保真 → 走 MD 阅读管线）+ PPT 有道云式阅读（LibreOffice→pdftoppm PNG + `SlideImage` 模型 + `PptxReader` 轮询；线上镜像已加 libreoffice/poppler 并于 2026-07-06 部署上线）**，详见 docs/editor.md §7 与 frontend.md §2/§5）
