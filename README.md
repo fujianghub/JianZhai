@@ -191,6 +191,7 @@ cd backend && python manage.py seed_architecture_kb
 | **用户标签 + KB/大类朋友圈式可见性** | 作者给读者打 `UserTag`（用户列表按标签/搜索筛选，标签对读者隐藏）；KB/大类三态受众 `audience_mode`（全员可见 / 部分不可见 / 仅部分可见，按用户 + 标签定向）——`apps/knowledge/audience.py` 统一收口全部读者入口（列表/直链/搜索/收藏/评论/RSS），作者绕过；受众名单禁含作者（400 防误触） |
 | **6 套主题 + 切换器收敛 + PDF 阅读器 + 上传 2GB** | 新增**春水/冬雪**两个亮色氛围主题（春水 = `ogl` WebGL 水面 shader + 花瓣层；冬雪 = Canvas 飘雪/积雪）+ 星空/深海重写为 Canvas 粒子系统；主题切换器由「4 宫格 Segmented + 主题色 Popover」合并为**单按钮下拉**，**移除用户自选 accent preset 体系**（`AccentPreset`/`setAccent` 删除，调色全交 CSS token，写死翡翠收敛为 `var(--jz-accent)`）；**PDF 阅读器**内嵌目录解析 + 整页连续滚动 + 在新标签打开；单文件上传上限 50MB → **2GB**（超阈值流式落临时磁盘，避免撑爆内存） |
 | **章节自动编号 + 目录生成（语雀式）** | 标题自动分级编号（`1/1.1/1.1.1`，栈压缩按嵌套深度；**显示层不落盘**、每篇文档开关 `heading_numbering`）——共享 `utils/headingNumber.ts` 四端一致（阅读 / CM6 / Tiptap / 大纲）；插入目录 `[TOC]`（全文）/ `[TOC:section]`（本节子树，位置感知展开）+ 斜杠命令；导入选项（自动编号 / 文首插目录）；导出端（HTML/PDF/站）补齐锚点+编号+TOC；**内联「普通编辑」双写** `raw_content`+`published_content`（修 raw≠published 断层，`patchDocumentBody`）。前端 15 + 后端 11 测试 |
+| **阅读字号滑块 + Word 一体化 + PPT 阅读** | 博客阅读加**字号滑块 50–150%**（与步进器共驱 `--jz-reader-scale`）；**Word 一体化保真导入**——`docx_import.py` 表格/图片保真（占位符保护 `<table>` + mammoth 图片落 Attachment），并修复 docx 正文**从未真正提取**的 latent bug（mammoth 需 `BytesIO` 而非 bytes），docx 现走 MD 阅读管线（目录/排版/内联+完整编辑）；**PPT 有道云式阅读**——`soffice --headless` → `pdftoppm` 转 PNG（Celery `convert_pptx_to_slides` 幂等）+ `SlideImage` 模型 + `PptxReader` 缩略图侧栏/键盘/缩放/全屏/轮询（需线上镜像加 libreoffice/poppler）。前端 tsc + 后端 100 测试 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
