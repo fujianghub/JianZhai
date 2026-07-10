@@ -14,6 +14,7 @@ import { createPortal } from 'react-dom';
 import { Button, Space, Spin, Tooltip, Typography } from 'antd';
 import {
   DownloadOutlined,
+  FileTextOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
   LeftOutlined,
@@ -56,6 +57,7 @@ export default function PptxReader({
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
+  const [showNotes, setShowNotes] = useState(true);
   const [pollsExhausted, setPollsExhausted] = useState(false);
   // Set once the conversion is known to have permanently failed — stops the
   // poll loop and shows the real reason instead of a forever-spinning "转换中".
@@ -156,6 +158,8 @@ export default function PptxReader({
     () => (current && current.width && current.height ? current.width / current.height : 4 / 3),
     [current],
   );
+  const hasAnyNotes = useMemo(() => slides.some((s) => (s.notes || '').trim()), [slides]);
+  const currentNotes = (current?.notes || '').trim();
 
   if (total === 0) {
     const done = failed || pollsExhausted;
@@ -225,6 +229,18 @@ export default function PptxReader({
             onClick={() => setZoom((z) => Math.min(3, +(z + 0.1).toFixed(2)))}
           />
         </Tooltip>
+        {hasAnyNotes && (
+          <Tooltip title={showNotes ? '隐藏备注' : '显示备注'}>
+            <Button
+              size="small"
+              type={showNotes ? 'primary' : 'default'}
+              icon={<FileTextOutlined />}
+              onClick={() => setShowNotes((v) => !v)}
+            >
+              备注
+            </Button>
+          </Tooltip>
+        )}
         <Tooltip title={fullscreen ? '退出全屏 (Esc)' : '全屏阅读'}>
           <Button
             size="small"
@@ -266,6 +282,11 @@ export default function PptxReader({
           style={{
             display: 'block',
             width: '100%',
+            // The rail is a bounded flex-column; without this the ~90 thumbs get
+            // shrunk to a few px each (flex-shrink defaults to 1) and collapse into
+            // a stack of thin lines instead of scrolling. Keep natural height, let
+            // the rail's overflowY handle the overflow.
+            flexShrink: 0,
             padding: 0,
             border:
               s.index === active
@@ -286,7 +307,14 @@ export default function PptxReader({
             alt={`slide ${s.index + 1}`}
             loading="lazy"
             decoding="async"
-            style={{ width: '100%', display: 'block' }}
+            style={{
+              width: '100%',
+              display: 'block',
+              // Reserve height from the slide's aspect so a slow/failed thumb never
+              // collapses the button to a line before the image decodes.
+              aspectRatio: s.width && s.height ? String(s.width / s.height) : '4 / 3',
+              objectFit: 'cover',
+            }}
           />
           <span
             style={{
@@ -343,10 +371,52 @@ export default function PptxReader({
     </div>
   );
 
+  const notesPanel = showNotes && hasAnyNotes && (
+    <div
+      className="jz-pptx-notes"
+      style={{
+        background: 'var(--jz-surface-2)',
+        border: '1px solid var(--jz-border)',
+        borderRadius: 8,
+        padding: '10px 14px',
+        maxHeight: fullscreen ? '28vh' : 260,
+        overflowY: 'auto',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: 'var(--jz-text-muted)',
+          marginBottom: 6,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}
+      >
+        <FileTextOutlined />
+        备注 · 第 {active + 1} 页
+      </div>
+      {currentNotes ? (
+        <Typography.Paragraph
+          style={{ whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.7 }}
+          copyable={{ text: currentNotes }}
+        >
+          {currentNotes}
+        </Typography.Paragraph>
+      ) : (
+        <Typography.Text type="secondary">此页无备注</Typography.Text>
+      )}
+    </div>
+  );
+
   const content = (
     <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: 0 }}>
       {rail}
-      {main}
+      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+        {main}
+        {notesPanel}
+      </div>
     </div>
   );
 

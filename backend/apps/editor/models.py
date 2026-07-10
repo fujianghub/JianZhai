@@ -94,6 +94,10 @@ class SlideImage(models.Model):
     )
     width = models.PositiveIntegerField(default=0)
     height = models.PositiveIntegerField(default=0)
+    # Speaker notes for this slide (extracted from the pptx via python-pptx during
+    # conversion). Empty for slides without notes and for legacy rows converted
+    # before notes extraction existed (``manage.py backfill_pptx_notes`` fills them).
+    notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -123,4 +127,5 @@ class SlideImage(models.Model):
             "thumb": self.thumb_url,
             "width": self.width,
             "height": self.height,
+            "notes": self.notes,
         }

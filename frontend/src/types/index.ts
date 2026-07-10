@@ -42,6 +42,8 @@ export interface Slide {
   thumb?: string;
   width: number;
   height: number;
+  /** Speaker notes for this slide; empty when the slide has no notes. */
+  notes?: string;
 }
 
 /**

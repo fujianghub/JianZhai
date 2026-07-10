@@ -136,6 +136,40 @@ def _failure_reason(exc: Exception) -> str:
     return "PPT 转换失败，请重试或联系管理员"
 
 
+def extract_pptx_notes(pptx_path) -> list[str]:
+    """Per-slide speaker notes in presentation order (via python-pptx).
+
+    Best-effort: any failure (python-pptx missing, unreadable pptx) yields ``[]``
+    so notes never block the raster conversion — they are secondary content.
+    Index ``i`` is meant to align with the i-th rendered PDF page; a deck with
+    hidden slides can drift (LibreOffice may skip them in the PDF while
+    python-pptx still lists them), so callers map by index and tolerate a length
+    mismatch rather than assuming a 1:1 correspondence.
+    """
+    try:
+        from pptx import Presentation
+    except ImportError:
+        log.warning("python-pptx not installed — skipping PPT notes extraction")
+        return []
+    try:
+        prs = Presentation(str(pptx_path))
+    except Exception:  # noqa: BLE001 — a bad deck must not fail the raster path
+        log.exception("pptx notes: could not open %s", pptx_path)
+        return []
+    notes: list[str] = []
+    for slide in prs.slides:
+        text = ""
+        try:
+            if slide.has_notes_slide:
+                tf = slide.notes_slide.notes_text_frame
+                if tf is not None:
+                    text = (tf.text or "").strip()
+        except Exception:  # noqa: BLE001 — skip a single unreadable notes slide
+            text = ""
+        notes.append(text)
+    return notes
+
+
 @shared_task(name="editor.convert_pptx")
 def convert_pptx_to_slides(document_id: int, attachment_id: int) -> int:
     """Render a pptx attachment into ordered SlideImage rows. Returns slide count."""
@@ -165,6 +199,10 @@ def convert_pptx_to_slides(document_id: int, attachment_id: int) -> int:
 
             pages = _convert(pptx_path, workdir)
 
+            # Speaker notes align to rendered pages by index (best-effort — see
+            # extract_pptx_notes; a hidden-slide drift just leaves some pages blank).
+            notes = extract_pptx_notes(pptx_path)
+
             import io
 
             from PIL import Image
@@ -188,6 +226,7 @@ def convert_pptx_to_slides(document_id: int, attachment_id: int) -> int:
                     index=idx,
                     width=w,
                     height=h,
+                    notes=notes[idx] if idx < len(notes) else "",
                 )
                 slide.image.save(f"slide-{idx}.jpg", ContentFile(data), save=False)
                 slide.thumbnail.save(

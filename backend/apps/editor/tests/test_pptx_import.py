@@ -326,3 +326,75 @@ def test_public_slides_endpoint(api_client, owner, kb, settings, tmp_path):
     # Reader uses these to stop polling / show a real reason.
     assert resp.data["slide_status"] == "done"
     assert resp.data["slide_error"] == ""
+    # Notes ship in the slide projection (empty for these note-less legacy rows).
+    assert "notes" in slides[0]
+
+
+# --------------------------------------------------------------------------- #
+# speaker notes
+# --------------------------------------------------------------------------- #
+
+
+def _build_pptx_with_notes(path: Path, notes: list[str | None]) -> Path:
+    """Write a real .pptx with one slide per entry; a non-None entry gets notes."""
+    from pptx import Presentation
+
+    prs = Presentation()
+    blank = prs.slide_layouts[6]
+    for text in notes:
+        slide = prs.slides.add_slide(blank)
+        if text is not None:
+            slide.notes_slide.notes_text_frame.text = text
+    prs.save(str(path))
+    return path
+
+
+def test_extract_pptx_notes_reads_per_slide_in_order(tmp_path):
+    p = _build_pptx_with_notes(tmp_path / "deck.pptx", ["first note", None, "third note"])
+    assert pptx_tasks.extract_pptx_notes(p) == ["first note", "", "third note"]
+
+
+def test_extract_pptx_notes_bad_file_is_soft(tmp_path):
+    # Unreadable / non-pptx path must yield [] rather than raise (notes are secondary).
+    (tmp_path / "junk.pptx").write_bytes(b"not a zip")
+    assert pptx_tasks.extract_pptx_notes(tmp_path / "junk.pptx") == []
+    assert pptx_tasks.extract_pptx_notes(tmp_path / "missing.pptx") == []
+
+
+@pytest.mark.django_db
+def test_convert_pptx_assigns_notes_by_index(owner, kb, settings, tmp_path, monkeypatch):
+    doc, att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+
+    def fake_convert(pptx_path, workdir):
+        return [
+            _png_file(Path(workdir) / f"slide-{i}.png", size=(300, 200))
+            for i in range(1, 4)
+        ]
+
+    monkeypatch.setattr(pptx_tasks, "_convert", fake_convert)
+    # Notes align to pages by index; middle page has none.
+    monkeypatch.setattr(
+        pptx_tasks, "extract_pptx_notes", lambda p: ["note A", "", "note C"]
+    )
+    n = pptx_tasks.convert_pptx_to_slides(doc.id, att.id)
+    assert n == 3
+    slides = list(SlideImage.objects.filter(document=doc).order_by("index"))
+    assert [s.notes for s in slides] == ["note A", "", "note C"]
+    assert slides[0].as_dict()["notes"] == "note A"
+
+
+@pytest.mark.django_db
+def test_convert_pptx_more_pages_than_notes_leaves_blank(owner, kb, settings, tmp_path, monkeypatch):
+    """Hidden-slide drift: fewer notes than rendered pages must not IndexError —
+    surplus pages just get empty notes."""
+    doc, att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+
+    def fake_convert(pptx_path, workdir):
+        return [_png_file(Path(workdir) / f"slide-{i}.png") for i in range(1, 4)]
+
+    monkeypatch.setattr(pptx_tasks, "_convert", fake_convert)
+    monkeypatch.setattr(pptx_tasks, "extract_pptx_notes", lambda p: ["only one"])
+    n = pptx_tasks.convert_pptx_to_slides(doc.id, att.id)
+    assert n == 3
+    slides = list(SlideImage.objects.filter(document=doc).order_by("index"))
+    assert [s.notes for s in slides] == ["only one", "", ""]
