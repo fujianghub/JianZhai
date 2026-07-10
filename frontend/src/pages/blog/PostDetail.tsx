@@ -941,9 +941,12 @@ export default function PostDetail() {
           ) : isPptxDoc ? (
             <div className="paper-breakout">
               <LazyPptxReader
+                key={post.id}
                 slides={post.slides ?? []}
                 postId={post.id}
                 downloadUrl={post.primary_attachment?.url}
+                status={post.slide_status}
+                error={post.slide_error}
               />
             </div>
           ) : hasInlineFile && post.primary_attachment ? (

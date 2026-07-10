@@ -366,7 +366,13 @@ class PublicPostSlidesView(APIView):
         from .serializers import _slides_summary
 
         doc = get_object_or_404(_published_qs(user=request.user), pk=doc_id)
-        return Response({"slides": _slides_summary(doc)})
+        return Response(
+            {
+                "slides": _slides_summary(doc),
+                "slide_status": doc.slide_status,
+                "slide_error": doc.slide_error,
+            }
+        )
 
 
 class PublicArchiveView(APIView):

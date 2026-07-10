@@ -245,6 +245,13 @@ class Document(models.Model):
     # raw_content/published_content. Per-document opt-in, default off.
     heading_numbering = models.BooleanField(default=False)
 
+    # PPT/PPTX slide-conversion state (LibreOffice → PDF → PNG, done async by
+    # ``editor.tasks.convert_pptx_to_slides``). Empty for non-pptx docs. Lets the
+    # reader distinguish "still converting" (pending) from "permanently failed"
+    # (failed, with a human reason in ``slide_error``) instead of polling blindly.
+    slide_status = models.CharField(max_length=10, blank=True, default="")
+    slide_error = models.CharField(max_length=200, blank=True, default="")
+
     search_vector = SearchVectorField(null=True, blank=True)
 
     order = models.IntegerField(default=0)

@@ -42,9 +42,11 @@ beforeEach(() => {
 });
 
 describe('upload rules', () => {
-  it('UPLOAD_ACCEPT 覆盖 18 种扩展名', () => {
-    expect(UPLOAD_ACCEPT.split(',')).toHaveLength(18);
+  it('UPLOAD_ACCEPT 覆盖 20 种扩展名', () => {
+    expect(UPLOAD_ACCEPT.split(',')).toHaveLength(20);
     expect(UPLOAD_ACCEPT).toContain('.docx');
+    expect(UPLOAD_ACCEPT).toContain('.pptx');
+    expect(UPLOAD_ACCEPT).toContain('.ppt');
     expect(UPLOAD_ACCEPT).toContain('.md');
   });
 

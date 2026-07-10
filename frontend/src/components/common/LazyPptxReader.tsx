@@ -4,7 +4,7 @@
  */
 import { Suspense, lazy } from 'react';
 import { Spin } from 'antd';
-import type { Slide } from '@/types';
+import type { Slide, SlideStatus } from '@/types';
 
 const PptxReader = lazy(() => import('./PptxReader'));
 
@@ -12,6 +12,8 @@ interface Props {
   slides: Slide[];
   postId: number;
   downloadUrl?: string;
+  status?: SlideStatus;
+  error?: string;
   pollInterval?: number;
 }
 

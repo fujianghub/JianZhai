@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import io
 import logging
 import mimetypes
+import zipfile
 from pathlib import Path
 
 from django.shortcuts import get_object_or_404
@@ -37,6 +39,32 @@ ALLOWED_EXT = ALLOWED_IMAGE_EXT | ALLOWED_DOC_EXT | ALLOWED_OTHER_EXT
 # the body via <iframe srcdoc> so DOMPurify-style markdown rendering doesn't
 # butcher real HTML.
 TEXT_IMPORT_EXT = {".md", ".markdown", ".txt", ".html", ".htm"}
+
+# OOXML formats (.docx/.pptx) are ZIP containers. A truncated / half-downloaded
+# upload keeps a valid ``PK\x03\x04`` header but loses the End-Of-Central-Directory
+# at the tail, so it's no longer a loadable zip — LibreOffice/mammoth then fail
+# deep in async conversion with a cryptic "转换失败". We reject such files up front
+# (see ``_is_valid_zip``) with a clear message so the user re-exports immediately.
+ZIP_DOC_EXT = {".docx", ".pptx"}
+
+
+def _is_valid_zip(f) -> bool:
+    """True if the uploaded file is a structurally valid zip (has an EOCD record).
+
+    Cheap: ``zipfile.is_zipfile`` seeks to the tail to find the central directory
+    rather than reading the whole file, so it's safe even for large decks. The
+    file pointer is restored to 0 for the subsequent Attachment save.
+    """
+    try:
+        f.seek(0)
+        return zipfile.is_zipfile(f)
+    except Exception:
+        return False
+    finally:
+        try:
+            f.seek(0)
+        except Exception:
+            pass
 
 
 def _classify(ext: str) -> str:
@@ -183,6 +211,14 @@ def _create_doc_from_upload(
             {"detail": f"不支持的文件类型：{ext or '(无扩展名)'} ({f.name})"},
             status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
         )
+    if ext in ZIP_DOC_EXT and not _is_valid_zip(f):
+        return Response(
+            {
+                "detail": f"文件已损坏或不是有效的 {ext[1:].upper()}"
+                f"（缺少 ZIP 结尾目录，可能下载/复制未完成），请重新导出后再上传：{f.name}"
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
 
     title = Path(f.name).stem or "Untitled"
     raw_content = ""
@@ -237,9 +273,13 @@ def _create_doc_from_upload(
     if ext in {".ppt", ".pptx"}:
         # Slides render asynchronously (LibreOffice is slow); the reader shows a
         # "转换中" placeholder and polls until slides appear. Body stays empty —
-        # a pptx is a view-only binary like a PDF.
+        # a pptx is a view-only binary like a PDF. Mark pending so the reader can
+        # tell "still converting" from a permanent failure (task flips it to
+        # done/failed).
         from apps.editor.tasks import convert_pptx_to_slides
 
+        doc.slide_status = "pending"
+        doc.save(update_fields=["slide_status"])
         convert_pptx_to_slides.delay(doc.id, att.id)
     if raw_content and ext in {".md", ".markdown"}:
         from apps.editor.services.image_mirror import mirror_images_for_document
@@ -492,9 +532,6 @@ def import_zip(request):
 
     Response shape mirrors ``import_batch`` plus a ``skipped`` list.
     """
-    import io
-    import zipfile
-
     from django.core.files.uploadedfile import SimpleUploadedFile
 
     f = request.FILES.get("file")

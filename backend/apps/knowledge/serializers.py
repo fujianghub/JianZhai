@@ -408,6 +408,8 @@ class DocumentSerializer(serializers.ModelSerializer):
             "doc_format",
             "primary_attachment",
             "slides",
+            "slide_status",
+            "slide_error",
             "created_at",
             "updated_at",
             "published_at",
@@ -421,6 +423,8 @@ class DocumentSerializer(serializers.ModelSerializer):
             "doc_format",
             "primary_attachment",
             "slides",
+            "slide_status",
+            "slide_error",
             "created_at",
             "updated_at",
         ]
@@ -429,15 +433,7 @@ class DocumentSerializer(serializers.ModelSerializer):
         return detect_doc_format(obj)
 
     def get_slides(self, obj: Document) -> list[dict]:
-        return [
-            {
-                "index": s.index,
-                "url": s.image.url if s.image else "",
-                "width": s.width,
-                "height": s.height,
-            }
-            for s in obj.slides.all()
-        ]
+        return [s.as_dict() for s in obj.slides.all()]
 
     def validate_knowledge_base(self, value: KnowledgeBase) -> KnowledgeBase:
         return _assert_owned(self, value, value.owner_id)

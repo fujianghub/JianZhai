@@ -1079,9 +1079,12 @@ function EditorSurface({
     // server-side conversion is still running.
     return (
       <LazyPptxReader
+        key={doc.id}
         slides={doc.slides ?? []}
         postId={doc.id}
         downloadUrl={doc.primary_attachment?.url}
+        status={doc.slide_status}
+        error={doc.slide_error}
       />
     );
   }

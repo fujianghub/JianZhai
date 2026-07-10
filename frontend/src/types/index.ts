@@ -38,9 +38,18 @@ export type DocFormat = 'markdown' | 'html' | 'pdf' | 'docx' | 'pptx' | 'image';
 export interface Slide {
   index: number;
   url: string;
+  /** Light rail thumbnail (~320px JPEG); falls back to `url` for legacy slides. */
+  thumb?: string;
   width: number;
   height: number;
 }
+
+/**
+ * PPT/PPTX slide-conversion state. Empty for non-pptx docs. Lets the reader
+ * distinguish "still converting" (pending) from a permanent failure (failed,
+ * with a human reason in ``slide_error``) instead of polling blindly.
+ */
+export type SlideStatus = '' | 'pending' | 'done' | 'failed';
 export type DocSortMode = 'custom' | 'title' | 'created_at' | 'updated_at' | 'doc_format';
 
 export interface KBCategory extends Partial<AudienceFields> {
@@ -165,6 +174,8 @@ export interface DocumentDetail extends DocumentListItem {
   is_pinned?: boolean;
   primary_attachment: PublicAttachment | null;
   slides?: Slide[];
+  slide_status?: SlideStatus;
+  slide_error?: string;
 }
 
 export interface TreeDocument {
@@ -289,4 +300,6 @@ export interface PublicPostDetail {
   primary_attachment: PublicAttachment | null;
   doc_format: DocFormat;
   slides?: Slide[];
+  slide_status?: SlideStatus;
+  slide_error?: string;
 }

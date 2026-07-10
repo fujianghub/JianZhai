@@ -64,7 +64,7 @@ export default function AttachmentPanel({ documentId, compact = false }: Props) 
           beforeUpload={(file) => handleUpload(file as File)}
           showUploadList={false}
           multiple
-          accept=".pdf,.doc,.docx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
         >
           <Button icon={<UploadOutlined />} loading={uploading}>
             上传文件

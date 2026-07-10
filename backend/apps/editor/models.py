@@ -84,6 +84,14 @@ class SlideImage(models.Model):
     )
     index = models.PositiveIntegerField()
     image = models.ImageField(upload_to=_slide_upload_path, max_length=500)
+    # Small rail thumbnail (~320px JPEG). The Youdao-style reader shows 1 full-res
+    # main slide but a whole vertical rail of thumbnails; serving the full raster
+    # for every thumbnail made a 94-slide deck load ~24 MB / decode ~850 MB. Blank
+    # for legacy rows converted before thumbnails existed (reader falls back to
+    # ``image``); ``manage.py reconvert_pptx`` backfills them.
+    thumbnail = models.ImageField(
+        upload_to=_slide_upload_path, max_length=500, blank=True
+    )
     width = models.PositiveIntegerField(default=0)
     height = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -99,3 +107,20 @@ class SlideImage(models.Model):
     @property
     def url(self) -> str:
         return self.image.url if self.image else ""
+
+    @property
+    def thumb_url(self) -> str:
+        """Rail thumbnail URL; falls back to the full raster for legacy rows."""
+        if self.thumbnail:
+            return self.thumbnail.url
+        return self.image.url if self.image else ""
+
+    def as_dict(self) -> dict:
+        """Reader-facing projection; single source for both serializers."""
+        return {
+            "index": self.index,
+            "url": self.url,
+            "thumb": self.thumb_url,
+            "width": self.width,
+            "height": self.height,
+        }

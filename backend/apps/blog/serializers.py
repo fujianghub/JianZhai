@@ -59,15 +59,7 @@ def _slides_summary(doc: Document) -> list[dict]:
     slides = getattr(doc, "prefetched_slides", None)
     if slides is None:
         slides = doc.slides.all()
-    return [
-        {
-            "index": s.index,
-            "url": s.image.url if s.image else "",
-            "width": s.width,
-            "height": s.height,
-        }
-        for s in slides
-    ]
+    return [s.as_dict() for s in slides]
 
 
 class PublicPostListSerializer(serializers.ModelSerializer):
@@ -142,6 +134,8 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
             "primary_attachment",
             "doc_format",
             "slides",
+            "slide_status",
+            "slide_error",
         ]
 
     def get_knowledge_base(self, obj: Document) -> dict:

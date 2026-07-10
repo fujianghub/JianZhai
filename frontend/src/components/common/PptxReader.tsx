@@ -22,7 +22,7 @@ import {
   ZoomOutOutlined,
 } from '@ant-design/icons';
 import { fetchPostSlides } from '@/api/blog';
-import type { Slide } from '@/types';
+import type { Slide, SlideStatus } from '@/types';
 
 interface Props {
   slides: Slide[];
@@ -30,19 +30,38 @@ interface Props {
   postId: number;
   /** Original .pptx URL for the download button. */
   downloadUrl?: string;
+  /** Server-side conversion state at page load; drives the failure message. */
+  status?: SlideStatus;
+  /** Human-facing failure reason (shown when status/poll reports 'failed'). */
+  error?: string;
   /** How often to poll for slides while empty (ms). */
   pollInterval?: number;
 }
 
 const POLL_MS = 2500;
-const MAX_POLLS = 48; // ~2min then give up and show a hint
+const MAX_POLLS = 48; // ~2min then give up (used when the backend status is unknown)
+// While the backend still reports 'pending' a big deck is legitimately converting;
+// keep polling up to ~7min, covering the worker's 2×180s soffice+pdftoppm timeouts.
+const HARD_MAX_POLLS = 168;
 
-export default function PptxReader({ slides: initial, postId, downloadUrl, pollInterval = POLL_MS }: Props) {
+export default function PptxReader({
+  slides: initial,
+  postId,
+  downloadUrl,
+  status,
+  error,
+  pollInterval = POLL_MS,
+}: Props) {
   const [slides, setSlides] = useState<Slide[]>(initial);
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   const [pollsExhausted, setPollsExhausted] = useState(false);
+  // Set once the conversion is known to have permanently failed — stops the
+  // poll loop and shows the real reason instead of a forever-spinning "转换中".
+  const [failed, setFailed] = useState<string | null>(
+    status === 'failed' ? error || 'PPT 转换失败' : null,
+  );
   const mainRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -51,23 +70,32 @@ export default function PptxReader({ slides: initial, postId, downloadUrl, pollI
 
   // Poll for slides while the server-side conversion is still running.
   useEffect(() => {
-    if (slides.length > 0) return;
+    if (slides.length > 0 || failed) return;
     let cancelled = false;
     let tries = 0;
     const tick = async () => {
       if (cancelled) return;
       tries += 1;
+      let stillPending = false;
       try {
         const next = await fetchPostSlides(postId);
         if (cancelled) return;
-        if (next.length > 0) {
-          setSlides(next);
+        if (next.slides.length > 0) {
+          setSlides(next.slides);
           return;
         }
+        if (next.status === 'failed') {
+          setFailed(next.error || 'PPT 转换失败');
+          return;
+        }
+        stillPending = next.status === 'pending';
       } catch {
         /* transient — keep polling */
       }
-      if (tries >= MAX_POLLS) {
+      // Give up at MAX_POLLS unless the backend still reports 'pending' (a large
+      // deck genuinely converting), in which case keep polling to the hard cap.
+      const cap = stillPending ? HARD_MAX_POLLS : MAX_POLLS;
+      if (tries >= cap) {
         setPollsExhausted(true);
         return;
       }
@@ -78,7 +106,7 @@ export default function PptxReader({ slides: initial, postId, downloadUrl, pollI
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [slides.length, postId, pollInterval]);
+  }, [slides.length, postId, pollInterval, failed]);
 
   const total = slides.length;
   const clamp = useCallback((n: number) => Math.min(Math.max(0, n), Math.max(0, total - 1)), [total]);
@@ -130,12 +158,13 @@ export default function PptxReader({ slides: initial, postId, downloadUrl, pollI
   );
 
   if (total === 0) {
+    const done = failed || pollsExhausted;
     return (
       <div style={{ display: 'grid', placeItems: 'center', padding: 64, gap: 12 }}>
-        {pollsExhausted ? (
+        {done ? (
           <>
-            <Typography.Text type="secondary">
-              PPT 转换未完成或失败，可下载原文件查看。
+            <Typography.Text type={failed ? 'danger' : 'secondary'} style={{ textAlign: 'center' }}>
+              {failed || 'PPT 转换未完成，可下载原文件查看。'}
             </Typography.Text>
             {downloadUrl && (
               <Button icon={<DownloadOutlined />} href={downloadUrl} download>
@@ -252,7 +281,13 @@ export default function PptxReader({ slides: initial, postId, downloadUrl, pollI
           aria-label={`第 ${s.index + 1} 页`}
           aria-current={s.index === active}
         >
-          <img src={s.url} alt={`slide ${s.index + 1}`} loading="lazy" style={{ width: '100%', display: 'block' }} />
+          <img
+            src={s.thumb || s.url}
+            alt={`slide ${s.index + 1}`}
+            loading="lazy"
+            decoding="async"
+            style={{ width: '100%', display: 'block' }}
+          />
           <span
             style={{
               position: 'absolute',
@@ -293,6 +328,7 @@ export default function PptxReader({ slides: initial, postId, downloadUrl, pollI
         <img
           src={current.url}
           alt={`slide ${active + 1}`}
+          decoding="async"
           style={{
             width: `${Math.min(100, 100 * zoom)}%`,
             maxWidth: `${100 * zoom}%`,
