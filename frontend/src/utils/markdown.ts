@@ -635,14 +635,21 @@ function applyDocLinkRewrite(inst: MarkdownIt): void {
 
 applyDocLinkRewrite(md);
 
-/** Inject `loading="lazy" decoding="async"` on every <img> that doesn't already
- *  declare them. Applied after sanitization so DOMPurify can't strip the attrs;
- *  both attrs are on its allow-list above. */
+/** Inject `loading="lazy" decoding="async" referrerpolicy="no-referrer"` on
+ *  every <img> that doesn't already declare them. Applied after sanitization so
+ *  DOMPurify can't strip the attrs; all three are on its allow-list above.
+ *
+ *  ``referrerpolicy="no-referrer"`` matters for Yuque-exported docs: their
+ *  images live on ``cdn.nlark.com``, which anti-hotlinks — a cross-origin load
+ *  that sends a foreign ``Referer`` gets a 403 and the image breaks. Dropping
+ *  the referer makes those remote images load until the backend mirrors them to
+ *  local ``/media`` (see ``image_mirror``). Harmless for same-origin images. */
 function addImgLazyAttrs(html: string): string {
   return html.replace(/<img\b([^>]*?)>/gi, (_m, attrs: string) => {
     let next = attrs;
     if (!/\bloading\s*=/i.test(next)) next += ' loading="lazy"';
     if (!/\bdecoding\s*=/i.test(next)) next += ' decoding="async"';
+    if (!/\breferrerpolicy\s*=/i.test(next)) next += ' referrerpolicy="no-referrer"';
     return `<img${next}>`;
   });
 }

@@ -118,6 +118,15 @@ class HeroSettings(models.Model):
 - **适宽 / 适页高**切换；`devicePixelRatio` 限幅防大图爆内存。
 - **在新标签打开**：工具栏与阅读页头部各有按钮，跳浏览器原生 PDF 阅读器；预览走同源代理（修 HTTPS dev 下 `Failed to fetch`）。
 
+### PPT 阅读器（`PptxReader.tsx`，有道云式，2026-07-04 / 07-10）
+
+附件为 `.pptx` 时用该阅读器；后端转换管线（LibreOffice→JPEG + 缩略图 + 讲者备注 + 转换状态）见 [editor.md §8](./editor.md#8-office-文档导入--阅读word-一体化--ppt-有道云式)。前端要点：
+
+- **布局**：左侧缩略图导轨 `.jz-pptx-rail` + 中间全分辨率主图 + 工具栏（页码 / 缩放 / 备注 / 全屏）+ 键盘导航（←/→、PageUp/Down、Esc 退全屏）。缩略图轨用 `thumb_url`、主图才拉全分辨率。
+- **缩略图变横线修复**（纯前端，后端数据完好）：`.jz-pptx-rail` 是有界 flex-column，~90 个缩略图按钮默认 `flex-shrink:1` 在 `overflowY` 滚动生效前被压扁到 ~4px、`overflow:hidden` 再把 84px 图裁成一条线 → 缩略图按钮加 **`flexShrink:0`** + img 补 `aspectRatio`（防慢加载瞬间塌陷），交给导轨自身滚动。
+- **讲者备注面板**：主图下方可折叠面板，工具栏「备注」开关（`showNotes`），逐页显示 `slide.notes`，空页显「此页无备注」，可复制，全屏亦支持；无任一页有备注时隐藏开关（`hasAnyNotes`）。
+- **转换态轮询**：`slides` 为空时按 `slide_status` 轮询（`MAX_POLLS` ~7min，覆盖 worker 2×180s soffice+pdftoppm 超时），`failed` 即停并显真实原因，pending 放宽到硬上限。`PptxReader` 带 `key`（postId）防失败态跨文章粘连。
+
 ---
 
 ## 6. favicon + PWA

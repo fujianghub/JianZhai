@@ -139,3 +139,43 @@
 - **导入**：上传下拉两复选框（章节编号 / 文首插入全文目录）→ `attachments.ts`/`uploadBatch.ts` 透传 → `editor/views.py` `_parse_import_options`（编号置字段；insert_toc 对 markdown 类在文首 prepend `[TOC]`，唯一文本改写）。
 - **导出端对齐**：`exporter/services/markdown_render.py` 补齐 heading 锚点 + 编号栈 + `[TOC]`/`[TOC:section]` 展开（离线 HTML/PDF/静态站，读 `doc.heading_numbering`）。**坑**：markdown-it-py 的 `self.renderToken(tokens, idx, options, env)` 必须带 `env`（前端不用）；`common.py` 有两个 `render_markdown`（wrapper + 底层，都要接 `numbering`）。
 - **普通编辑（内联 `PostInlineEditor`）**：博客内联「编辑」原只写 `raw_content`，但博客渲染 `published_content`（后端 `_apply_update` **故意不同步** raw→published）→ 内联插的目录/编辑上不了博客。修复 = `documentSave.ts` `patchDocumentBody` 一次 `updateDocument` **双写** `raw_content`+`published_content`（`_apply_update` 收两字段只 bump 一次 version）。
+
+---
+
+## 8. Office 文档导入 / 阅读（Word 一体化 + PPT 有道云式）
+
+上传附件走 `editor/views.py`；`ALLOWED_UPLOAD_EXT` 含 `.doc/.docx/.ppt/.pptx/.pdf` 等。**OOXML（`.docx`/`.pptx`）是 zip 容器**，截断/半下载会破坏尾部中央目录 → `_is_valid_zip`（`zipfile.is_zipfile`）在入库前**前置校验**，坏文件直接 **400** 让用户重导出，不再入库后异步转换才失败（批次 B1）。
+
+### Word 一体化保真导入（`.docx` → Markdown 阅读管线）
+
+`services/docx_import.py`：
+
+- **`convert_docx(blob)`** 用 **mammoth** 抽正文为 HTML→Markdown。**latent bug 修复**：mammoth 需 `BytesIO(blob)` 而非裸 bytes——历史上 docx 正文**从未真正被提取**（默默走空文档回退），改传 `BytesIO` 后表格/图片才落地。
+- **标题结构恢复**：Word 常把标题存为 outline level 而非 `Heading N` 命名样式，导入前先注入 `HeadingN` 样式 id 让 mammoth 默认样式映射能识别。
+- **图片保真**：`_handle_image` 把内嵌图（含 EMF/WMF 元文件，mammoth 光栅化为 png）收集为 `EmbeddedImage`；`materialize_docx_images(doc, images)` 落为文档附件并改写引用 → 最终以 **Markdown 阅读路径**渲染（表格/图片保真）。缺 mammoth 时正文留空并告警，不崩。
+- **字体颜色保真**（`_mark_run_colors`）：**mammoth 会丢弃 run 级直接颜色格式**（`w:rPr/w:color`——非命名样式，样式映射管不到），故字体色历来全部丢失。修复=转换前在 **docx XML 层**遍历 `w:r`，把带显式颜色（非 `auto`、非近黑）的 run 文本包上 `jzcolor<hex>b…jzcolore` 哨兵（纯 alnum，mammoth/markdownify 当普通文本原样带过），最终 md（含回注的原生表格 HTML）再用正则换回 `<span style="color:#hex">`；表格单元格内的彩字同样保真。DOMPurify 放行 `span/style/color`。**导出端（docx/pdf）彩色仍为已知限制**。
+
+### 语雀 MD 远程图（`cdn.nlark.com` 防盗链 + 异步并行镜像）
+
+语雀导出的 `.md` 内嵌图是 `https://cdn.nlark.com/...` **远程 URL**（非 base64）。两个坑叠加致「图片解析不到」：
+
+1. **防盗链**：`cdn.nlark.com` 对**带外域 `Referer`** 的请求返回 **403**（无 referer 才 200）——浏览器直连远程图必带 referer → 图裂。**修复=前端** `addImgLazyAttrs`（`utils/markdown.ts`）给每个 `<img>` 注入 `referrerpolicy="no-referrer"`，浏览器不发 referer → 远程图立即可显（本地 `/media` 图无害）。
+2. **同步镜像超时**：`image_mirror.mirror_images_for_document` 历来在**上传请求内同步**下载并改写为 `/media`；但 CDN 按 IP 限流，40+ 张图串行（每张 5–15s）远超请求超时 → 镜像半途中断 → 图仍是远程 URL。**修复=改异步**：`editor/tasks.mirror_document_images` Celery 任务（`views._create_doc_from_upload` 里 `.delay()`，**仅当含需镜像的远程图才派发**——无图 note 不空转），镜像内部用 `ThreadPoolExecutor(_FETCH_CONCURRENCY=6)` 并行下载（实测 42 张 73s 全部落地，串行 >200s 超时）。上传秒回，读者先看远程图（referrerpolicy 兜底）、任务完成后刷新即本地图（持久 + 离线可用，规避语雀 URL 过期/限流）。
+
+> 编辑器内保存（`DocumentSerializer.update`）的镜像仍**同步**——那是低频、通常 0 张新外链的路径，且前端 referrerpolicy 已保证渲染，故未改。
+
+### PPT 有道云式阅读器（`.pptx` → 逐页图 + 缩略图 + 讲者备注）
+
+**转换管线**（`editor/tasks.convert_pptx_to_slides`，Celery 异步，需 `libreoffice`(soffice) + `poppler-utils`(pdftoppm) 在 PATH）：
+
+1. `soffice --headless --convert-to pdf` 转 PDF（soffice 加载坏源仍退 0，故靠 B1 前置拦截）；
+2. `pdftoppm -jpeg -jpegopt quality=82` 逐页光栅化为 **JPEG**（非 PNG——94 页 deck 从 ~24MB 降到几 MB，批次 3fa9ba9），每页额外生成 **~320px 导轨缩略图**（`SlideImage.thumbnail`，缩略图轨用它、主图才用全分辨率，避免每个缩略图都拉全图致 850MB 解码）；
+3. `extract_pptx_notes(pptx_path)` 用 **python-pptx** 抽讲者备注（`slide.notes_slide.notes_text_frame`），**best-effort**：失败不拖垮转换，按 `index` 与渲染页对齐（隐藏页漂移则该页留空、不越界）。
+
+**数据模型** `SlideImage`（`unique_together (document, index)` 使重转幂等，`ordering = ["index"]`）：`index`(0-based 稳定序) / `image`(全分辨率 JPEG) / `thumbnail`(320px，legacy 行空 → `thumb_url` 回退全图) / `notes`(TextField，无备注/legacy 行为空)。`as_dict()` 带出 `notes`，blog + knowledge 两序列化器自动生效。
+
+**转换状态可见**（批次 B2）：`Document.slide_status`(pending/failed…) + `slide_error`（迁移 `knowledge 0009`）持久化转换态，`_set_slide_state` 写入、`_failure_reason` 把异常翻成人话（须匹配 `pdftoppm` 的 JPEG 输出串，勿留 “no PNG” 死分支）。前端 `PptxReader` 据此区分 pending/failed、显示真实原因、**失败即停轮询**（详见 [frontend.md §5](./frontend.md#5-博客阅读器体验)）。
+
+**存量维护命令**：`manage.py reconvert_pptx`（回填旧 PNG/无缩略图 deck，重新光栅化）；`manage.py backfill_pptx_notes [--all]`（**只读源文件补 `notes`、不重新光栅化**，回填备注上线前转好的 deck）。
+
+**部署**：线上镜像须含 `libreoffice` + `poppler-utils`（系统包）+ `python-pptx`（新依赖）；改依赖后需重建镜像 + `migrate` + `backfill_pptx_notes --all` 才有备注。

@@ -282,9 +282,21 @@ def _create_doc_from_upload(
         doc.save(update_fields=["slide_status"])
         convert_pptx_to_slides.delay(doc.id, att.id)
     if raw_content and ext in {".md", ".markdown"}:
-        from apps.editor.services.image_mirror import mirror_images_for_document
+        # Mirror remote images off-request: a Yuque export can carry dozens of
+        # cdn.nlark.com images that throttle per-IP, so a synchronous fetch blew
+        # past the request timeout and left the body full of broken remote URLs.
+        # The reader shows the remote images (referrerpolicy=no-referrer) until
+        # the task localises them. Only dispatch when there's actually a remote
+        # image to fetch — an image-less note shouldn't queue a no-op task.
+        from apps.editor.services.image_mirror import (
+            extract_markdown_image_urls,
+            should_mirror,
+        )
 
-        mirror_images_for_document(doc, uploaded_by=request.user)
+        if any(should_mirror(u) for u in extract_markdown_image_urls(raw_content)):
+            from apps.editor.tasks import mirror_document_images
+
+            mirror_document_images.delay(doc.id, request.user.id)
     elif raw_content and ext in {".html", ".htm"}:
         from apps.editor.services.html_asset_mirror import mirror_html_assets_for_document
 

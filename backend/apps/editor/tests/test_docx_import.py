@@ -89,6 +89,34 @@ def test_convert_returns_empty_on_garbage():
     assert imgs == []
 
 
+def _make_colored_docx() -> bytes:
+    """A docx whose runs carry explicit font colours (direct rPr formatting)."""
+    from docx import Document as Docx
+    from docx.shared import RGBColor
+
+    d = Docx()
+    p = d.add_paragraph()
+    r = p.add_run("red text")
+    r.font.color.rgb = RGBColor(0xFF, 0x00, 0x01)
+    p.add_run(" plain")
+    p2 = d.add_paragraph()
+    g = p2.add_run("green text")
+    g.font.color.rgb = RGBColor(0x87, 0xC1, 0x20)
+    buf = BytesIO()
+    d.save(buf)
+    return buf.getvalue()
+
+
+def test_convert_preserves_font_colors():
+    # mammoth drops direct run colour; our pre-pass wraps it in a <span> instead.
+    md, _ = convert_docx(_make_colored_docx())
+    assert '<span style="color:#ff0001">red text</span>' in md
+    assert '<span style="color:#87c120">green text</span>' in md
+    # Uncoloured text stays plain, and no sentinel leaks into the body.
+    assert "plain" in md
+    assert "jzcolor" not in md
+
+
 # --------------------------------------------------------------------------- #
 # import endpoint end-to-end
 # --------------------------------------------------------------------------- #

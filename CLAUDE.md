@@ -9,6 +9,7 @@
 ## 项目坐标
 
 - **Monorepo**：`backend/`（Django 5.2 + DRF 3.15，Python 3.12，端口 **8002**）+ `frontend/`（React 18 + TS 5 + Vite 5 + AntD 5，端口 **3001**）
+- **`Test/`**：本地测试文档目录（对应知识库 **Test**，slug `test`，KB id 48），存放复现/验证用的 docx/md/pptx 样本；未纳入 git（`?? Test/`），勿提交
 - **部署**：本地单机 `localhost`；生产腾讯云 Docker Compose + Caddy（套件在 `infra/`）
 - **核心理念**：**一份内容两形态** —— `raw_content`（私人笔记）+ `published_content`（发布版）
 - **四角色 RBAC**：根 root / 管理员 admin（作者）/ 普通用户 user（读者）/ 匿名 anon。**作者共享单一内容池**，读者只读博客 + 收藏 + 评论 + 资料。权威清单 → `docs/permissions.md`
@@ -65,6 +66,9 @@
 - **AI 日预算对端点流量失效** = 「AI 仅作者 + 管理员绕过预算」两条规格的预期后果，非 bug。
 - **博客内联「普通编辑」双写**：博客渲染 `published_content`，而 `raw_content` 自动保存**故意不同步**到 published（`_apply_update` 注释；`get_published_content` 不回退 raw）。故内联编辑（`PostInlineEditor`）走 `patchDocumentBody` **一次 PATCH 双写** raw+published（version 只 +1），否则内联的编辑/`[TOC]` 上不了博客。完整编辑器仍是「编 raw、显式发布」不受影响。
 - **章节编号 = 显示层**：序号不写入 `raw/published_content`；改编号逻辑须四端同步（阅读 `markdown.ts heading_open` / CM6 `extensions/headingNumber.ts` / Tiptap `HeadingNumber.ts` / 导出 `markdown_render.py`），算法唯一源 `utils/headingNumber.ts`。`renderMarkdownWithToc` 的 LRU key 必须含 numbering 标志。详见 docs/editor.md §7。
+- **PPT/Word 导入**：OOXML 是 zip，`.docx/.pptx` 上传经 `_is_valid_zip` 前置校验，**坏文件 400 拒收**（soffice 加载坏源仍退 0，不能靠转换失败兜底）；「PPT 转换失败/未完成」多为**原文件本就损坏**，非管线 bug（管线 md5 往返无罪）。**缩略图变一条横线** = 纯 CSS（`.jz-pptx-rail` flex-column 压缩），后端数据完好，勿去查数据丢失。docx 正文提取靠 mammoth 且**必须传 `BytesIO`**（裸 bytes 会静默走空文档）。详见 docs/editor.md §8。
+- **Word 字体颜色**：mammoth **默认丢弃 run 级直接颜色**（`w:rPr/w:color`），故导入字体色历来全丢。修复=`docx_import._mark_run_colors` 转换前在 docx XML 层给带色 run 包 `jzcolor<hex>b…jzcolore` 哨兵、最终 md 换回 `<span style="color:#hex">`（含表格内彩字）。**导出端彩色仍丢为已知限制**。
+- **语雀 MD 远程图不显**：双坑叠加——(1) `cdn.nlark.com` **防盗链**：浏览器带外域 `Referer` 直连远程图 → **403 图裂**（修复=前端 `<img referrerpolicy="no-referrer">`，无 referer 服务端/浏览器均 200）；(2) 同步镜像 40+ 张远程图（CDN 限流每张 5–15s）**超请求超时被中断** → 图仍是远程 URL（修复=改 Celery 异步 `mirror_document_images` + `ThreadPoolExecutor` 并行，仅含远程图才派发）。**服务端 fetch 无 referer=200，浏览器直连=403** 是关键区别。详见 docs/editor.md §8。
 
 ---
 
@@ -93,4 +97,4 @@
 
 ---
 
-**最后更新**：2026-07-10（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式 + 默认要求登录 + 用户标签/KB 大类朋友圈式可见性 + 6 套主题 + PDF 阅读器 + 单文件 2GB + 章节自动编号（显示层/每篇开关/嵌套深度压缩，`utils/headingNumber.ts` 四端一致）+ 目录生成（`[TOC]` 全文 / `[TOC:section]` 本节）+ 导入选项 + 导出端对齐 + 内联「普通编辑」双写 raw/published + 阅读字号滑块 50–150% + Word 一体化保真导入（修复 docx 正文从未真正提取的 latent bug：mammoth 需 `BytesIO`；表格/图片保真 → 走 MD 阅读管线）+ PPT 有道云式阅读（LibreOffice→pdftoppm PNG + `SlideImage` 模型 + `PptxReader` 轮询；线上镜像加 libreoffice/poppler，实际随缩略图批于 2026-07-10 才真正部署上线）+ **PPT 缩略图横线修复（`.jz-pptx-rail` flex-column 压缩根因 → 缩略图按钮 `flexShrink:0`）+ PPT 讲者备注（`python-pptx` 抽 `slide.notes_slide` → `SlideImage.notes` 迁移 `editor 0004` → 主图下方可折叠备注面板；存量 `manage.py backfill_pptx_notes` 只回填不重转）—— 二者含缩略图瘦身批 3fa9ba9 已于 2026-07-10 一并部署上线（main 80343d7）**，详见 docs/editor.md §7 与 frontend.md §2/§5）
+**最后更新**：2026-07-12（新增：**Word 导入字体颜色保真**（`_mark_run_colors` 哨兵包 run 色 → `<span style="color">`，补 mammoth 丢 run 色）+ **语雀 MD 远程图修复**（前端 `referrerpolicy=no-referrer` 破 cdn.nlark.com 防盗链 + 后端 `mirror_document_images` Celery 异步并行镜像，仅含远程图才派发）+ `Test/` 测试文档目录（对应 Test KB）—— 均已本地端到端验证、未提交；下为 2026-07-10 基线）（实现状态对应 v0.9.10 + RBAC + 登录三因子滑块验证码 + 阅读排版定制/专注模式 + 默认要求登录 + 用户标签/KB 大类朋友圈式可见性 + 6 套主题 + PDF 阅读器 + 单文件 2GB + 章节自动编号（显示层/每篇开关/嵌套深度压缩，`utils/headingNumber.ts` 四端一致）+ 目录生成（`[TOC]` 全文 / `[TOC:section]` 本节）+ 导入选项 + 导出端对齐 + 内联「普通编辑」双写 raw/published + 阅读字号滑块 50–150% + Word 一体化保真导入（修复 docx 正文从未真正提取的 latent bug：mammoth 需 `BytesIO`；表格/图片保真 → 走 MD 阅读管线）+ PPT 有道云式阅读（LibreOffice→pdftoppm PNG + `SlideImage` 模型 + `PptxReader` 轮询；线上镜像加 libreoffice/poppler，实际随缩略图批于 2026-07-10 才真正部署上线）+ **PPT 缩略图横线修复（`.jz-pptx-rail` flex-column 压缩根因 → 缩略图按钮 `flexShrink:0`）+ PPT 讲者备注（`python-pptx` 抽 `slide.notes_slide` → `SlideImage.notes` 迁移 `editor 0004` → 主图下方可折叠备注面板；存量 `manage.py backfill_pptx_notes` 只回填不重转）—— 二者含缩略图瘦身批（3fa9ba9：JPEG quality=82 + 320px 缩略图 + B1 坏文件上传 400 拦截 + B2 `Document.slide_status/error` 迁移 `knowledge 0009` 转换态可见）已于 2026-07-10 一并部署上线（main 80343d7）**，详见 docs/editor.md §8（Word/PPT 导入与转换管线）与 frontend.md §5（PPT 阅读器））

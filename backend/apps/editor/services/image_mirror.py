@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 
 MAX_IMAGE_BYTES = 10 * 1024 * 1024
 FETCH_TIMEOUT_SEC = 15
+# Parallel downloads per document. Kept modest so we localise a large export
+# quickly without tripping the origin CDN's per-IP rate limiting.
+_FETCH_CONCURRENCY = 6
 
 MD_IMAGE_RE = re.compile(r'!\[[^\]]*\]\(([^)]+)\)')
 
@@ -144,16 +147,28 @@ def mirror_images_for_document(
     mirrored = failed = skipped = 0
     url_map: dict[str, str] = {}
 
-    for url in urls:
-        if not should_mirror(url):
-            skipped += 1
-            continue
-        if url in url_map:
-            continue
+    to_fetch = [u for u in urls if should_mirror(u)]
+    skipped = len(urls) - len(to_fetch)
 
-        fetched = fetch_image(url)
+    # Download in parallel. Remote CDNs (notably Yuque's cdn.nlark.com) throttle
+    # per-IP, so a sequential fetch of a 40-image export can take minutes —
+    # which is why this now runs in a Celery task off the upload request. A
+    # small pool keeps total wall-clock down without hammering the origin.
+    fetched_map: dict[str, tuple[bytes, str, str]] = {}
+    if to_fetch:
+        from concurrent.futures import ThreadPoolExecutor
+
+        with ThreadPoolExecutor(max_workers=_FETCH_CONCURRENCY) as pool:
+            for url, fetched in zip(to_fetch, pool.map(fetch_image, to_fetch)):
+                if fetched is not None:
+                    fetched_map[url] = fetched
+
+    for url in to_fetch:
+        fetched = fetched_map.get(url)
         if fetched is None:
             failed += 1
+            continue
+        if url in url_map:
             continue
 
         data, mime, ext = fetched

@@ -30,6 +30,9 @@ frontend/.vite/
 backend/media/
 backend/exports/
 
+# 本地测试文档目录（对应 Test KB，仅本地复现/验证用，勿入库）
+/Test/
+
 # Env files (keep .env.example tracked)
 .env
 .env.*

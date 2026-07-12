@@ -20,6 +20,7 @@ context.
 from __future__ import annotations
 
 import logging
+import re
 from dataclasses import dataclass
 from io import BytesIO
 
@@ -30,6 +31,19 @@ logger = logging.getLogger(__name__)
 # real URLs / table HTML back in.
 _IMG_TOKEN = "jzdocimg{}z"
 _TABLE_TOKEN = "jzdoctable{}z"
+
+# Colour sentinels wrap a coloured run's text *inside the docx* (before mammoth)
+# so the hex survives conversion as plain text, then get swapped for a
+# ``<span style="color:#hex">`` in the final markdown. mammoth drops direct
+# run-level colour formatting entirely, so this pre-pass is the only way to keep
+# Word font colours in the imported body. ``begin``/``end`` are alnum-only so
+# neither markdownify nor the markdown renderer escapes them.
+_COLOR_BEGIN = "jzcolor{}b"  # {} = lowercase 6-hex
+_COLOR_END = "jzcolore"
+_COLOR_SPAN_RE = re.compile(r"jzcolor([0-9a-f]{6})b(.*?)jzcolore", re.S)
+# Word writes ``w:val="auto"`` for "automatic" (theme/default) colour — never a
+# real colour, and near-black defaults add noise, so both are skipped.
+_HEX6_RE = re.compile(r"^[0-9A-Fa-f]{6}$")
 
 _EXT_BY_MIME = {
     "image/jpeg": ".jpg",
@@ -121,6 +135,72 @@ def _promote_outline_headings(blob: bytes) -> bytes:
     return out.getvalue()
 
 
+def _mark_run_colors(blob: bytes) -> bytes:
+    """Wrap every explicitly-coloured run's text with colour sentinels.
+
+    mammoth converts a ``.docx`` to *semantic* HTML and silently drops direct
+    run-level formatting like ``<w:color w:val="FF0001"/>`` — so Word font
+    colours never reach the imported markdown. We pre-process the docx XML,
+    wrapping each coloured run's ``<w:t>`` text in ``jzcolor<hex>b … jzcolore``
+    sentinels (plain alnum, so mammoth + markdownify carry them through as
+    text); :func:`convert_docx` swaps them for ``<span style="color:#hex">`` at
+    the end. Operates at the XML level so runs inside tables (and nested tables)
+    are covered too — ``python-docx``'s ``doc.paragraphs`` skips table cells.
+
+    Returns the rewritten docx bytes, or the original blob unchanged on any
+    failure / when there's nothing to mark.
+    """
+    try:
+        from docx import Document as Docx  # type: ignore[import-not-found]
+        from docx.oxml.ns import qn  # type: ignore[import-not-found]
+    except ImportError:
+        return blob
+
+    try:
+        doc = Docx(BytesIO(blob))
+    except Exception as exc:  # noqa: BLE001 — malformed file: let mammoth handle it
+        logger.info("docx colour marking skipped (open failed): %s", exc)
+        return blob
+
+    marked = 0
+    for r in doc.element.iter(qn("w:r")):
+        rpr = r.find(qn("w:rPr"))
+        if rpr is None:
+            continue
+        color = rpr.find(qn("w:color"))
+        if color is None:
+            continue
+        val = color.get(qn("w:val"))
+        if not val or val.lower() == "auto" or not _HEX6_RE.match(val):
+            continue
+        # Skip near-black defaults — colouring body text black is pure noise.
+        if val.lower() in {"000000", "010101"}:
+            continue
+        texts = r.findall(qn("w:t"))
+        if not texts:
+            continue
+        # A run with only whitespace carries no visible colour — skip so we
+        # don't emit empty ``<span> </span>`` wrappers.
+        if not any((t.text or "").strip() for t in texts):
+            continue
+        hexv = val.lower()
+        first, last = texts[0], texts[-1]
+        first.text = _COLOR_BEGIN.format(hexv) + (first.text or "")
+        last.text = (last.text or "") + _COLOR_END
+        marked += 1
+
+    if not marked:
+        return blob
+    out = BytesIO()
+    try:
+        doc.save(out)
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("docx colour marking save failed: %s", exc)
+        return blob
+    logger.info("docx import: marked %d coloured runs", marked)
+    return out.getvalue()
+
+
 def _protect_tables(html: str) -> tuple[str, list[str]]:
     """Replace each top-level ``<table>…</table>`` with a token placeholder.
 
@@ -183,6 +263,9 @@ def convert_docx(blob: bytes) -> tuple[str, list[EmbeddedImage]]:
     # Recover heading structure Word stored as outline levels before mammoth
     # runs (no-op when the doc already uses real Heading styles).
     blob = _promote_outline_headings(blob)
+    # Wrap coloured runs with sentinels so font colours survive mammoth (which
+    # drops direct run-level colour) — swapped for <span> at the end.
+    blob = _mark_run_colors(blob)
 
     images: list[EmbeddedImage] = []
 
@@ -220,6 +303,13 @@ def convert_docx(blob: bytes) -> tuple[str, list[EmbeddedImage]]:
             _TABLE_TOKEN.format(idx),
             f'<div class="jz-table-wrap">{table_html}</div>',
         )
+
+    # Swap colour sentinels for inline <span> colour spans. Runs on the full md
+    # (including the re-injected raw table HTML) so coloured cells keep colour
+    # too. The reader's DOMPurify allowlist permits <span style="color:…">.
+    md = _COLOR_SPAN_RE.sub(
+        lambda m: f'<span style="color:#{m.group(1)}">{m.group(2)}</span>', md
+    )
 
     # Drop images that failed to read (empty src) so they don't leave dangling
     # ``![](jzdocimgNz)`` refs the caller can't resolve.

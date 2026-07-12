@@ -254,3 +254,33 @@ def convert_pptx_to_slides(document_id: int, attachment_id: int) -> int:
         log.exception("pptx convert failed for document %s", document_id)
         _set_slide_state(document_id, "failed", _failure_reason(exc))
         return 0
+
+
+@shared_task
+def mirror_document_images(document_id: int, uploaded_by_id: int | None = None) -> dict:
+    """Download a markdown document's remote images into local /media storage.
+
+    Runs off the upload request: a Yuque export can carry 40+ images on a CDN
+    (cdn.nlark.com) that both anti-hotlinks (browser loads 403 on a foreign
+    Referer) and throttles per-IP, so mirroring them synchronously blew past the
+    request timeout and left the body full of broken remote URLs. As a task it
+    can take its time; the reader shows the remote images (via
+    ``referrerpolicy=no-referrer``) until this swaps them for local copies.
+    """
+    from apps.knowledge.models import Document
+    from apps.editor.services.image_mirror import mirror_images_for_document
+
+    doc = Document.objects.filter(pk=document_id).first()
+    if doc is None:
+        log.info("mirror_document_images: document %s gone, skipping", document_id)
+        return {"ok": False, "reason": "document missing"}
+
+    uploaded_by = None
+    if uploaded_by_id is not None:
+        from django.contrib.auth import get_user_model
+
+        uploaded_by = get_user_model().objects.filter(pk=uploaded_by_id).first()
+
+    result = mirror_images_for_document(doc, uploaded_by=uploaded_by)
+    log.info("mirror_document_images %s → %s", document_id, result)
+    return result
