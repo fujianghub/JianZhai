@@ -14,6 +14,7 @@ import type { PublicAttachment } from '@/types';
 import PdfCanvas from './LazyPdfCanvas';
 import FullscreenableIframe from './FullscreenableIframe';
 import CodeBlockEnhancer from './CodeBlockEnhancer';
+import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 
 export default function PublicAttachmentPreview({ att }: { att: PublicAttachment }) {
   const url = attachmentAbsoluteUrl(att.url);
@@ -150,6 +151,7 @@ function MarkdownInline({ url, dl }: { url: string; dl: React.ReactNode }) {
         style={{ lineHeight: 1.8, fontSize: 16 }}
       />
       <CodeBlockEnhancer selector=".jz-att-md" bindKey={html} />
+      <ImageLightboxEnhancer selector=".jz-att-md" bindKey={html} />
     </>
   );
 }

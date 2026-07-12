@@ -80,7 +80,7 @@ import { applyPageMeta, resetPageMeta } from '@/utils/pageMeta';
 import ColumnResizer from '@/components/common/ColumnResizer';
 import { useColumnResize } from '@/hooks/useColumnResize';
 import { useFootnoteHover } from '@/hooks/useFootnoteHover';
-import { useImageLightbox } from '@/hooks/useImageLightbox';
+import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const { Title, Text } = Typography;
@@ -202,11 +202,11 @@ export default function PostDetail() {
   const loadSession = useAuthStore((s) => s.loadSession);
   const articleRef = useRef<HTMLDivElement | null>(null);
   const layoutRef = useRef<HTMLDivElement | null>(null);
-  // Hover previews for footnote refs + click-to-zoom on inline images. Both
-  // wire DOM event delegation onto the rendered post container — no React
-  // overhead in the dangerouslySetInnerHTML tree.
+  // Hover previews for footnote refs wire DOM event delegation onto the
+  // rendered post container — no React overhead in the dangerouslySetInnerHTML
+  // tree. (Double-click-to-zoom on inline images is wired via
+  // <ImageLightboxEnhancer> below, next to CodeBlockEnhancer / TableEnhancer.)
   useFootnoteHover(articleRef);
-  useImageLightbox(articleRef);
   /** Iframe element of the HTML reader — kept as a ref for future hooks
    *  (e.g. analytics, scroll-spy) that may need to map between the iframe
    *  document and the parent page. */
@@ -965,6 +965,7 @@ export default function PostDetail() {
           )}
           <CodeBlockEnhancer selector=".jz-post-article" bindKey={rendered.html} />
           <TableEnhancer selector=".jz-post-article" bindKey={rendered.html} />
+          <ImageLightboxEnhancer selector=".jz-post-article" bindKey={rendered.html} />
             </>
           )}
 

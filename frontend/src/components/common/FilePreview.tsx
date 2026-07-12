@@ -4,6 +4,7 @@ import { DownloadOutlined } from '@ant-design/icons';
 import { renderMarkdown, sanitizeHtml } from '@/utils/markdown';
 import { convertDocxToHtml } from '@/utils/docx';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
+import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import { attachmentAbsoluteUrl, previewKind, type Attachment } from '@/api/attachments';
 import PdfCanvas from './LazyPdfCanvas';
 import FullscreenableIframe from './FullscreenableIframe';
@@ -173,6 +174,7 @@ function MarkdownTextPreview({ url }: { url: string }) {
         dangerouslySetInnerHTML={{ __html: html }}
       />
       <CodeBlockEnhancer selector=".jz-file-preview-md" bindKey={html} />
+      <ImageLightboxEnhancer selector=".jz-file-preview-md" bindKey={html} />
     </>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Collapse } from 'antd';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import TableEnhancer from '@/components/common/TableEnhancer';
+import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import { renderMarkdownForEditor, renderMarkdownWithToc } from '@/utils/markdown';
 import { paperClassName } from '@/utils/paper';
 import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
@@ -136,6 +137,7 @@ export default function LivePreviewPane({
       />
       <CodeBlockEnhancer selector=".jz-doc-live-preview" bindKey={html} />
       <TableEnhancer selector=".jz-doc-live-preview" bindKey={html} />
+      <ImageLightboxEnhancer selector=".jz-doc-live-preview" bindKey={html} />
     </div>
   );
 }
