@@ -33,6 +33,9 @@ backend/exports/
 # 本地测试文档目录（对应 Test KB，仅本地复现/验证用，勿入库）
 /Test/
 
+# 本地→腾讯云内容同步脚本（含运维环境细节，仅本地用，勿入库）
+/Local_to_Cloud_Server_kb_sysnc.py
+
 # Env files (keep .env.example tracked)
 .env
 .env.*

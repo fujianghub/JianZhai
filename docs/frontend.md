@@ -109,6 +109,12 @@ class HeroSettings(models.Model):
 - **专注模式**：`focusMode` 给 `<body>` 挂 `.jz-reader-focus` 类（样式表据此隐藏导航栏与侧栏），`Esc` 退出，右下角退出 FAB `.jz-focus-exit-fab`。
 - 阅读进度条 `ReadingProgressBar` 带百分比读数。
 
+### 图片双击放大（`useImageLightbox.ts`，2026-07-17）
+
+正文图片**双击**（`dblclick`）开全屏遮罩：滚轮缩放 / 拖拽平移 / `Esc` / 点背景关闭，工具栏样式复用图表全屏。接入 4 个渲染面：`PostDetail`(`.jz-post-article`)、`LivePreviewPane`(`.jz-doc-live-preview`)、`PublicAttachmentPreview`(`.jz-att-md`)、`FilePreview`(`.jz-file-preview-md`)；`reader.css` 的 `cursor:zoom-in` 提示覆盖全部面。纯判定抽在 `shouldOpenLightbox()`（跳过 `<a>` 内图片与 `data-no-lightbox`），便于单测。
+
+> ⚠️ **必须用 `selector`+`bindKey` 范式，勿退回 `containerRef` 依赖**：ref 对象引用恒稳，`useEffect(deps=[containerRef])` 只跑一次；而 `PostDetail` 在文章异步加载完成前先 `return <Spin/>`，首次挂载时 `ref.current` 还是 `null` → effect 早退且**永不重绑**，点击委托从未绑上（此 bug 曾致图片预览长期完全不生效且无人察觉）。现依赖 `[selector, bindKey]`，正文落地即重绑，与 `TableEnhancer`/`CodeBlockEnhancer` 同构。**任何"等异步内容渲染后再绑 DOM 事件"的 hook 都照此办理。**
+
 ### PDF 阅读器（`PdfCanvas.tsx` / `PdfTocPanel.tsx`，2026-06-27）
 
 附件为 PDF 时博客/作者阅读页用 pdf.js 自渲，关键能力：
