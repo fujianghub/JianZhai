@@ -16,6 +16,32 @@ _GFM_TABLE_LINE = re.compile(r"^\s*\|.*\|\s*$")
 _GFM_TABLE_SEP = re.compile(r"^\s*\|(?:\s*:?-+:?\s*\|)+\s*$")
 _HTML_COMMENT = re.compile(r"<!--[\s\S]*?-->")
 
+# Yuque exports each diagram as an HTML comment holding the source plus a
+# pre-rendered static SVG image. The generic ``_HTML_COMMENT`` strip truncates
+# at the FIRST ``-->`` — which flowchart arrows themselves contain — leaking
+# the rest of the source into the exported document as text. Real closers sit
+# at end-of-line while arrows always have a target after them on the same
+# line, so the closer is anchored on ``-->`` + EOL. Mirrors
+# ``recoverYuqueDiagramComments`` in frontend ``markdown.ts``: the comment is
+# recovered into a ``mermaid``/``plantuml`` fence (rendered offline to SVG for
+# HTML/PDF/site exports) and the static image is dropped.
+_YUQUE_DIAGRAM_COMMENT = re.compile(
+    r"<!--\s*这是一个文本绘图[，,]?\s*(?:源码为)?[：:]\s*([\s\S]*?)-->[ \t]*(?=\r?\n|$)"
+    r"((?:\r?\n[ \t]*!\[[^\]\n]*\]\([^)\n]*\)[ \t]*)?)"
+)
+
+
+def recover_yuque_diagram_comments(src: str) -> str:
+    if "这是一个文本绘图" not in src:
+        return src
+
+    def _repl(m: re.Match) -> str:
+        body = m.group(1).rstrip()
+        lang = "plantuml" if body.lstrip().startswith("@startuml") else "mermaid"
+        return f"\n```{lang}\n{body}\n```\n"
+
+    return _YUQUE_DIAGRAM_COMMENT.sub(_repl, src)
+
 
 def map_outside_fenced_code_blocks(src: str, fn) -> str:
     """Apply ``fn`` only to segments outside fenced code blocks."""
@@ -167,7 +193,10 @@ def apply_yuque_compat_mode(src: str) -> str:
 
 
 def preprocess_markdown(src: str) -> str:
-    out = _HTML_COMMENT.sub("", src or "")
+    # Diagram recovery MUST precede the generic comment strip — see
+    # ``recover_yuque_diagram_comments`` for why the naive strip corrupts.
+    out = recover_yuque_diagram_comments(src or "")
+    out = _HTML_COMMENT.sub("", out)
     out = map_outside_fenced_code_blocks(out, unglue_container_fences)
     out = map_outside_fenced_code_blocks(out, apply_yuque_compat_mode)
     return out

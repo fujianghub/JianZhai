@@ -164,6 +164,24 @@
 
 > 编辑器内保存（`DocumentSerializer.update`）的镜像仍**同步**——那是低频、通常 0 张新外链的路径，且前端 referrerpolicy 已保证渲染，故未改。
 
+### 语雀 MD 图表注释还原 + 强调正则 CJK 误伤（2026-07-19）
+
+语雀把 mermaid 图导出为 **HTML 注释包源码 + 静态 SVG 图片**：
+
+```
+<!-- 这是一个文本绘图，源码为：flowchart LR
+    A --> B -->
+![](https://cdn.nlark.com/.../xxx.svg)
+```
+
+三个渲染层 bug（前端 `utils/markdown.ts`；后端导出镜像 `exporter/services/markdown_preprocess.py`）：
+
+1. **图表注释被 `-->` 截断（主凶）**：`preprocessMarkdown` 首步懒惰正则 `<!--[\s\S]*?-->` 在源码**内部箭头** ` --> ` 处提前截断 → 剩余源码（`classDef`、`:::jam` 等）泄漏成正文，`:::jam` 再被 `unglueContainerFences` 拆行触发**失控 callout 吞掉后文**。修复=`recoverYuqueDiagramComments`（后端 `recover_yuque_diagram_comments` 镜像）：闭合锚定「`-->` + 行尾」（flowchart 箭头后同行必有目标、真闭合必在行尾），把注释**还原成 ```` ```mermaid ```` fence**（`@startuml` 开头则 plantuml）并丢弃静态 SVG——阅读端原生渲染（主题跟随/全屏/源码切换），导出端走既有离线 SVG 管线；**必须在通用注释剥离之前运行**。docx 导出降级为源码面板（已知低保真目标）。
+2. **`<font>` 交替模式误合并**：语雀「整句染色+局部加粗」= `<font>文</font>**<font>词</font>**<font>文</font>…`；`normalizeYuqueEmphasis` 步骤 (0)（拆分加粗绕行内标签合并）的 A/B 连接符原为 `[^*\n]+?`（允许 `<`），把整个染色 span 当拆分两半合并 → 整句全粗。修复=收紧为 `[^*\n<]+?`（真实拆分模式两侧是纯文本）。
+3. **CJK 双加粗吞并**：已删除的步骤 (1)（`**A**B**C**`→`**ABC**` 合并启发式）——无空格连接符与 `\w` lookaround 两道防线在中文全失效（中文无空格、CJK 不算 `\w`），任何含两个加粗的中文句子被吞并成巨型加粗，或错配「上一加粗闭合+下一加粗开启」**静默删除**加粗标记（表格单元格触发）。`**A**B**C**` 本是合法 CommonMark；后端 `normalize_yuque_emphasis` 从无此步骤，删除后前后端对齐。
+
+> 改 `applyYuqueCompatMode` 任何正则，回归须过三类用例：CJK 标点连接双加粗、font 交替染色句、含 ` --> ` 的图表注释（`markdown.preprocess.test.ts` + 后端 `test_markdown_preprocess.py` 已钉住）。
+
 ### PPT 有道云式阅读器（`.pptx` → 逐页图 + 缩略图 + 讲者备注）
 
 **转换管线**（`editor/tasks.convert_pptx_to_slides`，Celery 异步，需 `libreoffice`(soffice) + `poppler-utils`(pdftoppm) 在 PATH）：

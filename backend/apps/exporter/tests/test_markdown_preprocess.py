@@ -51,3 +51,45 @@ def test_glued_closing_fence_still_unglued():
     src = ":::info\nBody:::\ntail"
     out = unglue_container_fences(src)
     assert "Body\n\n:::" in out
+
+
+def test_recover_yuque_diagram_comment_with_internal_arrows():
+    # Yuque exports diagrams as an HTML comment holding the source + a static
+    # SVG image. Flowchart arrows contain ``-->`` — the generic comment strip
+    # used to truncate at the first arrow, leaking the rest of the source into
+    # the exported document as text.
+    from apps.exporter.services.markdown_preprocess import (
+        recover_yuque_diagram_comments,
+    )
+
+    src = (
+        "前文。\n\n"
+        "<!-- 这是一个文本绘图，源码为：flowchart LR\n"
+        '    E1["大象流 A"] --> H{"ECMP 哈希"}\n'
+        '    H --> P1["路径 1"]:::jam\n'
+        "    classDef jam fill:#4a1f1f\n"
+        "    class E1 flow -->\n"
+        "![](/media/uploads/2026/07/x.svg)\n\n"
+        "后文。"
+    )
+    out = recover_yuque_diagram_comments(src)
+    assert "```mermaid\n" in out
+    assert "classDef jam" in out  # full source captured, not truncated
+    assert "![](/media/uploads" not in out  # static image dropped
+    assert "<!--" not in out
+
+    # Through the full preprocess: fence survives; nothing leaks as text.
+    full = preprocess_markdown(src)
+    assert "```mermaid" in full
+    assert "classDef jam" in full  # inside the fence
+    assert "后文。" in full
+
+
+def test_recover_yuque_diagram_comment_plantuml():
+    from apps.exporter.services.markdown_preprocess import (
+        recover_yuque_diagram_comments,
+    )
+
+    src = "<!-- 这是一个文本绘图，源码为：@startuml\nA --> B\n@enduml -->\n![](/media/x.svg)"
+    out = recover_yuque_diagram_comments(src)
+    assert "```plantuml\n@startuml" in out

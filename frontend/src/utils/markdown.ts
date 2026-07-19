@@ -905,13 +905,48 @@ export function mapOutsideFencedCodeBlocks(src: string, fn: (s: string) => strin
  *   4. GFM pipe tables → HTML (fence-external only).
  */
 export function preprocessMarkdown(src: string): string {
-  let out = (src ?? '').replace(/<!--[\s\S]*?-->/g, '');
+  // Diagram recovery MUST precede the generic comment strip — see
+  // recoverYuqueDiagramComments for why the naive strip corrupts these.
+  let out = recoverYuqueDiagramComments(src ?? '');
+  out = out.replace(/<!--[\s\S]*?-->/g, '');
   out = mapOutsideFencedCodeBlocks(out, unglueContainerFences);
   out = mapOutsideFencedCodeBlocks(out, applyYuqueCompatMode);
   out = mapOutsideFencedCodeBlocks(out, convertLayoutBlocks);
   out = mapOutsideFencedCodeBlocks(out, convertBlockPlaceholders);
   out = mapOutsideFencedCodeBlocks(out, convertGfmPipeTables);
   return out;
+}
+
+/**
+ * Yuque exports each diagram as an HTML comment holding the source, followed
+ * by a pre-rendered static SVG image:
+ *
+ *   <!-- 这是一个文本绘图，源码为：flowchart LR
+ *       A --> B -->
+ *   ![](https://cdn.nlark.com/.../xxx.svg)
+ *
+ * The generic comment strip (``<!--[\s\S]*?-->``) truncates at the FIRST
+ * ``-->`` — which flowchart arrows themselves contain — leaking the rest of
+ * the diagram source into the document as visible text (``classDef`` lines,
+ * and ``:::hot`` class shorthands that ``unglueContainerFences`` then splits
+ * into runaway callout containers). Real closers in these exports always sit
+ * at end-of-line, while arrows always have a target after them on the same
+ * line — so the closer is anchored on ``-->`` + EOL.
+ *
+ * Rather than merely stripping correctly, recover the diagram: emit a
+ * ``mermaid`` (or ``plantuml``) fence and drop the static SVG image so the
+ * reader renders it natively — theme-aware, with fullscreen / source toggle.
+ */
+const YUQUE_DIAGRAM_COMMENT_RE =
+  /<!--\s*这是一个文本绘图[，,]?\s*(?:源码为)?[：:]\s*([\s\S]*?)-->[ \t]*(?=\r?\n|$)((?:\r?\n[ \t]*!\[[^\]\n]*\]\([^)\n]*\)[ \t]*)?)/g;
+
+export function recoverYuqueDiagramComments(src: string): string {
+  if (!src.includes('这是一个文本绘图')) return src;
+  return src.replace(YUQUE_DIAGRAM_COMMENT_RE, (_m, source: string) => {
+    const body = source.replace(/\s+$/, '');
+    const lang = /^\s*@startuml/.test(body) ? 'plantuml' : 'mermaid';
+    return `\n\`\`\`${lang}\n${body}\n\`\`\`\n`;
+  });
 }
 
 /** Container names that are STRUCTURAL layout blocks, not callouts. They are
@@ -1381,13 +1416,22 @@ function normalizeYuqueEmphasis(src: string): string {
   // Both should render as one continuous bold span wrapping the inline tag.
   // We handle each variant with its own regex; both iterate so chains
   // ``**A**<t1>x</t1>**B**<t2>y</t2>**C**`` collapse cleanly.
+  //
+  // The A/B connectors are ``[^*\n<]`` — no ``<`` — because in the genuine
+  // split-bold pattern they are PLAIN text runs. Yuque's *inverted* pattern
+  // (``<font>plain</font>**<font>bold</font>**<font>plain</font>`` — a
+  // colored sentence with bold colored words inside) also produces the same
+  // ``**…**tag**…**`` run shape, but there A/B are whole ``<font>`` chunks;
+  // merging those bolds the plain colored text between them (an entire
+  // sentence turned bold). Excluding ``<`` keeps the fix scoped to the real
+  // artifact.
   {
     const inlineTag = '(?:font|span|u|mark|kbd|sub|sup)';
     // Spaced FIRST — its pattern is more specific (requires the inner bold
     // around the tag), so handling it before the tight one prevents the
     // tight regex from matching the inner ``** **`` pair as a phantom bold.
     const reSpaced = new RegExp(
-      `\\*\\*([^*\\n]+?)\\*\\*[ \\t]+\\*\\*(<(${inlineTag})\\b[^>]*>[^*\\n<]*?</\\3>)\\*\\*[ \\t]+\\*\\*([^*\\n]+?)\\*\\*`,
+      `\\*\\*([^*\\n<]+?)\\*\\*[ \\t]+\\*\\*(<(${inlineTag})\\b[^>]*>[^*\\n<]*?</\\3>)\\*\\*[ \\t]+\\*\\*([^*\\n<]+?)\\*\\*`,
       'gi',
     );
     for (let i = 0; i < 8; i++) {
@@ -1396,7 +1440,7 @@ function normalizeYuqueEmphasis(src: string): string {
       out = next;
     }
     const reTight = new RegExp(
-      `\\*\\*([^*\\n]+?)\\*\\*(<(${inlineTag})\\b[^>]*>[^*\\n<]*?</\\3>)\\*\\*([^*\\n]+?)\\*\\*`,
+      `\\*\\*([^*\\n<]+?)\\*\\*(<(${inlineTag})\\b[^>]*>[^*\\n<]*?</\\3>)\\*\\*([^*\\n<]+?)\\*\\*`,
       'gi',
     );
     for (let i = 0; i < 8; i++) {
@@ -1406,28 +1450,17 @@ function normalizeYuqueEmphasis(src: string): string {
     }
   }
 
-  // (1) Yuque sometimes emits ``**A**B**`` (three ``**`` runs in a row) when
-  // its WYSIWYG editor split a single bold span around a cursor edit. The
-  // visual intent is **AB** as one bold, but CommonMark parses the second
-  // ``**`` as a close, leaving B plain. We merge by stripping the middle
-  // closer/opener pair: ``**A**B**C**`` → ``**AB**C**`` → ``**ABC**`` after
-  // repeated application. Apply iteratively until stable.
-  //
-  // To avoid touching legitimate cases like ``**A** plain **B**`` we restrict
-  // the connector segment ``[^*\n ]+`` so it can't contain spaces or stars
-  // (only word/punct chars). That covers the Yuque export pattern but
-  // preserves intentional adjacent bolds.
-  for (let i = 0; i < 8; i++) {
-    // Anchored on lookbehind / lookahead so the regex won't accidentally
-    // treat the closing ``**`` of one bold as the opening of a new one
-    // (which would let `**A** **B** **C**` collapse incorrectly).
-    const next = out.replace(
-      /(?<![\w*])\*\*([^*\n]+?)\*\*([^*\n ]+?)\*\*([^*\n]+?)\*\*(?![\w*])/g,
-      '**$1$2$3**',
-    );
-    if (next === out) break;
-    out = next;
-  }
+  // (1) — REMOVED. A former heuristic merged ``**A**B**C**`` into ``**ABC**``
+  // assuming the middle run was a Yuque cursor-split artifact, using a
+  // no-space connector (``[^*\n ]+``) and ``\w`` lookarounds as guards. Both
+  // guards silently fail on CJK prose (no ASCII spaces between words; CJK
+  // chars aren't ``\w``), so any sentence with two legitimate bold spans —
+  // ``**词1**中文**词2**`` — was either merged into one giant bold (swallowing
+  // the plain text between) or, worse, mis-paired a previous bold's CLOSER
+  // with the next bold's OPENER and silently deleted a span's markers.
+  // ``**A**B**C**`` is valid CommonMark (two bolds + plain B) and must render
+  // as written; the backend exporter's normalize_yuque_emphasis never had
+  // this step, so removing it also re-aligns reader and export output.
 
   // (2) Split runs of 4+ consecutive asterisks into ``** **`` pairs so each
   // adjacent bold can render independently.
