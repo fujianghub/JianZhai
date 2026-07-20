@@ -42,6 +42,8 @@
 | 分栏 / 标签页 | `:::cols-2` / `:::tabs` | `Columns.ts` / `Tabs.ts` |
 | 内联 TOC | `[TOC]`（全文）/ `[TOC:section]`（本节子树） | `InlineToc.ts` |
 | 文档卡片 | `[[doc-card:ID]]` | `DocCardEmbed.tsx` |
+| 链接卡片（网页） | `[[link-card:URL]]` | `LinkCardEmbed.tsx` |
+| 链接气泡菜单 | 光标落在链接上 | `LinkBubbleMenu.tsx`（详见 §9） |
 | 缩进 / 字号 / 字体 | Tab、工具栏下拉 | `Indent.ts` / `FontSize.ts` / `FontFamily.ts` |
 | 上下标 | `^x^` / `~x~` | tiptap 内置 |
 | 批注 Mark | hover tooltip | `AnnotationMark.tsx` |
@@ -197,3 +199,19 @@
 **存量维护命令**：`manage.py reconvert_pptx`（回填旧 PNG/无缩略图 deck，重新光栅化）；`manage.py backfill_pptx_notes [--all]`（**只读源文件补 `notes`、不重新光栅化**，回填备注上线前转好的 deck）。
 
 **部署**：线上镜像须含 `libreoffice` + `poppler-utils`（系统包）+ `python-pptx`（新依赖）；改依赖后需重建镜像 + `migrate` + `backfill_pptx_notes --all` 才有备注。
+
+---
+
+## 9. 语雀式链接三形态（2026-07-20）
+
+链接可在三种显示形态间切换：**链接**（URL 原文）｜**标题**（目标页/文档标题文字，**默认**）｜**卡片**（`DocCardEmbed`/`LinkCardEmbed` 块节点），另有 **打开文档**（仅内部 `doc:` 链接，站内路由）与 **浏览器访问**（新标签）两动作。序列化格式零变更：`[URL](URL)` / `[标题](doc:ID)`（仍匹配 `MENTION_RE`，双向链接提取不受影响）/ 既有 `[[…]]` 占位符。
+
+**共享工具** `utils/linkModes.ts`：`classifyHref`（`doc:ID` / `/d/ID` / 站内绝对地址 / 外链 / other）、`canonicalHref`（站内归一化 `doc:ID`）、`isBareUrlText`（模式判定启发式：显示文本本身是裸 URL ⇔ 链接模式，**无 mark 属性**——tiptap-markdown 序列化纯 `[text](url)`，属性活不过存盘往返）、`fetchTitleForHref`（doc→preview 接口 / 外链→link-preview OG，5s 超时全捕获返 null）。
+
+- **Tiptap**：`LinkBubbleMenu.tsx` = 第二个 `BubbleMenu` 实例（`pluginKey: 'linkBubbleMenu'`，格式气泡在 `isActive('link')` 时让位）；`linkAutoTitle.ts` = `LinkPasteAutoTitle`（handlePaste 拦**空选区+单裸 URL** 粘贴，先插 `[URL](URL)` 再异步取标题；有选区放行给 extension-link 的 linkOnPaste）+ `applyAutoTitle`/`replaceLinkText`（**href+旧文本双匹配守卫**：取标题期间用户改过文字则匹配失败绝不覆盖，无需 transaction mapping）；`confirmLink` 空光标确认也走自动标题。卡片右上角 hover 胶囊菜单（`.jz-card-mode-menu`）回转行内链接/标题。
+- **CM6**：`codemirror/pure/linkAt.ts` 纯函数（`findLinkAt` 行内定位、`linkToPlain/Title/Card`；卡片须整行——独占行原地替换、行内则移到下一行，mention 的 `@` 前缀经 `atFrom` 一并吞掉）+ `LinkFloatingMenu.tsx`（FloatingFormatToolbar 同款 portal）；`handleCmUpdate` 空选区检测（表格浮条优先、fence/行内代码经 `syntaxTree` 排除），命令派发前重新 `findLinkAt` 校验 href 未变。
+- **阅读端 / 导出端**：见 [frontend.md §5](./frontend.md)（CardEnhancer 水合）与 [export-search.md §2](./export-search.md)（card_placeholders 零泄漏）。
+
+> ⚠️ **Tiptap v3 两坑**（本批实测踩中，勿复犯）：
+> 1. **Link 扩展协议白名单**（`isAllowedUri`，默认 http/https/mailto…）**拒收 `doc:`** → markdown 重载时 `[标题](doc:ID)` 的 link mark 被**静默剥成纯文本**（存量 bug：mention 行内链接在富文本模式一直坏着）。修=`Link.configure({ protocols: ['doc'] })`；新增内部协议须同步此白名单。
+> 2. **`useEditor` 默认不随 transaction 重渲**：组件 render 里直接 `editor.isActive()/getAttributes()` 拿到**陈旧快照**（菜单激活态/按钮显隐全错）。任何依赖 editor 实时状态的 React UI 一律走 `useEditorState({ editor, selector })` 订阅。

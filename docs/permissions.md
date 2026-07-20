@@ -47,6 +47,7 @@
 | 删除**自己**的评论 | ✅ | ✅ | ✅ |
 | 删除**他人**评论（版主） | ❌ | ✅ | ✅ |
 | 个人资料自服务（改密码 / 邮箱 / 用户名 / 头像） | ✅ | ✅ | ✅ |
+| 链接卡片元数据（`GET /link-preview/`，OG 抓取） | ✅ | ✅ | ✅ |
 
 ### 3. 内容创作（知识库）
 | 能力 | user | admin | root |
@@ -130,7 +131,7 @@
 
 | 权限类 | 含义 | 挂载端点 |
 |---|---|---|
-| `PublicOrLoginGated` | 匿名或登录（友邻闸门） | `/public/*`、`feed.xml` |
+| `PublicOrLoginGated` | 匿名或登录（友邻闸门） | `/public/*`、`feed.xml`、`link-preview/`（2026-07-20 自 `IsContentAuthor` 放宽，供阅读端链接卡片水合；独立限流 `link_preview` 30/min 防外呼滥用，SSRF 守卫不变） |
 | `IsAuthenticated` | 任意登录用户 | 收藏、评论、`/auth/me/*` 自服务 |
 | `IsContentAuthor`（=`is_staff`） | 作者(admin+root) | KB/folder/doc 建改、软删 doc/folder、上传/导入、标签、导出、版本、链接、图谱、搜索、AI 使用、`trash/`、`trash/*/restore`、题记管理、AI 设置、全员用量、用户管理入口 |
 | `IsRoot`（=`is_root_admin`） | 仅根 | `kbs DELETE`、`categories DELETE`、`trash/*/purge`、`trash/empty`、`system-info` |

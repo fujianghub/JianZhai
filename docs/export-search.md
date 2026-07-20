@@ -20,7 +20,7 @@ def refresh_search_vector(doc):
         search_vector=SearchVector(Value(tokens, ...), config="simple"))
 ```
 
-- **索引范围**：标题 + `raw_content`（剥 HTML）+ 标签名 + 评论正文
+- **索引范围**：标题 + `raw_content`（剥 HTML）+ 标签名 + 评论正文；卡片占位符 `[[doc-card:ID]]`/`[[link-card:URL]]` 整体剥除（`_CARD_PLACEHOLDER_RE`，纯语法脚手架入索引会成可搜噪音）
 - 查询侧同样 jieba 分词后 `plainto_tsquery`
 - **触发**：`post_save` on Document / DocumentTag / Comment → `refresh_document_vector.delay`
 - 全量重建：`python manage.py reindex_search`（升级索引逻辑后跑一次）
@@ -55,6 +55,14 @@ def refresh_search_vector(doc):
 - **`print`**（PDF 用）：展开全部 panel、去目录与脚本、篇章间 `page-break-before`；HTML 篇**不用 iframe**，改抽 `<style>` + body 扁平嵌入（`export-html-print`），避免 Chromium 打印空白 iframe。Playwright `emulate_media("screen")` 保留屏幕样式。
 - 样式：`BASE_CSS` + `export-markdown.css` + `export-anthology.css`（后者仅 html_export 加载）。
 - **单篇** HTML 导出仍 `export()` 原样写出（不套外壳）。
+
+### 卡片占位符（`card_placeholders.py`，2026-07-20）
+
+`[[doc-card:ID]]` / `[[link-card:URL]]`（前端卡片节点的序列化产物）历史上导出全线字面量泄漏，现分两路处理（均 fence 感知）：
+
+- **HTML / PDF / 静态站**：`convert_card_placeholders` 在 markdown-it 前把占位符行转成样式化卡片 HTML 块——文档标题 `doc_titles_for` 批量 IN 查询、外链元数据复用 `apps/editor/services/link_preview.fetch_link_preview_or_none`（SSRF 守卫 + 24h 缓存，**离线/失败降级域名简卡，绝不抛异常**）；doc 卡 `href="doc:ID"` 交给既有 `_rewrite_doc_links` 统一改 `#doc-ID` 锚点。`markdown_render.render_markdown` 加 `card_meta` 参数，`common.render_markdown` 默认注入。
+- **.md / docx**：`degrade_card_placeholders` 降级为普通链接行（doc-card → `[标题](doc:ID)` 随后走既有 mention 相对路径改写；link-card → `<URL>`）。
+- **兜底不变量**：`render_markdown` 未收到 `card_meta` 时自动 degrade——**任何调用方都不会把 `[[...]]` 泄进导出物**（`test_card_placeholders.py` 钉住零泄漏断言）。
 
 ### 离线资源
 

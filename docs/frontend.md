@@ -115,6 +115,15 @@ class HeroSettings(models.Model):
 
 > ⚠️ **必须用 `selector`+`bindKey` 范式，勿退回 `containerRef` 依赖**：ref 对象引用恒稳，`useEffect(deps=[containerRef])` 只跑一次；而 `PostDetail` 在文章异步加载完成前先 `return <Spin/>`，首次挂载时 `ref.current` 还是 `null` → effect 早退且**永不重绑**，点击委托从未绑上（此 bug 曾致图片预览长期完全不生效且无人察觉）。现依赖 `[selector, bindKey]`，正文落地即重绑，与 `TableEnhancer`/`CodeBlockEnhancer` 同构。**任何"等异步内容渲染后再绑 DOM 事件"的 hook 都照此办理。**
 
+### 卡片水合（`CardEnhancer.tsx`，2026-07-20）
+
+阅读端 `[[link-card:URL]]` / `[[doc-card:ID]]` 由 `convertBlockPlaceholders` 先渲染为**静态壳**（外链卡=域名+URL；文档卡=`📄 文档卡片 #ID`），再由 `components/common/CardEnhancer.tsx` 按登录态水合：
+
+- `div[data-jz-link-card]` → `getLinkPreview`（后端 OG 抓取，已放宽 `PublicOrLoginGated`）填 favicon/站名/标题/描述；匿名 401/闸门 403/网络失败 → **保持静态壳**优雅降级
+- `div[data-jz-doc-card]` → `resolvePublicById` 换真实标题 + 升级 `href` 为 `/posts/:slug`；草稿/不可见解析失败保持原样
+- **selector+bindKey 范式**（同上节 lightbox 教训），接入 `PostDetail`(`.jz-post-article`) 与 `LivePreviewPane`(`.jz-doc-live-preview`)；`data-jz-hydrated` 防重复请求
+- 水合后复用编辑器 `.jz-link-card-shell` 样式族（tiptap.css 全局加载）；静态壳样式 `a.jz-link-card-static`
+
 ### PDF 阅读器（`PdfCanvas.tsx` / `PdfTocPanel.tsx`，2026-06-27）
 
 附件为 PDF 时博客/作者阅读页用 pdf.js 自渲，关键能力：
