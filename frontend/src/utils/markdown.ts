@@ -378,6 +378,8 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'role', 'contenteditable', 'hidden',
     // <details> open state; doc-card / doc-link ids; annotation tooltips
     'open', 'data-doc-id', 'data-annotation', 'data-label',
+    // 阅读端卡片壳（CardEnhancer 水合锚点）：外链卡 data-url + 两种卡片标记
+    'data-url', 'data-jz-link-card', 'data-jz-doc-card',
     // iframe (video embed) presentation attrs — src itself is gated by the hook
     'allowfullscreen', 'frameborder', 'allow', 'referrerpolicy',
     // SVG specifics
@@ -1143,7 +1145,12 @@ export function convertLayoutBlocks(src: string): string {
  * inline code stay literal. Fenced code is excluded at the call site.
  */
 export function convertBlockPlaceholders(src: string): string {
-  if (!src.includes('[TOC]') && !src.includes('[TOC:section]') && !src.includes('[[doc-card:'))
+  if (
+    !src.includes('[TOC]') &&
+    !src.includes('[TOC:section]') &&
+    !src.includes('[[doc-card:') &&
+    !src.includes('[[link-card:')
+  )
     return src;
   return src
     .split('\n')
@@ -1160,6 +1167,28 @@ export function convertBlockPlaceholders(src: string): string {
         return (
           `<div data-jz-doc-card="" data-doc-id="${id}" class="jz-doc-card">` +
           `<a class="doc-link" data-doc-id="${id}" href="/d/${id}">📄 文档卡片 #${id}</a>` +
+          `</div>`
+        );
+      }
+      // 外链卡片：静态壳（域名 + URL），元数据由 CardEnhancer 登录态水合。
+      // 外层 div[data-jz-link-card] 同时是编辑器 LinkCardEmbed.parseHTML 的
+      // 匹配目标 —— 修复 link-card 在编辑器重载时丢为字面量的旧缺口。
+      // URL 走 escAttr 防属性逃逸；new URL 失败（畸形地址）保持字面量。
+      const linkCard = line.match(/^\[\[link-card:(https?:\/\/[^\]\s]+?)\]\]\s*$/);
+      if (linkCard) {
+        const url = linkCard[1]!;
+        let host = '';
+        try {
+          host = new URL(url).hostname;
+        } catch {
+          return line;
+        }
+        return (
+          `<div data-jz-link-card="" data-url="${escAttr(url)}" class="jz-link-card">` +
+          `<a class="jz-link-card-static" href="${escAttr(url)}" target="_blank" rel="noopener noreferrer">` +
+          `<span class="jz-link-card-site-name">${escape(host)}</span>` +
+          `<span class="jz-link-card-title">${escape(url)}</span>` +
+          `</a>` +
           `</div>`
         );
       }

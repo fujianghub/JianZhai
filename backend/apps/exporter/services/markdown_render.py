@@ -15,6 +15,11 @@ from pygments.lexers import get_lexer_by_name
 from pygments.token import Token
 from pygments.util import ClassNotFound
 
+from .card_placeholders import (
+    CardMeta,
+    convert_card_placeholders,
+    degrade_card_placeholders,
+)
 from .markdown_preprocess import preprocess_markdown
 
 _CALLOUT_VALIDATE = re.compile(r"^[^\s]+(\s+.*)?$")
@@ -444,6 +449,7 @@ def render_markdown(
     code_theme: str | None = None,
     diagram_svgs: dict[str, str] | None = None,
     numbering: bool = False,
+    card_meta: CardMeta | None = None,
 ) -> str:
     """Preprocess + render Markdown to an HTML fragment.
 
@@ -461,8 +467,18 @@ def render_markdown(
     document's ``heading_numbering`` flag). Headings always get anchor ids and
     ``[TOC]`` / ``[TOC:section]`` placeholders always expand — numbering only
     controls whether the visible ``1.2.1`` prefixes appear.
+
+    ``card_meta`` 提供 ``[[doc-card:]]``/``[[link-card:]]`` 的元数据 →
+    渲染成样式化卡片；未提供时兜底降级为普通链接，任何调用方都不会把
+    ``[[...]]`` 字面量泄进导出物。
     """
     prepared = _convert_toc_placeholders(preprocess_markdown(text))
+    if card_meta is not None:
+        prepared = convert_card_placeholders(
+            prepared, doc_titles=card_meta.doc_titles, link_meta=card_meta.link_meta
+        )
+    else:
+        prepared = degrade_card_placeholders(prepared)
     previous = _CODE_THEME["value"]
     if code_theme:
         _CODE_THEME["value"] = code_theme

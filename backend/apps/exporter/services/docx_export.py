@@ -16,7 +16,7 @@ from markdown_it import MarkdownIt
 from apps.knowledge.serializers import detect_doc_format
 
 from ..scope import ExportScope
-from . import common
+from . import card_placeholders, common
 
 _md = MarkdownIt("commonmark", {"breaks": True}).enable("table")
 
@@ -24,6 +24,11 @@ _md = MarkdownIt("commonmark", {"breaks": True}).enable("table")
 def export(scope: ExportScope) -> tuple[Path, str, str]:
     docx = DocxDocument()
     _set_default_font(docx)
+
+    # 卡片占位符降级为普通链接行（docx 本就丢 href，标题文字得以保留）
+    card_titles = card_placeholders.doc_titles_for(
+        common.doc_export_body(d) for d in scope.documents
+    )
 
     for idx, doc in enumerate(scope.documents):
         if idx > 0:
@@ -46,6 +51,9 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             for line in plain.splitlines():
                 docx.add_paragraph(line or "")
         else:
+            body = card_placeholders.degrade_card_placeholders(
+                body, doc_titles=card_titles
+            )
             tokens = _md.parse(body)
             _render_tokens(docx, tokens)
 

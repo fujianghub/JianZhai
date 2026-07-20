@@ -203,6 +203,8 @@ REST_FRAMEWORK = {
         "ai_read": "120/min",
         "login": "10/min",
         "captcha": "30/min",
+        # link-preview 触发服务端外呼抓取，放宽给读者后独立限速防滥用
+        "link_preview": "30/min",
     },
 }
 

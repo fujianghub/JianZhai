@@ -7,7 +7,7 @@ from pathlib import Path
 from apps.knowledge.models import Document
 
 from ..scope import ExportScope
-from . import common
+from . import card_placeholders, common
 
 # ``@[label](doc:NNN)`` mentions need to be rewritten when leaving the live
 # system: a freshly downloaded archive shouldn't break links the moment the
@@ -89,9 +89,16 @@ def _rewrite_doc_mentions(text: str, link_index: dict[int, str], from_path: str)
 
 def export(scope: ExportScope) -> tuple[Path, str, str]:
     """Return (path, filename, mime_type)."""
+    # 卡片占位符先降级为普通链接行（doc-card → ``[标题](doc:ID)``、
+    # link-card → ``<URL>``），随后按既有 mention 规则一并改写/收敛，
+    # .md 归档里绝不残留 ``[[...]]`` 字面量。
+    card_titles = card_placeholders.doc_titles_for(
+        common.doc_export_body(d) for d in scope.documents
+    )
     if len(scope.documents) == 1:
         doc = scope.documents[0]
         body = common.doc_export_body(doc)
+        body = card_placeholders.degrade_card_placeholders(body, doc_titles=card_titles)
         # Single-doc export: any ``doc:NN`` mention points outside the archive,
         # so degrade it to plain label text.
         body = _rewrite_doc_mentions(body, link_index={}, from_path="content.md")
@@ -131,6 +138,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             i += 1
         used_names.add(name)
         body = common.doc_export_body(doc)
+        body = card_placeholders.degrade_card_placeholders(body, doc_titles=card_titles)
         body = _rewrite_doc_mentions(body, link_index, from_path=name)
         text = f"# {doc.title}\n\n{body}\n"
         text = common.rewrite_markdown_media_paths(text)

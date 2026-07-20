@@ -1,6 +1,7 @@
 """jieba-based pre-tokenization so PostgreSQL tsvector can handle Chinese."""
 from __future__ import annotations
 
+import re
 from functools import lru_cache
 from html.parser import HTMLParser
 from typing import Iterable
@@ -90,6 +91,10 @@ def _iter_unique(items: Iterable[str]) -> Iterable[str]:
             yield it
 
 
+# 卡片占位符（前端编辑器序列化产物），入索引前整体剥除
+_CARD_PLACEHOLDER_RE = re.compile(r"\[\[(?:doc-card|link-card):[^\]\n]*\]\]")
+
+
 def collect_search_text(document) -> str:
     """Plain text blob for indexing: title, body, tag names, comment bodies."""
     from apps.knowledge.serializers import detect_doc_format
@@ -97,6 +102,9 @@ def collect_search_text(document) -> str:
     body = document.raw_content or ""
     if detect_doc_format(document) == "html":
         body = _strip_html_tags(body)
+    # 卡片占位符是纯语法脚手架（``[[doc-card:8]]`` / ``[[link-card:URL]]``），
+    # 原样入索引会让 ``doc-card``、URL 碎片变成可搜噪音 —— 剥掉整行标记
+    body = _CARD_PLACEHOLDER_RE.sub(" ", body)
 
     tag_names = " ".join(
         document.tags.values_list("name", flat=True)

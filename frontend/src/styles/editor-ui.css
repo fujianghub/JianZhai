@@ -1285,6 +1285,30 @@
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
 }
 
+/* 语雀式链接菜单（LinkFloatingMenu）：文字按钮变体 */
+.jz-md-link-btn {
+  width: auto;
+  padding: 0 8px;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.jz-md-link-btn.is-active {
+  background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  color: var(--jz-accent);
+}
+.jz-md-link-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: transparent;
+}
+.jz-md-float-divider {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  background: var(--jz-divider);
+  margin: 0 3px;
+}
+
 /* ── 顶栏视图工具组：模式切换/大纲/专注收进次级胶囊，与发布主操作分层 ── */
 .jz-doc-mode-group {
   display: inline-flex;

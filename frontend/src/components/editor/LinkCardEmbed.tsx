@@ -75,11 +75,28 @@ export const LinkCardEmbed = Node.create({
   },
 });
 
-function LinkCardView({ node, editor }: NodeViewProps) {
+function LinkCardView({ node, editor, getPos }: NodeViewProps) {
   const url = node.attrs.url as string;
   const [data, setData] = useState<LinkPreview | null>(null);
   const [err, setErr] = useState<string>('');
   const [loading, setLoading] = useState(false);
+
+  /** 卡片 → 行内链接（语雀式回转）：text 为 URL 原文（链接）或标题。 */
+  function convertToInline(text: string) {
+    const pos = getPos();
+    if (typeof pos !== 'number') return;
+    editor
+      .chain()
+      .focus()
+      .insertContentAt(
+        { from: pos, to: pos + node.nodeSize },
+        {
+          type: 'paragraph',
+          content: [{ type: 'text', text, marks: [{ type: 'link', attrs: { href: url } }] }],
+        }
+      )
+      .run();
+  }
 
   useEffect(() => {
     if (!url) return;
@@ -109,7 +126,44 @@ function LinkCardView({ node, editor }: NodeViewProps) {
   }
 
   return (
-    <NodeViewWrapper>
+    <NodeViewWrapper className="jz-card-embed-wrap">
+      {editor.isEditable && (
+        <div className="jz-card-mode-menu" contentEditable={false}>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              convertToInline(url);
+            }}
+            title="转为行内链接（URL 原文）"
+          >
+            链接
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              convertToInline(data?.title || url);
+            }}
+            title="转为行内链接（标题文字）"
+          >
+            标题
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.open(url, '_blank', 'noopener');
+            }}
+            title="新标签页打开"
+          >
+            浏览器访问
+          </button>
+        </div>
+      )}
       <a
         href={url}
         target="_blank"

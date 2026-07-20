@@ -72,6 +72,9 @@ import {
 import { SlashCommand } from './slashCommand';
 import { FindReplace } from './findReplace';
 import MentionPicker from './MentionPicker';
+import LinkBubbleMenu from './LinkBubbleMenu';
+import { LinkPasteAutoTitle, applyAutoTitle } from './linkAutoTitle';
+import { canonicalHref, classifyHref } from '@/utils/linkModes';
 import type { Editor } from '@tiptap/core';
 import type { MentionSuggestion } from '@/api/linking';
 import { wordCount, preprocessMarkdown } from '@/utils/markdown';
@@ -341,7 +344,10 @@ export default function RichTextEditor({
           };
         },
       }).configure({ lowlight, defaultLanguage: 'plaintext' }),
-      Link.configure({ openOnClick: false, autolink: true }),
+      // protocols 必须放行内部 doc: 协议 —— Tiptap v3 Link 的 isAllowedUri
+      // 白名单（http/https/mailto…）默认拒收 doc:，markdown 重载时
+      // `[标题](doc:ID)` mention 的 link mark 会被静默剥成纯文本。
+      Link.configure({ openOnClick: false, autolink: true, protocols: ['doc'] }),
       Placeholder.configure({ placeholder: '键入 / 选择块类型；键入 @ 引用其他文档' }),
       TaskList,
       TaskItem.configure({ nested: true }),
@@ -407,6 +413,7 @@ export default function RichTextEditor({
         transformPastedText: true,
       }),
       MarkdownPreprocessPaste,
+      LinkPasteAutoTitle,
       SlashCommand,
       EmojiSuggestion,
       HeadingFold,
@@ -638,6 +645,21 @@ export default function RichTextEditor({
     const url = linkInput.trim();
     if (!url || url === 'https://') {
       editor.chain().focus().extendMarkRange('link').unsetLink().run();
+    } else if (editor.state.selection.empty && !editor.isActive('link')) {
+      // 光标处无选区也无既有链接：直接插入链接文本并异步转标题（默认标题）
+      const href = canonicalHref(classifyHref(url));
+      editor
+        .chain()
+        .focus()
+        .insertContent([
+          {
+            type: 'text',
+            text: href,
+            marks: [{ type: 'link', attrs: { href, target: linkNewTab ? '_blank' : null } }],
+          },
+        ])
+        .run();
+      void applyAutoTitle(editor, href);
     } else {
       editor.chain().focus().extendMarkRange('link').setLink({
         href: url,
@@ -1332,6 +1354,8 @@ export default function RichTextEditor({
             if (from === to) return false;
             if (editor.isActive('codeBlock')) return false;
             if (editor.isActive('table')) return false;
+            // 链接上让位给 LinkBubbleMenu（语雀式链接菜单），避免双条叠放
+            if (editor.isActive('link')) return false;
             return true;
           }}
         >
@@ -1458,6 +1482,7 @@ export default function RichTextEditor({
             </Dropdown>
           </div>
         </BubbleMenu>
+        <LinkBubbleMenu editor={editor} onEditLink={openLinkPopover} />
       </div>
       <BlockHoverMenu editor={editor} shellRef={editorShellRef} />
       {hover && <DocHoverCard state={hover} onClose={() => setHover(null)} />}

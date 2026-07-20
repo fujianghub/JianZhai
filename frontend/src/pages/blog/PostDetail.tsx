@@ -81,6 +81,7 @@ import ColumnResizer from '@/components/common/ColumnResizer';
 import { useColumnResize } from '@/hooks/useColumnResize';
 import { useFootnoteHover } from '@/hooks/useFootnoteHover';
 import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
+import CardEnhancer from '@/components/common/CardEnhancer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const { Title, Text } = Typography;
@@ -966,6 +967,7 @@ export default function PostDetail() {
           <CodeBlockEnhancer selector=".jz-post-article" bindKey={rendered.html} />
           <TableEnhancer selector=".jz-post-article" bindKey={rendered.html} />
           <ImageLightboxEnhancer selector=".jz-post-article" bindKey={rendered.html} />
+          <CardEnhancer selector=".jz-post-article" bindKey={rendered.html} />
             </>
           )}
 

@@ -9,17 +9,24 @@ from pathlib import Path
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import status
-from rest_framework.decorators import api_view, parser_classes, permission_classes
+from rest_framework.decorators import (
+    api_view,
+    parser_classes,
+    permission_classes,
+    throttle_classes,
+)
 from rest_framework.parsers import MultiPartParser
 from rest_framework.response import Response
+from rest_framework.throttling import UserRateThrottle
 
-from apps.accounts.permissions import IsContentAuthor
+from apps.accounts.permissions import IsContentAuthor, PublicOrLoginGated
 from apps.accounts.scoping import scope_queryset
 from apps.knowledge.models import Document, Folder, KnowledgeBase
 from apps.knowledge.serializers import DocumentSerializer
 
 from .models import Attachment
 from .serializers import AttachmentSerializer
+from .services.link_preview import LinkPreviewError, fetch_link_preview
 
 logger = logging.getLogger(__name__)
 
@@ -643,161 +650,33 @@ def import_zip(request):
 
 # ── 外部 URL 链接卡片预览 ──
 #
-# 抓取目标网页的 <meta og:*> + <title> + 描述 + 首张图。简单缓存到内存
-# (基于 Django cache) 防止重复抓取相同 URL。
-#
-# 安全：限制只抓取 http(s); 域名解析后过滤内网 IP；超时 5 秒；大小限制 500KB。
-
-import ipaddress
-import re as _re
-import socket
-from html.parser import HTMLParser
-from urllib.parse import urlparse, urljoin
-from urllib.request import Request, urlopen
-from urllib.error import URLError
-
-from django.core.cache import cache
+# 抓取逻辑（SSRF 守卫 / 500KB 上限 / 5s 超时 / 1 天缓存）在
+# services/link_preview.py，与导出端共用；这里只做权限 + 限流 + 状态码映射。
 
 
-def _is_safe_host(host: str) -> bool:
-    """阻止 SSRF：拒绝解析到 localhost / 内网 / link-local 的目标。"""
-    try:
-        infos = socket.getaddrinfo(host, None)
-    except socket.gaierror:
-        return False
-    for info in infos:
-        addr = info[4][0]
-        try:
-            ip = ipaddress.ip_address(addr)
-        except ValueError:
-            return False
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-            return False
-    return True
+class LinkPreviewThrottle(UserRateThrottle):
+    """独立桶：端点会触发服务端外呼抓取，放宽给登录读者（语雀式链接卡片
+    在博客端也要水合）后必须限速，防止被当 SSRF 探测/代理滥用。
+    UserRateThrottle 对匿名请求按 IP 计数，登录/匿名都覆盖。"""
 
-
-class _OGParser(HTMLParser):
-    """极简 HTML 解析器，只拿我们关心的 meta + title。"""
-
-    def __init__(self) -> None:
-        super().__init__()
-        self.in_title = False
-        self.title_chunks: list[str] = []
-        self.meta: dict[str, str] = {}
-        self.icon: str | None = None
-
-    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
-        tag = tag.lower()
-        attrs_d = {k.lower(): (v or "") for k, v in attrs}
-        if tag == "title":
-            self.in_title = True
-        elif tag == "meta":
-            prop = attrs_d.get("property") or attrs_d.get("name") or ""
-            content = attrs_d.get("content")
-            if prop and content:
-                self.meta[prop.lower()] = content
-        elif tag == "link":
-            rel = (attrs_d.get("rel") or "").lower()
-            if "icon" in rel.split():
-                self.icon = attrs_d.get("href")
-
-    def handle_endtag(self, tag: str):
-        if tag.lower() == "title":
-            self.in_title = False
-
-    def handle_data(self, data: str):
-        if self.in_title:
-            self.title_chunks.append(data)
+    scope = "link_preview"
 
 
 @api_view(["GET"])
-@permission_classes([IsContentAuthor])
+@permission_classes([PublicOrLoginGated])
+@throttle_classes([LinkPreviewThrottle])
 def link_preview(request):
     """获取 URL 的 OG 卡片信息。
 
     Query: ?url=https://example.com
 
     Returns: { title, description, image, site_name, favicon, url }
+
+    权限：PublicOrLoginGated —— 阅读端 link-card 水合也走这里；友邻模式
+    （SITE_REQUIRE_LOGIN=true）下匿名照常被闸门挡下。
     """
-    url = (request.query_params.get("url") or "").strip()
-    if not url:
-        return Response({"detail": "缺少 url 参数"}, status=400)
-    if not (url.startswith("http://") or url.startswith("https://")):
-        return Response({"detail": "url 必须以 http:// 或 https:// 开头"}, status=400)
-    if len(url) > 2000:
-        return Response({"detail": "url 过长"}, status=400)
-
-    cache_key = f"link-preview:{url}"
-    cached = cache.get(cache_key)
-    if cached:
-        return Response(cached)
-
-    parsed = urlparse(url)
-    host = parsed.hostname or ""
-    if not host or not _is_safe_host(host):
-        return Response({"detail": "目标地址不可达或处于内网"}, status=400)
-
     try:
-        req = Request(
-            url,
-            headers={
-                "User-Agent": "JianZhai-LinkPreview/1.0 (+https://github.com/fujianghub/JianZhai)",
-                "Accept": "text/html,application/xhtml+xml",
-                "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
-            },
-        )
-        with urlopen(req, timeout=5) as resp:
-            ctype = (resp.headers.get("Content-Type") or "").lower()
-            if "html" not in ctype:
-                return Response({"detail": "目标不是 HTML 页面"}, status=400)
-            raw = resp.read(500_000)  # 上限 500KB
-    except URLError as e:
-        return Response({"detail": f"无法访问目标：{e}"}, status=502)
-    except Exception as e:  # noqa: BLE001
-        return Response({"detail": f"抓取失败：{e}"}, status=502)
-
-    # 尝试以 UTF-8 解码，失败则猜测 GBK
-    try:
-        html = raw.decode("utf-8", errors="replace")
-    except Exception:
-        try:
-            html = raw.decode("gbk", errors="replace")
-        except Exception:
-            html = raw.decode("latin-1", errors="replace")
-
-    parser = _OGParser()
-    try:
-        parser.feed(html)
-    except Exception:  # noqa: BLE001
-        pass
-
-    title = (parser.meta.get("og:title") or "".join(parser.title_chunks)).strip()[:200]
-    desc = (
-        parser.meta.get("og:description")
-        or parser.meta.get("description")
-        or parser.meta.get("twitter:description")
-        or ""
-    ).strip()[:300]
-    image = parser.meta.get("og:image") or parser.meta.get("twitter:image") or ""
-    site_name = (parser.meta.get("og:site_name") or host).strip()[:80]
-    favicon = parser.icon or "/favicon.ico"
-
-    # 相对路径补全
-    if image and not image.startswith(("http://", "https://")):
-        image = urljoin(url, image)
-    if favicon and not favicon.startswith(("http://", "https://")):
-        favicon = urljoin(url, favicon)
-
-    # 标题简单清理（多空格 / 换行）
-    title = _re.sub(r"\s+", " ", title) or host
-
-    data = {
-        "url": url,
-        "title": title,
-        "description": desc,
-        "image": image,
-        "site_name": site_name,
-        "favicon": favicon,
-    }
-    cache.set(cache_key, data, timeout=24 * 3600)  # 缓存 1 天
+        data = fetch_link_preview(request.query_params.get("url") or "")
+    except LinkPreviewError as e:
+        return Response({"detail": e.detail}, status=e.status)
     return Response(data)

@@ -17,6 +17,8 @@ import {
 } from '@ant-design/icons';
 import type { EditorView } from '@codemirror/view';
 import { Compartment } from '@codemirror/state';
+import { syntaxTree } from '@codemirror/language';
+import { useNavigate } from 'react-router-dom';
 import MarkdownQuickInsertButton from './toolbar/MarkdownQuickInsertButton';
 import { renderMarkdownForEditor, wordCount } from '@/utils/markdown';
 import MentionPicker from './MentionPicker';
@@ -41,6 +43,9 @@ import {
   isTableLine,
 } from './codemirror/pure/tableFormat';
 import TableFloatingBar from './codemirror/TableFloatingBar';
+import LinkFloatingMenu, { type LinkMenuCommand } from './codemirror/LinkFloatingMenu';
+import { findLinkAt, linkToCard, linkToPlain, linkToTitle } from './codemirror/pure/linkAt';
+import { browseHref, classifyHref, fetchTitleForHref, isBareUrlText } from '@/utils/linkModes';
 import {
   clearInlineFormat,
   makeLink,
@@ -191,6 +196,14 @@ export default function MarkdownEditor({
   const floatTimerRef = useRef<number | null>(null);
   /** 表格浮动操作条锚点（光标进表格时显示）。 */
   const [tableBarAnchor, setTableBarAnchor] = useState<{ left: number; top: number } | null>(null);
+  /** 语雀式链接菜单：光标落在 [text](url) 上时显示（锚点 + 当前链接信息）。 */
+  const [linkMenu, setLinkMenu] = useState<{
+    anchor: { left: number; top: number };
+    href: string;
+    text: string;
+  } | null>(null);
+  const [linkTitleLoading, setLinkTitleLoading] = useState(false);
+  const navigate = useNavigate();
   const [slashOpen, setSlashOpen] = useState(false);
   const [slashQuery, setSlashQuery] = useState('');
   const [slashAnchor, setSlashAnchor] = useState<DOMRect | null>(null);
@@ -607,6 +620,67 @@ export default function MarkdownEditor({
     // 不主动收起浮动条：操作后选区仍在（语雀同款），可连续叠加格式
   }
 
+  /** 光标是否位于 fence / 行内代码（链接菜单在代码里不打扰）。 */
+  function inCodeContext(view: EditorView, pos: number): boolean {
+    let node: { name: string; parent: unknown } | null = syntaxTree(view.state).resolveInner(
+      pos,
+      -1,
+    );
+    while (node) {
+      if (/FencedCode|CodeBlock|InlineCode|CodeText/.test(node.name)) return true;
+      node = node.parent as { name: string; parent: unknown } | null;
+    }
+    return false;
+  }
+
+  /** 语雀式链接菜单命令：三形态切换 + 打开动作。派发前重新定位光标处
+   * 链接（异步取标题期间用户可能已编辑），href 变了就放弃，绝不误改。 */
+  async function runLinkCommand(cmd: LinkMenuCommand) {
+    const view = viewRef.current;
+    if (!view || readOnly) return;
+    const doc = view.state.doc.toString();
+    const link = findLinkAt(doc, view.state.selection.main.head);
+    if (!link) return;
+    const cls = classifyHref(link.href);
+    switch (cmd) {
+      case 'plain':
+        if (!isBareUrlText(link.text)) applyEdit(linkToPlain(link));
+        break;
+      case 'title': {
+        if (linkTitleLoading) return;
+        setLinkTitleLoading(true);
+        try {
+          const title = await fetchTitleForHref(link.href);
+          if (!title) {
+            message.info('未能获取标题');
+            return;
+          }
+          const view2 = viewRef.current;
+          if (!view2) return;
+          const link2 = findLinkAt(view2.state.doc.toString(), view2.state.selection.main.head);
+          if (!link2 || link2.href !== link.href || link2.text === title) return;
+          applyEdit(linkToTitle(link2, title));
+        } finally {
+          setLinkTitleLoading(false);
+        }
+        break;
+      }
+      case 'card': {
+        if (cls.kind === 'other') return;
+        const placeholder =
+          cls.kind === 'doc' ? `[[doc-card:${cls.id}]]` : `[[link-card:${cls.url}]]`;
+        applyEdit(linkToCard(doc, link, placeholder));
+        break;
+      }
+      case 'open-doc':
+        if (cls.kind === 'doc') navigate(browseHref(cls));
+        break;
+      case 'browse':
+        window.open(browseHref(cls), '_blank', 'noopener');
+        break;
+    }
+  }
+
   /** 行级命令：标题 / 列表 / 引用，作用于选区覆盖的整行。 */
   function runLineCommand(
     cmd: 'heading-1' | 'heading-2' | 'heading-3' | 'bullet' | 'ordered' | 'quote',
@@ -702,6 +776,7 @@ export default function MarkdownEditor({
   const handleCmScroll = useCallback((view: EditorView) => {
     setFloatAnchor(null); // 视口坐标随滚动失效，先收起
     setTableBarAnchor(null);
+    setLinkMenu(null);
     if (syncScrollLockRef.current) return;
     const preview = previewElRef.current;
     if (!preview) return;
@@ -754,11 +829,29 @@ export default function MarkdownEditor({
             const c = info.view.coordsAtPos(headLine.from);
             if (c) setTableBarAnchor({ left: c.left, top: c.top });
           }
+          setLinkMenu(null); // 表格条优先，避免双浮层叠放
         } else {
           setTableBarAnchor(null);
+          // 语雀式链接菜单：光标落在 [text](url) 上（fence/行内代码除外）
+          const link = findLinkAt(info.view.state.doc.toString(), sel.head);
+          if (link && !inCodeContext(info.view, sel.head)) {
+            const c = info.view.coordsAtPos(link.from);
+            if (c) {
+              setLinkMenu({
+                anchor: { left: c.left, top: c.bottom + 6 },
+                href: link.href,
+                text: link.text,
+              });
+            } else {
+              setLinkMenu(null);
+            }
+          } else {
+            setLinkMenu(null);
+          }
         }
       } else {
         setTableBarAnchor(null);
+        setLinkMenu(null);
       }
       // 选区浮动格式条：选区稳定 200ms 后在选区起点上方弹出
       if (floatTimerRef.current) {
@@ -1044,6 +1137,14 @@ export default function MarkdownEditor({
       </div>
       <FloatingFormatToolbar anchor={readOnly ? null : floatAnchor} onCommand={runFormat} />
       <TableFloatingBar anchor={readOnly ? null : tableBarAnchor} onCommand={runTableCommand} />
+      <LinkFloatingMenu
+        anchor={readOnly ? null : (linkMenu?.anchor ?? null)}
+        isDoc={linkMenu ? classifyHref(linkMenu.href).kind === 'doc' : false}
+        canCard={linkMenu ? classifyHref(linkMenu.href).kind !== 'other' : false}
+        plainActive={linkMenu ? isBareUrlText(linkMenu.text) : false}
+        titleLoading={linkTitleLoading}
+        onCommand={(cmd) => void runLinkCommand(cmd)}
+      />
       <MentionPicker
         open={mentionOpen}
         onCancel={() => setMentionOpen(false)}

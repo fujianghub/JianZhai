@@ -160,6 +160,44 @@ describe('preprocessMarkdown', () => {
   });
 });
 
+describe('link-card / doc-card block placeholders', () => {
+  it('converts a whole-line [[link-card:URL]] into a hydration shell', () => {
+    const out = preprocessMarkdown('上文\n\n[[link-card:https://github.com/a?b=1&c=2]]\n\n下文');
+    expect(out).toContain('data-jz-link-card');
+    expect(out).toContain('data-url="https://github.com/a?b=1&amp;c=2"');
+    expect(out).toContain('jz-link-card-site-name">github.com<');
+    expect(out).not.toContain('[[link-card:');
+  });
+
+  it('escapes attribute-breaking urls', () => {
+    const out = preprocessMarkdown('[[link-card:https://a.com/"onmouseover="x]]');
+    expect(out).not.toContain('data-url="https://a.com/"onmouseover');
+    expect(out).toContain('&quot;');
+  });
+
+  it('keeps inline occurrences and fenced code literal', () => {
+    const inline = preprocessMarkdown('前 [[link-card:https://a.com]] 后');
+    expect(inline).toContain('[[link-card:https://a.com]]');
+    const fenced = preprocessMarkdown('```\n[[link-card:https://a.com]]\n```');
+    expect(fenced).toContain('[[link-card:https://a.com]]');
+    expect(fenced).not.toContain('data-jz-link-card');
+  });
+
+  it('keeps the doc-card shell unchanged', () => {
+    const out = preprocessMarkdown('[[doc-card:42]]');
+    expect(out).toContain('data-jz-doc-card');
+    expect(out).toContain('href="/d/42"');
+    expect(out).toContain('文档卡片 #42');
+  });
+
+  it('renderMarkdown keeps the link-card shell (sanitizer allowlist)', () => {
+    const html = renderMarkdown('[[link-card:https://github.com]]');
+    expect(html).toContain('data-jz-link-card');
+    expect(html).toContain('data-url="https://github.com"');
+    expect(html).toContain('target="_blank"');
+  });
+});
+
 describe('normalizeLegacyHtmlTags', () => {
   it('maps font color attribute to span style', () => {
     const out = normalizeLegacyHtmlTags('<font color="#f59e0b">warn</font>');

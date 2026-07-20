@@ -168,9 +168,20 @@ def render_markdown(
     ``diagram_svgs`` (Mermaid fence body → pre-rendered SVG) lets HTML/PDF/site
     exports embed real diagrams instead of source panels. ``numbering`` enables
     Yuque-style heading numbering (from the document's ``heading_numbering``).
+
+    卡片占位符（``[[doc-card:]]``/``[[link-card:]]``）在这里默认注入元数据
+    渲染成样式化卡片：文档标题批量查询 + link_preview 抓取（离线降级域名
+    简卡），HTML/PDF/static-site 自动继承。
     """
+    from .card_placeholders import CardMeta, default_link_meta, doc_titles_for
+
     return markdown_render.render_markdown(
-        text, diagram_svgs=diagram_svgs, numbering=numbering
+        text,
+        diagram_svgs=diagram_svgs,
+        numbering=numbering,
+        card_meta=CardMeta(
+            doc_titles=doc_titles_for([text]), link_meta=default_link_meta
+        ),
     )
 
 

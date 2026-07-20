@@ -1102,6 +1102,44 @@
 .jz-tab-panel-body { padding: 10px 14px; }
 
 /* ── Doc card embed ──────────────────────────────────────────────────── */
+/* 编辑态卡片右上角的语雀式回转菜单（链接/标题/打开动作），hover 才浮现 */
+.jz-card-embed-wrap { position: relative; }
+.jz-card-mode-menu {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  z-index: 5;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: color-mix(in srgb, var(--jz-surface) 96%, transparent);
+  border: 1px solid var(--jz-border);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+.jz-card-embed-wrap:hover .jz-card-mode-menu,
+.jz-card-embed-wrap.ProseMirror-selectednode .jz-card-mode-menu {
+  opacity: 1;
+  pointer-events: auto;
+}
+.jz-card-mode-menu button {
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+  color: var(--jz-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.jz-card-mode-menu button:hover {
+  background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
+  color: var(--jz-accent);
+}
+
 .jz-doc-card-shell {
   margin: 12px 0;
   border: 1px solid var(--jz-border);
@@ -1948,6 +1986,33 @@ img.jz-image-style-sepia { filter: sepia(0.6) contrast(0.95) brightness(0.95); }
 /* ════════════════════════════════════════════════════════════════════════
    外部链接卡片 (T2)
    ════════════════════════════════════════════════════════════════════════ */
+
+/* 阅读端静态壳（convertBlockPlaceholders 产出、未水合/匿名降级态）：
+   与水合后的 .jz-link-card-shell 同一视觉族，只是内容更素。 */
+a.jz-link-card-static {
+  display: block;
+  margin: 12px 0;
+  padding: 12px 16px;
+  border: 1px solid var(--jz-border);
+  border-radius: 8px;
+  background: var(--jz-surface);
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 0.15s;
+}
+a.jz-link-card-static:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08); }
+a.jz-link-card-static .jz-link-card-site-name {
+  display: block;
+  font-size: 12px;
+  color: var(--jz-text-muted);
+  margin-bottom: 2px;
+}
+a.jz-link-card-static .jz-link-card-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+  word-break: break-all;
+}
 
 .jz-link-card-shell {
   display: flex;

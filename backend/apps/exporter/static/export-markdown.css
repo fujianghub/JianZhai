@@ -372,3 +372,51 @@
 .jz-markdown.export-markdown .jz-inline-toc .jz-inline-toc-l2 { padding-left: 1.2em; }
 .jz-markdown.export-markdown .jz-inline-toc .jz-inline-toc-l3 { padding-left: 2.4em; }
 .jz-markdown.export-markdown .jz-inline-toc .jz-inline-toc-l4 { padding-left: 3.6em; }
+
+/* ── 卡片占位符（[[doc-card:]] / [[link-card:]]）导出渲染，打印安全 ── */
+.jz-markdown.export-markdown .jz-doc-card {
+  margin: 12px 0;
+  border: 1px solid #e2d9c8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #fdfbf7;
+}
+.jz-markdown.export-markdown .jz-doc-card a {
+  color: #1f1f1f;
+  text-decoration: none;
+  font-weight: 500;
+}
+.jz-markdown.export-markdown a.jz-link-card {
+  display: block;
+  margin: 12px 0;
+  border: 1px solid #e2d9c8;
+  border-radius: 8px;
+  padding: 12px 16px;
+  background: #fdfbf7;
+  color: #1f1f1f;
+  text-decoration: none;
+}
+.jz-markdown.export-markdown a.jz-link-card .jz-link-card-site-name {
+  display: block;
+  font-size: 12px;
+  color: #8a8577;
+  margin-bottom: 2px;
+}
+.jz-markdown.export-markdown a.jz-link-card .jz-link-card-title {
+  display: block;
+  font-size: 14px;
+  font-weight: 500;
+}
+.jz-markdown.export-markdown a.jz-link-card .jz-link-card-desc {
+  display: block;
+  font-size: 12px;
+  color: #6b665a;
+  margin-top: 4px;
+}
+.jz-markdown.export-markdown a.jz-link-card .jz-link-card-url {
+  display: block;
+  font-size: 11px;
+  color: #9a9481;
+  margin-top: 6px;
+  word-break: break-all;
+}

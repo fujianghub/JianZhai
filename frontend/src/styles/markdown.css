@@ -2037,6 +2037,20 @@
   align-self: center;
 }
 
+/* 语雀式链接气泡菜单（LinkBubbleMenu / CM6 LinkFloatingMenu 共用） */
+.jz-link-bubble .jz-link-mode-btn { white-space: nowrap; }
+.jz-link-bubble .jz-link-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.jz-link-bubble .jz-bubble-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: transparent;
+}
+
 /* ── [TOC] 行内目录（阅读端展开形态）──
    ``expandInlineToc`` (utils/markdown.ts) replaces the [TOC] placeholder with
    this card: a thin gold-lined panel echoing the 题签 table header. Levels
