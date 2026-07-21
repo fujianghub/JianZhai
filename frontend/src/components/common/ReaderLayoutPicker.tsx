@@ -93,6 +93,20 @@ export default function ReaderLayoutPicker({ layout, onChange, onReset }: Props)
         />
       </Section>
 
+      <Section title="长图限高">
+        {/* Segmented 的 value 只收 string/number，布尔偏好映射为 'on'/'off' */}
+        <Segmented
+          block
+          size="small"
+          value={layout.longImageLimit ? 'on' : 'off'}
+          onChange={(v) => onChange({ ...layout, longImageLimit: v === 'on' })}
+          options={[
+            { label: '开启', value: 'on' },
+            { label: '关闭', value: 'off' },
+          ]}
+        />
+      </Section>
+
       <Divider style={{ margin: '10px 0 8px' }} />
       <Button
         size="small"

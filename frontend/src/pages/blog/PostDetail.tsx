@@ -82,6 +82,7 @@ import { useColumnResize } from '@/hooks/useColumnResize';
 import { useFootnoteHover } from '@/hooks/useFootnoteHover';
 import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import CardEnhancer from '@/components/common/CardEnhancer';
+import LongImageEnhancer from '@/components/common/LongImageEnhancer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const { Title, Text } = Typography;
@@ -956,7 +957,7 @@ export default function PostDetail() {
             </div>
           ) : (
             <div
-              className="markdown-preview jz-post-article"
+              className={`markdown-preview jz-post-article${layout.longImageLimit ? '' : ' jz-imgcap-off'}`}
               style={{
                 lineHeight: 'var(--jz-reader-lh, 1.85)',
                 fontSize: 'calc(16.5px * var(--jz-reader-scale, 1))',
@@ -968,6 +969,11 @@ export default function PostDetail() {
           <TableEnhancer selector=".jz-post-article" bindKey={rendered.html} />
           <ImageLightboxEnhancer selector=".jz-post-article" bindKey={rendered.html} />
           <CardEnhancer selector=".jz-post-article" bindKey={rendered.html} />
+          <LongImageEnhancer
+            selector=".jz-post-article"
+            bindKey={rendered.html}
+            enabled={layout.longImageLimit}
+          />
             </>
           )}
 

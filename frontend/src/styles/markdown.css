@@ -1899,6 +1899,60 @@
 
 .markdown-preview img { max-width: 100%; height: auto; }
 
+/* ── 正文长图限高（三段式，显示层）──
+   规则 1/2：未手动设定尺寸的内容图，渲染高度 cap 在 --jz-img-max-h（70vh），
+   浏览器按内在宽高比等比缩小（max-width + max-height + height:auto 联合约束）。
+   :not([width]):not([height]) = 豁免作者在 Tiptap 里手动 resize 过的图；
+   :not(.jz-longimg-img)      = 折叠模式内的图交给 wrapper 裁剪，不再 cap。
+   限高值须与 utils/longImage.ts 的 IMG_MAX_VH 同步。
+   图表/公式不受影响：Mermaid/PlantUML 是内联 <svg>，KaTeX 是 <span>，均非 img。 */
+.markdown-preview { --jz-img-max-h: 70vh; }
+.markdown-preview.jz-imgcap-off { --jz-img-max-h: none; } /* 阅读排版面板开关关闭 */
+.markdown-preview img:not([width]):not([height]):not(.jz-longimg-img) {
+  max-height: var(--jz-img-max-h);
+}
+/* 被 cap 的图由 LongImageEnhancer 打标后居中（纯 CSS 探测不到"是否被钳住"） */
+.markdown-preview img.jz-img-capped {
+  display: block;
+  margin-inline: auto;
+}
+
+/* ── 折叠模式（极端长图）── wrapper > clip > img，+ 展开/收起按钮 */
+.jz-longimg {
+  position: relative;
+  display: block;
+  width: fit-content; /* 图比容器窄时 shrink-wrap，配合 margin 居中 */
+  max-width: 100%;
+  margin-inline: auto;
+}
+.jz-longimg-clip { display: block; }
+.jz-longimg.is-collapsed > .jz-longimg-clip {
+  max-height: var(--jz-img-max-h, 70vh);
+  overflow: hidden;
+  /* 渐隐用 mask 而非颜色叠层：像素自身淡出到透明，玻璃/深色主题下无鬼影 */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 88px), transparent);
+  mask-image: linear-gradient(to bottom, #000 calc(100% - 88px), transparent);
+}
+.jz-longimg .jz-longimg-img { max-height: none; }
+.jz-longimg-toggle {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  padding: 4px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  line-height: 1.6;
+  cursor: pointer;
+  color: var(--jz-text);
+  border: 1px solid var(--jz-border);
+  background: color-mix(in srgb, var(--jz-surface-2) 88%, transparent);
+  backdrop-filter: blur(6px);
+}
+.jz-longimg-toggle:hover {
+  background: color-mix(in srgb, var(--jz-accent) 12%, var(--jz-surface-2));
+}
+
 /* ── Tiptap-only callout chrome ──
    The editor sees the same .jz-callout-${kind} container as the published
    reader, plus a thin toolbar overlay that lets the user change the kind or

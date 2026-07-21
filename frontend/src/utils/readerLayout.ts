@@ -18,6 +18,8 @@ export interface ReaderLayout {
   lineHeight: number;
   /** CSS ``max-width`` for the article card; ``'100%'`` means full column. */
   measure: string;
+  /** 长图限高（cap 到 70vh + 极端长图折叠）总开关，默认开启。 */
+  longImageLimit: boolean;
 }
 
 export interface LabeledOption<T> {
@@ -54,11 +56,13 @@ export const DEFAULT_LAYOUT: ReaderLayout = {
   fontScale: 1,
   lineHeight: LINE_HEIGHT_OPTIONS[1].value, // 1.85
   measure: MEASURE_OPTIONS[2].value, // 100% (满栏，保持原满栏外观)
+  longImageLimit: true,
 };
 
 const K_SCALE = 'jz-reader-font-scale';
 const K_LH = 'jz-reader-line-height';
 const K_MEASURE = 'jz-reader-measure';
+const K_LONGIMG = 'jz-reader-longimg';
 
 function num(raw: string | null, fallback: number): number {
   const n = raw == null ? NaN : Number(raw);
@@ -76,6 +80,7 @@ export function loadReaderLayout(): ReaderLayout {
       fontScale: clampScale(num(localStorage.getItem(K_SCALE), DEFAULT_LAYOUT.fontScale)),
       lineHeight: num(localStorage.getItem(K_LH), DEFAULT_LAYOUT.lineHeight),
       measure: localStorage.getItem(K_MEASURE) || DEFAULT_LAYOUT.measure,
+      longImageLimit: localStorage.getItem(K_LONGIMG) !== 'off',
     };
   } catch {
     return { ...DEFAULT_LAYOUT };
@@ -88,6 +93,7 @@ export function saveReaderLayout(layout: ReaderLayout): void {
     localStorage.setItem(K_SCALE, String(layout.fontScale));
     localStorage.setItem(K_LH, String(layout.lineHeight));
     localStorage.setItem(K_MEASURE, layout.measure);
+    localStorage.setItem(K_LONGIMG, layout.longImageLimit ? 'on' : 'off');
   } catch {
     /* ignore */
   }
@@ -99,6 +105,7 @@ export function clearReaderLayout(): void {
     localStorage.removeItem(K_SCALE);
     localStorage.removeItem(K_LH);
     localStorage.removeItem(K_MEASURE);
+    localStorage.removeItem(K_LONGIMG);
   } catch {
     /* ignore */
   }

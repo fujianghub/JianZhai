@@ -84,6 +84,16 @@
   .markdown-preview img {
     max-width: 100% !important;
     height: auto !important;
+    max-height: none !important; /* 打印时解除长图限高，打全尺寸 */
+  }
+  /* 折叠长图打印态展开：裁剪/渐隐解除，按钮隐藏 */
+  .jz-longimg.is-collapsed > .jz-longimg-clip {
+    max-height: none !important;
+    -webkit-mask-image: none !important;
+    mask-image: none !important;
+  }
+  .jz-longimg-toggle {
+    display: none !important;
   }
 
   /* Slightly more print-friendly typography */
