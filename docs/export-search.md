@@ -20,7 +20,7 @@ def refresh_search_vector(doc):
         search_vector=SearchVector(Value(tokens, ...), config="simple"))
 ```
 
-- **索引范围**：标题 + `raw_content`（剥 HTML）+ 标签名 + 评论正文；卡片占位符 `[[doc-card:ID]]`/`[[link-card:URL]]` 整体剥除（`_CARD_PLACEHOLDER_RE`，纯语法脚手架入索引会成可搜噪音）
+- **索引范围**：标题 + `raw_content`（剥 HTML）+ 标签名 + 评论正文；卡片占位符 `[[doc-card:ID]]`/`[[link-card:URL]]` 整体剥除（`_CARD_PLACEHOLDER_RE`，纯语法脚手架入索引会成可搜噪音）；**数学公式整段剥除**（2026-07-23：先经 `normalize_latex_delimiters` 把 `\(..\)`/`\[..\]` 归一化为 `$` 形式再剥 `$$..$$`/`$..$`——LaTeX 命令碎片 `frac`/`mathbb` 污染索引且 `$` 干扰 jieba；货币写法 `5$ 到 10$` 不受影响）
 - 查询侧同样 jieba 分词后 `plainto_tsquery`
 - **触发**：`post_save` on Document / DocumentTag / Comment → `refresh_document_vector.delay`
 - 全量重建：`python manage.py reindex_search`（升级索引逻辑后跑一次）
@@ -68,6 +68,7 @@ def refresh_search_vector(doc):
 
 - HTML/PDF 单文件内嵌本地 `/media/` 为 base64（`MAX_EMBED_BYTES = 10MB`）；zip 类复制到 `assets/` 并重写路径
 - **Mermaid 离线 SVG**（`diagram_render.py`）：HTML/PDF/静态站导出前用 headless Chromium + vendored `static/vendor/mermaid.min.js` 把所有 `` ```mermaid `` 块批量渲为内联 SVG（每次导出仅启动一次浏览器，`htmlLabels:false` 保留原生 `<text>`）；缺 Chromium/语法错误优雅降级源码面板。PlantUML 仍为源码面板（需独立服务器）
+- **KaTeX 离线渲染**（`math_render.py`，2026-07-23，与 diagram_render 同构）：`markdown_render` 装数学 tokenizer（escape 后 emphasis 前，公式免遭强调/转义破坏）后，headless Chromium + vendored `static/vendor/katex/` 把全 scope `$$..$$`/`$..$` 批量预渲染为 KaTeX HTML（`collect_math_sources` → `common.build_scope_math_html` → env `math_html`）；`katex_stylesheet()` woff2 字体 base64 内嵌约 359KB **仅含公式的导出才注入**；缺 Chromium 降级转义源码 span（`jz-math-source`）。docx 无 OMML，公式以 Cambria Math run 保留 `$..$` 原文；`.md` 导出本就原文透传
 
 ### 异步与下载
 

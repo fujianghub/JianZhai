@@ -35,7 +35,7 @@
 | **链接与图谱** | `@[title](doc:id)` 双向链接、反链面板、`react-force-graph-2d` 知识图谱 |
 | **搜索与标签** | PostgreSQL `tsvector` + jieba；索引 **标题 + 正文 + 标签名 + 评论**；全局 `⌘K` |
 | **评论** | 文档级 + 段落级（`block_id`） |
-| **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG**（HTML/PDF/静态站，headless Chromium + vendored mermaid，缺失时降级源码面板）；PlantUML 仍为代码块 |
+| **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG** 与 **KaTeX 公式离线预渲染**（HTML/PDF/静态站，headless Chromium + vendored mermaid/katex，字体内嵌离线可显，缺失时降级源码）；PlantUML 仍为代码块 |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；**6 套主题**（含 4 个环境氛围层：星空/深海暗色 Canvas 粒子 + 春水 WebGL 水面 / 冬雪飘雪亮色）+ 纸张样式，切换器为**单按钮下拉**（调色全交 CSS token，无用户自选 accent）；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
 | **阅读器定制** | 读者侧分组工具条（字体/纸张/排版/专注，等高 28px）；**排版三件套**字号缩放 / 行距 / 版心宽度 + 一键重置（落 localStorage、CSS 变量 scope 到 `<article>`、不触碰文档）；**专注/沉浸模式**隐藏导航与侧栏、Esc 退出；阅读进度条带百分比；**PDF 阅读**内嵌书签解析为目录侧栏 + 整页连续滚动（IntersectionObserver 懒渲染）+ 在新标签用浏览器原生阅读器打开 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
@@ -199,6 +199,7 @@ cd backend && python manage.py seed_architecture_kb
 | **语雀式链接三形态** | 链接可切 **链接（URL 原文）/ 标题（目标标题，默认）/ 卡片** 三形态 + **打开文档**（内链站内跳转）/**浏览器访问**动作：Tiptap 逐链接气泡菜单 + 粘贴裸 URL 自动异步取标题（改过文字绝不覆盖）+ 卡片 hover 回转菜单；CM6 同款悬浮菜单（纯函数可测）；阅读端 `[[link-card:URL]]` 渲染修复 + `CardEnhancer` 登录态水合（外链 OG / 文档真实标题，降级静态壳）；`link-preview` 放宽给登录读者（友邻闸门内 + 独立限流）；导出端卡片渲染/降级**零 `[[` 泄漏**；顺带修 Tiptap v3 Link 协议白名单剥 `doc:` mark 的存量 bug。后端 402 + 前端 384 测试 + Playwright 端到端 18/18 |
 | **正文长图限高三段式** | 阅读端超长图 CSS 70vh 连续缩放 + 极端长图折叠为可展开预览（`LongImageEnhancer`）+ 阅读设置面板开关；StrictMode 下 dataset 守卫失效改 WeakSet。2026-07-21 推 main |
 | **六主题配色 + 界面动效** | 配色：`--jz-on-accent` 修选中态/按钮/印章白字对比（最低 1.8:1→≥5.3:1）、星空/深海专属紫调/青碧玻璃面、春水/冬雪防漏绿；动效：主题切换 View Transition 圆形揭幕、「随朝暮」昼夜自动主题、顶栏滚动态、卡片滚动显现、玻璃指针 spotlight、星空真实月相、四主题点击/光标彩蛋、light/dark 呼吸背景、canvas 帧时自适应降质；顺带修复春水 WebGL shader 在 dev StrictMode 下的存量崩溃。2026-07-22 推 main |
+| **LaTeX 数学全链路补全** | 富文本行内打完 `$x$` 自动转公式（补 MathInline InputRule）；`\(..\)`/`\[..\]` 反斜杠定界符归一化（前后端镜像，ChatGPT/论文来源粘贴即识别）；导出端公式从残破字面量到真实渲染——数学 tokenizer 防强调破坏 + headless Chromium 批量预渲染 KaTeX（HTML/PDF/静态站离线可显，字体内嵌 CSS 仅含公式注入，docx 保留 `$..$` 原文）；搜索索引剥公式噪声并全量重建存量。2026-07-23 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）

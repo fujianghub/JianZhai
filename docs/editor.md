@@ -75,13 +75,18 @@
 
 ## 5. KaTeX 全链路
 
-「编辑、阅读、导出三端共用一套 KaTeX」：
+「编辑、阅读、导出三端共用一套 KaTeX」（2026-07-23 数学批次后为真实现状；此前导出端为孤儿 CSS 无实现）：
 
-- **编辑器**：Tiptap InputRule 把 `$$..$$` 转 MathBlock；双击 → Modal 可视化输入 + 实时预览；PasteRule 同样转节点
-- **阅读端**：`markdown-it`（`utils/markdown.ts → katexPlugin`）—— block 规则 `$$..$$` displayMode；inline 规则 `$..$`（前不能跟数字，防 `$5`/`$10`）；`throwOnError: false` 错误降级红框
-- **导出端**：`exporter/services/common.py` 内嵌 KaTeX HTML + 样式（base64 字体），离线可显示
+- **编辑器（Tiptap）**：InputRule 把 `$$..$$` 转 MathBlock、**行内打完 `$x$` 转 MathInline**（两条正则在纯模块 `editor/mathPatterns.ts`，输入/粘贴规则共享，货币/转义/`$$` 防误判）；双击 → Modal 可视化输入 + 实时预览；PasteRule 批量转节点
+- **MD 编辑器（CM6）**：LivePreview 行内 `$..$` 就地 KaTeX（`pure/inlineMathScan.ts`，防货币与阅读端对齐）；块级 `$$` 保持源码（未做就地预览）
+- **阅读端**：`markdown-it`（`utils/markdown.ts → katexPlugin`）—— block 规则 `$$..$$` displayMode；inline 规则 `$..$`（前不能跟数字，防 `$5`/`$10`）；`throwOnError: false` 错误降级红框；`tableMd` 实例同挂（表格内公式）
+- **反斜杠定界符归一化**：`\(x\)` → `$x$`、`\[..\]` → `$$..$$`（ChatGPT/论文来源），前端 `normalizeLatexDelimiters`（`markdown.ts`，挂 `preprocessMarkdown` → 阅读/富文本载入/粘贴三路全覆盖）+ 后端 `markdown_preprocess.normalize_latex_delimiters` **镜像，改边界规则须两端同步**；块级锚定「`\[` 起行 `\]` 收行」避开 CommonMark 转义方括号，行内代码/代码围栏均有守卫
+- **导出端**：`markdown_render.install_math_rules` 装数学 tokenizer（**escape 后、emphasis 前拦截**，否则公式里 `_`/`*`/`\` 被 CommonMark 吃掉）；`math_render.py` 与 `diagram_render` 同构——headless Chromium + vendored `static/vendor/katex/`（js+css+woff2，与前端同版本）把全 scope 公式批量预渲染为 KaTeX HTML（`collect_math_sources` → `build_scope_math_html` → env `math_html` 按 `_math_key` 查表），HTML/PDF/静态站离线可显；`katex_stylesheet()` woff2 字体 base64 内嵌（约 359KB，**仅含公式的导出才注入**）；Chromium 缺失降级为转义源码 span（`jz-math-source`，原文完好）；**docx 无 OMML（已知限制）**，公式以 Cambria Math run 保留 `$..$` 原文
+- **搜索**：`collect_search_text` 入索引前先归一化定界符再整段剥除公式（LaTeX 命令碎片是噪声词元）
 
-统一 CSS class：`.jz-math-block` / `.jz-math-inline` / `.jz-math-error`，三端一致。
+统一 CSS class：`.jz-math-block` / `.jz-math-inline` / `.jz-math-error`，全端一致。
+
+> **坑**：后端 tokenizer 镜像前端 JS 时，行首公式曾全体失效——Python `"" in "0123456789"` 恒为 `True`（空串是任意串子串），行首 `prev=""` 被货币守卫误拒；空串必须先排除。凡把 JS 的 `/\d/.test(ch)` 译成 Python `ch in digits` 都要防这一手。
 
 ---
 
