@@ -30,6 +30,7 @@ import {
   type SceneController,
   type PointerState,
 } from './ambientCanvas';
+import { moonIllumination, moonPhaseFraction } from '@/utils/moonPhase';
 
 const STAR_COLORS: ReadonlyArray<[number, number, number]> = [
   [255, 255, 255],
@@ -411,6 +412,25 @@ function buildStarry(
     });
   }
 
+  /** easter egg: a background click launches a wishing shooting star from the
+   * clicked spot, streaking down-and-away toward the nearer horizon side */
+  function spawnShootAt(x: number, y: number) {
+    if (shooting.length > 6) return;
+    const toRight = x < w * 0.5;
+    const speed = rand(560, 900);
+    const ang = rand(0.24, 0.46) * (toRight ? 1 : -1) + (toRight ? 0 : Math.PI);
+    shooting.push({
+      x,
+      y,
+      vx: Math.cos(ang) * speed,
+      vy: Math.abs(Math.sin(ang)) * speed * 0.55 + speed * 0.18,
+      life: 0,
+      max: rand(0.9, 1.4),
+      len: rand(110, 210),
+      fireball: Math.random() < 0.12,
+    });
+  }
+
   /** bounded scroll parallax (asymptotes so long pages never leave gaps) */
   function scrollShift(depth: number) {
     return -depth * 70 * Math.tanh(pointer.scrollY / 500);
@@ -433,30 +453,53 @@ function buildStarry(
     ctx.restore();
   }
 
+  // ── real lunar phase: tonight's moon on screen matches the sky outside ──
+  // computed once per mount; a session never straddles enough hours to matter
+  const moonP = moonPhaseFraction(new Date()); // 0 new … 0.5 full … →1 new
+  const moonIllum = moonIllumination(new Date());
+
   function drawMoon() {
     const mx = w - Math.min(120, w * 0.12);
     const my = Math.min(96, h * 0.13);
     const R = 26;
+    const HALF = Math.PI / 2;
+    // moonlight halo scales with how much of the disc is actually lit
     ctx.globalCompositeOperation = 'lighter';
+    const glowA = 0.06 + 0.26 * moonIllum;
     const g = ctx.createRadialGradient(mx, my, R * 0.4, mx, my, R * 3.4);
-    g.addColorStop(0, 'rgba(252, 240, 200, 0.30)');
+    g.addColorStop(0, `rgba(252, 240, 200, ${glowA})`);
     g.addColorStop(1, 'rgba(252, 240, 200, 0)');
     ctx.fillStyle = g;
     ctx.beginPath();
     ctx.arc(mx, my, R * 3.4, 0, TAU);
     ctx.fill();
     ctx.globalCompositeOperation = 'source-over';
+    // earthshine: the whole disc faintly visible against the night
+    ctx.fillStyle = 'rgba(88, 92, 122, 0.30)';
+    ctx.beginPath();
+    ctx.arc(mx, my, R, 0, TAU);
+    ctx.fill();
+    if (moonIllum < 0.02) return; // new moon: earthshine disc only
+    // lit region: bright limb half-disc closed by the terminator semi-ellipse.
+    // k = cos(2πp) puts the terminator's equator crossing at x = ±kR:
+    // crescent bows toward the lit limb, gibbous away, quarter is a line.
+    const k = Math.cos(moonP * TAU);
+    const waxing = moonP < 0.5;
     const disc = ctx.createRadialGradient(mx - R * 0.3, my - R * 0.3, 1, mx, my, R);
     disc.addColorStop(0, '#fdf3d4');
     disc.addColorStop(0.6, '#ecd9a4');
     disc.addColorStop(1, '#c9b67e');
     ctx.fillStyle = disc;
     ctx.beginPath();
-    ctx.arc(mx, my, R, 0, TAU);
-    ctx.fill();
-    ctx.fillStyle = '#060914';
-    ctx.beginPath();
-    ctx.arc(mx + R * 0.62, my - R * 0.28, R * 1.02, 0, TAU);
+    if (waxing) {
+      // light on the right (northern-hemisphere convention)
+      ctx.arc(mx, my, R, -HALF, HALF, false); // top → bottom via right limb
+      ctx.ellipse(mx, my, R * Math.abs(k), R, 0, HALF, -HALF, k > 0);
+    } else {
+      ctx.arc(mx, my, R, -HALF, HALF, true); // top → bottom via left limb
+      ctx.ellipse(mx, my, R * Math.abs(k), R, 0, HALF, -HALF, k <= 0);
+    }
+    ctx.closePath();
     ctx.fill();
   }
 
@@ -589,8 +632,11 @@ function buildStarry(
       drawMoon();
 
       // ── stars: wheel + scintillation + parallax + chromatic spikes ──
+      // (adaptive quality sheds the tail of the star field first)
       ctx.globalCompositeOperation = 'lighter';
-      for (const s of stars) {
+      const starN = Math.ceil(stars.length * pointer.quality);
+      for (let si = 0; si < starN; si++) {
+        const s = stars[si];
         const L = LAYERS[s.layer];
         const a0 = s.pa + rot;
         const fl = s.layer === 0 ? flow(s.pr, s.pa, t) : { dx: 0, dy: 0 };
@@ -673,6 +719,8 @@ function buildStarry(
         spawnShoot();
         nextShoot = rand(2.2, 6.5);
       }
+      // a background click makes a wish — launch a star from where it landed
+      for (const c of pointer.clicks) spawnShootAt(c.x, c.y);
       ctx.globalCompositeOperation = 'lighter';
       for (let i = shooting.length - 1; i >= 0; i--) {
         const s = shooting[i];

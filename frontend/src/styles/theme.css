@@ -21,7 +21,7 @@
   height: 28px;
   border-radius: 5px;
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
-  color: #0a1f1a;
+  color: var(--jz-on-accent, #0a1f1a);
   font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
   font-weight: 700;
   font-size: 18px;
@@ -160,14 +160,35 @@ a:hover { opacity: 0.85; }
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
+/* 亮色默认：朱砂晕开——双层暖影替代早期单层棕影，呼应宣纸+朱砂主调 */
 .ant-card.jz-card:hover {
-  box-shadow: 0 10px 28px -8px rgba(120, 80, 35, 0.22);
+  box-shadow:
+    0 14px 34px -10px rgba(169, 68, 52, 0.20),
+    0 4px 12px -4px rgba(169, 68, 52, 0.12);
   border-color: color-mix(in srgb, var(--jz-gold) 55%, var(--jz-border));
 }
-[data-theme='dark'] .ant-card.jz-card:hover,
+/* 冷色亮主题落进上面的暖影分支会色相冲突 —— 换同结构冷影 */
+[data-theme='springwater'] .ant-card.jz-card:hover {
+  box-shadow:
+    0 14px 34px -10px rgba(16, 95, 84, 0.18),
+    0 4px 12px -4px rgba(16, 95, 84, 0.10);
+}
+[data-theme='wintersnow'] .ant-card.jz-card:hover {
+  box-shadow:
+    0 14px 34px -10px rgba(44, 70, 110, 0.20),
+    0 4px 12px -4px rgba(44, 70, 110, 0.12);
+  /* 寒梅红 (--jz-gold) 描边整卡过重，梅红只留语义点缀；描边改冰蓝 */
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, var(--jz-border));
+}
+[data-theme='dark'] .ant-card.jz-card:hover {
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+/* 氛围暗主题：hover 光晕带主题本色（紫辉/青辉），与画布呼应 */
 [data-theme='starry'] .ant-card.jz-card:hover,
 [data-theme='deepsea'] .ant-card.jz-card:hover {
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.45),
+    0 0 22px -6px var(--jz-accent-glow);
 }
 
 /* Dark-mode adjustments for our hand-crafted surfaces (tiptap, diff).
@@ -211,10 +232,14 @@ a:hover { opacity: 0.85; }
   transform: translateY(-3px);
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.08);
 }
-[data-theme='dark'] .ant-card.jz-kb-card:hover,
+[data-theme='dark'] .ant-card.jz-kb-card:hover {
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+}
 [data-theme='starry'] .ant-card.jz-kb-card:hover,
 [data-theme='deepsea'] .ant-card.jz-kb-card:hover {
-  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.5),
+    0 0 24px -8px var(--jz-accent-glow);
 }
 .ant-card.jz-post-card {
   border: 1px solid var(--jz-border);
@@ -308,6 +333,31 @@ a:hover { opacity: 0.85; }
     linear-gradient(to bottom,
       color-mix(in srgb, var(--jz-surface) 85%, transparent),
       color-mix(in srgb, var(--jz-bg-app) 95%, transparent)) !important;
+}
+
+/* 顶栏滚动态（useScrolled → .is-scrolled）：置顶时融于纸面；滚动后玻璃感
+   加深、底色变实、浮出一层纵深阴影 —— 双金线书口线保留（它是版式身份）。 */
+.ant-layout-header.blog-header {
+  transition: box-shadow 0.25s ease, backdrop-filter 0.25s ease;
+}
+.ant-layout-header.blog-header.is-scrolled {
+  backdrop-filter: blur(16px) saturate(160%);
+  background:
+    linear-gradient(to bottom,
+      color-mix(in srgb, var(--jz-surface) 96%, transparent),
+      color-mix(in srgb, var(--jz-bg-app) 90%, transparent)) !important;
+  box-shadow:
+    0 1px 0 var(--jz-bg-app),
+    0 2px 0 var(--jz-gold),
+    0 10px 26px -12px rgba(0, 0, 0, 0.18);
+}
+[data-theme='dark'] .ant-layout-header.blog-header.is-scrolled,
+[data-theme='starry'] .ant-layout-header.blog-header.is-scrolled,
+[data-theme='deepsea'] .ant-layout-header.blog-header.is-scrolled {
+  box-shadow:
+    0 1px 0 var(--jz-bg-app),
+    0 2px 0 var(--jz-gold),
+    0 12px 30px -12px rgba(0, 0, 0, 0.55);
 }
 
 /* Tighter, more readable typography in blog body */
@@ -960,7 +1010,7 @@ a.jz-meta-full-edit-btn:focus-visible {
     linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   border: 1.5px solid color-mix(in srgb, var(--jz-accent) 60%, transparent);
   border-radius: 8px;
-  color: #0a1f1a;
+  color: var(--jz-on-accent, #0a1f1a);
   /* Slight rotation so it feels hand-stamped, not stenciled */
   transform: rotate(-2deg);
   box-shadow:
@@ -1102,7 +1152,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   --glass-border:    rgba(60, 60, 67, 0.13);    /* 苹果分隔线灰 */
   --glass-divider:   rgba(60, 60, 67, 0.07);
   --glass-text:      #1c1c1e;
-  --glass-text-muted: #6e6e73;
+  --glass-text-muted: #63636a;  /* 6e6e73 → 加深一档：muted on bg-deep 4.5 卡线 → 5.4 */
 
   --glass-radius: 14px;
   --glass-radius-lg: 18px;
@@ -1137,8 +1187,10 @@ a.jz-meta-full-edit-btn:focus-visible {
   --jz-accent: #12b8a0;
   --jz-accent-soft: #4fd6c0;
   --jz-accent-glow: rgba(18, 184, 160, 0.30);
+  --jz-on-accent: #03251f;
   --jz-gold: #e0a94b;
   --glass-bg-deep: #e6f1ed;
+  --glass-text-muted: #556862;  /* 基样 6e6e73 在 #e6f1ed 底上不足 4.5，加深并偏冷 */
 }
 [data-theme='wintersnow'] .jz-glass,
 [data-theme='wintersnow'] .jz-admin-glass,
@@ -1146,8 +1198,10 @@ a.jz-meta-full-edit-btn:focus-visible {
   --jz-accent: #6a93cf;
   --jz-accent-soft: #9bbce6;
   --jz-accent-glow: rgba(106, 147, 207, 0.30);
+  --jz-on-accent: #101f33;
   --jz-gold: #c2455f;
   --glass-bg-deep: #d6e0ee;
+  --glass-text-muted: #4c596d;  /* 基样 6e6e73 在 #d6e0ee 底上 ≈4.1 不达标，加深并偏冷 */
 }
 
 /* DARK GLASS（dark / starry / deepsea 都用同一套深色玻璃，仅光晕色调微调）*/
@@ -1176,7 +1230,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 
   --glass-shadow-card: 0 8px 28px rgba(0, 0, 0, 0.45),
                        0 2px 6px rgba(0, 0, 0, 0.35),
-                       0 0 0 1px rgba(255, 255, 255, 0.05) inset;
+                       0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+                       inset 0 1px 0 rgba(255, 255, 255, 0.09); /* 顶缘玻璃棱线：深底上卡片立体感 */
   --glass-shadow-hero: 0 20px 60px rgba(0, 0, 0, 0.55),
                        0 2px 6px rgba(0, 0, 0, 0.4);
   --glass-shadow-soft: 0 4px 14px rgba(0, 0, 0, 0.35);
@@ -1205,6 +1260,19 @@ a.jz-meta-full-edit-btn:focus-visible {
   --jz-accent: #d9a6ff;
   --jz-accent-soft: #c5adff;
   --jz-accent-glow: rgba(217, 166, 255, 0.40);
+  --jz-on-accent: #26123e;
+
+  /* 星空专属玻璃面：紫调实底半透。共享 dark 的 4.5% 白表面在明亮画布物
+     （月亮/银河高光）后面几乎全透 —— 目录/侧栏文字被冲到不可读；这里换成
+     带紫的墨蓝底并提高不透明度，星场在面板四周仍然可见，文字恒定可读。 */
+  --glass-surface:        rgba(23, 26, 56, 0.72);
+  --glass-surface-strong: rgba(30, 34, 72, 0.85);
+  --glass-border:  rgba(197, 173, 255, 0.16);
+  --glass-divider: rgba(197, 173, 255, 0.08);
+  --glass-shadow-card: 0 8px 28px rgba(2, 4, 18, 0.5),
+                       0 2px 6px rgba(2, 4, 18, 0.4),
+                       0 0 0 1px rgba(197, 173, 255, 0.07) inset,
+                       inset 0 1px 0 rgba(217, 166, 255, 0.14); /* 顶缘紫棱线 */
 }
 [data-theme='deepsea'] .jz-glass,
 [data-theme='deepsea'] .jz-admin-glass,
@@ -1212,6 +1280,17 @@ a.jz-meta-full-edit-btn:focus-visible {
   --jz-accent: #6ff8e4;
   --jz-accent-soft: #2dd4bf;
   --jz-accent-glow: rgba(111, 248, 228, 0.38);
+  --jz-on-accent: #022722;
+
+  /* 深海专属玻璃面：青碧实底半透（同上，防上帝光柱/焦散冲淡正文）。 */
+  --glass-surface:        rgba(5, 32, 54, 0.72);
+  --glass-surface-strong: rgba(7, 40, 66, 0.85);
+  --glass-border:  rgba(111, 248, 228, 0.14);
+  --glass-divider: rgba(111, 248, 228, 0.07);
+  --glass-shadow-card: 0 8px 28px rgba(1, 10, 20, 0.5),
+                       0 2px 6px rgba(1, 10, 20, 0.4),
+                       0 0 0 1px rgba(111, 248, 228, 0.06) inset,
+                       inset 0 1px 0 rgba(111, 248, 228, 0.12); /* 顶缘青棱线 */
 }
 
 /* 玻璃 layout 背景（后台 + 博客） */
@@ -1236,6 +1315,18 @@ a.jz-meta-full-edit-btn:focus-visible {
     radial-gradient(ellipse 70% 50% at  0%  0%, color-mix(in srgb, var(--jz-accent) 18%, transparent) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 100%  0%, rgba(96, 165, 250, 0.14) 0%, transparent 60%),
     radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.16) 0%, transparent 60%);
+}
+
+/* 亮色氛围主题：基样左上角的翡翠光晕（rgba(5,150,105)）会让春水/冬雪后台
+   泛绿 —— 与 dark 三连同法，改由本主题 accent + gold 推导。 */
+[data-theme='springwater'] .jz-admin-glass.ant-layout,
+[data-theme='springwater'] .jz-blog-glass.ant-layout,
+[data-theme='wintersnow'] .jz-admin-glass.ant-layout,
+[data-theme='wintersnow'] .jz-blog-glass.ant-layout {
+  background-image:
+    radial-gradient(ellipse 70% 50% at  0%  0%, color-mix(in srgb, var(--jz-accent) 12%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100%  0%, rgba(96, 165, 250, 0.09) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, color-mix(in srgb, var(--jz-gold) 9%, transparent) 0%, transparent 60%);
 }
 
 .jz-blog-glass.ant-layout::before { content: none; }
@@ -1318,7 +1409,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   height: 42px;
   border-radius: 12px;
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
-  color: #0a1f1a;
+  color: var(--jz-on-accent, #0a1f1a);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2050,14 +2141,14 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .ant-btn-primary {
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
   border-color: transparent !important;
-  color: #062c20 !important;
+  color: var(--jz-on-accent, #062c20) !important;
   box-shadow:
     0 4px 14px color-mix(in srgb, var(--jz-accent) 40%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset !important;
 }
 .jz-admin-glass .ant-btn-primary:hover {
   background: linear-gradient(135deg, var(--jz-accent-soft) 0%, var(--jz-accent) 100%) !important;
-  color: #042820 !important;
+  color: var(--jz-on-accent, #042820) !important;
   box-shadow:
     0 6px 20px color-mix(in srgb, var(--jz-accent) 55%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.15) inset !important;
@@ -2152,7 +2243,9 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .ant-segmented-item-selected,
 .jz-blog-glass .ant-segmented-item-selected {
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
-  color: #ffffff !important;
+  /* 白字压亮 accent 渐变最低只有 1.8:1（春水）——改为各主题 on-accent 墨色，
+     与 primary 按钮「亮底深字」同语言 */
+  color: var(--jz-on-accent, #062c20) !important;
   box-shadow: 0 4px 14px var(--jz-accent-glow) !important;
   font-weight: 600;
 }
@@ -2808,13 +2901,13 @@ a.jz-meta-full-edit-btn:focus-visible {
 .blog-content .ant-btn-primary:not(.ant-btn-background-ghost) {
   background: var(--jz-accent) !important;
   border-color: var(--jz-accent) !important;
-  color: #ffffff !important;
+  color: var(--jz-on-accent, #ffffff) !important;
   box-shadow: 0 3px 10px color-mix(in srgb, var(--jz-accent) 30%, transparent);
 }
 .blog-content .ant-btn-primary:not(.ant-btn-background-ghost):hover {
   background: var(--jz-accent-soft) !important;
   border-color: var(--jz-accent-soft) !important;
-  color: #ffffff !important;
+  color: var(--jz-on-accent, #ffffff) !important;
   box-shadow: 0 5px 14px color-mix(in srgb, var(--jz-accent) 40%, transparent);
   transform: translateY(-1px);
 }
@@ -2945,7 +3038,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   transition: transform 0.22s ease, color 0.22s ease;
 }
 .jz-admin-glass .ant-segmented-item-selected svg {
-  color: #fff;
+  color: var(--jz-on-accent, #fff);
 }
 
 /* 编辑器侧栏 Tab */
@@ -3945,7 +4038,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   font-family: 'PingFang SC', 'Songti SC', 'STSong', serif;
   font-size: 32px;
   font-weight: 800;
-  color: #0a1f1a;
+  color: var(--jz-on-accent, #0a1f1a);
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   box-shadow:
     0 10px 26px var(--jz-accent-glow),
@@ -4138,4 +4231,116 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-theme-check {
   font-size: 12px;
   color: var(--jz-accent);
+}
+
+/* ── 主题切换过渡（View Transition API）──
+   默认：新旧主题交叉淡融；从主题菜单点击时（stores/theme.ts 写入
+   jz-vt-circle + --jz-vt-x/y/r）改为从点击处圆形揭幕。无 API 浏览器
+   与 reduced-motion 用户自动回退为瞬时切换。 */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 0.4s;
+  animation-timing-function: ease;
+}
+:root.jz-vt-circle::view-transition-image-pair(root) { isolation: auto; }
+:root.jz-vt-circle::view-transition-old(root),
+:root.jz-vt-circle::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+:root.jz-vt-circle::view-transition-new(root) {
+  animation: jz-vt-reveal 0.5s ease-out both;
+}
+@keyframes jz-vt-reveal {
+  from { clip-path: circle(0px at var(--jz-vt-x, 50%) var(--jz-vt-y, 5%)); }
+  to   { clip-path: circle(var(--jz-vt-r, 120vmax) at var(--jz-vt-x, 50%) var(--jz-vt-y, 5%)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation: none !important; }
+}
+
+/* ── 滚动显现（useRevealOnScroll）──
+   标记 .jz-reveal 的卡片入视口时获得 .is-in，批内以 --jz-reveal-d 阶梯浮起。
+   用 animation（fill: backwards）而非 transition —— 播完后不残留动画值，
+   hover 的 transform / transition 不被劫持。 */
+.jz-reveal { opacity: 0; }
+.jz-reveal.is-in {
+  opacity: 1;
+  animation: jz-reveal-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation-delay: var(--jz-reveal-d, 0ms);
+}
+@keyframes jz-reveal-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-reveal { opacity: 1; }
+  .jz-reveal.is-in { animation: none; }
+}
+
+/* ── 玻璃 spotlight ──
+   PointerSpotlight 组件把指针的卡内坐标写进 --jz-mx/--jz-my 并加 .jz-spot-on；
+   这里画一枚跟随指针的 accent 辉光。仅桌面精确指针。.jz-book 的对应规则在
+   book-card.css（其 ::after 原被 content:none 占位）。 */
+@media (hover: hover) and (pointer: fine) {
+  .ant-card.jz-card { position: relative; }
+  .ant-card.jz-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(
+      240px circle at var(--jz-mx, 50%) var(--jz-my, 50%),
+      color-mix(in srgb, var(--jz-accent) 12%, transparent) 0%,
+      transparent 70%
+    );
+  }
+  .ant-card.jz-card.jz-spot-on::after { opacity: 1; }
+}
+
+/* ── light/dark 呼吸背景 ──
+   其余四主题有 canvas 动态层；light/dark 的布局光晕历来被基样
+   `background: … !important` 简写压成 none（死代码），这里用 !important
+   的 background-image 复活三枚光晕，并以 @property 注册的自定义属性从
+   var() 内部驱动 background-position 分钟级漂移（普通 keyframes 动不了
+   带 !important 的声明，var 替换可以）。 */
+@property --jz-bg-x { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+@property --jz-bg-y { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
+[data-theme='light'] .jz-admin-glass.ant-layout,
+[data-theme='light'] .jz-blog-glass.ant-layout {
+  background-image:
+    radial-gradient(ellipse 70% 50% at  0%  0%, rgba(5, 150, 105, 0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100%  0%, rgba(59, 130, 246, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.11) 0%, transparent 60%) !important;
+}
+[data-theme='dark'] .jz-admin-glass.ant-layout,
+[data-theme='dark'] .jz-blog-glass.ant-layout {
+  background-image:
+    radial-gradient(ellipse 70% 50% at  0%  0%, color-mix(in srgb, var(--jz-accent) 16%, transparent) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 50% at 100%  0%, rgba(96, 165, 250, 0.13) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.14) 0%, transparent 60%) !important;
+}
+[data-theme='light'] .jz-admin-glass.ant-layout,
+[data-theme='light'] .jz-blog-glass.ant-layout,
+[data-theme='dark'] .jz-admin-glass.ant-layout,
+[data-theme='dark'] .jz-blog-glass.ant-layout {
+  background-attachment: fixed !important;
+  background-size: 132% 132% !important;
+  background-position: var(--jz-bg-x) var(--jz-bg-y) !important;
+  animation: jz-bg-breathe 64s ease-in-out infinite alternate;
+}
+@keyframes jz-bg-breathe {
+  from { --jz-bg-x: 0%; --jz-bg-y: 0%; }
+  to   { --jz-bg-x: 100%; --jz-bg-y: 55%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-theme='light'] .jz-admin-glass.ant-layout,
+  [data-theme='light'] .jz-blog-glass.ant-layout,
+  [data-theme='dark'] .jz-admin-glass.ant-layout,
+  [data-theme='dark'] .jz-blog-glass.ant-layout { animation: none; }
 }

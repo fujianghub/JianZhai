@@ -11,6 +11,7 @@ import StarryNight from '@/components/common/StarryNight';
 import DeepSea from '@/components/common/DeepSea';
 import SpringWater from '@/components/common/SpringWater';
 import WinterSnow from '@/components/common/WinterSnow';
+import PointerSpotlight from '@/components/common/PointerSpotlight';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 /** Inline loading fallback with a contextual hint — used for heavier chunks
@@ -77,6 +78,7 @@ export default function App() {
       <DeepSea />
       <SpringWater />
       <WinterSnow />
+      <PointerSpotlight />
       <ErrorBoundary context="root">
       <Suspense fallback={<RouteFallback />}>
       <Routes>

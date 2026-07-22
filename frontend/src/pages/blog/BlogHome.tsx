@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/auth';
 import type { PublicKB, PublicKBCategoryGroup } from '@/types';
 import { resolveTagColor } from '@/utils/tagColor';
 import HeroQuoteRotator from '@/components/blog/HeroQuoteRotator';
+import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 
 const { Text } = Typography;
 
@@ -15,7 +16,7 @@ function KBCard({ kb }: { kb: PublicKB }) {
   return (
     <Link
       to={`/kb/${encodeURIComponent(kb.slug)}`}
-      className="jz-book jz-fade-in"
+      className="jz-book jz-reveal"
       style={
         {
           ['--jz-book-accent' as string]: kb.accent_color || 'var(--jz-accent)',
@@ -68,6 +69,8 @@ export default function BlogHome() {
       .then(setGroups)
       .catch(() => setGroups([]));
   }, []);
+  // KB cards float up as they enter the viewport, staggered per row
+  useRevealOnScroll('.jz-kb-category-grid .jz-book', groups);
 
   const totalKbs =
     groups?.reduce((n, g) => n + g.knowledge_bases.length, 0) ?? 0;

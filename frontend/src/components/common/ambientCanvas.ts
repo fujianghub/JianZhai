@@ -25,6 +25,13 @@ export interface PointerState {
   /** raw target the eased value chases */
   tx: number;
   ty: number;
+  /** raw pointer position in CSS px (un-eased) — for local effects like fish
+   * avoidance / snow disturbance. -9999 until the pointer first moves. */
+  px: number;
+  py: number;
+  /** background clicks this frame (CSS px) — clicks landing on interactive
+   * UI are filtered out; the scaffold clears the list after each frame. */
+  clicks: Array<{ x: number; y: number }>;
   /** eased window scrollY (px) for scroll-coupled parallax */
   scrollY: number;
   /** raw scroll target the eased value chases */
@@ -32,6 +39,24 @@ export interface PointerState {
   /** adaptive quality 0.6…1 — drops on sustained low FPS, recovers when smooth */
   quality: number;
 }
+
+/** quality ladder: particle fraction + DPR scale per level (0 = full) */
+export const AMBIENT_LEVELS = [
+  { q: 1, dpr: 1 },
+  { q: 0.8, dpr: 0.8 },
+  { q: 0.62, dpr: 0.66 },
+] as const;
+
+/** clicks originating inside interactive UI must not trigger canvas easter
+ * eggs — only true "background" clicks count. */
+const INTERACTIVE_SELECTOR = [
+  'a', 'button', 'input', 'textarea', 'select', 'label',
+  '[role="button"]', '[contenteditable]',
+  '.ant-dropdown', '.ant-modal-root', '.ant-drawer', '.ant-popover',
+  '.ant-select-dropdown', '.ant-picker-dropdown', '.ant-menu', '.ant-table',
+  '.ant-form', '.ant-card', '.jz-book', '.markdown-preview', '.tiptap',
+  '.cm-editor', '.ant-layout-header',
+].join(',');
 
 export interface SceneController {
   /** draw one frame; dt = seconds since last frame, t = seconds since start */
@@ -61,17 +86,19 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     // Render at full devicePixelRatio (capped at 2) for crisp HiDPI visuals.
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // `dpr` drops with the adaptive quality level on sustained low FPS.
+    const baseDpr = Math.min(window.devicePixelRatio || 1, 2);
+    let dpr = baseDpr;
     const pointer: PointerState = {
       x: 0,
       y: 0,
       tx: 0,
       ty: 0,
+      px: -9999,
+      py: -9999,
+      clicks: [],
       scrollY: window.scrollY || 0,
       scrollTarget: window.scrollY || 0,
-      // Quality is pinned to full — the scenes always render every particle.
-      // (A `quality` field remains so the scenes can still scale by it if a
-      // future adaptive mode is wanted; `__ambientForceQ` can override it.)
       quality: 1,
     };
 
@@ -96,22 +123,64 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
     let t = 0;
     let running = false;
 
+    // ── adaptive quality: EMA of raw frame time; sustained jank sheds
+    //    particles (pointer.quality) + backing-store DPR, sustained
+    //    smoothness recovers. Hysteresis + cooldown prevent ping-pong. ──
+    let level = 0;
+    let emaDt = 1 / 60;
+    let adaptClock = 0;
+    let goodStreak = 0;
+    let cooldown = 0;
+
+    function applyLevel() {
+      dpr = Math.max(1, baseDpr * AMBIENT_LEVELS[level].dpr);
+      // backing store shrinks/grows; CSS size (and scene coordinates) unchanged,
+      // so controller.resize is deliberately NOT called — no particle rebuild.
+      resizeCanvas();
+    }
+
+    function stepAdaptive(rawDt: number, dt: number) {
+      if (rawDt < 0.25) emaDt += (rawDt - emaDt) * 0.06; // skip tab-switch gaps
+      adaptClock += dt;
+      if (cooldown > 0) cooldown -= dt;
+      if (adaptClock < 0.5 || cooldown > 0) return;
+      adaptClock = 0;
+      if (emaDt > 1 / 42 && level < AMBIENT_LEVELS.length - 1) {
+        level++;
+        applyLevel();
+        goodStreak = 0;
+        cooldown = 2.5;
+      } else if (emaDt < 1 / 55 && level > 0) {
+        goodStreak++;
+        if (goodStreak >= 8) {
+          level--;
+          applyLevel();
+          goodStreak = 0;
+          cooldown = 4;
+        }
+      } else {
+        goodStreak = 0;
+      }
+    }
+
     function loop(now: number) {
       if (!running) return;
-      let dt = (now - last) / 1000;
+      const rawDt = (now - last) / 1000;
       last = now;
-      if (dt > 0.1) dt = 0.1; // clamp big gaps (tab switch, jank)
+      const dt = Math.min(rawDt, 0.1); // clamp big gaps (tab switch, jank)
       t += dt;
       // ease the pointer + scroll toward their targets for soft parallax
       const k = Math.min(1, dt * 3);
       pointer.x += (pointer.tx - pointer.x) * k;
       pointer.y += (pointer.ty - pointer.y) * k;
       pointer.scrollY += (pointer.scrollTarget - pointer.scrollY) * Math.min(1, dt * 6);
-      // optional manual override (debug); otherwise quality stays at full
+      stepAdaptive(rawDt, dt);
+      // manual override (debug) wins; otherwise the adaptive level decides
       const forced = (window as unknown as { __ambientForceQ?: number }).__ambientForceQ;
-      pointer.quality = typeof forced === 'number' ? forced : 1;
+      pointer.quality = typeof forced === 'number' ? forced : AMBIENT_LEVELS[level].q;
       ctx!.clearRect(0, 0, w, h);
       controller.frame(dt, t);
+      if (pointer.clicks.length) pointer.clicks.length = 0; // consumed this frame
       raf = requestAnimationFrame(loop);
     }
 
@@ -133,6 +202,8 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
     function onPointer(e: MouseEvent) {
       pointer.tx = (e.clientX / w) * 2 - 1;
       pointer.ty = (e.clientY / h) * 2 - 1;
+      pointer.px = e.clientX;
+      pointer.py = e.clientY;
     }
     function onScroll() {
       pointer.scrollTarget = window.scrollY || 0;
@@ -141,11 +212,17 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
       if (document.hidden) stop();
       else start();
     }
+    function onClick(e: MouseEvent) {
+      const el = e.target as HTMLElement | null;
+      if (el && typeof el.closest === 'function' && el.closest(INTERACTIVE_SELECTOR)) return;
+      if (pointer.clicks.length < 8) pointer.clicks.push({ x: e.clientX, y: e.clientY });
+    }
 
     window.addEventListener('resize', onResize);
     window.addEventListener('mousemove', onPointer, { passive: true });
     window.addEventListener('scroll', onScroll, { passive: true });
     document.addEventListener('visibilitychange', onVisibility);
+    if (!reduced) window.addEventListener('click', onClick, { passive: true });
 
     if (reduced) {
       // honour reduced-motion: one calm static frame, no rAF
@@ -161,6 +238,7 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
       window.removeEventListener('mousemove', onPointer);
       window.removeEventListener('scroll', onScroll);
       document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('click', onClick);
     };
   }, [active, build]);
 

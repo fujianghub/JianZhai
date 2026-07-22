@@ -2,12 +2,14 @@ import { Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import {
   CheckOutlined,
+  ClockCircleOutlined,
   DownOutlined,
   MoonOutlined,
   StarOutlined,
   SunOutlined,
 } from '@ant-design/icons';
 import { useThemeStore, type ThemeMode } from '@/stores/theme';
+import { moonPhaseName } from '@/utils/moonPhase';
 
 /** Inline water-drop SVG — spring water (春水). */
 function DropIcon() {
@@ -84,6 +86,8 @@ const THEME_TINT: Record<ThemeMode, string> = {
   wintersnow: '#6a93cf', // 冰蓝 · 冬雪
 };
 
+const FOLLOW_KEY = 'follow-clock';
+
 const MODE_OPTIONS = [
   { value: 'light',       label: '亮色',   icon: <SunOutlined /> },
   { value: 'dark',        label: '暗色',   icon: <MoonOutlined /> },
@@ -94,23 +98,49 @@ const MODE_OPTIONS = [
 ] as const;
 
 export default function ThemeSwitcher() {
-  const { mode, setMode } = useThemeStore();
+  const { mode, setMode, followClock, setFollowClock } = useThemeStore();
   const current = MODE_OPTIONS.find((o) => o.value === mode) ?? MODE_OPTIONS[0];
+  // starry nights get tonight's real phase in the tooltip (drawn on canvas too)
+  const title = mode === 'starry' ? `主题 · 今夜${moonPhaseName(new Date())}` : '主题';
 
-  const items: MenuProps['items'] = MODE_OPTIONS.map((o) => ({
-    key: o.value,
-    icon: (
-      <span style={{ color: THEME_TINT[o.value], display: 'inline-flex', fontSize: 15 }}>
-        {o.icon}
-      </span>
-    ),
-    label: (
-      <span className="jz-theme-item">
-        <span>{o.label}</span>
-        {o.value === mode && <CheckOutlined className="jz-theme-check" />}
-      </span>
-    ),
-  }));
+  const items: MenuProps['items'] = [
+    ...MODE_OPTIONS.map((o) => ({
+      key: o.value as string,
+      icon: (
+        <span style={{ color: THEME_TINT[o.value], display: 'inline-flex', fontSize: 15 }}>
+          {o.icon}
+        </span>
+      ),
+      label: (
+        <span className="jz-theme-item">
+          <span>{o.label}</span>
+          {o.value === mode && <CheckOutlined className="jz-theme-check" />}
+        </span>
+      ),
+    })),
+    { type: 'divider' as const },
+    {
+      key: FOLLOW_KEY,
+      icon: (
+        <span
+          style={{
+            color: followClock ? 'var(--jz-accent)' : 'var(--jz-text-muted, #888)',
+            display: 'inline-flex',
+            fontSize: 15,
+          }}
+        >
+          <ClockCircleOutlined />
+        </span>
+      ),
+      label: (
+        <span className="jz-theme-item">
+          {/* 随朝暮：昼取宣纸、夜落星河（resolveClockMode，6–18 时为昼） */}
+          <span>随朝暮</span>
+          {followClock && <CheckOutlined className="jz-theme-check" />}
+        </span>
+      ),
+    },
+  ];
 
   return (
     <Dropdown
@@ -120,11 +150,23 @@ export default function ThemeSwitcher() {
       menu={{
         items,
         selectable: true,
-        selectedKeys: [mode],
-        onClick: ({ key }) => setMode(key as ThemeMode),
+        selectedKeys: followClock ? [mode, FOLLOW_KEY] : [mode],
+        onClick: ({ key, domEvent }) => {
+          if (key === FOLLOW_KEY) {
+            setFollowClock(!followClock);
+            return;
+          }
+          // click origin drives the circular reveal view-transition
+          const e = domEvent as React.MouseEvent;
+          const origin =
+            typeof e.clientX === 'number' && (e.clientX || e.clientY)
+              ? { x: e.clientX, y: e.clientY }
+              : undefined;
+          setMode(key as ThemeMode, origin);
+        },
       }}
     >
-      <button type="button" className="jz-theme-switch" aria-label="主题" title="主题">
+      <button type="button" className="jz-theme-switch" aria-label="主题" title={title}>
         <span className="jz-theme-switch__ico" style={{ color: THEME_TINT[current.value] }}>
           {current.icon}
         </span>

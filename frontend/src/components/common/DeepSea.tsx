@@ -508,6 +508,16 @@ function buildDeepSea(
     // steer the velocity vector back inside the frame near the edges
     let vx = Math.cos(f.heading);
     let vy = Math.sin(f.heading);
+    // easter egg: fish shy away from the pointer — a gentle repulsion blended
+    // into the same steering as the frame edges, so avoidance looks natural
+    const pdx = f.x - pointer.px;
+    const pdy = f.y - pointer.py;
+    const pd = Math.hypot(pdx, pdy);
+    if (pd > 0.001 && pd < 130) {
+      const s = (1 - pd / 130) * 1.6;
+      vx += (pdx / pd) * s;
+      vy += (pdy / pd) * s;
+    }
     const m = 90;
     const topB = h * 0.1;
     const botB = floorY(f.x) - 26;
@@ -614,8 +624,12 @@ function buildDeepSea(
       drawManta(dt);
 
       // ── marine snow (rides flow + slow sink; lights up inside god rays) ──
+      // adaptive quality trims the tails of the three big particle pools
+      const q = pointer.quality;
       ctx.globalCompositeOperation = 'lighter';
-      for (const s of snow) {
+      const snowN = Math.ceil(snow.length * q);
+      for (let i = 0; i < snowN; i++) {
+        const s = snow[i];
         const fl = flow(s.x, s.y, t);
         s.x += fl.dx * dt * 7 * (0.4 + s.depth);
         s.y += (8 * (0.3 + s.depth) + fl.dy * 5) * dt;
@@ -634,7 +648,9 @@ function buildDeepSea(
       }
 
       // ── plankton (cached glow sprites; brighten inside god rays) ──
-      for (const p of plankton) {
+      const plankN = Math.ceil(plankton.length * q);
+      for (let i = 0; i < plankN; i++) {
+        const p = plankton[i];
         const fl = flow(p.x, p.y, t);
         p.x += fl.dx * dt * 6;
         if (p.x < -4) p.x = w + 4;
@@ -685,7 +701,9 @@ function buildDeepSea(
 
       // ── rising bubbles (cached sprite) ──
       ctx.globalCompositeOperation = 'lighter';
-      for (const b of bubbles) {
+      const bubbleN = Math.ceil(bubbles.length * q);
+      for (let i = 0; i < bubbleN; i++) {
+        const b = bubbles[i];
         const fl = flow(b.x, b.y, t);
         b.y -= b.speed * dt;
         b.x += (fl.dx * 10 + Math.sin(t * 1.2 + b.phase) * 8) * dt;

@@ -3,6 +3,7 @@ import { Button, Layout, Space, Spin, Tooltip } from 'antd';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
+import { useScrolled } from '@/hooks/useScrolled';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import {
@@ -60,6 +61,7 @@ function BlogNavItem({
 
 export default function BlogLayout() {
   const [searchOpen, setSearchOpen] = useState(false);
+  const scrolled = useScrolled();
   const authUser = useAuthStore((s) => s.user);
   const authLoaded = useAuthStore((s) => s.loaded);
   const requireLogin = useAuthStore((s) => s.requireLogin);
@@ -113,7 +115,7 @@ export default function BlogLayout() {
   return (
     <Layout className="jz-blog-glass jz-glass" style={{ minHeight: '100vh' }}>
       <Header
-        className="blog-header"
+        className={'blog-header' + (scrolled ? ' is-scrolled' : '')}
         style={{
           borderBottom: '1px solid var(--jz-border)',
           display: 'flex',

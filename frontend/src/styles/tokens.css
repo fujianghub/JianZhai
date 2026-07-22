@@ -3,9 +3,12 @@
   --jz-accent: #02b377;
   --jz-accent-soft: #19d191;
   --jz-accent-glow: rgba(2, 179, 119, 0.34);
+  /* accent 渐变上的「墨色」前景（按钮/选中态文字）——各主题深色化 accent 而来，
+     取代早前的纯白/硬编码墨绿（白字压亮 accent 最低只有 1.8:1）。 */
+  --jz-on-accent: #04231b;
   --jz-bg-app: #f5f5f7;
   --jz-text: #1c1c1e;
-  --jz-text-muted: #6e6e73;
+  --jz-text-muted: #63636a;
   --jz-border: rgba(60, 60, 67, 0.13);
   --jz-surface: rgba(255, 255, 255, 0.62);
   --jz-surface-2: rgba(255, 255, 255, 0.82);
@@ -24,6 +27,7 @@
   --jz-accent: #2ee79c;
   --jz-accent-soft: #62efb6;
   --jz-accent-glow: rgba(46, 231, 156, 0.44);
+  --jz-on-accent: #04231b;
   --jz-bg-app: #07090f;
   --jz-text: #e6ebf2;
   --jz-text-muted: #8c96a8;
@@ -72,6 +76,8 @@ body {
 [data-theme='starry'] {
   --jz-accent: #d9a6ff;            /* 紫罗兰 */
   --jz-accent-soft: #c5adff;
+  --jz-accent-glow: rgba(217, 166, 255, 0.40);
+  --jz-on-accent: #26123e;         /* 紫夜墨 */
   --jz-bg-app: #060914;            /* 深夜空 */
   --jz-text: #e8e6f3;
   --jz-text-muted: #8b8aa8;
@@ -92,6 +98,8 @@ body {
 [data-theme='deepsea'] {
   --jz-accent: #6ff8e4;            /* 浅青 */
   --jz-accent-soft: #2dd4bf;
+  --jz-accent-glow: rgba(111, 248, 228, 0.38);
+  --jz-on-accent: #022722;         /* 海渊墨 */
   --jz-bg-app: #02152a;            /* 深海蓝 */
   --jz-text: #d8f3f8;
   --jz-text-muted: #6abec8;
@@ -113,9 +121,10 @@ body {
   --jz-accent: #12b8a0;            /* 春水青 */
   --jz-accent-soft: #4fd6c0;
   --jz-accent-glow: rgba(18, 184, 160, 0.30);
+  --jz-on-accent: #03251f;         /* 春潭墨 */
   --jz-bg-app: #eef6f3;            /* 苍青宣纸 */
   --jz-text: #1a2b28;
-  --jz-text-muted: #5c726d;
+  --jz-text-muted: #52655f;
   --jz-border: rgba(20, 80, 70, 0.13);
   --jz-surface: rgba(255, 255, 255, 0.66);
   --jz-surface-2: rgba(255, 255, 255, 0.84);
@@ -134,9 +143,10 @@ body {
   --jz-accent: #6a93cf;            /* 冰蓝 */
   --jz-accent-soft: #9bbce6;
   --jz-accent-glow: rgba(106, 147, 207, 0.28);
+  --jz-on-accent: #101f33;         /* 雪夜墨 */
   --jz-bg-app: #cdd9ea;            /* 柔和灰蓝雪天（A2：白雪有所衬托） */
   --jz-text: #1f2630;
-  --jz-text-muted: #5a6678;
+  --jz-text-muted: #4c596d;
   --jz-border: rgba(40, 60, 90, 0.12);
   --jz-surface: rgba(255, 255, 255, 0.74);
   --jz-surface-2: rgba(255, 255, 255, 0.9);

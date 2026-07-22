@@ -34,8 +34,28 @@
   box-shadow: 0 0 12px color-mix(in srgb, var(--jz-book-accent, var(--jz-accent)) 35%, transparent);
 }
 
+/* 默认无 ::after；桌面精确指针下作为玻璃 spotlight 层（PointerSpotlight
+   写 --jz-mx/--jz-my + .jz-spot-on，见 theme.css 的 .jz-card 同款）。 */
 .jz-book::after {
   content: none;
+}
+@media (hover: hover) and (pointer: fine) {
+  .jz-book::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    background: radial-gradient(
+      240px circle at var(--jz-mx, 50%) var(--jz-my, 50%),
+      color-mix(in srgb, var(--jz-accent) 13%, transparent) 0%,
+      transparent 70%
+    );
+  }
+  .jz-book.jz-spot-on::after { opacity: 1; }
 }
 
 .jz-book-label {
@@ -116,7 +136,7 @@
 .jz-book:hover .jz-book-meta-action {
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   border-color: transparent;
-  color: #fff;
+  color: var(--jz-on-accent, #fff);
 }
 
 .jz-book-tags .ant-tag {

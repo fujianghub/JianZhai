@@ -333,14 +333,27 @@ function buildWinterSnow(
 
   function drawFlakes(t: number, dt: number) {
     if (crystalSprites.length === 0) return;
-    for (const f of flakes) {
+    // adaptive quality trims the tail of the flake field
+    const flakeN = Math.ceil(flakes.length * pointer.quality);
+    for (let fi = 0; fi < flakeN; fi++) {
+      const f = flakes[fi];
       const fl = flow(f.x, f.y, t);
       const cu = curl(f.x, f.y, t, 0.0024);
       f.swayPhase += f.swaySpeed * dt;
       f.spin += f.spinSpeed * dt;
       const windF = lerp(1.5, 0.6, f.depth); // near flakes lean harder in wind
-      const vx = wind * windF + cu.dx * lerp(16, 6, f.depth) + Math.sin(f.swayPhase) * f.swayAmp + fl.dx * 3;
-      const vy = f.fall + cu.dy * 6 + fl.dy * 3;
+      let vx = wind * windF + cu.dx * lerp(16, 6, f.depth) + Math.sin(f.swayPhase) * f.swayAmp + fl.dx * 3;
+      let vy = f.fall + cu.dy * 6 + fl.dy * 3;
+      // easter egg: the pointer stirs nearby flakes aside — a soft radial push
+      // with a slight sideways curl so it reads as displaced air, not a wall
+      const ddx = f.x - pointer.px;
+      const ddy = f.y - pointer.py;
+      const dd = Math.hypot(ddx, ddy);
+      if (dd > 0.001 && dd < 90) {
+        const s = (1 - dd / 90) * 130;
+        vx += (ddx / dd) * s - (ddy / dd) * s * 0.35;
+        vy += (ddy / dd) * s * 0.5;
+      }
       f.x += vx * dt;
       f.y += vy * dt;
       // land on the accumulating bank (near/mid flakes feed it) — deposit enough

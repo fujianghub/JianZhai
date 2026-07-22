@@ -283,7 +283,9 @@ function buildSpringWaterOverlay(
   function drawCatkins(t: number, dt: number) {
     if (!catkinSprite) return;
     ctx.globalCompositeOperation = 'lighter';
-    for (const c of catkins) {
+    const catkinN = Math.ceil(catkins.length * pointer.quality);
+    for (let i = 0; i < catkinN; i++) {
+      const c = catkins[i];
       c.life += dt;
       const fl = flow(c.x, c.y, t);
       const cu = curl(c.x, c.y, t, 0.003);
@@ -329,9 +331,13 @@ function buildSpringWaterOverlay(
     frame(dt, t) {
       stepVortices(dt);
       stepAmbient(dt);
+      // easter egg: a background click dimples the water where it lands
+      for (const c of pointer.clicks) spawnRipple(c.x, c.y, rand(1.6, 2.3));
       drawRipples(dt);
       ctx.globalCompositeOperation = 'source-over';
-      const ordered = [...petals].sort((a, b) => b.depth - a.depth);
+      // adaptive quality trims the petal tail before the depth sort
+      const petalN = Math.ceil(petals.length * pointer.quality);
+      const ordered = petals.slice(0, petalN).sort((a, b) => b.depth - a.depth);
       for (const p of ordered) drawPetal(p, t, dt);
       drawCatkins(t, dt);
       ctx.globalCompositeOperation = 'source-over';
