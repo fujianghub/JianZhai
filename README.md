@@ -197,6 +197,8 @@ cd backend && python manage.py seed_architecture_kb
 | **双击图片放大预览** | 正文图片双击开全屏遮罩（滚轮缩放 / 拖拽平移 / Esc / 点背景关闭），接入阅读页 / 实时预览 / 附件预览四个渲染面；**修复 lightbox 从未生效的时序 bug**——`useImageLightbox` 原依赖恒稳的 `containerRef` 致 effect 只跑一次，而阅读页正文异步加载前先渲染 `<Spin/>`、首挂载时 `ref.current` 为 null → 早退且永不重绑，点击委托从未绑上；重写为 `selector`+`bindKey` 范式（对齐 `TableEnhancer`）根治。新增 happy-dom DOM 集成测试，342 测试绿。已于 2026-07-17 部署上线 |
 | **语雀 MD 导入识别错乱三 bug 修复** | **图表注释被 `-->` 截断（主凶）**——语雀把 mermaid 导出为 `<!-- 源码 -->`+静态 SVG，通用注释剥离在源码内部箭头处提前截断致源码泄漏成正文 + `:::jam` 触发失控 callout；修 = `recoverYuqueDiagramComments`（前后端镜像）还原原生 ```` ```mermaid ```` fence 并丢弃静态图（阅读端原生渲染、导出走离线 SVG 管线）；另修 `<font>` 交替染色句被吞成整句全粗（连接符收紧 `[^*\n<]`）与 CJK 双加粗被合并启发式吞并（该步骤删除）。真实文档 Playwright 实测 13/13 图水合零泄漏 |
 | **语雀式链接三形态** | 链接可切 **链接（URL 原文）/ 标题（目标标题，默认）/ 卡片** 三形态 + **打开文档**（内链站内跳转）/**浏览器访问**动作：Tiptap 逐链接气泡菜单 + 粘贴裸 URL 自动异步取标题（改过文字绝不覆盖）+ 卡片 hover 回转菜单；CM6 同款悬浮菜单（纯函数可测）；阅读端 `[[link-card:URL]]` 渲染修复 + `CardEnhancer` 登录态水合（外链 OG / 文档真实标题，降级静态壳）；`link-preview` 放宽给登录读者（友邻闸门内 + 独立限流）；导出端卡片渲染/降级**零 `[[` 泄漏**；顺带修 Tiptap v3 Link 协议白名单剥 `doc:` mark 的存量 bug。后端 402 + 前端 384 测试 + Playwright 端到端 18/18 |
+| **正文长图限高三段式** | 阅读端超长图 CSS 70vh 连续缩放 + 极端长图折叠为可展开预览（`LongImageEnhancer`）+ 阅读设置面板开关；StrictMode 下 dataset 守卫失效改 WeakSet。2026-07-21 推 main |
+| **六主题配色 + 界面动效** | 配色：`--jz-on-accent` 修选中态/按钮/印章白字对比（最低 1.8:1→≥5.3:1）、星空/深海专属紫调/青碧玻璃面、春水/冬雪防漏绿；动效：主题切换 View Transition 圆形揭幕、「随朝暮」昼夜自动主题、顶栏滚动态、卡片滚动显现、玻璃指针 spotlight、星空真实月相、四主题点击/光标彩蛋、light/dark 呼吸背景、canvas 帧时自适应降质；顺带修复春水 WebGL shader 在 dev StrictMode 下的存量崩溃。2026-07-22 推 main |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
