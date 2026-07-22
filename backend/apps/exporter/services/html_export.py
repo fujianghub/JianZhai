@@ -23,18 +23,31 @@ def render_html(scope: ExportScope, *, mode: str = "interactive") -> str:
     for headless-Chromium pagination (used by the PDF exporter).
     """
     diagram_svgs = common.build_scope_diagram_svgs(scope)
+    math_html = common.build_scope_math_html(scope)
     if len(scope.documents) <= 1:
-        return _render_single(scope, mode=mode, diagram_svgs=diagram_svgs)
-    return _render_anthology(scope, mode=mode, diagram_svgs=diagram_svgs)
+        return _render_single(
+            scope, mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
+        )
+    return _render_anthology(
+        scope, mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
+    )
 
 
 def _render_single(
-    scope: ExportScope, *, mode: str, diagram_svgs: dict[str, str] | None = None
+    scope: ExportScope,
+    *,
+    mode: str,
+    diagram_svgs: dict[str, str] | None = None,
+    math_html: dict[str, str] | None = None,
 ) -> str:
     if scope.documents:
         doc = scope.documents[0]
         inner = common.render_document_body_html(
-            doc, embed_media=True, export_mode=mode, diagram_svgs=diagram_svgs
+            doc,
+            embed_media=True,
+            export_mode=mode,
+            diagram_svgs=diagram_svgs,
+            math_html=math_html,
         )
         body = (
             f"<h1>{common._escape(doc.title)}</h1>\n"
@@ -44,22 +57,30 @@ def _render_single(
         body = ""
     return common.HTML_SHELL.format(
         title=common._escape(scope.label),
-        css=common.export_stylesheet() + common.load_export_anthology_css(),
+        css=common.export_stylesheet()
+        + common.load_export_anthology_css()
+        + common.math_stylesheet_if(math_html),
         body_class="",
         body=body,
     )
 
 
 def _render_anthology(
-    scope: ExportScope, *, mode: str, diagram_svgs: dict[str, str] | None = None
+    scope: ExportScope,
+    *,
+    mode: str,
+    diagram_svgs: dict[str, str] | None = None,
+    math_html: dict[str, str] | None = None,
 ) -> str:
     is_print = mode == "print"
-    panels = common.doc_panels_html(scope, export_mode=mode, diagram_svgs=diagram_svgs)
+    panels = common.doc_panels_html(
+        scope, export_mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
+    )
     toc = "" if is_print else _build_toc(scope)
     script = "" if is_print else f"<script>{ANTHOLOGY_JS}</script>"
     return ANTHOLOGY_SHELL.format(
         title=common._escape(scope.label),
-        css=common.export_anthology_stylesheet(),
+        css=common.export_anthology_stylesheet() + common.math_stylesheet_if(math_html),
         print_class=" is-print" if is_print else "",
         toc=toc,
         panels=panels,

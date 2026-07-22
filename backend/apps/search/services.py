@@ -94,6 +94,13 @@ def _iter_unique(items: Iterable[str]) -> Iterable[str]:
 # 卡片占位符（前端编辑器序列化产物），入索引前整体剥除
 _CARD_PLACEHOLDER_RE = re.compile(r"\[\[(?:doc-card|link-card):[^\]\n]*\]\]")
 
+# 数学公式（``$$..$$`` 块 / ``$..$`` 行内）入索引前剥除：LaTeX 命令碎片
+# （frac、mathbb、\、{}…）只会成为噪声词元，还干扰 jieba 分词。行内正则
+# 镜像渲染端边界（开 ``$`` 前非数字/反斜杠、内容首尾非空白、闭 ``$`` 后
+# 非数字），货币写法 ``5$ 到 10$`` 不受影响。
+_MATH_BLOCK_RE = re.compile(r"\$\$[\s\S]+?\$\$")
+_MATH_INLINE_RE = re.compile(r"(?<![\d\\$])\$(?!\s)[^$\n]+?(?<![\s\\])\$(?!\d)")
+
 
 def collect_search_text(document) -> str:
     """Plain text blob for indexing: title, body, tag names, comment bodies."""
@@ -105,6 +112,17 @@ def collect_search_text(document) -> str:
     # 卡片占位符是纯语法脚手架（``[[doc-card:8]]`` / ``[[link-card:URL]]``），
     # 原样入索引会让 ``doc-card``、URL 碎片变成可搜噪音 —— 剥掉整行标记
     body = _CARD_PLACEHOLDER_RE.sub(" ", body)
+    # 数学公式整段剥除（块级先剥，避免 ``$$`` 被行内正则误拆）。
+    # 先把 ``\(..\)`` / ``\[..\]`` 反斜杠定界归一化为 ``$`` 形式（与渲染端
+    # 同一套函数），否则该形式的 LaTeX 碎片会漏进索引。
+    from apps.exporter.services.markdown_preprocess import (
+        map_outside_fenced_code_blocks,
+        normalize_latex_delimiters,
+    )
+
+    body = map_outside_fenced_code_blocks(body, normalize_latex_delimiters)
+    body = _MATH_BLOCK_RE.sub(" ", body)
+    body = _MATH_INLINE_RE.sub(" ", body)
 
     tag_names = " ".join(
         document.tags.values_list("name", flat=True)

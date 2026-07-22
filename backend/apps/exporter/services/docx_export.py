@@ -17,8 +17,14 @@ from apps.knowledge.serializers import detect_doc_format
 
 from ..scope import ExportScope
 from . import card_placeholders, common
+from .markdown_preprocess import map_outside_fenced_code_blocks, normalize_latex_delimiters
+from .markdown_render import install_math_rules
 
 _md = MarkdownIt("commonmark", {"breaks": True}).enable("table")
+# 数学 tokenizer（escape 后、emphasis 前拦截 ``$``）——没有它，公式里的
+# ``_``/``*``/``\`` 会被 CommonMark 吃掉，docx 输出残破字面量。docx 不产
+# OMML（已知限制），公式以 LaTeX 源码 run 原样保留，可复制回编辑器。
+install_math_rules(_md)
 
 
 def export(scope: ExportScope) -> tuple[Path, str, str]:
@@ -54,6 +60,8 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             body = card_placeholders.degrade_card_placeholders(
                 body, doc_titles=card_titles
             )
+            # ``\(..\)`` / ``\[..\]`` 归一化为 ``$`` 定界，与其余导出端一致
+            body = map_outside_fenced_code_blocks(body, normalize_latex_delimiters)
             tokens = _md.parse(body)
             _render_tokens(docx, tokens)
 
@@ -138,6 +146,14 @@ def _render_tokens(docx: DocxDocument, tokens) -> None:
             i += 1
             continue
 
+        if tt == "math_block":
+            para = docx.add_paragraph()
+            run = para.add_run(f"$${t.content}$$")
+            run.font.name = "Cambria Math"
+            para.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+            i += 1
+            continue
+
         if tt == "table_open":
             # Skip until table_close, dropping in a note. (Full table support deferred.)
             depth = 1
@@ -173,6 +189,10 @@ def _emit_inline_runs(para, inline_token) -> None:
             run = para.add_run(child.content)
             run.font.name = "Consolas"
             continue
+        elif ct == "math_inline":
+            run = para.add_run(f"${child.content}$")
+            run.font.name = "Cambria Math"
+            continue
         elif ct == "softbreak":
             para.add_run(" ")
         elif ct == "hardbreak":
@@ -192,5 +212,7 @@ def _emit_inline_runs(para, inline_token) -> None:
 
 def _inline_text(inline_token) -> str:
     return "".join(
-        c.content for c in (inline_token.children or []) if c.type in ("text", "code_inline")
+        c.content
+        for c in (inline_token.children or [])
+        if c.type in ("text", "code_inline", "math_inline")
     )

@@ -150,6 +150,9 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     # Render Mermaid → SVG once (one headless-Chromium launch) up front; the map
     # is small text and shared across the streamed per-doc renders below.
     diagram_svgs = common.build_scope_diagram_svgs(scope)
+    # 同理批量预渲染 KaTeX 公式；有公式的站点每页注入内嵌字体的 KaTeX CSS。
+    math_html = common.build_scope_math_html(scope)
+    page_css = SITE_CSS + common.math_stylesheet_if(math_html)
 
     def _entries():
         asset_names: set[str] = set()
@@ -184,7 +187,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
                 continue
 
             body_html = common.render_document_body_html(
-                doc, embed_media=False, diagram_svgs=diagram_svgs
+                doc, embed_media=False, diagram_svgs=diagram_svgs, math_html=math_html
             )
             for asset_name, asset_data in common.collect_markdown_media(body_md):
                 if asset_name not in asset_names:
@@ -197,7 +200,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             page = PAGE_TEMPLATE.format(
                 title=common._escape(doc.title),
                 site_title=common._escape(scope.label),
-                css=SITE_CSS,
+                css=page_css,
                 nav=per_nav,
                 meta=common._escape(meta),
                 body=body_html,

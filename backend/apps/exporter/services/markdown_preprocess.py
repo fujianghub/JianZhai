@@ -138,6 +138,42 @@ def unwrap_backticked_html(src: str) -> str:
     return re.sub(pattern, r"\1\2\1", src, flags=re.I)
 
 
+# LaTeX 反斜杠定界符 → 美元定界符归一化。
+# ChatGPT / 论文 / 部分平台导出习惯 ``\(x\)`` / ``\[..\]``，而全站四套解析器
+# （前端阅读、Tiptap、CM6、本导出端）只认 ``$`` / ``$$``——归一化一次全端识别。
+# 块级锚定「``\[`` 起行、``\]`` 收行」：CommonMark 转义方括号（``\[非链接\]``）
+# 都出现在行中，行锚定天然避开；行内 ``\(..\)`` 由 ``_inside_inline_code_span``
+# 守卫字面反斜杠示例，代码围栏由调用点 ``map_outside_fenced_code_blocks`` 排除。
+# 镜像 frontend ``markdown.ts normalizeLatexDelimiters``，改动须两端同步。
+_LATEX_BLOCK_DELIM = re.compile(
+    r"^[ \t]*\\\[[ \t]*\n?([\s\S]*?)\n?[ \t]*\\\][ \t]*$", re.M
+)
+_LATEX_INLINE_DELIM = re.compile(r"\\\(([^\n]*?)\\\)")
+
+
+def normalize_latex_delimiters(src: str) -> str:
+    if "\\(" not in src and "\\[" not in src:
+        return src
+
+    def _block(m: re.Match) -> str:
+        body = m.group(1).strip()
+        if not body:
+            return m.group(0)
+        return f"$$\n{body}\n$$"
+
+    out = _LATEX_BLOCK_DELIM.sub(_block, src)
+
+    def _inline(m: re.Match) -> str:
+        if _inside_inline_code_span(m.string, m.start()):
+            return m.group(0)
+        body = m.group(1).strip()
+        if not body:
+            return m.group(0)
+        return f"${body}$"
+
+    return _LATEX_INLINE_DELIM.sub(_inline, out)
+
+
 def normalize_yuque_images(src: str) -> str:
     out = re.sub(r"[\u200b\ufeff]+(?=\s*!\[)", "", src)
     return re.sub(r"🖼\ufe0f?(?=\s*!\[)", "", out)
@@ -198,5 +234,6 @@ def preprocess_markdown(src: str) -> str:
     out = recover_yuque_diagram_comments(src or "")
     out = _HTML_COMMENT.sub("", out)
     out = map_outside_fenced_code_blocks(out, unglue_container_fences)
+    out = map_outside_fenced_code_blocks(out, normalize_latex_delimiters)
     out = map_outside_fenced_code_blocks(out, apply_yuque_compat_mode)
     return out

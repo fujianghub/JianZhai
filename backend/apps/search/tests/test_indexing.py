@@ -65,3 +65,49 @@ def test_search_finds_document_by_comment(api_client, owner, kb):
     assert resp.status_code == 200
     ids = [r["id"] for r in resp.data["results"]]
     assert doc.id in ids
+
+
+@pytest.mark.django_db
+def test_math_syntax_stripped_from_index(owner, kb):
+    """公式的 LaTeX 命令碎片（frac/mathbb/$…）不入索引，正文照常可搜。"""
+    from apps.search.services import collect_search_text
+
+    doc = Document.objects.create(
+        knowledge_base=kb,
+        title="Math Doc",
+        slug="math-doc",
+        raw_content=(
+            "勾股定理 $a_1^2 + b^2 = c^2$ 成立。\n\n"
+            "$$\n\\frac{\\partial f}{\\partial x} = \\mathbb{E}[X]\n$$\n\n"
+            "价格从 5$ 涨到 10$ 不受影响。"
+        ),
+    )
+    blob = collect_search_text(doc)
+    assert "frac" not in blob
+    assert "mathbb" not in blob
+    assert "a_1" not in blob
+    # 正文与货币写法保留
+    assert "勾股定理" in blob
+    assert "成立" in blob
+    assert "5$" in blob and "10$" in blob
+
+
+@pytest.mark.django_db
+def test_backslash_delimited_math_stripped_from_index(owner, kb):
+    """``\\(..\\)`` / ``\\[..\\]`` 反斜杠定界的公式同样不入索引。"""
+    from apps.search.services import collect_search_text
+
+    doc = Document.objects.create(
+        knowledge_base=kb,
+        title="Backslash Math",
+        slug="backslash-math",
+        raw_content=(
+            "面积 \\(\\pi r^2\\) 如下：\n\n\\[\n\\sum_{i=1}^n \\alpha_i\n\\]\n结束"
+        ),
+    )
+    blob = collect_search_text(doc)
+    assert "alpha" not in blob
+    assert "sum_" not in blob
+    assert "pi r^2" not in blob
+    assert "面积" in blob
+    assert "结束" in blob

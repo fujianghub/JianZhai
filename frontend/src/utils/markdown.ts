@@ -912,6 +912,7 @@ export function preprocessMarkdown(src: string): string {
   let out = recoverYuqueDiagramComments(src ?? '');
   out = out.replace(/<!--[\s\S]*?-->/g, '');
   out = mapOutsideFencedCodeBlocks(out, unglueContainerFences);
+  out = mapOutsideFencedCodeBlocks(out, normalizeLatexDelimiters);
   out = mapOutsideFencedCodeBlocks(out, applyYuqueCompatMode);
   out = mapOutsideFencedCodeBlocks(out, convertLayoutBlocks);
   out = mapOutsideFencedCodeBlocks(out, convertBlockPlaceholders);
@@ -1328,6 +1329,40 @@ function isInsideInlineCodeSpan(src: string, index: number): boolean {
     }
   }
   return runs % 2 === 1;
+}
+
+/**
+ * LaTeX 反斜杠定界符 → 美元定界符归一化：``\(x\)`` → ``$x$``、``\[..\]`` →
+ * ``$$..$$``。
+ *
+ * ChatGPT / 论文 / 部分平台导出习惯反斜杠定界，而全站四套解析器（阅读端
+ * katexPlugin、Tiptap MathNode、CM6 inlineMathScan、后端导出）只认 ``$``
+ * 形式——在共享预处理里归一化一次，四端即全部识别。块级锚定「``\[`` 起行、
+ * ``\]`` 收行」：CommonMark 转义方括号（``\[非链接\]``）都出现在行中，行
+ * 锚定天然避开；行内 ``\(..\)`` 由 {@link isInsideInlineCodeSpan} 守卫字面
+ * 示例，代码围栏由调用点 mapOutsideFencedCodeBlocks 排除。镜像后端
+ * ``markdown_preprocess.normalize_latex_delimiters``，改动须两端同步。
+ */
+const LATEX_BLOCK_DELIM_RE = /^[ \t]*\\\[[ \t]*\n?([\s\S]*?)\n?[ \t]*\\\][ \t]*$/gm;
+const LATEX_INLINE_DELIM_RE = /\\\(([^\n]*?)\\\)/g;
+
+export function normalizeLatexDelimiters(src: string): string {
+  if (!src.includes('\\(') && !src.includes('\\[')) return src;
+  let out = src.replace(LATEX_BLOCK_DELIM_RE, (match, body: string) => {
+    const trimmed = body.trim();
+    if (!trimmed) return match;
+    return `$$\n${trimmed}\n$$`;
+  });
+  out = out.replace(
+    LATEX_INLINE_DELIM_RE,
+    (match, body: string, offset: number, whole: string) => {
+      if (isInsideInlineCodeSpan(whole, offset)) return match;
+      const trimmed = body.trim();
+      if (!trimmed) return match;
+      return `$${trimmed}$`;
+    },
+  );
+  return out;
 }
 
 function unglueContainerFences(src: string): string {

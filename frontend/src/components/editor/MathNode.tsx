@@ -2,6 +2,7 @@ import { Node, mergeAttributes, nodeInputRule, nodePasteRule } from '@tiptap/cor
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from '@tiptap/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import MathEditorModal, { renderLatex } from './MathEditorModal';
+import { INLINE_MATH_INPUT_RE, INLINE_MATH_PASTE_RE } from './mathPatterns';
 
 declare module '@tiptap/core' {
   interface Commands<ReturnType> {
@@ -261,13 +262,24 @@ export const MathInline = Node.create({
     };
   },
 
+  /** Typing ``$x$`` inline → MathInline（与块级 ``$$..$$`` 输入规则对称）。 */
+  addInputRules() {
+    return [
+      nodeInputRule({
+        find: INLINE_MATH_INPUT_RE,
+        type: this.type,
+        getAttributes: (match) => ({ latex: match[1] }),
+      }),
+    ];
+  },
+
   /** Pasting plaintext containing ``$…$`` → inline MathInline node(s). */
   addPasteRules() {
     return [
       nodePasteRule({
         // Avoid eating $$…$$ here (block handler takes those) — the (?!\$)
         // lookahead skips dollar-doubles.
-        find: /(?<![\d\\$])\$(?!\$)([^\s$][^$\n]*?[^\s$])\$(?![\d$])/g,
+        find: INLINE_MATH_PASTE_RE,
         type: this.type,
         getAttributes: (match) => ({ latex: match[1] }),
       }),

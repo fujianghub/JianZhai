@@ -161,6 +161,7 @@ def render_markdown(
     text: str,
     *,
     diagram_svgs: dict[str, str] | None = None,
+    math_html: dict[str, str] | None = None,
     numbering: bool = False,
 ) -> str:
     """Render Markdown to HTML (preprocess + enhanced markdown-it).
@@ -178,6 +179,7 @@ def render_markdown(
     return markdown_render.render_markdown(
         text,
         diagram_svgs=diagram_svgs,
+        math_html=math_html,
         numbering=numbering,
         card_meta=CardMeta(
             doc_titles=doc_titles_for([text]), link_meta=default_link_meta
@@ -208,6 +210,35 @@ def build_scope_diagram_svgs(scope: ExportScope) -> dict[str, str]:
     if not sources:
         return {}
     return diagram_render.render_mermaid_svgs(sources)
+
+
+def build_scope_math_html(scope: ExportScope) -> dict[str, str]:
+    """Render every KaTeX formula across the scope in one headless-Chromium
+    batch（与 ``build_scope_diagram_svgs`` 同构，每次导出只多一次浏览器启动，
+    且仅在 scope 真有公式时才启动）。Returns ``{math_key: katex_html}``；
+    Playwright/Chromium 缺失时空 map，公式回退为转义源码 span。
+    """
+    from apps.knowledge.serializers import detect_doc_format
+
+    from . import math_render
+
+    sources: list[tuple[str, bool]] = []
+    for doc in scope.documents:
+        if detect_doc_format(doc) == "html":
+            continue  # HTML 文档自带渲染产物，无 markdown 数学管线
+        sources.extend(markdown_render.collect_math_sources(doc_export_body(doc)))
+    if not sources:
+        return {}
+    return math_render.render_katex_html(sources)
+
+
+def math_stylesheet_if(math_html: dict[str, str] | None) -> str:
+    """有预渲染公式才注入 KaTeX CSS（含 base64 字体，约 420KB——空导出零成本）。"""
+    if not math_html:
+        return ""
+    from . import math_render
+
+    return math_render.katex_stylesheet()
 
 
 # CSS readers are cached via ``lru_cache``: it's thread-safe (Python's GIL +
@@ -268,6 +299,7 @@ def render_document_body_html(
     embed_media: bool = True,
     export_mode: str = "interactive",
     diagram_svgs: dict[str, str] | None = None,
+    math_html: dict[str, str] | None = None,
 ) -> str:
     """Render one document body to an HTML fragment for export shells.
 
@@ -293,6 +325,7 @@ def render_document_body_html(
     html = render_markdown(
         md,
         diagram_svgs=diagram_svgs,
+        math_html=math_html,
         numbering=bool(getattr(doc, "heading_numbering", False)),
     )
     html = rewrite_html_media(
@@ -486,6 +519,7 @@ def doc_panels_html(
     *,
     export_mode: str = "interactive",
     diagram_svgs: dict[str, str] | None = None,
+    math_html: dict[str, str] | None = None,
 ) -> str:
     """Render each document as a switchable ``.export-doc-panel`` section.
 
@@ -500,7 +534,11 @@ def doc_panels_html(
     for idx, doc in enumerate(docs_ordered):
         fmt = "html" if detect_doc_format(doc) == "html" else "markdown"
         body = render_document_body_html(
-            doc, embed_media=True, export_mode=export_mode, diagram_svgs=diagram_svgs
+            doc,
+            embed_media=True,
+            export_mode=export_mode,
+            diagram_svgs=diagram_svgs,
+            math_html=math_html,
         )
         hidden = " hidden" if export_mode == "interactive" and idx > 0 else ""
         if fmt == "html":

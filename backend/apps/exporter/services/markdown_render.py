@@ -212,6 +212,132 @@ def _render_fence(self, tokens, idx, options, env):
     )
 
 
+# ── KaTeX math（``$$..$$`` 块 / ``$..$`` 行内）──────────────────────────────
+# Tokenizer 镜像 frontend ``markdown.ts katexPlugin``（改边界规则须两端同步）：
+# 块规则注册在 fence 之前；行内规则注册在 escape 之后、emphasis 之前——这是
+# 关键：没有它，公式里的 ``_``/``*``/``\`` 会被 CommonMark 当强调/转义吃掉。
+# 渲染时优先取 ``env["math_html"]`` 里的预渲染 KaTeX HTML（``math_render`` 用
+# headless Chromium 批量渲出，key 见 ``_math_key``）；不可用时降级为带定界符
+# 的转义源码 span（``jz-math-source``），至少保证公式原文完好可读。
+
+
+def _math_key(latex: str, display: bool) -> str:
+    return ("D:" if display else "I:") + latex
+
+
+def _math_block_rule(state, startLine: int, endLine: int, silent: bool) -> bool:
+    start = state.bMarks[startLine] + state.tShift[startLine]
+    maximum = state.eMarks[startLine]
+    if start + 2 > maximum:
+        return False
+    if state.src[start : start + 2] != "$$":
+        return False
+    rest = state.src[start + 2 : maximum].rstrip()
+    last_line = startLine
+    if rest.endswith("$$"):
+        content = rest[:-2]
+    else:
+        parts = [rest]
+        line = startLine + 1
+        closed = False
+        while line < endLine:
+            ls = state.bMarks[line] + state.tShift[line]
+            lm = state.eMarks[line]
+            line_text = state.src[ls:lm]
+            if line_text.rstrip().endswith("$$"):
+                parts.append(re.sub(r"\$\$\s*$", "", line_text))
+                last_line = line
+                closed = True
+                break
+            parts.append(line_text)
+            line += 1
+        if not closed:
+            return False
+        content = "\n".join(parts)
+    if silent:
+        return True
+    token = state.push("math_block", "div", 0)
+    token.block = True
+    token.content = content.strip()
+    token.markup = "$$"
+    token.map = [startLine, last_line + 1]
+    state.line = last_line + 1
+    return True
+
+
+_DIGITS = "0123456789"
+
+
+def _math_inline_rule(state, silent: bool) -> bool:
+    pos = state.pos
+    src = state.src
+    maximum = state.posMax
+    if pos >= maximum or src[pos] != "$":
+        return False
+    # ``$$`` 交给块级规则
+    if pos + 1 < maximum and src[pos + 1] == "$":
+        return False
+    # 货币防误判：开 ``$`` 前是数字（``5$ 到 10$``）拒绝
+    # （注意 ``"" in _DIGITS`` 恒为 True——空串必须先排除）
+    prev = src[pos - 1] if pos > 0 else ""
+    if prev and prev in _DIGITS:
+        return False
+    # 开 ``$`` 后不能是空白
+    after_open = src[pos + 1] if pos + 1 < maximum else ""
+    if not after_open or after_open.isspace():
+        return False
+    end = pos + 1
+    while end < maximum:
+        ch = src[end]
+        if ch == "\\" and end + 1 < maximum:
+            end += 2
+            continue
+        if ch == "\n":
+            return False
+        if ch == "$":
+            if src[end - 1].isspace():
+                end += 1
+                continue
+            if end + 1 < maximum and src[end + 1] == "$":
+                return False
+            after_close = src[end + 1] if end + 1 < maximum else ""
+            if after_close in _DIGITS and after_close:
+                end += 1
+                continue
+            if not silent:
+                token = state.push("math_inline", "span", 0)
+                token.content = src[pos + 1 : end]
+                token.markup = "$"
+            state.pos = end + 1
+            return True
+        end += 1
+    return False
+
+
+def install_math_rules(md: MarkdownIt) -> None:
+    """给一个 markdown-it 实例装上数学 tokenizer（供本渲染器与 docx 导出共用）。"""
+    md.block.ruler.before("fence", "math_block", _math_block_rule, {"alt": []})
+    md.inline.ruler.after("escape", "math_inline", _math_inline_rule)
+
+
+def _render_math_block(self, tokens, idx, options, env) -> str:
+    content = tokens[idx].content
+    pre = env.get("math_html") if isinstance(env, dict) else None
+    rendered = pre.get(_math_key(content, True)) if isinstance(pre, dict) else None
+    if rendered:
+        return f'<div class="jz-math-block">{rendered}</div>\n'
+    return f'<div class="jz-math-block jz-math-source">$${_escape(content)}$$</div>\n'
+
+
+def _render_math_inline(self, tokens, idx, options, env) -> str:
+    content = tokens[idx].content
+    pre = env.get("math_html") if isinstance(env, dict) else None
+    rendered = pre.get(_math_key(content, False)) if isinstance(pre, dict) else None
+    if rendered:
+        return f'<span class="jz-math-inline">{rendered}</span>'
+    return f'<span class="jz-math-inline jz-math-source">${_escape(content)}$</span>'
+
+
 def _render_table_open(self, tokens, idx, options, env) -> str:
     # Scroll wrapper so wide tables overflow with a scrollbar in interactive
     # HTML exports instead of being clipped (mirrors the reader's pipeline;
@@ -404,11 +530,14 @@ def _build_renderer() -> MarkdownIt:
         validate=lambda params, name: bool(_CALLOUT_VALIDATE.match(params.strip())),
         render=_render_callout,
     )
+    install_math_rules(md)
     md.add_render_rule("fence", _render_fence)
     md.add_render_rule("table_open", _render_table_open)
     md.add_render_rule("table_close", _render_table_close)
     md.add_render_rule("heading_open", _render_heading_open)
     md.add_render_rule("html_block", _render_html_block)
+    md.add_render_rule("math_block", _render_math_block)
+    md.add_render_rule("math_inline", _render_math_inline)
     return md
 
 
@@ -443,11 +572,33 @@ def collect_mermaid_sources(text: str) -> list[str]:
     return out
 
 
+def collect_math_sources(text: str) -> list[tuple[str, bool]]:
+    """收集文档里全部数学公式源码——``(latex, display)`` 列表。
+
+    与 ``collect_mermaid_sources`` 同构：走 ``render_markdown`` 同一条
+    preprocess + tokenizer 管线，token 的 ``content`` 即渲染期
+    ``_math_key`` 的查找键，两端天然对齐。行内公式藏在 ``inline`` token
+    的 children 里（表格/列表/callout 内一并覆盖）。
+    """
+    prepared = preprocess_markdown(text)
+    out: list[tuple[str, bool]] = []
+    for token in _RENDERER.parse(prepared, {}):
+        if token.type == "math_block":
+            if token.content.strip():
+                out.append((token.content, True))
+        elif token.type == "inline":
+            for child in token.children or []:
+                if child.type == "math_inline" and child.content.strip():
+                    out.append((child.content, False))
+    return out
+
+
 def render_markdown(
     text: str,
     *,
     code_theme: str | None = None,
     diagram_svgs: dict[str, str] | None = None,
+    math_html: dict[str, str] | None = None,
     numbering: bool = False,
     card_meta: CardMeta | None = None,
 ) -> str:
@@ -462,6 +613,10 @@ def render_markdown(
     ``diagram_svgs`` maps a Mermaid fence body to its pre-rendered SVG (see
     ``collect_mermaid_sources`` + ``diagram_render``); matched blocks render as
     inline SVG, unmatched ones fall back to the source panel.
+
+    ``math_html`` maps ``_math_key(latex, display)`` to pre-rendered KaTeX HTML
+    (see ``collect_math_sources`` + ``math_render``); matched formulas render
+    as real math, unmatched ones fall back to escaped ``$…$`` source spans.
 
     ``numbering`` enables Yuque-style hierarchical heading numbering (from the
     document's ``heading_numbering`` flag). Headings always get anchor ids and
@@ -482,7 +637,11 @@ def render_markdown(
     previous = _CODE_THEME["value"]
     if code_theme:
         _CODE_THEME["value"] = code_theme
-    env: dict = {"diagram_svgs": diagram_svgs or {}, "numbering": numbering}
+    env: dict = {
+        "diagram_svgs": diagram_svgs or {},
+        "math_html": math_html or {},
+        "numbering": numbering,
+    }
     try:
         rendered = _RENDERER.render(prepared, env)
         rendered = _expand_toc_placeholders(
