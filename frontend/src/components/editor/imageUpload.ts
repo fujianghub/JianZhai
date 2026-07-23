@@ -14,6 +14,19 @@ export interface ImageUploadOptions {
   onUploading?: (flag: boolean) => void;
 }
 
+/** Insertion anchors held across the upload await. Plugin ``apply`` maps each
+ *  anchor through every transaction, so text typed while the upload is in
+ *  flight can no longer shift the image into the wrong position. Objects are
+ *  mutated in place — the async uploader holds the same reference. */
+interface TrackedInsertPos {
+  pos: number;
+}
+interface ImageUploadPluginState {
+  tracked: TrackedInsertPos[];
+}
+
+const imageUploadKey = new PluginKey<ImageUploadPluginState>('image-upload');
+
 /**
  * ProseMirror plugin: intercept clipboard paste + drag-drop events that carry
  * image data, push them through the existing attachment-upload API, and insert
@@ -50,31 +63,52 @@ export const ImageUpload = Extension.create<ImageUploadOptions>({
       files: File[],
       initialPos: number | null,
     ) {
-      let pos = initialPos ?? view.state.selection.from;
-      for (const file of files) {
-        beginUpload();
-        try {
-          const att = await uploadFile(file, opts.documentId);
-          const { schema } = view.state;
-          const imageNode = schema.nodes.image?.create({
-            src: att.url,
-            alt: att.original_filename || file.name,
-          });
-          if (!imageNode) continue;
-          const tr = view.state.tr.insert(pos, imageNode);
-          view.dispatch(tr);
-          pos += imageNode.nodeSize;
-        } catch (err: unknown) {
-          opts.onError?.(err instanceof Error ? err.message : '图片上传失败');
-        } finally {
-          endUpload();
+      // 跨 await 的插入点必须经 transaction mapping 跟踪：上传期间用户继续
+      // 输入会移动文档位置，裸数字 pos 会把图片插错地方。anchor 注册进插件
+      // state，此后每个事务在 apply() 里重映射（含我们自己的插入事务 ——
+      // assoc 前偏使 anchor 自动越过刚插入的图片，正好是下一张的位置）。
+      const anchor: TrackedInsertPos = { pos: initialPos ?? view.state.selection.from };
+      imageUploadKey.getState(view.state)?.tracked.push(anchor);
+      try {
+        for (const file of files) {
+          beginUpload();
+          try {
+            const att = await uploadFile(file, opts.documentId);
+            if (view.isDestroyed) return;
+            const { schema } = view.state;
+            const imageNode = schema.nodes.image?.create({
+              src: att.url,
+              alt: att.original_filename || file.name,
+            });
+            if (!imageNode) continue;
+            const insertAt = Math.min(anchor.pos, view.state.doc.content.size);
+            view.dispatch(view.state.tr.insert(insertAt, imageNode));
+          } catch (err: unknown) {
+            opts.onError?.(err instanceof Error ? err.message : '图片上传失败');
+          } finally {
+            endUpload();
+          }
+        }
+      } finally {
+        if (!view.isDestroyed) {
+          const st = imageUploadKey.getState(view.state);
+          if (st) st.tracked = st.tracked.filter((t) => t !== anchor);
         }
       }
     }
 
     return [
       new Plugin({
-        key: new PluginKey('image-upload'),
+        key: imageUploadKey,
+        state: {
+          init: (): ImageUploadPluginState => ({ tracked: [] }),
+          apply(tr, value: ImageUploadPluginState): ImageUploadPluginState {
+            if (tr.docChanged) {
+              for (const t of value.tracked) t.pos = tr.mapping.map(t.pos);
+            }
+            return value;
+          },
+        },
         props: {
           handlePaste(view, event) {
             const items = Array.from(event.clipboardData?.items ?? []);

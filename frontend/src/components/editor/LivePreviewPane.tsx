@@ -133,7 +133,7 @@ export default function LivePreviewPane({
         />
       )}
       <div
-        className={`markdown-preview jz-post-article jz-doc-live-preview paper ${paperClassName(paperStyle)}`}
+        className={`markdown-preview jz-doc-live-preview paper ${paperClassName(paperStyle)}`}
         style={{ lineHeight: 1.85, fontSize: 16 }}
         dangerouslySetInnerHTML={{ __html: html }}
       />

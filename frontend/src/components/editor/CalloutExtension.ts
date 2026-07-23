@@ -33,6 +33,33 @@ declare module '@tiptap/core' {
 
 interface ContainerToken { nesting: number; info: string; attrs: Array<[string, string]> | null; attrSet: (k: string, v: string) => void; }
 
+/** Escape a value for safe embedding in a double-quoted HTML attribute. */
+function escAttr(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+/** Parse a ``:::`` container info string into kind + optional explicit title.
+ *  Mirrors the reader-side rule（utils/markdown.ts callout container）：kind
+ *  归一化为小写 a-z0-9_-，其后的文字是显式标题。Exported for tests. */
+export function parseCalloutInfo(info: string): { kind: string; title: string } {
+  const m = info.trim().match(/^(\S+)(?:\s+(.*))?$/);
+  const kind = (m?.[1] ?? 'tips').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'tips';
+  const title = (m?.[2] ?? '').trim();
+  return { kind, title };
+}
+
+/** Build the ``:::kind Title`` opener line for serialization. 标题压成单行，
+ *  否则换行会截断 container 的 info 串。Exported for tests. */
+export function calloutOpener(kind?: string, title?: string): string {
+  const k = (kind || 'tips').replace(/[^a-zA-Z0-9_-]/g, '');
+  const t = String(title ?? '').replace(/\s+/g, ' ').trim();
+  return t ? `:::${k} ${t}` : `:::${k}`;
+}
+
 export const CalloutExtension = Node.create({
   name: 'callout',
   group: 'block',
@@ -51,6 +78,14 @@ export const CalloutExtension = Node.create({
           (el.className.match(/jz-callout-([\w-]+)/) || [])[1] ||
           'tips',
         renderHTML: (attrs: { kind: string }) => ({ 'data-kind': attrs.kind }),
+      },
+      /** 显式标题（``:::info 自定义标题``）。阅读端渲染为 .jz-callout-title；
+       *  编辑器若不携带此属性，重载保存会静默丢标题。 */
+      title: {
+        default: '',
+        parseHTML: (el: HTMLElement) => el.getAttribute('data-title') ?? '',
+        renderHTML: (attrs: { title?: string }) =>
+          attrs.title ? { 'data-title': attrs.title } : {},
       },
     };
   },
@@ -99,10 +134,9 @@ export const CalloutExtension = Node.create({
             closeBlock: (n: unknown) => void;
             renderContent: (n: unknown) => void;
           },
-          node: { attrs: { kind?: string } }
+          node: { attrs: { kind?: string; title?: string } }
         ) {
-          const kind = (node.attrs.kind || 'tips').replace(/[^a-zA-Z0-9_-]/g, '');
-          state.write(`:::${kind}\n`);
+          state.write(`${calloutOpener(node.attrs.kind, node.attrs.title)}\n`);
           state.renderContent(node);
           state.ensureNewLine();
           state.write(':::');
@@ -122,14 +156,15 @@ export const CalloutExtension = Node.create({
                 // loses its summary, ``:::cols-N`` collapses its columns and
                 // ``:::tabs`` flattens its labels.
                 if (/^(details|tabs|cols-\d+)\b/.test(t)) return false;
-                return /^([a-zA-Z][\w-]*)(\s+.*)?$/.test(t);
+                // 与阅读端 validate 对齐（任意非空 slug），避免同一文本两端分叉
+                return /^[^\s]+(\s+.*)?$/.test(t);
               },
               render(tokens: ContainerToken[], idx: number) {
                 const t = tokens[idx];
                 if (t.nesting === 1) {
-                  const match = t.info.trim().match(/^([a-zA-Z][\w-]*)/);
-                  const kind = (match?.[1] ?? 'tips').toLowerCase();
-                  return `<div class="jz-callout jz-callout-${kind}" data-kind="${kind}">\n`;
+                  const { kind, title } = parseCalloutInfo(t.info);
+                  const titleAttr = title ? ` data-title="${escAttr(title)}"` : '';
+                  return `<div class="jz-callout jz-callout-${kind}" data-kind="${kind}"${titleAttr}>\n`;
                 }
                 return `</div>\n`;
               },

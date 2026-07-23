@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Popover, Tooltip } from 'antd';
 import { DownOutlined, HighlightOutlined } from '@ant-design/icons';
+import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import { HIGHLIGHT_COLOR_PRESETS } from './highlightPresets';
 
@@ -10,6 +11,11 @@ interface Props {
 
 export default function HighlightColorDropdown({ editor }: Props) {
   const [open, setOpen] = useState(false);
+  // Tiptap v3：render 里直接 editor.isActive() 是陈旧快照，须经 useEditorState 订阅
+  const highlightActive = useEditorState({
+    editor,
+    selector: ({ editor: ed }) => ed.isActive('highlight'),
+  });
 
   const panel = (
     <div className="jz-highlight-panel">
@@ -54,7 +60,7 @@ export default function HighlightColorDropdown({ editor }: Props) {
       <Tooltip title="字体背景色">
         <Button
           size="small"
-          type={editor.isActive('highlight') ? 'primary' : 'default'}
+          type={highlightActive ? 'primary' : 'default'}
           icon={<HighlightOutlined />}
           className="jz-toolbar-dropdown-btn"
         >

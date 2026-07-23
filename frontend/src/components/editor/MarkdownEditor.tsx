@@ -61,6 +61,7 @@ import type { MentionSuggestion } from '@/api/linking';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
+import { draftBackupKey } from '@/utils/localDraftBackup';
 import MarkdownSlashMenu, { useMarkdownSlashDisplayItems } from './MarkdownSlashMenu';
 import {
   findSlashTrigger,
@@ -120,6 +121,9 @@ export default function MarkdownEditor({
   onSaveReady,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
+  /** flush effect 的 deps 为 []，闭包里的 documentId 会过期 —— 经 ref 读最新值。 */
+  const documentIdRef = useRef(documentId);
+  documentIdRef.current = documentId;
   const [layoutMode, setLayoutMode] = useState<MdLayoutMode>(() => {
     try {
       const v = localStorage.getItem(MD_LAYOUT_KEY);
@@ -342,6 +346,9 @@ export default function MarkdownEditor({
         saveSeqRef,
         lastSavedRef,
         lastEmittedRef: lastLocalRef,
+        backupKey: documentIdRef.current
+          ? draftBackupKey(documentIdRef.current, 'flush')
+          : undefined,
       });
     };
   }, []);
@@ -364,9 +371,13 @@ export default function MarkdownEditor({
   const lineMap = useMemo(() => {
     // renderMarkdownForEditor is LRU-cached — LivePreviewPane renders the
     // same debounced source, so this is an O(1) cache hit, not a re-render.
-    const { preprocessed } = renderMarkdownForEditor(debouncedValue);
+    // numbering 必须与 LivePreviewPane 的调用一致：缓存 key 含 'N|' 前缀，
+    // 键不齐会 cache MISS 白跑一次完整渲染。
+    const { preprocessed } = renderMarkdownForEditor(debouncedValue, {
+      numbering: headingNumbering,
+    });
     return getLineMap(debouncedValue, preprocessed);
-  }, [debouncedValue]);
+  }, [debouncedValue, headingNumbering]);
   const lineMapRef = useRef(lineMap);
   useEffect(() => {
     lineMapRef.current = lineMap;
@@ -378,8 +389,13 @@ export default function MarkdownEditor({
     (view: EditorView) => {
       if (readOnly) return;
       const cursor = view.state.selection.main.head;
-      const source = view.state.doc.toString();
-      const trig = findSlashTrigger(source, cursor);
+      // 只取光标行：findSlashTrigger 语义本就行内（query 含换行即 null），
+      // 全文 doc.toString() 每次光标移动物化整个 rope，大文档下是热点。
+      const line = view.state.doc.lineAt(cursor);
+      const local = findSlashTrigger(line.text, cursor - line.from);
+      const trig = local
+        ? { from: local.from + line.from, to: local.to + line.from, query: local.query }
+        : null;
       if (trig) {
         slashTriggerRef.current = { from: trig.from, to: trig.to };
         setSlashQuery(trig.query);
@@ -832,8 +848,18 @@ export default function MarkdownEditor({
           setLinkMenu(null); // 表格条优先，避免双浮层叠放
         } else {
           setTableBarAnchor(null);
-          // 语雀式链接菜单：光标落在 [text](url) 上（fence/行内代码除外）
-          const link = findLinkAt(info.view.state.doc.toString(), sel.head);
+          // 语雀式链接菜单：光标落在 [text](url) 上（fence/行内代码除外）。
+          // findLinkAt 只扫光标行 —— 传行文本 + 局部偏移，免去每次光标
+          // 移动的全文 doc.toString()（大文档热点），结果平移回绝对偏移。
+          const local = findLinkAt(line.text, sel.head - line.from);
+          const link = local
+            ? {
+                ...local,
+                from: local.from + line.from,
+                to: local.to + line.from,
+                atFrom: local.atFrom + line.from,
+              }
+            : null;
           if (link && !inCodeContext(info.view, sel.head)) {
             const c = info.view.coordsAtPos(link.from);
             if (c) {

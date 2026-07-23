@@ -56,13 +56,20 @@ export default function VersionsDrawer({ open, onClose, documentId, onRestored }
       setMessage('');
       message.success('已保存版本');
       await refresh();
+    } catch {
+      message.error('保存版本失败，请重试');
     } finally {
       setCreating(false);
     }
   }
 
   async function handleRestore(vid: number) {
-    await versionsApi.restoreVersion(documentId, vid);
+    try {
+      await versionsApi.restoreVersion(documentId, vid);
+    } catch {
+      message.error('回滚失败，文档未改动，请重试');
+      return;
+    }
     message.success('已回滚');
     onRestored?.();
     await refresh();
@@ -79,9 +86,13 @@ export default function VersionsDrawer({ open, onClose, documentId, onRestored }
   async function openDiff() {
     if (selected.length !== 2) return;
     const [a, b] = selected;
-    const pair = await versionsApi.diffVersions(documentId, a, b);
-    setDiffPair(pair);
-    setDiffOpen(true);
+    try {
+      const pair = await versionsApi.diffVersions(documentId, a, b);
+      setDiffPair(pair);
+      setDiffOpen(true);
+    } catch {
+      message.error('加载版本对比失败，请重试');
+    }
   }
 
   return (

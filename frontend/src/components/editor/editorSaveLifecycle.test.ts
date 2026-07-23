@@ -53,4 +53,55 @@ describe('flushOnUnmount', () => {
 
     expect(onAutoSave).not.toHaveBeenCalled();
   });
+
+  it('flush 失败时把内容备份到 backupKey（不再静默丢失）', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    });
+    try {
+      flushOnUnmount({
+        getLiveContent: () => 'dirty content',
+        lastSaved: 'saved',
+        onChange: vi.fn(),
+        onAutoSave: vi.fn().mockRejectedValue(new Error('network down')),
+        saveSeqRef: { current: 0 },
+        lastSavedRef: { current: 'saved' },
+        backupKey: 'jz-draft-backup:1:flush',
+      });
+      // 等 rejected promise 的 catch 分支跑完
+      await new Promise((r) => setTimeout(r, 0));
+      const raw = store.get('jz-draft-backup:1:flush');
+      expect(raw).toBeTruthy();
+      expect(JSON.parse(raw!).content).toBe('dirty content');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('flush 成功时不写备份', async () => {
+    const store = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+      removeItem: (k: string) => void store.delete(k),
+    });
+    try {
+      flushOnUnmount({
+        getLiveContent: () => 'dirty',
+        lastSaved: 'saved',
+        onChange: vi.fn(),
+        onAutoSave: vi.fn().mockResolvedValue(undefined),
+        saveSeqRef: { current: 0 },
+        lastSavedRef: { current: 'saved' },
+        backupKey: 'jz-draft-backup:1:flush',
+      });
+      await new Promise((r) => setTimeout(r, 0));
+      expect(store.size).toBe(0);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });

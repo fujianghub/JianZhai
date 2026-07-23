@@ -72,6 +72,43 @@ function buildDecorations(view: EditorView): DecorationSet {
   return Decoration.set(marks, true);
 }
 
+/** 一行可能参与编号语义（标题或 fence 边界）。比 HEADING_RE 宽松（允许行首
+ *  空白）—— 宁可多重建一次，不可漏重建。 */
+const NUMBERING_LINE_RE = /^[ \t]*(#|```|~~~)/;
+
+/**
+ * 变更是否可能影响标题编号。普通正文打字（不含换行 / ``#`` / fence 字符、
+ * 不落在标题或 fence 行上）返回 false —— 这类编辑只需把既有装饰经
+ * ``changes`` 平移，免去每键全文 O(N) 重扫（开编号后大文档的首要热点）。
+ */
+export function changeMayAffectNumbering(update: ViewUpdate): boolean {
+  let affected = false;
+  update.changes.iterChanges((fromA, toA, fromB, _toB, inserted) => {
+    if (affected) return;
+    // 插入含换行（可能拆出新标题行）或 #/`/~（可能敲出标题、fence）
+    if (/[\n#`~]/.test(inserted.toString())) {
+      affected = true;
+      return;
+    }
+    const startDoc = update.startState.doc;
+    const lineFrom = startDoc.lineAt(fromA);
+    // 删除跨行（合并了行，可能吞掉标题行 / fence 边界）
+    if (toA > lineFrom.to) {
+      affected = true;
+      return;
+    }
+    // 被编辑的行在旧/新文档任一侧是标题或 fence 行
+    if (NUMBERING_LINE_RE.test(lineFrom.text)) {
+      affected = true;
+      return;
+    }
+    if (NUMBERING_LINE_RE.test(update.state.doc.lineAt(fromB).text)) {
+      affected = true;
+    }
+  });
+  return affected;
+}
+
 export function headingNumber(): Extension {
   return ViewPlugin.fromClass(
     class {
@@ -80,8 +117,11 @@ export function headingNumber(): Extension {
         this.decorations = buildDecorations(view);
       }
       update(update: ViewUpdate) {
-        if (update.docChanged) {
+        if (!update.docChanged) return;
+        if (changeMayAffectNumbering(update)) {
           this.decorations = buildDecorations(update.view);
+        } else {
+          this.decorations = this.decorations.map(update.changes);
         }
       }
     },

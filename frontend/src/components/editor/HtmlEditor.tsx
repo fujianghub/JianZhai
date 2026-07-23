@@ -5,6 +5,7 @@ import { message } from '@/utils/notify';
 import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
 import { uploadFile } from '@/api/attachments';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
+import { draftBackupKey } from '@/utils/localDraftBackup';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -87,6 +88,9 @@ export default function HtmlEditor({
   showPreviewPane = true,
 }: Props) {
   const [status, setStatus] = useState<SaveStatus>('idle');
+  /** flush effect 的 deps 为 []，闭包里的 documentId 会过期 —— 经 ref 读最新值。 */
+  const documentIdRef = useRef(documentId);
+  documentIdRef.current = documentId;
   const [encoding, setEncoding] = useState<'utf-8' | 'gbk' | null>(null);
   const [hydrating, setHydrating] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -250,6 +254,9 @@ export default function HtmlEditor({
         saveSeqRef,
         lastSavedRef,
         lastEmittedRef: lastLocalRef,
+        backupKey: documentIdRef.current
+          ? draftBackupKey(documentIdRef.current, 'flush')
+          : undefined,
       });
     };
   }, []);
@@ -472,6 +479,18 @@ export default function HtmlEditor({
               }}
               value={value}
               onChange={(e) => onChange(e.target.value)}
+              onKeyDown={(e) => {
+                // Tab 插入两空格缩进；Shift+Tab 保留默认行为（键盘用户仍能
+                // 移出焦点）。受控组件写回后用 rAF 恢复光标位置。
+                if (e.key !== 'Tab' || e.shiftKey || readOnly) return;
+                e.preventDefault();
+                const ta = e.currentTarget;
+                const { selectionStart, selectionEnd } = ta;
+                onChange(value.slice(0, selectionStart) + '  ' + value.slice(selectionEnd));
+                requestAnimationFrame(() => {
+                  ta.selectionStart = ta.selectionEnd = selectionStart + 2;
+                });
+              }}
               onPaste={handlePaste}
               onDrop={handleDrop}
               onDragOver={handleDragOver}

@@ -17,6 +17,9 @@ export default function CalloutView({ node, updateAttributes, deleteNode, editor
   const kind = (node.attrs.kind as string) || 'tips';
   const preset = CALLOUT_TEMPLATES.find((c) => c.slug === kind);
   const title = preset?.label ?? kind;
+  /** ``:::info 自定义标题`` 的显式标题 —— 阅读端渲染为 .jz-callout-title，
+   *  编辑器同样展示，保证所见即所得（round-trip 由节点 title 属性承载）。 */
+  const customTitle = ((node.attrs.title as string) || '').trim();
 
   return (
     <NodeViewWrapper
@@ -58,6 +61,11 @@ export default function CalloutView({ node, updateAttributes, deleteNode, editor
           </button>
         </Tooltip>
       </div>
+      {customTitle && (
+        <div className="jz-callout-title" contentEditable={false}>
+          {customTitle}
+        </div>
+      )}
       <NodeViewContent className="jz-callout-body" />
     </NodeViewWrapper>
   );

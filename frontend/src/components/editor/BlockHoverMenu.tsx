@@ -166,6 +166,13 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
         return;
       }
 
+      // 同一块内移动：位置/pos 均未变，跳过 resolve + 测量 + setState
+      if (block === blockElRef.current) {
+        setVisible(true);
+        shell!.classList.add('is-block-hover');
+        return;
+      }
+
       const from = resolveBlockFromDom(editor!, block);
       if (from == null) {
         if (!popoverOpenRef.current && !menuHoverRef.current) hideMenu();
@@ -203,7 +210,20 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
       }, 150);
     };
 
-    shell.addEventListener('mousemove', onMove);
+    // rAF 节流：mousemove 每像素触发一次，findBlockElement/posAtDOM/
+    // getBoundingClientRect 逐次执行是可感的 hover 开销 —— 合帧处理。
+    let moveRaf: number | null = null;
+    let lastMove: MouseEvent | null = null;
+    function onMoveThrottled(e: MouseEvent) {
+      lastMove = e;
+      if (moveRaf != null) return;
+      moveRaf = requestAnimationFrame(() => {
+        moveRaf = null;
+        if (lastMove) onMove(lastMove);
+      });
+    }
+
+    shell.addEventListener('mousemove', onMoveThrottled);
     shell.addEventListener('mouseleave', onLeave);
     shell.addEventListener('scroll', refreshPos, { passive: true });
     window.addEventListener('resize', refreshPos);
@@ -211,7 +231,8 @@ export function BlockHoverMenu({ editor, shellRef }: Props) {
     editor.on('blur', onBlur);
 
     return () => {
-      shell.removeEventListener('mousemove', onMove);
+      shell.removeEventListener('mousemove', onMoveThrottled);
+      if (moveRaf != null) cancelAnimationFrame(moveRaf);
       shell.removeEventListener('mouseleave', onLeave);
       shell.removeEventListener('scroll', refreshPos);
       window.removeEventListener('resize', refreshPos);

@@ -7,6 +7,7 @@ import AIMenuList from '@/components/editor/ai/AIMenuList';
 import AIAssistantPanel from '@/components/editor/ai/AIAssistantPanel';
 import type { AIOpDef } from '@/components/editor/ai/aiOps';
 import { AI_OPS } from '@/components/editor/ai/aiOps';
+import type { EditorSurfaceHandle } from '@/components/editor/surface/EditorSurface';
 
 interface SelectionState {
   text: string;
@@ -17,6 +18,9 @@ interface SelectionState {
 interface Props {
   scopeRef?: React.RefObject<HTMLElement | null>;
   contextProvider?: () => string;
+  /** 提供当前编辑面（MD/HTML 的 EditorSurface）。给到后，润色/扩写/纠错/翻译
+   *  等 replace 型操作可把结果一键回写原选区；不给则保持只读（复制）。 */
+  surfaceProvider?: () => EditorSurfaceHandle | null;
 }
 
 const SELECTION_OPS = AI_OPS.filter((o) =>
@@ -25,7 +29,7 @@ const SELECTION_OPS = AI_OPS.filter((o) =>
   ),
 );
 
-export function SelectionAI({ scopeRef, contextProvider }: Props) {
+export function SelectionAI({ scopeRef, contextProvider, surfaceProvider }: Props) {
   const [sel, setSel] = useState<SelectionState | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [askMode, setAskMode] = useState(false);
@@ -35,6 +39,9 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
   const [activeOp, setActiveOp] = useState<AIOpDef | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const lastSelectionRef = useRef<string>('');
+  /** 发起时快照的编辑面选区（字符偏移）。流式期间用户改动原文则回写前
+   *  校验失败，绝不盲替换。 */
+  const replaceRangeRef = useRef<{ from: number; to: number; text: string } | null>(null);
 
   useEffect(() => {
     return () => {
@@ -82,6 +89,21 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
     async (op: AIOpDef, customQuestion?: string) => {
       if (!sel) return;
       setAskMode(false);
+      // replace 型操作：发起时快照编辑面选区（与 AI 选区时机 bug 同理 ——
+      // 快照在前，应用在后校验）。DOM 选区文本须与编辑面切片一致才可回写。
+      replaceRangeRef.current = null;
+      if (op.replace && !customQuestion) {
+        const surface = surfaceProvider?.();
+        if (surface) {
+          const r = surface.getSelection();
+          if (r.to > r.from) {
+            const slice = surface.getValue().slice(r.from, r.to);
+            if (slice.trim() === sel.text) {
+              replaceRangeRef.current = { from: r.from, to: r.to, text: slice };
+            }
+          }
+        }
+      }
       const model = await getResolvedAIModelId();
       setPanelOpen(true);
       setActiveOp(op);
@@ -121,6 +143,22 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
     setAnswer('');
     setQuestion('');
     setSel(null);
+    replaceRangeRef.current = null;
+  }
+
+  /** 把 AI 结果回写原选区（仅 replace 型操作 + 快照校验通过）。 */
+  function applyReplace() {
+    const range = replaceRangeRef.current;
+    const surface = surfaceProvider?.();
+    const text = answer.trim();
+    if (!range || !surface || !text) return;
+    if (surface.getValue().slice(range.from, range.to) !== range.text) {
+      message.warning('原文选区已发生变化，未替换 —— 结果可手动复制');
+      return;
+    }
+    surface.insertAt(range.from, range.to, text);
+    message.success('已替换选中内容');
+    closePanel();
   }
 
   const showAskForm = panelOpen && askMode && !streaming && !answer;
@@ -215,7 +253,8 @@ export function SelectionAI({ scopeRef, contextProvider }: Props) {
           streaming={streaming}
           text={answer}
           selectionPreview={lastSelectionRef.current}
-          canReplace={false}
+          canReplace={Boolean(activeOp?.replace && replaceRangeRef.current)}
+          onReplace={applyReplace}
           onAbort={closePanel}
           onClose={closePanel}
           onCopy={() => {

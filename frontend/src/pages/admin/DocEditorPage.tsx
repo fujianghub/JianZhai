@@ -36,6 +36,7 @@ import * as docsApi from '@/api/docs';
 import {
   patchDocumentRawContent,
   patchPublishedContent,
+  type VersionConflictInfo,
 } from '@/utils/documentSave';
 import * as kbsApi from '@/api/kbs';
 import * as attApi from '@/api/attachments';
@@ -325,6 +326,8 @@ export default function DocEditorPage({
     function onBeforeUnload(e: BeforeUnloadEvent) {
       if (hasPendingChangesRef.current) {
         e.preventDefault();
+        // 部分浏览器（旧 Chrome / Safari）只认 returnValue，不设不弹确认框
+        e.returnValue = '';
       }
     }
     window.addEventListener('beforeunload', onBeforeUnload);
@@ -333,13 +336,41 @@ export default function DocEditorPage({
 
   const saveGenRef = useRef(0);
 
-  const applyVersionConflict = useCallback((live: DocumentDetail | undefined) => {
-    if (live) {
+  /** 冲突对话框「恢复我的编辑」要在恢复后立即重保存，但 handleAutoSave 定义
+   *  在 applyVersionConflict 之后 —— 经 ref 打破循环依赖。 */
+  const retrySaveRef = useRef<((content: string) => Promise<void>) | null>(null);
+
+  const applyVersionConflict = useCallback(
+    (live: DocumentDetail | undefined, info?: VersionConflictInfo) => {
+      if (!live) return false;
       richEditor?.commands.blur();
       setConflictSyncRevision((n) => n + 1);
       setDoc(live);
-    }
-  }, [richEditor]);
+      // 正文类冲突不再静默丢弃本地编辑：先展示服务器版本，同时给用户
+      // 「恢复我的编辑」的机会（attempted 已在 documentSave 里备份到本机）。
+      if (info && (info.field === 'raw' || info.field === 'published')) {
+        const attempted = info.attempted;
+        Modal.confirm({
+          title: '文档已被其他端修改',
+          content:
+            '已加载服务器上的最新版本。你可以恢复刚才的本地修改（将基于新版本重新保存，覆盖对方的正文改动），或保留服务器版本。本地修改已在本机备份。',
+          okText: '恢复我的编辑',
+          cancelText: '使用服务器版本',
+          onOk: () => {
+            setLocalEditorBody(attempted);
+            // 外部同步会把恢复的内容标记为「已保存」，autosave 不会再触发 ——
+            // 必须显式走一次保存（此时 docRef 已是新版本，expected_version 匹配）。
+            void retrySaveRef.current?.(attempted).catch(() => {
+              /* 失败提示已在保存链路内弹出 */
+            });
+          },
+        });
+        return true; // 已弹自己的对话框，documentSave 的默认提示不再重复
+      }
+      return false;
+    },
+    [richEditor],
+  );
 
   const handleAutoSave = useCallback(
     async (content: string) => {
@@ -383,6 +414,10 @@ export default function DocEditorPage({
     },
     [doc, applyVersionConflict],
   );
+
+  useEffect(() => {
+    retrySaveRef.current = handleAutoSave;
+  }, [handleAutoSave]);
 
   async function handleDelete() {
     if (!doc) return;
@@ -834,7 +869,9 @@ export default function DocEditorPage({
               </div>
             )}
           >
-            <Button icon={<EllipsisOutlined />} />
+            <Tooltip title="更多操作（导出 / 历史版本 / 删除…）">
+              <Button icon={<EllipsisOutlined />} aria-label="更多操作" />
+            </Tooltip>
           </Dropdown>
         </Space>
       </div>
@@ -993,8 +1030,16 @@ export default function DocEditorPage({
         allowSiteFormat={false}
       />
 
-      {/* AI 助手 — 选区 ✨ + 右下角浮窗，覆盖所有编辑模式 (md/rich/html) */}
-      <SelectionAI contextProvider={() => aiContext} />
+      {/* AI 助手 — 选区 ✨（md/html/pdf/pptx；富文本自带 AIAssistantMenu，
+          双入口重叠易误触故不再挂载）+ 右下角全文浮窗 */}
+      {mode !== 'rich' && (
+        <SelectionAI
+          contextProvider={() => aiContext}
+          surfaceProvider={() =>
+            mode === 'markdown' ? mdSurface : mode === 'html' ? htmlSurface : null
+          }
+        />
+      )}
       {(mode === 'markdown' || mode === 'rich' || mode === 'html') && (
         <DocAIPanel content={aiContext} title={doc.title} />
       )}

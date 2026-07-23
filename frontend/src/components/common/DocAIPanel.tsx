@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Drawer, Input, Spin } from 'antd';
+import { Button, Drawer, Input, Spin } from 'antd';
 import { JzAiIcon } from '@/components/common/JzIcon';
 import { streamAI, getCapabilities, type AIOperation } from '@/api/ai';
 import { getResolvedAIModelId, resolveAIModel } from '@/utils/aiModel';
@@ -10,6 +10,18 @@ interface Props {
   content: string;
   title?: string;
   modelOverride?: string;
+}
+
+/** 全文塞 prompt 的长度上限（字符）。超长文档截头部并注明，防止超模型
+ *  上下文 / 白白烧预算 —— 总结/大纲类操作对头部截断相对不敏感。 */
+const MAX_AI_CONTENT_CHARS = 20000;
+
+function clipForAI(content: string): string {
+  if (content.length <= MAX_AI_CONTENT_CHARS) return content;
+  return (
+    content.slice(0, MAX_AI_CONTENT_CHARS) +
+    `\n\n[注：文档过长，以上仅为前 ${MAX_AI_CONTENT_CHARS} 字，其余已截断]`
+  );
 }
 
 export function DocAIPanel({ content, title, modelOverride }: Props) {
@@ -28,24 +40,18 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
   }, []);
 
   useEffect(() => {
-    getCapabilities()
-      .then((c) => {
-        const id = modelOverride || resolveAIModel(c);
-        const found = c.models.find((m) => m.id === id);
-        setModelLabel(found?.label || id);
-      })
-      .catch(() => setModelLabel(''));
-    const onChange = () => {
+    const refreshModelLabel = () => {
       getCapabilities()
         .then((c) => {
           const id = modelOverride || resolveAIModel(c);
           const found = c.models.find((m) => m.id === id);
           setModelLabel(found?.label || id);
         })
-        .catch(() => {});
+        .catch(() => setModelLabel(''));
     };
-    window.addEventListener('jz-ai-model-changed', onChange);
-    return () => window.removeEventListener('jz-ai-model-changed', onChange);
+    refreshModelLabel();
+    window.addEventListener('jz-ai-model-changed', refreshModelLabel);
+    return () => window.removeEventListener('jz-ai-model-changed', refreshModelLabel);
   }, [modelOverride]);
 
   async function run(op: AIOperation, custom?: string, label = '') {
@@ -54,9 +60,10 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
     setStreaming(true);
     const ctrl = new AbortController();
     abortRef.current = ctrl;
+    const clipped = clipForAI(content);
     const body = custom
-      ? `问题：${custom}\n\n文档「${title ?? ''}」全文：\n${content}`
-      : `文档「${title ?? ''}」：\n${content}`;
+      ? `问题：${custom}\n\n文档「${title ?? ''}」全文：\n${clipped}`
+      : `文档「${title ?? ''}」：\n${clipped}`;
     try {
       await streamAI(op, body, {
         model: modelOverride || (await getResolvedAIModelId()),
@@ -81,15 +88,15 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
 
   return (
     <>
-      <button
-        type="button"
-        className="jz-doc-ai-fab ant-btn ant-btn-primary ant-btn-circle"
+      <Button
+        type="primary"
+        shape="circle"
+        className="jz-doc-ai-fab"
         onClick={() => setOpen(true)}
         aria-label="AI 助手"
         title={modelLabel ? `AI 助手 (${modelLabel})` : 'AI 助手'}
-      >
-        <JzAiIcon size={18} />
-      </button>
+        icon={<JzAiIcon size={18} />}
+      />
       <Drawer
         title={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

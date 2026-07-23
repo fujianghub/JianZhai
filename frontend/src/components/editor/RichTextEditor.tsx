@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { EditorContent, ReactNodeViewRenderer, useEditor } from '@tiptap/react';
+import { EditorContent, ReactNodeViewRenderer, useEditor, useEditorState } from '@tiptap/react';
 import { Extension } from '@tiptap/core';
 import { Plugin } from '@tiptap/pm/state';
 import { BubbleMenu } from '@tiptap/react/menus';
@@ -79,6 +79,7 @@ import type { Editor } from '@tiptap/core';
 import type { MentionSuggestion } from '@/api/linking';
 import { wordCount, preprocessMarkdown } from '@/utils/markdown';
 import { flushOnUnmount } from './editorSaveLifecycle';
+import { draftBackupKey } from '@/utils/localDraftBackup';
 import { escapeFenceAttr, parseCodeFenceInfo, serializeCodeFenceInfo } from '@/utils/codeFenceMeta';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
@@ -230,6 +231,9 @@ export default function RichTextEditor({
   }, [onAutoSave]);
 
   const editorInstanceRef = useRef<Editor | null>(null);
+  /** flush effect 的 deps 为 []，闭包里的 documentId 会过期 —— 经 ref 读最新值。 */
+  const documentIdRef = useRef(documentId);
+  documentIdRef.current = documentId;
 
   const editor = useEditor({
     editable: !readOnly,
@@ -426,6 +430,9 @@ export default function RichTextEditor({
     ],
     editorProps: {
       handleKeyDown: (_view, event) => {
+        // IME 组合期间（isComposing / keyCode 229）交还输入法处理，
+        // 否则中文选词回车 / 组合中的 @ 会被下面的拦截劫持。
+        if (event.isComposing || event.keyCode === 229) return false;
         if (event.key === '@' && !event.metaKey && !event.ctrlKey && !event.altKey) {
           event.preventDefault();
           setMentionOpenRef.current(true);
@@ -506,6 +513,9 @@ export default function RichTextEditor({
         saveSeqRef,
         lastSavedRef,
         lastEmittedRef,
+        backupKey: documentIdRef.current
+          ? draftBackupKey(documentIdRef.current, 'flush')
+          : undefined,
       });
     };
   }, []);
@@ -940,6 +950,32 @@ export default function RichTextEditor({
     error: { text: '保存失败', color: 'red' },
   };
 
+  // Tiptap v3 的 useEditor 不随 transaction 重渲 —— 工具栏 / 气泡菜单在
+  // render 里直接 editor.isActive() 只能拿到陈旧快照（光标移动后高亮不
+  // 更新）。所有激活态统一经 useEditorState 订阅（与 LinkBubbleMenu 同构）。
+  const ui = useEditorState({
+    editor,
+    selector: ({ editor: ed }) =>
+      ed
+        ? {
+            bold: ed.isActive('bold'),
+            italic: ed.isActive('italic'),
+            underline: ed.isActive('underline'),
+            strike: ed.isActive('strike'),
+            code: ed.isActive('code'),
+            link: ed.isActive('link'),
+            blockquote: ed.isActive('blockquote'),
+            annotation: ed.isActive('annotation'),
+            bulletList: ed.isActive('bulletList'),
+            orderedList: ed.isActive('orderedList'),
+            taskList: ed.isActive('taskList'),
+            alignLeft: ed.isActive({ textAlign: 'left' }),
+            alignCenter: ed.isActive({ textAlign: 'center' }),
+            alignRight: ed.isActive({ textAlign: 'right' }),
+          }
+        : null,
+  });
+
   if (!editor) return null;
 
   return (
@@ -1040,7 +1076,7 @@ export default function RichTextEditor({
               </div>
               <Space>
                 <Button size="small" type="primary" onClick={confirmLink}>确定</Button>
-                {editor.isActive('link') && (
+                {(ui?.link ?? false) && (
                   <Button size="small" danger onClick={() => {
                     editor.chain().focus().extendMarkRange('link').unsetLink().run();
                     setLinkPopoverOpen(false);
@@ -1108,10 +1144,10 @@ export default function RichTextEditor({
 
         <span className="jz-toolbar-group">
         <Space.Compact>
-          <ToolbarBtn editor={editor} mark="bold" icon={<BoldOutlined />} title="加粗 (Ctrl+B)" />
-          <ToolbarBtn editor={editor} mark="italic" icon={<ItalicOutlined />} title="斜体 (Ctrl+I)" />
-          <ToolbarBtn editor={editor} mark="underline" icon={<UnderlineOutlined />} title="下划线 (Ctrl+U)" />
-          <ToolbarBtn editor={editor} mark="strike" icon={<StrikethroughOutlined />} title="删除线" />
+          <ToolbarBtn editor={editor} mark="bold" icon={<BoldOutlined />} title="加粗 (Ctrl+B)" active={ui?.bold ?? false} />
+          <ToolbarBtn editor={editor} mark="italic" icon={<ItalicOutlined />} title="斜体 (Ctrl+I)" active={ui?.italic ?? false} />
+          <ToolbarBtn editor={editor} mark="underline" icon={<UnderlineOutlined />} title="下划线 (Ctrl+U)" active={ui?.underline ?? false} />
+          <ToolbarBtn editor={editor} mark="strike" icon={<StrikethroughOutlined />} title="删除线" active={ui?.strike ?? false} />
         </Space.Compact>
         </span>
         <MoreMarksDropdown editor={editor} />
@@ -1155,24 +1191,24 @@ export default function RichTextEditor({
         <Space.Compact>
           <ToolbarBtn
             editor={editor}
-            node="bulletList"
             icon={<UnorderedListOutlined />}
             title="无序列表"
             toggle={() => editor.chain().focus().toggleBulletList().run()}
+            active={ui?.bulletList ?? false}
           />
           <ToolbarBtn
             editor={editor}
-            node="orderedList"
             icon={<OrderedListOutlined />}
             title="有序列表"
             toggle={() => editor.chain().focus().toggleOrderedList().run()}
+            active={ui?.orderedList ?? false}
           />
           <ToolbarBtn
             editor={editor}
-            node="taskList"
             icon={<CheckSquareOutlined />}
             title="任务列表"
             toggle={() => editor.chain().focus().toggleTaskList().run()}
+            active={ui?.taskList ?? false}
           />
         </Space.Compact>
         </span>
@@ -1227,7 +1263,7 @@ export default function RichTextEditor({
                 <Tooltip title="左对齐 (Ctrl+Shift+L)">
                   <Button
                     size="small"
-                    type={editor.isActive({ textAlign: 'left' }) ? 'primary' : 'default'}
+                    type={ui?.alignLeft ? 'primary' : 'default'}
                     icon={<AlignLeftOutlined />}
                     onClick={() => editor.chain().focus().setTextAlign('left').run()}
                   />
@@ -1235,7 +1271,7 @@ export default function RichTextEditor({
                 <Tooltip title="居中 (Ctrl+Shift+E)">
                   <Button
                     size="small"
-                    type={editor.isActive({ textAlign: 'center' }) ? 'primary' : 'default'}
+                    type={ui?.alignCenter ? 'primary' : 'default'}
                     icon={<AlignCenterOutlined />}
                     onClick={() => editor.chain().focus().setTextAlign('center').run()}
                   />
@@ -1243,7 +1279,7 @@ export default function RichTextEditor({
                 <Tooltip title="右对齐 (Ctrl+Shift+R)">
                   <Button
                     size="small"
-                    type={editor.isActive({ textAlign: 'right' }) ? 'primary' : 'default'}
+                    type={ui?.alignRight ? 'primary' : 'default'}
                     icon={<AlignRightOutlined />}
                     onClick={() => editor.chain().focus().setTextAlign('right').run()}
                   />
@@ -1362,7 +1398,7 @@ export default function RichTextEditor({
           <div className="jz-bubble-menu" role="toolbar" aria-label="格式工具栏">
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('bold') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.bold ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleBold().run()}
               title="加粗 (Ctrl+B)"
               aria-label="加粗"
@@ -1371,7 +1407,7 @@ export default function RichTextEditor({
             </button>
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('italic') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.italic ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleItalic().run()}
               title="斜体 (Ctrl+I)"
               aria-label="斜体"
@@ -1380,7 +1416,7 @@ export default function RichTextEditor({
             </button>
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('strike') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.strike ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleStrike().run()}
               title="删除线"
               aria-label="删除线"
@@ -1389,7 +1425,7 @@ export default function RichTextEditor({
             </button>
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('underline') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.underline ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleUnderline().run()}
               title="下划线 (Ctrl+U)"
               aria-label="下划线"
@@ -1398,7 +1434,7 @@ export default function RichTextEditor({
             </button>
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('code') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.code ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleCode().run()}
               title="行内代码"
               aria-label="行内代码"
@@ -1438,7 +1474,7 @@ export default function RichTextEditor({
             <span className="jz-bubble-divider" aria-hidden />
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('link') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.link ? ' is-active' : '')}
               onClick={openLinkPopover}
               title="链接"
               aria-label="链接"
@@ -1450,7 +1486,7 @@ export default function RichTextEditor({
             </span>
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('blockquote') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.blockquote ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleBlockquote().run()}
               title="引用"
               aria-label="引用"
@@ -1459,9 +1495,9 @@ export default function RichTextEditor({
             </button>
             <button
               type="button"
-              className={'jz-bubble-btn' + (editor.isActive('annotation') ? ' is-active' : '')}
+              className={'jz-bubble-btn' + (ui?.annotation ? ' is-active' : '')}
               onClick={openAnnotationModal}
-              title={editor.isActive('annotation') ? '编辑批注' : '添加批注'}
+              title={ui?.annotation ? '编辑批注' : '添加批注'}
               aria-label="批注"
             >
               <CommentOutlined />
@@ -1595,20 +1631,21 @@ export default function RichTextEditor({
 function ToolbarBtn({
   editor,
   mark,
-  node,
   icon,
   title,
   toggle,
+  active,
 }: {
   editor: ReturnType<typeof useEditor>;
   mark?: 'bold' | 'italic' | 'strike' | 'code' | 'underline';
-  node?: string;
   icon: React.ReactNode;
   title: string;
   toggle?: () => void;
+  /** 由父组件经 useEditorState 订阅后传入 —— 在此组件内直接读
+   *  editor.isActive() 会拿到不随光标移动刷新的陈旧快照。 */
+  active: boolean;
 }) {
   if (!editor) return null;
-  const active = mark ? editor.isActive(mark) : node ? editor.isActive(node) : false;
   const onClick =
     toggle ??
     (() => {

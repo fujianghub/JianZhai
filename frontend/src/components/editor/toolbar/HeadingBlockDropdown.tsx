@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Button, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
 import { DownOutlined } from '@ant-design/icons';
+import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import {
   applyHeadingBlock,
@@ -27,8 +28,14 @@ interface Props {
 }
 
 export default function HeadingBlockDropdown({ editor, compact = false }: Props) {
-  const activeLevel = getActiveHeadingLevel(editor);
-  const label = getHeadingBlockLabel(editor);
+  // Tiptap v3：render 里直接读 editor 状态是陈旧快照，须经 useEditorState 订阅
+  const { activeLevel, label } = useEditorState({
+    editor,
+    selector: ({ editor: ed }) => ({
+      activeLevel: getActiveHeadingLevel(ed),
+      label: getHeadingBlockLabel(ed),
+    }),
+  });
 
   const items: MenuProps['items'] = useMemo(() => {
     const rows: MenuProps['items'] = [
