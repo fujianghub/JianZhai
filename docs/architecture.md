@@ -144,6 +144,7 @@ public/posts(by-id/by-slug/adjacent/related/backlinks) · kbs(tree) · tags · a
 - 编辑器 `onUpdate` **200ms** 防抖 → 推 Markdown 给 React 父
 - 父组件 **5s** 防抖 → 发 PATCH（带 `expected_version`）
 - 服务端事务内 `select_for_update`：版本不匹配 → 409 + 当前快照
+- **前端 409 处理**（2026-07-24 起不再静默丢字）：`documentSave.ts` 先把尝试保存的本地内容备份 localStorage（`utils/localDraftBackup.ts`，键 `jz-draft-backup:<docId>:<场景>`），编辑页弹「恢复我的编辑 / 使用服务器版本」——恢复即基于新版本自动重保存；编辑器卸载 flush（fire-and-forget）失败同样本地备份 + 提示
 - 写入成功 → `transaction.on_commit` 再 Celery `.delay()`，避免 worker 读未提交
 - Worker 异步刷搜索索引 + 重建 `DocumentLink`
 - 状态栏 idle → pending → saving → saved；未启动 worker 时保存仍成功（200），但搜索/链接滞后

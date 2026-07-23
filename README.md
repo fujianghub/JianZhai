@@ -200,6 +200,7 @@ cd backend && python manage.py seed_architecture_kb
 | **正文长图限高三段式** | 阅读端超长图 CSS 70vh 连续缩放 + 极端长图折叠为可展开预览（`LongImageEnhancer`）+ 阅读设置面板开关；StrictMode 下 dataset 守卫失效改 WeakSet。2026-07-21 推 main |
 | **六主题配色 + 界面动效** | 配色：`--jz-on-accent` 修选中态/按钮/印章白字对比（最低 1.8:1→≥5.3:1）、星空/深海专属紫调/青碧玻璃面、春水/冬雪防漏绿；动效：主题切换 View Transition 圆形揭幕、「随朝暮」昼夜自动主题、顶栏滚动态、卡片滚动显现、玻璃指针 spotlight、星空真实月相、四主题点击/光标彩蛋、light/dark 呼吸背景、canvas 帧时自适应降质；顺带修复春水 WebGL shader 在 dev StrictMode 下的存量崩溃。2026-07-22 推 main |
 | **LaTeX 数学全链路补全** | 富文本行内打完 `$x$` 自动转公式（补 MathInline InputRule）；`\(..\)`/`\[..\]` 反斜杠定界符归一化（前后端镜像，ChatGPT/论文来源粘贴即识别）；导出端公式从残破字面量到真实渲染——数学 tokenizer 防强调破坏 + headless Chromium 批量预渲染 KaTeX（HTML/PDF/静态站离线可显，字体内嵌 CSS 仅含公式注入，docx 保留 `$..$` 原文）；搜索索引剥公式噪声并全量重建存量。2026-07-23 |
+| **编辑器体检修复批次** | 工具栏/气泡/下拉激活态随光标实时刷新（Tiptap v3 `useEditorState` 全面接入）；`:::info 自定义标题` 富文本 round-trip 不再丢标题；409 冲突弹「恢复我的编辑 / 使用服务器版本」+ 本地备份兜底（含卸载 flush 失败）；选区 AI 润色/纠错/翻译一键回写原文（快照校验防盲替换）+ 富文本去双 AI 入口 + 全文 AI 截断 2 万字；CM6 标题编号变更门控、光标移动去全文扫描、BlockHoverMenu rAF 节流；IME 守卫、图片上传位置 mapping、HTML 模式 Tab 缩进。前端 450 + 后端 423 测试绿。2026-07-24 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）

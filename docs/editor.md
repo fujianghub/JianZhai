@@ -38,6 +38,7 @@
 |------|----------------------|----------|
 | 数学公式块 | `$$expr$$`（多行也支持） | `MathNode.tsx` |
 | 数学公式行内 | `$expr$`（防 currency 误识） | `MathNode.tsx` |
+| 色块 Callout | `:::kind 自定义标题`（标题经节点 `title` 属性 round-trip，2026-07-24 前重载即丢） | `CalloutExtension.ts` / `CalloutView.tsx` |
 | 折叠块 | `:::details 标题` ↔ `<details>` | `DetailsBlock.ts` |
 | 分栏 / 标签页 | `:::cols-2` / `:::tabs` | `Columns.ts` / `Tabs.ts` |
 | 内联 TOC | `[TOC]`（全文）/ `[TOC:section]`（本节子树） | `InlineToc.ts` |
@@ -132,7 +133,7 @@
 
 - **权威算法** `utils/headingNumber.ts`：`nextHeadingNumber`（增量步进）+ `computeHeadingNumbers`（批量），栈压缩——深度=祖先栈层数而非 markdown 原始级数，`h1→h2→h4` 得 `1 / 1.1 / 1.1.1`（跳过的 h3 不占位），`h1→h1` 得 `2`。**四端复用同一套**保证一致：
   - **阅读器**：`utils/markdown.ts` `heading_open` 规则 env 维护编号栈 → 注入 `<span class="jz-heading-num">` + `TocEntry.numbering`；`renderMarkdownWithToc(src, { numbering })` 的 **LRU 缓存 key 必须并入 numbering 标志**（否则开关切换命中脏缓存）。
-  - **CM6 源码**：`codemirror/extensions/headingNumber.ts` ViewPlugin widget（`Compartment` 开关）。
+  - **CM6 源码**：`codemirror/extensions/headingNumber.ts` ViewPlugin widget（`Compartment` 开关）；`changeMayAffectNumbering` **变更门控**——普通打字只把既有装饰经 `changes` 平移，仅含换行/`#`/fence 字符或落在标题/fence 行的编辑才全文重建（此前每键 O(N) 重扫，开编号后大文档首要热点）。
   - **Tiptap 富文本**：`HeadingNumber.ts` ProseMirror 插件 node decoration（`data-jz-num` attr + CSS `::before`），`setHeadingNumbering` meta 命令切换、不重建编辑器。
   - **大纲 / 目录面板**：`DocumentOutline` / `TocPanel` 前缀编号。
 
