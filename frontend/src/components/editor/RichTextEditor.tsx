@@ -523,26 +523,32 @@ export default function RichTextEditor({
   // 把 editor 实例提升给宿主，便于大纲 / 查找替换等侧栏组件使用
   useEffect(() => {
     if (!onEditorReady) return;
-    onEditorReady(editor ?? null);
+    onEditorReady(editor && !editor.isDestroyed ? editor : null);
     return () => onEditorReady(null);
   }, [editor, onEditorReady]);
 
+  // 下面几个挂载 effect 必须同时判 isDestroyed：Tiptap v3 useEditor 在 render
+  // 阶段建实例并挂 1ms 兜底销毁定时器（清理 StrictMode 丢弃渲染），首次懒加载
+  // 挂载太重时定时器抢在 passive effect 前触发，本次渲染闭包里的 editor 已被
+  // destroy（commandManager=null）——此时 editor.commands 即抛
+  // "Cannot read properties of null (reading 'commands')"。跳过即可：useEditor
+  // 会立刻重建实例并触发重渲，effect 随 [editor] 变化在新实例上重跑。
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     editor.setEditable(!readOnly);
   }, [editor, readOnly]);
 
   // Keep the display-only heading numbering in sync with the doc toggle without
   // re-creating the editor (setHeadingNumbering flips the decoration plugin).
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     editor.commands.setHeadingNumbering(headingNumbering);
   }, [editor, headingNumbering]);
 
   // Sync external value (409 conflict reload, version restore). Guarded so
   // we never overwrite local edits that are still inside the 200ms debounce.
   useEffect(() => {
-    if (!editor) return;
+    if (!editor || editor.isDestroyed) return;
     const current = editor.storage.markdown?.getMarkdown?.() ?? '';
     if (value === current) {
       // Server echo: refresh save bookkeeping so the status indicator clears.
