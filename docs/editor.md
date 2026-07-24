@@ -218,6 +218,7 @@
 - **CM6**：`codemirror/pure/linkAt.ts` 纯函数（`findLinkAt` 行内定位、`linkToPlain/Title/Card`；卡片须整行——独占行原地替换、行内则移到下一行，mention 的 `@` 前缀经 `atFrom` 一并吞掉）+ `LinkFloatingMenu.tsx`（FloatingFormatToolbar 同款 portal）；`handleCmUpdate` 空选区检测（表格浮条优先、fence/行内代码经 `syntaxTree` 排除），命令派发前重新 `findLinkAt` 校验 href 未变。
 - **阅读端 / 导出端**：见 [frontend.md §5](./frontend.md)（CardEnhancer 水合）与 [export-search.md §2](./export-search.md)（card_placeholders 零泄漏）。
 
-> ⚠️ **Tiptap v3 两坑**（本批实测踩中，勿复犯）：
+> ⚠️ **Tiptap v3 三坑**（实测踩中，勿复犯）：
 > 1. **Link 扩展协议白名单**（`isAllowedUri`，默认 http/https/mailto…）**拒收 `doc:`** → markdown 重载时 `[标题](doc:ID)` 的 link mark 被**静默剥成纯文本**（存量 bug：mention 行内链接在富文本模式一直坏着）。修=`Link.configure({ protocols: ['doc'] })`；新增内部协议须同步此白名单。
 > 2. **`useEditor` 默认不随 transaction 重渲**：组件 render 里直接 `editor.isActive()/getAttributes()` 拿到**陈旧快照**（菜单激活态/按钮显隐全错）。任何依赖 editor 实时状态的 React UI 一律走 `useEditorState({ editor, selector })` 订阅。
+> 3. **`useEditor` 的 1ms 兜底销毁定时器 vs passive effect 竞速**（2026-07-24，`@tiptap/react` 3.23.4 上游缺陷）：`EditorInstanceManager` 在 **render 阶段**同步建实例并立刻 `scheduleDestroy()`——`setTimeout(1ms)` 里若组件还没跑到 passive effect（`isComponentMounted` 仍 false）就把实例 `destroy()`（本意是清理 StrictMode 丢弃渲染）。**首次**懒加载挂载（PostDetail 内联编辑 chunk + Tiptap 首次初始化）太重时定时器抢跑，已提交渲染闭包里的 editor 已被销毁（`commandManager=null`），挂载 effect 里 `editor.commands.*` 即抛 `Cannot read properties of null (reading 'commands')` 打到根 ErrorBoundary；重试后 chunk 已热故第二次正常。**与 StrictMode 无关，prod 慢设备同样可触发**。修=RichTextEditor 挂载 effect 守卫升级为 `if (!editor || editor.isDestroyed) return`（setEditable / setHeadingNumbering / value 同步），`onEditorReady` 对已销毁实例传 null——跳过即可，`useEditor` 会立刻重建实例并随 `[editor]` 变化重跑 effect。同样貌报错先排本竞速，再怀疑 vite 缓存 desync（memory `project_editor_crash_cache_desync_2026-06-09`）。
