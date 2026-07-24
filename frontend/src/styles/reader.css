@@ -263,7 +263,8 @@ body.jz-reader-focus .blog-header,
 body.jz-reader-focus .jz-blog-footer,
 body.jz-reader-focus .jz-post-aside,
 body.jz-reader-focus .jz-post-layout .jz-post-col-resizer,
-body.jz-reader-focus .jz-toc-fab,
+/* Focus mode keeps the TOC FAB (it opens an overlay drawer) — long reads in
+   focus are exactly when readers need to jump between sections. */
 body.jz-reader-focus .jz-kbnav-fab,
 body.jz-reader-focus .jz-post-main > .ant-breadcrumb {
   display: none !important;
@@ -511,11 +512,45 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   }
 }
 
-@media (max-width: 960px) {
-  .jz-toc-fab,
-  .jz-kbnav-fab {
-    display: none;
-  }
+/* FABs stay visible on phones — below the rail breakpoints they open
+   overlay drawers, so hiding them here would leave no TOC entry at all. */
+
+/* ── "Continue reading" pill ───────────────────────────────────────────── */
+.jz-resume-pill {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  background: var(--glass-surface-strong, var(--jz-surface));
+  border: 1px solid var(--jz-border);
+  box-shadow: var(--glass-shadow-soft, 0 4px 16px rgba(0, 0, 0, 0.12));
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+.jz-resume-pill-btn {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 7px 6px 7px 16px;
+  font-size: 13px;
+  color: var(--jz-accent);
+  font-weight: 500;
+}
+.jz-resume-pill-close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 7px 12px 7px 6px;
+  font-size: 14px;
+  line-height: 1;
+  color: var(--jz-text-muted);
+}
+.jz-resume-pill-close:hover {
+  color: var(--jz-text);
 }
 
 /* ── Footnote hover preview tooltip ────────────────────────────────────── */

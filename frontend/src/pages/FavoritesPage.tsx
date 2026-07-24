@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Empty, Spin, Tag, Typography, message } from 'antd';
-import { Link, useNavigate } from 'react-router-dom';
+import { Button, Empty, Popconfirm, Spin, Tag, Typography, message } from 'antd';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { StarFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -10,11 +10,17 @@ import {
 } from '@/api/docs';
 import { formatApiError } from '@/api/client';
 import { docBrowseHref, docEditorHref } from '@/utils/docLinks';
+import { useAuthStore } from '@/stores/auth';
 
-const { Text } = Typography;
+const { Text, Title } = Typography;
 
 export default function FavoritesPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const isAuthor = useAuthStore((s) => !!s.user?.is_staff);
+  // Mounted both at /favorites (blog shell) and /admin/favorites (admin
+  // shell); the guwen hero belongs to the blog chrome only.
+  const inAdmin = location.pathname.startsWith('/admin');
   const [items, setItems] = useState<FavoriteDocument[] | null>(null);
   const [removingId, setRemovingId] = useState<number | null>(null);
 
@@ -31,8 +37,7 @@ export default function FavoritesPage() {
     load();
   }, [load]);
 
-  async function handleUnfavorite(doc: FavoriteDocument, e: React.MouseEvent) {
-    e.stopPropagation();
+  async function handleUnfavorite(doc: FavoriteDocument) {
     setRemovingId(doc.id);
     try {
       const { is_favorited } = await toggleDocumentFavorite(doc.id);
@@ -50,10 +55,37 @@ export default function FavoritesPage() {
     navigate(docBrowseHref(doc));
   }
 
+  const header = inAdmin ? (
+    <div className="jz-favorites-admin-head">
+      <Title level={3} style={{ marginBottom: 4 }}>
+        我的收藏
+      </Title>
+      {items && items.length > 0 ? (
+        <Text type="secondary">共 {items.length} 篇</Text>
+      ) : null}
+    </div>
+  ) : (
+    <section className="jz-hero" aria-label="题记">
+      <div className="jz-hero-quote" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>
+        <span>我 的 收 藏</span>
+      </div>
+      {items && items.length > 0 ? (
+        <div className="jz-hero-attr">
+          <span className="jz-hero-attr-rule" aria-hidden />
+          <span>共 {items.length} 篇</span>
+          <span className="jz-hero-attr-rule" aria-hidden />
+        </div>
+      ) : null}
+    </section>
+  );
+
   if (items === null) {
     return (
-      <div className="jz-favorites jz-favorites--loading">
-        <Spin />
+      <div className="jz-favorites">
+        {header}
+        <div className="jz-favorites--loading">
+          <Spin />
+        </div>
       </div>
     );
   }
@@ -61,13 +93,13 @@ export default function FavoritesPage() {
   if (items.length === 0) {
     return (
       <div className="jz-favorites">
-        <section className="jz-hero" aria-label="题记">
-          <div className="jz-hero-quote" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>
-            <span>我 的 收 藏</span>
-          </div>
-        </section>
+        {header}
         <Empty description="还没有收藏的文档">
-          <Link to="/admin/kbs">去知识库</Link>
+          {isAuthor ? (
+            <Link to="/admin/kbs">去知识库</Link>
+          ) : (
+            <Link to="/">去藏经阁逛逛</Link>
+          )}
         </Empty>
       </div>
     );
@@ -75,16 +107,7 @@ export default function FavoritesPage() {
 
   return (
     <div className="jz-favorites">
-      <section className="jz-hero" aria-label="题记">
-        <div className="jz-hero-quote" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>
-          <span>我 的 收 藏</span>
-        </div>
-        <div className="jz-hero-attr">
-          <span className="jz-hero-attr-rule" aria-hidden />
-          <span>共 {items.length} 篇</span>
-          <span className="jz-hero-attr-rule" aria-hidden />
-        </div>
-      </section>
+      {header}
 
       <ul className="jz-favorites-list">
         {items.map((doc) => {
@@ -107,7 +130,11 @@ export default function FavoritesPage() {
                 <span className="jz-favorites-title">{doc.title}</span>
                 <div className="jz-favorites-meta">
                   <Link
-                    to={`/admin/kbs/${doc.knowledge_base.id}`}
+                    to={
+                      isAuthor
+                        ? `/admin/kbs/${doc.knowledge_base.id}`
+                        : `/kb/${encodeURIComponent(doc.knowledge_base.slug)}`
+                    }
                     className="jz-favorites-kb"
                     style={
                       doc.knowledge_base.accent_color
@@ -118,14 +145,17 @@ export default function FavoritesPage() {
                   >
                     {doc.knowledge_base.name}
                   </Link>
-                  <Tag color={doc.status === 'published' ? 'green' : 'default'}>
-                    {doc.status === 'published' ? '已发布' : '草稿'}
-                  </Tag>
-                  {doc.visibility === 'public' ? (
-                    <Tag color="blue">公开</Tag>
-                  ) : (
-                    <Tag>私密</Tag>
+                  {isAuthor && (
+                    <Tag color={doc.status === 'published' ? 'green' : 'default'}>
+                      {doc.status === 'published' ? '已发布' : '草稿'}
+                    </Tag>
                   )}
+                  {isAuthor &&
+                    (doc.visibility === 'public' ? (
+                      <Tag color="blue">公开</Tag>
+                    ) : (
+                      <Tag>私密</Tag>
+                    ))}
                   {canReadPublic ? (
                     <Tag color="processing" className="jz-favorites-read-hint">
                       点击阅读
@@ -139,22 +169,31 @@ export default function FavoritesPage() {
                 </Text>
               </div>
               <div className="jz-favorites-actions">
-                <Link
-                  to={docEditorHref(doc.knowledge_base.id, doc.id)}
-                  className="jz-favorites-edit"
-                  onClick={(e) => e.stopPropagation()}
+                {isAuthor && (
+                  <Link
+                    to={docEditorHref(doc.knowledge_base.id, doc.id)}
+                    className="jz-favorites-edit"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    编辑
+                  </Link>
+                )}
+                <Popconfirm
+                  title="取消收藏该文档？"
+                  onConfirm={() => void handleUnfavorite(doc)}
+                  okText="取消收藏"
+                  cancelText="保留"
                 >
-                  编辑
-                </Link>
-                <Button
-                  type="text"
-                  icon={<StarFilled style={{ color: 'var(--jz-gold, #d4a017)' }} />}
-                  loading={removingId === doc.id}
-                  onClick={(e) => void handleUnfavorite(doc, e)}
-                  aria-label={`取消收藏 ${doc.title}`}
-                >
-                  取消收藏
-                </Button>
+                  <Button
+                    type="text"
+                    icon={<StarFilled style={{ color: 'var(--jz-gold, #d4a017)' }} />}
+                    loading={removingId === doc.id}
+                    onClick={(e) => e.stopPropagation()}
+                    aria-label={`取消收藏 ${doc.title}`}
+                  >
+                    取消收藏
+                  </Button>
+                </Popconfirm>
               </div>
             </li>
           );

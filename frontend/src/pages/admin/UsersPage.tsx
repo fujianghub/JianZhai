@@ -389,7 +389,7 @@ export default function UsersPage() {
           <Form.Item
             label="密码"
             name="password"
-            rules={[{ required: true, message: '请输入密码' }, { min: 4, message: '至少 4 位' }]}
+            rules={[{ required: true, message: '请输入密码' }, { min: 8, message: '至少 8 位' }]}
           >
             <Input.Password />
           </Form.Item>
@@ -488,7 +488,11 @@ interface TagManagerProps {
 
 function TagManagerModal({ open, tags, onClose, onChanged }: TagManagerProps) {
   const [name, setName] = useState('');
-  const [color, setColor] = useState('#1677ff');
+  const [color, setColor] = useState('#10b981');
+  // In-app rename dialog (window.prompt is unthemed browser chrome and
+  // offers no validation feedback).
+  const [renaming, setRenaming] = useState<UserTag | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   async function onAdd() {
     const n = name.trim();
@@ -506,14 +510,27 @@ function TagManagerModal({ open, tags, onClose, onChanged }: TagManagerProps) {
     }
   }
 
-  async function onRename(tag: UserTag) {
-    const next = window.prompt('重命名标签', tag.name);
-    if (next == null) return;
-    const trimmed = next.trim();
-    if (!trimmed || trimmed === tag.name) return;
+  function openRename(tag: UserTag) {
+    setRenaming(tag);
+    setRenameValue(tag.name);
+  }
+
+  async function commitRename() {
+    const tag = renaming;
+    if (!tag) return;
+    const trimmed = renameValue.trim();
+    if (!trimmed) {
+      message.warning('标签名不能为空');
+      return;
+    }
+    if (trimmed === tag.name) {
+      setRenaming(null);
+      return;
+    }
     try {
       await usersApi.updateUserTag(tag.id, { name: trimmed });
       message.success('已重命名');
+      setRenaming(null);
       onChanged();
     } catch (e) {
       message.error(formatApiError(e));
@@ -572,8 +589,8 @@ function TagManagerModal({ open, tags, onClose, onChanged }: TagManagerProps) {
             >
               <Tag color={t.color || undefined}>{t.name}</Tag>
               <Space>
-                <ColorField value={t.color || '#1677ff'} onChange={(hex) => void onRecolor(t, hex)} />
-                <Button size="small" onClick={() => void onRename(t)}>
+                <ColorField value={t.color || '#10b981'} onChange={(hex) => void onRecolor(t, hex)} />
+                <Button size="small" onClick={() => openRename(t)}>
                   重命名
                 </Button>
                 <Popconfirm
@@ -592,6 +609,26 @@ function TagManagerModal({ open, tags, onClose, onChanged }: TagManagerProps) {
           ))}
         </Space>
       )}
+
+      <Modal
+        title="重命名标签"
+        open={renaming !== null}
+        onCancel={() => setRenaming(null)}
+        onOk={() => void commitRename()}
+        okText="重命名"
+        cancelText="取消"
+        width={360}
+        destroyOnHidden
+      >
+        <Input
+          autoFocus
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onPressEnter={() => void commitRename()}
+          placeholder="标签名"
+          maxLength={50}
+        />
+      </Modal>
     </Modal>
   );
 }

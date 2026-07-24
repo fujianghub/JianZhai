@@ -19,6 +19,8 @@ interface Props {
   density?: 'sidebar' | 'page';
   /** ``page`` mode shows a small post-count after each folder name. */
   showCounts?: boolean;
+  /** Accepted for caller compatibility; action visibility now follows the
+   * presence of the (pre-gated) handlers below. */
   canManage?: boolean;
   onTogglePin?: (doc: PublicPost) => void;
   onToggleFavorite?: (doc: PublicPost) => void;
@@ -36,8 +38,9 @@ function countDocs(f: PublicFolder): number {
  * Read-only folder tree for the public blog frontend.
  *
  * Folders are rendered as collapsible groups; documents become links to
- * /posts/<slug>. Persists collapsed state per-KB in localStorage so readers
- * don't lose their place when navigating around.
+ * /posts/<slug>. Expansion state lives in component state only — the
+ * ancestors of the currently-open post are force-expanded so readers can
+ * always see where they are.
  */
 export default function PublicKbFolderTree({
   folders,
@@ -45,11 +48,12 @@ export default function PublicKbFolderTree({
   currentSlug,
   density = 'sidebar',
   showCounts = false,
-  canManage = false,
   onTogglePin,
   onToggleFavorite,
 }: Props) {
-  const showActions = canManage && (onTogglePin || onToggleFavorite);
+  // Handlers arrive pre-gated by the caller (pin = author-only, favorite =
+  // any logged-in user), so presence alone decides visibility here.
+  const showActions = Boolean(onTogglePin || onToggleFavorite);
   /** When the active post lives inside a folder, force-expand its ancestors so
    * the reader can see where they are in the tree. */
   const initialExpanded = useMemo(() => {

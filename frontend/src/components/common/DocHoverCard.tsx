@@ -118,7 +118,7 @@ export function DocHoverCard({
         border: '1px solid var(--jz-border)',
         borderRadius: 6,
         padding: '12px 14px',
-        boxShadow: '0 6px 24px rgba(0,0,0,0.12)',
+        boxShadow: 'var(--glass-shadow-soft, 0 6px 24px rgba(0,0,0,0.12))',
         fontSize: 13,
         color: 'var(--jz-text)',
       }}
@@ -130,7 +130,7 @@ export function DocHoverCard({
           <Spin size="small" />
         </div>
       )}
-      {error && <div style={{ color: '#cf1322' }}>预览失败：{error}</div>}
+      {error && <div style={{ color: 'var(--jz-danger, #cf1322)' }}>预览失败：{error}</div>}
       {data && (
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>

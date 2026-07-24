@@ -115,7 +115,7 @@ export default function ExportDialog({
           style={{ marginTop: 12 }}
           type="info"
           showIcon
-          message="PDF 依赖 Playwright + Chromium；生产环境需运行 Celery worker，并执行 playwright install chromium"
+          message="PDF 由服务器渲染生成，耗时较其他格式略长；若任务持续失败，请联系管理员检查导出服务。"
         />
       )}
     </Modal>

@@ -7,6 +7,7 @@ import * as kbsApi from '@/api/kbs';
 import * as docsApi from '@/api/docs';
 import { formatApiError } from '@/api/client';
 import type { DocSortMode, PublicKB, PublicKBTree, PublicPost } from '@/types';
+import { useAuthStore } from '@/stores/auth';
 import PublicKbFolderTree from './PublicKbFolderTree';
 
 const { Text } = Typography;
@@ -39,6 +40,7 @@ export default function BlogKbNavPanel({
   tree: controlledTree,
   onTreeChange,
 }: Props) {
+  const sessionUser = useAuthStore((s) => s.user);
   const [kbs, setKbs] = useState<PublicKB[] | null>(null);
   const [localTree, setLocalTree] = useState<PublicKBTree | null>(null);
 
@@ -117,8 +119,11 @@ export default function BlogKbNavPanel({
     }
   }
 
+  // Pinning is an author affordance, but favoriting is a *reader* feature
+  // (the favorites endpoint deliberately bypasses the author scope) — any
+  // logged-in user gets the star.
   const pinHandler = canManage ? handleTogglePin : undefined;
-  const favHandler = canManage ? handleToggleFavorite : undefined;
+  const favHandler = sessionUser ? handleToggleFavorite : undefined;
 
   const treeSection = useMemo(() => {
     if (!tree) return null;

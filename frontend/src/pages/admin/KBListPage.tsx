@@ -177,7 +177,7 @@ export default function KBListPage() {
       name: kb.name,
       description: kb.description,
       visibility: kb.visibility,
-      accent_color: kb.accent_color || '#1677ff',
+      accent_color: kb.accent_color || '#10b981',
       cover_image: kb.cover_image,
       category_id: kb.category?.id ?? null,
       audience_mode: kb.audience_mode ?? 'all',
@@ -439,7 +439,7 @@ export default function KBListPage() {
         <Form
           form={createForm}
           layout="vertical"
-          initialValues={{ visibility: 'private' as Visibility, accent_color: '#1677ff' }}
+          initialValues={{ visibility: 'private' as Visibility, accent_color: '#10b981' }}
         >
           <Form.Item label="名称" name="name" rules={[{ required: true }]}>
             <Input autoFocus />

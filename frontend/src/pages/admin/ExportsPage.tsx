@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert,
   Button,
   Empty,
   Popconfirm,
@@ -225,22 +224,18 @@ export default function ExportsPage() {
                       下载
                     </Button>
                   ) : t.status === 'failed' ? (
-                    <Alert
-                      type="error"
-                      message="失败"
-                      description={
-                        t.error ? (
-                          <Paragraph
-                            type="danger"
-                            style={{ margin: 0, fontSize: 12 }}
-                            ellipsis={{ rows: 2, expandable: true, symbol: '更多' }}
-                          >
-                            {errorSummary(t.error)}
-                          </Paragraph>
-                        ) : undefined
-                      }
-                      style={{ padding: '4px 8px' }}
-                    />
+                    // Status column already carries the 失败 tag — here just a
+                    // compact reason line so failed rows don't balloon to
+                    // twice the height of the rest of the table.
+                    <Tooltip title={errorSummary(t.error || '') || '导出失败'}>
+                      <Paragraph
+                        type="danger"
+                        style={{ margin: 0, fontSize: 12, maxWidth: 220 }}
+                        ellipsis={{ rows: 1 }}
+                      >
+                        {errorSummary(t.error || '') || '导出失败'}
+                      </Paragraph>
+                    </Tooltip>
                   ) : (
                     <span>—</span>
                   )}

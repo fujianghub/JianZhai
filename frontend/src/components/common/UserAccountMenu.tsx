@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Dropdown } from 'antd';
 import { Link } from 'react-router-dom';
 import {
@@ -29,11 +29,19 @@ export default function UserAccountMenu({
   trashTo = '/admin/trash',
 }: Props) {
   const navigate = useNavigate();
+  const location = useLocation();
   const logout = useAuthStore((s) => s.logout);
 
   async function handleLogout() {
     await logout();
-    navigate('/admin/login', { replace: true });
+    // Readers logging out from the blog stay on the blog (the friends-only
+    // gate will bounce to login by itself when required); only admin pages
+    // send the user straight to the login screen.
+    if (location.pathname.startsWith('/admin')) {
+      navigate('/admin/login', { replace: true });
+    } else {
+      navigate('/', { replace: true });
+    }
   }
 
   const panel = (

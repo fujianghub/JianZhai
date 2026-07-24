@@ -55,7 +55,9 @@ export const MEASURE_OPTIONS: LabeledOption<string>[] = [
 export const DEFAULT_LAYOUT: ReaderLayout = {
   fontScale: 1,
   lineHeight: LINE_HEIGHT_OPTIONS[1].value, // 1.85
-  measure: MEASURE_OPTIONS[2].value, // 100% (满栏，保持原满栏外观)
+  // 适中 860px：满栏在宽屏轻易超过 45 字/行，长文可读性差；读者仍可手动
+  // 切回满栏（localStorage 有存值的用户不受影响）。
+  measure: MEASURE_OPTIONS[1].value,
   longImageLimit: true,
 };
 

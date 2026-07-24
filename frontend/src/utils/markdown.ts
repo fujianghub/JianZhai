@@ -630,6 +630,12 @@ function applyDocLinkRewrite(inst: MarkdownIt): void {
       token.attrSet('href', `/d/${docMatch[1]}`);
       token.attrJoin('class', 'doc-link');
       token.attrSet('data-doc-id', docMatch[1]);
+    } else if (/^https?:\/\//i.test(href)) {
+      // External links open in a new tab (leaving mid-article loses the
+      // reader's scroll position) and always carry noopener/noreferrer —
+      // link cards already did this; plain links now match.
+      token.attrSet('target', '_blank');
+      token.attrSet('rel', 'noopener noreferrer');
     }
     return defaultLinkOpen(tokens, idx, options, env, self);
   };

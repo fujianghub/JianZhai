@@ -183,7 +183,9 @@ export default function BlogLayout() {
         onClose={() => setSearchOpen(false)}
         resultUrl={(r) => r.visibility === 'public' && r.status === 'published'
           ? `/posts/${encodeURIComponent(r.slug)}`
-          : `/admin/kbs/${r.knowledge_base.id}?doc=${r.id}`
+          // Non-public hits go through /d/:id: authors get bounced into the
+          // editor, readers get a graceful not-found instead of an admin 403.
+          : `/d/${r.id}`
         }
       />
       <Footer className="jz-blog-footer">

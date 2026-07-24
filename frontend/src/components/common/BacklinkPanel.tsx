@@ -39,7 +39,7 @@ export default function BacklinkPanel({ documentId, variant = 'admin', compact =
       : items;
 
   return (
-    <div style={compact ? { padding: '8px 0' } : { borderTop: '1px solid #f0f0f0', paddingTop: 16, marginTop: 24 }}>
+    <div style={compact ? { padding: '8px 0' } : { borderTop: '1px solid var(--jz-border, #f0f0f0)', paddingTop: 16, marginTop: 24 }}>
       {!compact && (
         <Title level={5} style={{ marginBottom: 8 }}>
           ← 反向链接 <Text type="secondary">({visible.length})</Text>

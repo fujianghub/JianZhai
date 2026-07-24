@@ -14,7 +14,7 @@ interface Props {
 
 const PRESET_COLORS = [
   '', // theme default
-  '#1677ff',
+  '#10b981',
   '#52c41a',
   '#fa8c16',
   '#722ed1',
@@ -116,7 +116,7 @@ export default function TagPicker({ target }: Props) {
                 width: 22,
                 height: 22,
                 border:
-                  (tag.color || '') === c ? '2px solid var(--jz-accent)' : '1px solid #ddd',
+                  (tag.color || '') === c ? '2px solid var(--jz-accent)' : '1px solid var(--jz-border, #ddd)',
                 background: c || 'linear-gradient(135deg,#eee,#bbb)',
                 borderRadius: '50%',
                 cursor: 'pointer',
@@ -127,7 +127,7 @@ export default function TagPicker({ target }: Props) {
         </div>
         <input
           type="color"
-          value={/^#[0-9A-Fa-f]{6}$/.test(tag.color) ? tag.color : '#1677ff'}
+          value={/^#[0-9A-Fa-f]{6}$/.test(tag.color) ? tag.color : '#10b981'}
           onChange={(e) => void recolor(tag, e.target.value)}
           style={{ width: '100%', height: 28, border: 'none', background: 'transparent' }}
         />
@@ -136,7 +136,7 @@ export default function TagPicker({ target }: Props) {
   }
 
   return (
-    <Tooltip title="标签（回车新建；点 ⛓ 改色）">
+    <Tooltip title="标签（回车新建；点调色盘图标改色）">
       <Select
         mode="tags"
         size="small"

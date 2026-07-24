@@ -9,7 +9,7 @@ import {
   type CSSProperties,
 } from 'react';
 import type { AdjacentPosts, RelatedPost } from '@/api/blog';
-import { Alert, Breadcrumb, Button, Result, Spin, Tag, Tooltip, Typography } from 'antd';
+import { Alert, Breadcrumb, Button, Drawer, Result, Spin, Tag, Tooltip, Typography } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import { isAxiosError } from 'axios';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
@@ -28,6 +28,11 @@ import {
 } from '@/components/common/JzIcon';
 import * as blogApi from '@/api/blog';
 import * as docsApi from '@/api/docs';
+import {
+  loadReadingPosition,
+  saveReadingPosition,
+  shouldOfferResume,
+} from '@/utils/readingPosition';
 import * as kbsApi from '@/api/kbs';
 import { message } from '@/utils/notify';
 import type { DocumentDetail, PublicPostDetail } from '@/types';
@@ -293,6 +298,53 @@ export default function PostDetail() {
     return () => window.removeEventListener('keydown', onKey);
   }, [focusMode]);
 
+  // ── Reading-position memory ──────────────────────────────────────────
+  // Progress is saved per-slug (localStorage) as the reader scrolls; on a
+  // return visit a dismissible pill offers to jump back. Read mode only —
+  // editing scrolls a different layout.
+  const [resumeAt, setResumeAt] = useState<number | null>(null);
+  const postSlug = post?.slug ?? null;
+
+  useEffect(() => {
+    setResumeAt(null);
+    if (!postSlug || pageMode !== 'read') return;
+    const saved = loadReadingPosition(postSlug);
+    if (!shouldOfferResume(saved)) return;
+    setResumeAt(saved);
+    const timer = window.setTimeout(() => setResumeAt(null), 12000);
+    return () => window.clearTimeout(timer);
+  }, [postSlug, pageMode]);
+
+  useEffect(() => {
+    if (!postSlug || pageMode !== 'read') return;
+    let raf = 0;
+    const onScroll = () => {
+      if (raf) return;
+      raf = window.requestAnimationFrame(() => {
+        raf = 0;
+        const el = document.documentElement;
+        const range = el.scrollHeight - el.clientHeight;
+        // Very short pages aren't worth remembering (also avoids 0/0).
+        if (range > 200) saveReadingPosition(postSlug, el.scrollTop / range);
+      });
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      if (raf) window.cancelAnimationFrame(raf);
+    };
+  }, [postSlug, pageMode]);
+
+  const resumeReading = useCallback(() => {
+    setResumeAt((at) => {
+      if (at != null) {
+        const el = document.documentElement;
+        window.scrollTo({ top: at * (el.scrollHeight - el.clientHeight), behavior: 'smooth' });
+      }
+      return null;
+    });
+  }, []);
+
   const enterEditMode = useCallback(async () => {
     if (!post || !canEdit) return;
     setEditLoading(true);
@@ -372,6 +424,11 @@ export default function PostDetail() {
     return () => window.removeEventListener('keydown', onKey, true);
   }, [pageMode, canEdit, enterEditMode, exitEditMode]);
   /** TOC visibility — persisted per browser, defaults to shown. */
+  // Narrow-screen / focus-mode overlay drawers. Deliberately NOT persisted:
+  // a drawer auto-opening on page load from a stale localStorage flag would
+  // cover the article on mobile.
+  const [tocDrawerOpen, setTocDrawerOpen] = useState(false);
+  const [kbDrawerOpen, setKbDrawerOpen] = useState(false);
   const [tocOpen, setTocOpen] = useState<boolean>(() => {
     try {
       return localStorage.getItem('jz-toc-open') !== 'false';
@@ -550,6 +607,11 @@ export default function PostDetail() {
   const isPptxDoc = !isHtmlDoc && post.doc_format === 'pptx';
   const showKbRail = kbNavOpen && layoutWide;
   const showTocRail = showToc && tocRailWide;
+  // Below the rail breakpoints (or in focus mode, where the rails are CSS-
+  // hidden) the FABs open overlay drawers instead — previously 961–1280px had
+  // a FAB that toggled state nothing consumed, and ≤960px had no TOC at all.
+  const useTocDrawer = focusMode || !tocRailWide;
+  const useKbDrawer = !layoutWide;
   // The reader-layout controls (font scale / line-height / measure) only apply
   // to the Markdown body; HTML lives in a sandboxed iframe and binary previews
   // have no body text to reflow.
@@ -748,20 +810,31 @@ export default function PostDetail() {
                   edit actions — separated by a hairline. */}
               <span className="jz-meta-controls">
                 <span className="jz-reader-toolbar" role="group" aria-label="阅读设置">
-                  <ReaderFontPicker
-                    value={readerFont}
-                    onChange={(k) => {
-                      setReaderFont(k);
-                      saveArticleFont(k);
-                    }}
-                  />
-                  <PaperPicker
-                    value={effectivePaper}
-                    onChange={(k) => {
-                      setReaderPaperState(k);
-                      setReaderOverride(k);
-                    }}
-                  />
+                  {/* Font/paper only reach the Markdown body (sandboxed HTML
+                      iframes and binary readers ignore both) — showing dead
+                      controls there breaks the "control = effect" contract. */}
+                  {(isMarkdownReadPath || pageMode === 'edit') && (
+                    <ReaderFontPicker
+                      value={readerFont}
+                      onChange={(k) => {
+                        setReaderFont(k);
+                        saveArticleFont(k);
+                      }}
+                    />
+                  )}
+                  {(isMarkdownReadPath || pageMode === 'edit') && (
+                    <PaperPicker
+                      value={effectivePaper}
+                      onChange={(k) => {
+                        setReaderPaperState(k);
+                        setReaderOverride(k);
+                      }}
+                      /* .jz-blog-glass neutralizes the warm papers to one
+                         plain surface — hide their swatches so the preview
+                         never promises a texture the page can't render. */
+                      hiddenKeys={['rice-paper', 'kraft', 'parchment']}
+                    />
+                  )}
                   {isMarkdownReadPath && (
                     <ReaderLayoutPicker
                       layout={layout}
@@ -1046,7 +1119,7 @@ export default function PostDetail() {
         </aside>
       )}
 
-      {canShowToc && pageMode === 'read' && !tocOpen && (
+      {canShowToc && pageMode === 'read' && (useTocDrawer ? !tocDrawerOpen : !tocOpen) && (
         <Tooltip title="显示目录" placement="left">
           <Button
             type="default"
@@ -1054,13 +1127,13 @@ export default function PostDetail() {
             size="large"
             icon={<JzOutlineIcon size={20} />}
             aria-label="显示目录"
-            onClick={() => setTocOpen(true)}
+            onClick={() => (useTocDrawer ? setTocDrawerOpen(true) : setTocOpen(true))}
             className="jz-toc-fab"
           />
         </Tooltip>
       )}
 
-      {!kbNavOpen && !focusMode && (
+      {!focusMode && (useKbDrawer ? !kbDrawerOpen : !kbNavOpen) && (
         <Tooltip title="显示文档列表" placement="right">
           <Button
             type="default"
@@ -1068,11 +1141,63 @@ export default function PostDetail() {
             size="large"
             icon={<JzFolderOpenIcon size={20} />}
             aria-label="显示文档列表"
-            onClick={() => setKbNavOpen(true)}
+            onClick={() => (useKbDrawer ? setKbDrawerOpen(true) : setKbNavOpen(true))}
             className="jz-kbnav-fab"
           />
         </Tooltip>
       )}
+
+      {resumeAt != null && pageMode === 'read' && (
+        <div className="jz-resume-pill" role="status">
+          <button type="button" className="jz-resume-pill-btn" onClick={resumeReading}>
+            继续上次阅读 · {Math.round(resumeAt * 100)}%
+          </button>
+          <button
+            type="button"
+            className="jz-resume-pill-close"
+            aria-label="关闭续读提示"
+            onClick={() => setResumeAt(null)}
+          >
+            ×
+          </button>
+        </div>
+      )}
+
+      <Drawer
+        open={tocDrawerOpen && canShowToc && pageMode === 'read'}
+        onClose={() => setTocDrawerOpen(false)}
+        placement="right"
+        width="min(320px, 86vw)"
+        title="目录"
+        rootClassName="jz-reader-drawer"
+      >
+        <div
+          onClick={(e) => {
+            // Tapping a TOC entry should reveal the article, not leave the
+            // drawer covering it.
+            if ((e.target as HTMLElement).closest('.jz-toc-link')) setTocDrawerOpen(false);
+          }}
+        >
+          <TocPanel toc={rendered.toc} />
+        </div>
+      </Drawer>
+
+      <Drawer
+        open={kbDrawerOpen}
+        onClose={() => setKbDrawerOpen(false)}
+        placement="left"
+        width="min(320px, 86vw)"
+        title="文档列表"
+        rootClassName="jz-reader-drawer"
+      >
+        <div
+          onClick={(e) => {
+            if ((e.target as HTMLElement).closest('a')) setKbDrawerOpen(false);
+          }}
+        >
+          <KbNavSidebar kbSlug={post.knowledge_base.slug} currentSlug={post.slug} />
+        </div>
+      </Drawer>
 
       {focusMode && (
         <Tooltip title="退出专注阅读 (Esc)" placement="left">

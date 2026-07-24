@@ -2,12 +2,13 @@ import { createElement, useCallback, useEffect, useRef, useState } from 'react';
 import { Dropdown, Tooltip, message } from 'antd';
 import { JzAiSparkIcon } from '@/components/common/JzIcon';
 import type { Editor } from '@tiptap/core';
-import { getCapabilities, runAI, streamAI } from '@/api/ai';
+import { describeAIError, getCapabilities, runAI, streamAI, type AIErrorPayload } from '@/api/ai';
 import { getResolvedAIModelId, resolveAIModel } from '@/utils/aiModel';
 import type { AIOpDef } from './ai/aiOps';
 import AIMenuList from './ai/AIMenuList';
 import AIAssistantPanel from './ai/AIAssistantPanel';
 import AIPromptInline from './ai/AIPromptInline';
+import AIDiffPreview from '@/components/common/AIDiffPreview';
 
 interface Props {
   editor: Editor | null;
@@ -65,6 +66,14 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
   const [active, setActive] = useState<AIOpDef | null>(null);
   const [streaming, setStreaming] = useState(false);
   const [text, setText] = useState('');
+  // Typed error surfaces as the panel's inline Alert (with retry) instead of
+  // a transient toast that vanishes while the panel says "等待 AI 响应…".
+  const [error, setError] = useState<AIErrorPayload | null>(null);
+  // Replace goes through a diff-confirm modal; freeze the "before" text at
+  // open time so mid-modal edits can't skew the diff.
+  const [diffOpen, setDiffOpen] = useState(false);
+  const [diffBefore, setDiffBefore] = useState('');
+  const lastRunRef = useRef<{ op: AIOpDef; content: string } | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const refreshModel = useCallback(async () => {
@@ -118,40 +127,38 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
   const selectionRef = useRef<{ from: number; to: number } | null>(null);
 
   const run = useCallback(
-    async (op: AIOpDef) => {
+    async (op: AIOpDef, contentOverride?: string) => {
       if (!editor) return;
-      const content = collectSelection();
+      const content = contentOverride ?? collectSelection();
       if (!content.trim()) {
         message.warning('请先选中要处理的文本，或在文档中输入内容');
         return;
       }
-      {
+      // Regenerate reuses the launch-time selection snapshot — only a fresh
+      // run re-reads where the cursor is.
+      if (contentOverride === undefined) {
         const { from, to } = editor.state.selection;
         selectionRef.current = { from, to };
       }
+      lastRunRef.current = { op, content };
       setMenuOpen(false);
       setActive(op);
       setText('');
+      setError(null);
       setStreaming(true);
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       try {
-        await runAIOp(
-          editor,
-          op,
-          content,
-          modelId,
-          {
-            onStart: () => {},
-            onDelta: (d) => setText((prev) => prev + d),
-            onDone: () => setStreaming(false),
-            onError: (msg) => {
-              message.error(msg);
-              setStreaming(false);
-            },
+        await streamAI(op.key, content, {
+          model: modelId || undefined,
+          signal: ctrl.signal,
+          onDelta: (d) => setText((prev) => prev + d),
+          onError: (err) => {
+            setError(err);
+            setStreaming(false);
           },
-          ctrl.signal,
-        );
+          onDone: () => setStreaming(false),
+        });
       } catch {
         setStreaming(false);
       }
@@ -159,19 +166,34 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     [editor, collectSelection, modelId],
   );
 
-  function applyResult(mode: 'replace' | 'after' | 'before') {
-    if (!editor || !text.trim()) return;
-    // Use the launch-time snapshot; clamp into the current doc in case edits
-    // during streaming shrank it. Fall back to the live selection only when
-    // no snapshot exists.
+  const regenerate = useCallback(() => {
+    const last = lastRunRef.current;
+    if (last && !streaming) void run(last.op, last.content);
+  }, [run, streaming]);
+
+  /** Clamped launch-time range (edits during streaming may have shrunk the doc). */
+  function snappedRange() {
+    if (!editor) return null;
     const docEnd = editor.state.doc.content.size;
     const snap = selectionRef.current ?? editor.state.selection;
     const from = Math.max(0, Math.min(snap.from, docEnd));
     const to = Math.max(from, Math.min(snap.to, docEnd));
-    const chain = editor.chain().focus();
+    return { from, to };
+  }
+
+  function applyResult(mode: 'replace' | 'after' | 'before') {
+    if (!editor || !text.trim()) return;
+    const range = snappedRange();
+    if (!range) return;
+    const { from, to } = range;
     if (mode === 'replace' && from !== to) {
-      chain.deleteRange({ from, to }).insertContent(text).run();
-    } else if (mode === 'before') {
+      // Never overwrite silently — show what will change first.
+      setDiffBefore(editor.state.doc.textBetween(from, to, '\n', '\n'));
+      setDiffOpen(true);
+      return;
+    }
+    const chain = editor.chain().focus();
+    if (mode === 'before') {
       chain.insertContentAt(Math.max(0, from), text + '\n\n').run();
     } else {
       chain.insertContentAt(to, '\n\n' + text).run();
@@ -179,6 +201,23 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     selectionRef.current = null;
     setActive(null);
     setText('');
+    setError(null);
+  }
+
+  function confirmReplace() {
+    if (!editor || !text.trim()) {
+      setDiffOpen(false);
+      return;
+    }
+    const range = snappedRange();
+    if (range && range.from !== range.to) {
+      editor.chain().focus().deleteRange(range).insertContent(text).run();
+    }
+    selectionRef.current = null;
+    setDiffOpen(false);
+    setActive(null);
+    setText('');
+    setError(null);
   }
 
   function closePanel() {
@@ -186,6 +225,8 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
     setActive(null);
     setStreaming(false);
     setText('');
+    setError(null);
+    setDiffOpen(false);
   }
 
   const aiAriaLabel = modelLabel ? `AI，${modelLabel}` : 'AI';
@@ -277,6 +318,9 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
         modelLabel={modelLabel}
         streaming={streaming}
         text={text}
+        error={error}
+        errorTitle={error ? describeAIError(error).title : undefined}
+        errorHint={error ? describeAIError(error).hint : undefined}
         canReplace={
           selectionRef.current
             ? selectionRef.current.from !== selectionRef.current.to
@@ -284,6 +328,7 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
         }
         onAbort={closePanel}
         onClose={closePanel}
+        onRegenerate={regenerate}
         onCopy={() => {
           void navigator.clipboard.writeText(text);
           message.success('已复制');
@@ -291,6 +336,15 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
         onInsertBefore={() => applyResult('before')}
         onInsertAfter={() => applyResult('after')}
         onReplace={() => applyResult('replace')}
+      />
+
+      <AIDiffPreview
+        open={diffOpen}
+        before={diffBefore}
+        after={text}
+        title={active ? `${active.label} · 替换前对比` : 'AI 改写结果对比'}
+        onCancel={() => setDiffOpen(false)}
+        onConfirm={confirmReplace}
       />
     </>
   );

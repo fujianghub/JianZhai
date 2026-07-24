@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Result, Spin } from 'antd';
-import { Navigate, useLocation, useParams } from 'react-router-dom';
+import { Button, Result, Spin } from 'antd';
+import { Link, Navigate, useLocation, useParams } from 'react-router-dom';
 import { getDocument } from '@/api/docs';
 import { resolvePublicById } from '@/api/linking';
 import { useAuthStore } from '@/stores/auth';
@@ -71,7 +71,9 @@ export default function DocLinkResolver() {
   if (!loaded || resolution === null) {
     return (
       <div style={{ display: 'grid', placeItems: 'center', minHeight: '60vh' }}>
-        <Spin />
+        <Spin tip="正在解析链接…">
+          <div style={{ width: 120, height: 60 }} />
+        </Spin>
       </div>
     );
   }
@@ -81,5 +83,17 @@ export default function DocLinkResolver() {
   if (resolution.kind === 'public') {
     return <Navigate to={resolution.href} replace />;
   }
-  return <Result status="404" title="链接的文档不存在或未公开" />;
+  // /d/:id lives outside BlogLayout — without an explicit way home this is a
+  // chrome-less dead end for readers following a stale @-mention link.
+  return (
+    <Result
+      status="404"
+      title="链接的文档不存在，或你暂时无法查看"
+      extra={
+        <Link to="/">
+          <Button type="primary">返回首页</Button>
+        </Link>
+      }
+    />
+  );
 }

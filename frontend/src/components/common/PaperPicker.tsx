@@ -5,10 +5,18 @@ import { PAPER_STYLES } from '@/utils/paper';
 interface Props {
   value: string;
   onChange: (key: string) => void;
+  /** Preset keys to hide — e.g. the warm papers that ``.jz-blog-glass``
+   * neutralizes to the same plain surface, where the swatch preview would
+   * promise a texture the page can't deliver. The currently-selected key is
+   * always kept so an existing choice stays visible/deselectable. */
+  hiddenKeys?: string[];
 }
 
 /** Small floating picker that lets the reader switch paper style for a post. */
-export default function PaperPicker({ value, onChange }: Props) {
+export default function PaperPicker({ value, onChange, hiddenKeys }: Props) {
+  const visible = hiddenKeys?.length
+    ? PAPER_STYLES.filter((p) => p.key === value || !hiddenKeys.includes(p.key))
+    : PAPER_STYLES;
   const content = (
     <div style={{ width: 240 }}>
       <div
@@ -21,7 +29,7 @@ export default function PaperPicker({ value, onChange }: Props) {
         阅读纸张
       </div>
       <Space wrap>
-        {PAPER_STYLES.map((p) => (
+        {visible.map((p) => (
           <Tooltip key={p.key} title={`${p.label}${p.hint ? '：' + p.hint : ''}`}>
             <button
               type="button"

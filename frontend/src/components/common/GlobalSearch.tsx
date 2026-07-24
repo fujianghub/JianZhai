@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
-import { Input, Modal, Spin, Tag, Typography } from 'antd';
+import { Input, Modal, Spin, Tag } from 'antd';
 import { useNavigate } from 'react-router-dom';
 import { search as searchApi, type SearchResult } from '@/api/search';
-
-const { Text } = Typography;
+import { useAuthStore } from '@/stores/auth';
 
 /** Compile the token list + split regex for a query. Cached (single-entry) so
  *  a render that highlights N results — each calling ``highlight`` for title
@@ -48,11 +47,20 @@ interface Props {
 
 export default function GlobalSearch({ open, onClose, resultUrl }: Props) {
   const navigate = useNavigate();
+  const isStaff = useAuthStore((s) => !!s.user?.is_staff);
   const [q, setQ] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
   const seqRef = useRef(0);
+  const listRef = useRef<HTMLDivElement | null>(null);
+
+  // Keep the keyboard-highlighted row visible while ↑/↓ walks a long list
+  // (QuickSwitcher already does this; mirrored here for parity).
+  useEffect(() => {
+    const el = listRef.current?.querySelector<HTMLElement>(`[data-idx="${active}"]`);
+    el?.scrollIntoView({ block: 'nearest' });
+  }, [active]);
 
   useEffect(() => {
     if (!open) {
@@ -127,21 +135,27 @@ export default function GlobalSearch({ open, onClose, resultUrl }: Props) {
         onChange={(e) => setQ(e.target.value)}
         onKeyDown={handleKey}
       />
-      <div style={{ marginTop: 12, maxHeight: 420, overflow: 'auto' }}>
+      <div ref={listRef} style={{ marginTop: 12, maxHeight: 420, overflow: 'auto' }}>
         {loading && (
           <div style={{ display: 'grid', placeItems: 'center', padding: 16 }}>
             <Spin />
           </div>
         )}
+        {!loading && !q.trim() && (
+          <div style={{ color: 'var(--jz-text-muted)', padding: 16, textAlign: 'center', fontSize: 13 }}>
+            输入关键词搜索标题或正文，↑↓ 选择，Enter 打开
+          </div>
+        )}
         {!loading && q.trim() && results.length === 0 && (
           <div style={{ color: 'var(--jz-text-muted)', padding: 16, textAlign: 'center' }}>
-            无结果
+            无结果，换个关键词试试
           </div>
         )}
         {results.map((r, idx) => (
           <button
             key={r.id}
             type="button"
+            data-idx={idx}
             onClick={() => goTo(r)}
             onMouseEnter={() => setActive(idx)}
             className="global-search-item"
@@ -160,12 +174,11 @@ export default function GlobalSearch({ open, onClose, resultUrl }: Props) {
             </div>
             <div style={{ marginTop: 4 }}>
               <Tag color="blue">{r.knowledge_base.name}</Tag>
-              <Tag color={r.status === 'published' ? 'green' : 'default'}>
-                {r.status === 'published' ? '已发布' : '草稿'}
-              </Tag>
-              <Text type="secondary" style={{ fontSize: 12 }}>
-                rank {r.rank.toFixed(3)}
-              </Text>
+              {isStaff && (
+                <Tag color={r.status === 'published' ? 'green' : 'default'}>
+                  {r.status === 'published' ? '已发布' : '草稿'}
+                </Tag>
+              )}
             </div>
           </button>
         ))}

@@ -15,9 +15,18 @@ export interface ArticleFontPreset {
 }
 
 export const ARTICLE_FONT_PRESETS: ArticleFontPreset[] = [
+  // Songti leads: the serif face matches the rice-paper/cinnabar identity,
+  // and Verdana (no CJK glyphs) produced a mismatched Latin/苹方 hybrid as
+  // the old default. First preset = default for visitors with no saved pick.
+  {
+    key: 'songti',
+    label: '宋体 · 古风（默认）',
+    stack:
+      '"Noto Serif SC", "Songti SC", "STSong", "SimSun", "Cormorant Garamond", Georgia, serif',
+  },
   {
     key: 'verdana',
-    label: 'Verdana · 默认',
+    label: 'Verdana',
     stack:
       'Verdana, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
   },
@@ -26,12 +35,6 @@ export const ARTICLE_FONT_PRESETS: ArticleFontPreset[] = [
     label: '系统无衬线',
     stack:
       '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
-  },
-  {
-    key: 'songti',
-    label: '宋体 · 古风',
-    stack:
-      '"Noto Serif SC", "Songti SC", "STSong", "SimSun", "Cormorant Garamond", Georgia, serif',
   },
   {
     key: 'kaiti',

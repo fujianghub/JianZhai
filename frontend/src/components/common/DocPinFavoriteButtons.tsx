@@ -59,7 +59,7 @@ export default function DocPinFavoriteButtons({
             size="small"
             icon={
               doc.is_favorited ? (
-                <StarFilled style={{ color: '#faad14' }} />
+                <StarFilled style={{ color: 'var(--jz-gold, #d4a017)' }} />
               ) : (
                 <StarOutlined />
               )
