@@ -157,6 +157,18 @@ class HeroSettings(models.Model):
 - **讲者备注面板**：主图下方可折叠面板，工具栏「备注」开关（`showNotes`），逐页显示 `slide.notes`，空页显「此页无备注」，可复制，全屏亦支持；无任一页有备注时隐藏开关（`hasAnyNotes`）。
 - **转换态轮询**：`slides` 为空时按 `slide_status` 轮询（`MAX_POLLS` ~7min，覆盖 worker 2×180s soffice+pdftoppm 超时），`failed` 即停并显真实原因，pending 放宽到硬上限。`PptxReader` 带 `key`（postId）防失败态跨文章粘连。
 
+### 阅读端 UX 修复第一批（2026-07-24）
+
+两轮全量 UI/UX 审查（8 份报告）后的第一批落地，读者侧要点：
+
+- **移动端 / 专注模式 TOC·KB 抽屉（根治死 FAB）**：`PostDetail` 新增 `tocDrawerOpen/kbDrawerOpen`（**刻意不持久化**，防移动端开页即遮正文）+ `useTocDrawer = focusMode || !tocRailWide`、`useKbDrawer = !layoutWide`——FAB 在宽屏开侧栏 rail、窄屏（<1281px / <1101px）与专注模式改开 AntD Drawer（点目录项自动收起）。修复两个存量缺陷：961–1280px 区间 FAB 点击设置的 `tocOpen` 无任何面板消费（死按钮）、`reader.css` 曾在 ≤960px 直接 `display:none` 隐藏 FAB（手机完全无目录入口，规则已删）；专注模式的隐藏清单放行 `.jz-toc-fab`（沉浸读长文恰恰最需要跳节）。
+- **阅读位置记忆**：新 `utils/readingPosition.ts`（单 localStorage map `jz-reading-pos:v1`；save 带 0.03–0.97、resume 带 0.05–0.95、上限 200 条按时间戳剪枝；纯函数 + happy-dom 共 9 单测）。`PostDetail` 在 read 模式 rAF 节流保存滚动百分比，回访命中 resume 带时浮出「继续上次阅读 · N%」pill（`.jz-resume-pill`，12s 自动消失，点击平滑跳转）。
+- **阅读默认值**：默认字体 Verdana → **宋体**（`ARTICLE_FONT_PRESETS` 宋体提至首位，`loadArticleFont` 兜底 `[0].key`；Verdana 无 CJK 字形，旧默认实为「西文 Verdana + 中文苹方」混排且与宣纸调性相悖）；默认版心 满栏 → **860px**（宽屏满栏轻易超 45 字/行）。两者对 localStorage 已有存值的用户零影响。
+- **纸张 swatch 不再骗人**：`.jz-blog-glass` 把宣纸/牛皮纸/羊皮卷中性化为同一玻璃面（有意，见 §2 自查清单 5），但 PaperPicker 的 swatch 预览（portal 在 glass 外）仍显真实暖纹——`PaperPicker` 加 `hiddenKeys` prop（当前选中值恒保留），`PostDetail` 传三种暖纸隐藏；字体/纸张控件改为仅 `isMarkdownReadPath || edit` 显示（sandbox iframe / 二进制阅读器两者均不生效，展示即破坏「控件即有效」契约）。
+- **读者/作者边界收口**：GlobalSearch 去 `rank` 分值、「草稿」Tag 仅 `is_staff`、空查询提示 + `scrollIntoView` 跟随；博客搜索非公开结果改走 `/d/:id`（作者被弹进编辑器、读者得体面 404）；`DocLinkResolver` 404 补「返回首页」（该路由在 BlogLayout 外，原是无 chrome 死路）；FavoritesPage 按 `is_staff` 隐藏「编辑」/状态 Tag、读者 KB 链接走 `/kb/:slug`、空态 CTA 分流（读者→`/`）、取消收藏加 Popconfirm、`/admin/favorites` 挂载不再渲染古风 hero；退出登录仅 `/admin` 路径回登录页（博客路径回 `/`）；**侧栏收藏星标对登录读者开放**（收藏端点本就绕作者 scope——`BlogKbNavPanel` 的 `favHandler` 按 `sessionUser` 门控、pin 仍 `canManage`，`PublicKbFolderTree.showActions` 只看 handler 存在性）。
+- **外链**：`markdown.ts` link_open 对 `https?://` 统一 `target="_blank" rel="noopener noreferrer"`（与链接卡片对齐；`target/rel` 本就在 DOMPurify 白名单）。
+- 后台顺带批：品牌默认色 `#1677ff`→`#10b981` 清扫（KBListPage/UsersPage/TagPicker 六处）；UsersPage 标签重命名 `window.prompt`→受控 Modal、新建密码下限 4→8 与重置对齐；暗色主题变量泄漏修复（BacklinkPanel/CommentsPanel `#f0f0f0`、DocHoverCard 阴影/错误红、TagPicker `#ddd`）；ExportsPage 失败态 Alert 收敛为单行 danger + Tooltip、ExportDialog PDF 提示去运维命令。
+
 ---
 
 ## 6. favicon + PWA

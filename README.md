@@ -37,7 +37,7 @@
 | **评论** | 文档级 + 段落级（`block_id`） |
 | **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG** 与 **KaTeX 公式离线预渲染**（HTML/PDF/静态站，headless Chromium + vendored mermaid/katex，字体内嵌离线可显，缺失时降级源码）；PlantUML 仍为代码块 |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；**6 套主题**（含 4 个环境氛围层：星空/深海暗色 Canvas 粒子 + 春水 WebGL 水面 / 冬雪飘雪亮色）+ 纸张样式，切换器为**单按钮下拉**（调色全交 CSS token，无用户自选 accent）；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
-| **阅读器定制** | 读者侧分组工具条（字体/纸张/排版/专注，等高 28px）；**排版三件套**字号缩放 / 行距 / 版心宽度 + 一键重置（落 localStorage、CSS 变量 scope 到 `<article>`、不触碰文档）；**专注/沉浸模式**隐藏导航与侧栏、Esc 退出；阅读进度条带百分比；**PDF 阅读**内嵌书签解析为目录侧栏 + 整页连续滚动（IntersectionObserver 懒渲染）+ 在新标签用浏览器原生阅读器打开 |
+| **阅读器定制** | 读者侧分组工具条（字体/纸张/排版/专注，等高 28px）；**排版三件套**字号缩放 / 行距 / 版心宽度 + 一键重置（落 localStorage、CSS 变量 scope 到 `<article>`、不触碰文档；默认宋体 + 860px 版心）；**专注/沉浸模式**隐藏导航与侧栏、Esc 退出（保留目录抽屉入口）；**移动端 TOC/KB 抽屉** + **阅读位置记忆**（回访「继续上次阅读」）；阅读进度条带百分比；**PDF 阅读**内嵌书签解析为目录侧栏 + 整页连续滚动（IntersectionObserver 懒渲染）+ 在新标签用浏览器原生阅读器打开 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
 | **账号 / 权限** | **四角色 RBAC**：根（唯一、不可禁用/删除、独占删 KB/大类/永久删/清空回收站）/ 管理员（作者，共享内容池）/ 普通用户（读者，无创作权）/ 匿名；用户管理可见范围按角色收口；新建账号**邮箱必填**；自助改密码/邮箱/用户名/头像。**登录三因子**：密码 + 邮箱匹配 + 服务端拼图滑块验证码。详见 [docs/permissions.md](docs/permissions.md) |
 | **组织** | KB **大类**分组、文档置顶、收藏夹（博客 `/favorites` + 后台侧栏「收藏」入口）、多种排序、回收站 UI |
@@ -202,6 +202,7 @@ cd backend && python manage.py seed_architecture_kb
 | **LaTeX 数学全链路补全** | 富文本行内打完 `$x$` 自动转公式（补 MathInline InputRule）；`\(..\)`/`\[..\]` 反斜杠定界符归一化（前后端镜像，ChatGPT/论文来源粘贴即识别）；导出端公式从残破字面量到真实渲染——数学 tokenizer 防强调破坏 + headless Chromium 批量预渲染 KaTeX（HTML/PDF/静态站离线可显，字体内嵌 CSS 仅含公式注入，docx 保留 `$..$` 原文）；搜索索引剥公式噪声并全量重建存量。2026-07-23 |
 | **编辑器体检修复批次** | 工具栏/气泡/下拉激活态随光标实时刷新（Tiptap v3 `useEditorState` 全面接入）；`:::info 自定义标题` 富文本 round-trip 不再丢标题；409 冲突弹「恢复我的编辑 / 使用服务器版本」+ 本地备份兜底（含卸载 flush 失败）；选区 AI 润色/纠错/翻译一键回写原文（快照校验防盲替换）+ 富文本去双 AI 入口 + 全文 AI 截断 2 万字；CM6 标题编号变更门控、光标移动去全文扫描、BlockHoverMenu rAF 节流；IME 守卫、图片上传位置 mapping、HTML 模式 Tab 缩进。前端 450 + 后端 423 测试绿。2026-07-24 |
 | **首次进编辑器崩溃修复** | 首次点击「编辑」报 `Cannot read properties of null (reading 'commands')`、重试才正常——Tiptap v3 `useEditor` 在 render 阶段建实例并挂 1ms 兜底销毁定时器，首次懒加载挂载太重时定时器抢在 effect 前销毁实例；挂载 effect 守卫升级 `editor.isDestroyed` 根治（与 StrictMode 无关，prod 亦可触发）。2026-07-24 |
+| **阅读端与后台 UX 修复第一批** | 全量 UI/UX 审查后落地：**移动端/专注模式 TOC·KB 抽屉**（根治 961–1280px 死 FAB 与手机无目录入口）；**阅读位置记忆**（按文章存进度 + 「继续上次阅读」pill）；默认字体改**宋体**、默认版心 860px；纸张选择器隐藏博客下失效的暖纸 swatch；读者/作者边界收口（搜索去 rank/草稿、收藏页按角色显隐、侧栏收藏对登录读者开放、404 补出口）；AI「替换选中」先过 **diff 对比确认** + 流式错误分类提示与重试；后台品牌默认色统一翡翠、标签重命名去 `window.prompt`、暗色变量泄漏修复；外链统一新窗 + `noopener`。前端 459 测试 + Playwright 双层冒烟。2026-07-24 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
