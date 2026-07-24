@@ -16,6 +16,7 @@ import {
 } from 'antd';
 import {
   DeleteOutlined,
+  EyeOutlined,
   KeyOutlined,
   PlusOutlined,
   TagsOutlined,
@@ -29,6 +30,11 @@ import { useAuthStore } from '@/stores/auth';
 import type { User, UserTag } from '@/types';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import ColorField from '@/components/common/ColorField';
+import ReadGrantControl, {
+  grantsToSelections,
+  selectionsToItems,
+  type GrantSelection,
+} from '@/components/admin/ReadGrantControl';
 
 const { Text } = Typography;
 
@@ -62,7 +68,12 @@ export default function UsersPage() {
   const [tagTarget, setTagTarget] = useState<User | null>(null);
   const [tagTargetIds, setTagTargetIds] = useState<number[]>([]);
   const [tagMgrOpen, setTagMgrOpen] = useState(false);
+  // Per-user reading whitelist editing (create modal + standalone modal).
+  const [createGrants, setCreateGrants] = useState<GrantSelection[]>([]);
+  const [grantTarget, setGrantTarget] = useState<User | null>(null);
+  const [grantSelections, setGrantSelections] = useState<GrantSelection[]>([]);
   const [form] = Form.useForm<CreateForm>();
+  const createIsStaff = Form.useWatch('is_staff', form);
   const me = useAuthStore((s) => s.user);
 
   const load = useCallback(
@@ -107,10 +118,13 @@ export default function UsersPage() {
         email: values.email?.trim() || '',
         is_staff: !!values.is_staff,
         tag_ids: values.tag_ids ?? [],
+        // Grants on an author are inert (backend rejects them outright).
+        read_grant_items: values.is_staff ? [] : selectionsToItems(createGrants),
       });
       message.success('用户已创建');
       setCreateOpen(false);
       form.resetFields();
+      setCreateGrants([]);
       void load();
     } catch (e) {
       message.error(formatApiError(e));
@@ -160,6 +174,20 @@ export default function UsersPage() {
       await usersApi.updateUser(tagTarget.id, { tag_ids: tagTargetIds });
       message.success(`已更新 ${tagTarget.username} 的标签`);
       setTagTarget(null);
+      void load();
+    } catch (e) {
+      message.error(formatApiError(e));
+    }
+  }
+
+  async function onSaveGrants() {
+    if (!grantTarget) return;
+    try {
+      await usersApi.updateUser(grantTarget.id, {
+        read_grant_items: selectionsToItems(grantSelections),
+      });
+      message.success(`已更新 ${grantTarget.username} 的阅读权限`);
+      setGrantTarget(null);
       void load();
     } catch (e) {
       message.error(formatApiError(e));
@@ -250,6 +278,52 @@ export default function UsersPage() {
               },
             },
             {
+              title: '阅读范围',
+              dataIndex: 'read_grants',
+              width: 110,
+              render: (_, r) => {
+                if (r.is_staff) return <Text type="secondary">作者全库</Text>;
+                const grants = r.read_grants ?? [];
+                // The whole cell opens the grant editor (same as the eye
+                // button) so "how do I change this later?" answers itself.
+                const editable = canManage(me, r);
+                const openEditor = editable
+                  ? () => {
+                      setGrantTarget(r);
+                      setGrantSelections(grantsToSelections(grants));
+                    }
+                  : undefined;
+                const cellStyle = editable ? { cursor: 'pointer' } : undefined;
+                if (!grants.length) {
+                  return (
+                    <Tooltip title={editable ? '点击设置阅读权限' : ''}>
+                      <Text type="secondary" style={cellStyle} onClick={openEditor}>
+                        不受限
+                      </Text>
+                    </Tooltip>
+                  );
+                }
+                return (
+                  <Tooltip
+                    title={
+                      <div>
+                        {grants.map((g) => (
+                          <div key={g.id}>
+                            {g.kb_name ? `${g.kb_name} / ${g.name}` : g.name}
+                          </div>
+                        ))}
+                        {editable && <div style={{ opacity: 0.75 }}>点击修改</div>}
+                      </div>
+                    }
+                  >
+                    <Tag color="orange" style={{ marginRight: 0, ...cellStyle }} onClick={openEditor}>
+                      受限（{grants.length}）
+                    </Tag>
+                  </Tooltip>
+                );
+              },
+            },
+            {
               title: '管理员',
               dataIndex: 'is_staff',
               width: 100,
@@ -326,6 +400,20 @@ export default function UsersPage() {
                       }}
                     />
                   </Tooltip>
+                  {!r.is_staff && (
+                    <Tooltip title={canManage(me, r) ? '阅读权限' : '无权操作'}>
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<EyeOutlined />}
+                        disabled={!canManage(me, r)}
+                        onClick={() => {
+                          setGrantTarget(r);
+                          setGrantSelections(grantsToSelections(r.read_grants ?? []));
+                        }}
+                      />
+                    </Tooltip>
+                  )}
                   <Tooltip title={canManage(me, r) ? '重置该用户的密码' : '无权操作'}>
                     <Button
                       type="text"
@@ -415,7 +503,25 @@ export default function UsersPage() {
           <Form.Item label="管理员权限" name="is_staff" valuePropName="checked">
             <Switch />
           </Form.Item>
+          {!createIsStaff && (
+            <Form.Item label="阅读权限（留空 = 不受限）">
+              <ReadGrantControl value={createGrants} onChange={setCreateGrants} />
+            </Form.Item>
+          )}
         </Form>
+      </Modal>
+
+      <Modal
+        title={grantTarget ? `「${grantTarget.username}」的阅读权限` : '阅读权限'}
+        open={!!grantTarget}
+        onCancel={() => setGrantTarget(null)}
+        onOk={() => void onSaveGrants()}
+        okText="保存"
+        cancelText="取消"
+        width={640}
+        destroyOnHidden
+      >
+        <ReadGrantControl value={grantSelections} onChange={setGrantSelections} />
       </Modal>
 
       <Modal

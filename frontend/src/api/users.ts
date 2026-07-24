@@ -1,5 +1,5 @@
 import { apiClient, ensureCsrf } from './client';
-import type { User, UserTag } from '@/types';
+import type { ReadGrantItem, User, UserTag } from '@/types';
 
 interface Paginated<T> {
   count: number;
@@ -33,6 +33,8 @@ export interface CreateUserPayload {
   is_staff?: boolean;
   is_active?: boolean;
   tag_ids?: number[];
+  /** Reading whitelist (full replacement; [] clears, omit = untouched). */
+  read_grant_items?: ReadGrantItem[];
 }
 
 export async function createUser(payload: CreateUserPayload): Promise<User> {
@@ -47,6 +49,8 @@ export interface UpdateUserPayload {
   is_staff?: boolean;
   is_active?: boolean;
   tag_ids?: number[];
+  /** Reading whitelist (full replacement; [] clears, omit = untouched). */
+  read_grant_items?: ReadGrantItem[];
 }
 
 export async function updateUser(id: number, payload: UpdateUserPayload): Promise<User> {

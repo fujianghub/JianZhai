@@ -234,6 +234,28 @@ export interface SessionUser {
 
 export type UserRole = 'anon' | 'user' | 'admin' | 'root';
 
+/** One entry of a user's reading whitelist (read-side brief).
+ *  Empty list = unrestricted; non-empty = the user only reads matched
+ *  content (whole KB / category / folder subtree / single document),
+ *  ANDed with the content-side audience gates. */
+export interface ReadGrant {
+  id: number;
+  type: 'kb' | 'category' | 'folder' | 'document';
+  target_id: number;
+  name: string;
+  /** Host KB, present for folder/document grants (for display context). */
+  kb_id?: number;
+  kb_name?: string;
+}
+
+/** Write shape — exactly one key per item. */
+export interface ReadGrantItem {
+  kb_id?: number;
+  category_id?: number;
+  folder_id?: number;
+  document_id?: number;
+}
+
 export interface User {
   id: number;
   username: string;
@@ -245,6 +267,8 @@ export interface User {
   role?: UserRole;
   /** Author-assigned labels (author-facing only; never sent to readers). */
   tags?: UserTag[];
+  /** Reading whitelist; empty/absent = unrestricted. */
+  read_grants?: ReadGrant[];
   date_joined: string;
   last_login: string | null;
 }

@@ -47,6 +47,132 @@ class UserTag(models.Model):
         return self.name
 
 
+class ReadGrant(models.Model):
+    """A per-user reading whitelist entry (user-side, not content-side).
+
+    Complements the content-side audience visibility (KB / category
+    ``audience_mode``): a user with **no** grant rows is unrestricted and
+    sees whatever the audience rules allow (legacy behaviour); a user with
+    one or more rows is *restricted* — only content matched by at least one
+    grant is readable, AND the content-side audience rules still apply
+    (both gates must pass; enforced in ``apps.knowledge.audience``).
+
+    Exactly one of the four target FKs is non-null (DB CheckConstraint):
+
+    - ``knowledge_base`` — the whole KB
+    - ``category``       — every KB in that category
+    - ``folder``         — that folder's subtree (descendants included)
+    - ``document``       — that single document
+
+    Semantics by design:
+    - Authors (``is_staff``) bypass all reader filtering, so grants on a
+      staff user are inert; the serializer refuses to create them.
+    - Soft-deleted targets fail closed: the grant row survives (the user
+      stays restricted) but the target itself is naturally invisible via
+      the default managers. Hard deletes CASCADE the grant away.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="read_grants",
+    )
+    knowledge_base = models.ForeignKey(
+        "knowledge.KnowledgeBase",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="read_grants",
+    )
+    category = models.ForeignKey(
+        "knowledge.KnowledgeBaseCategory",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="read_grants",
+    )
+    folder = models.ForeignKey(
+        "knowledge.Folder",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="read_grants",
+    )
+    document = models.ForeignKey(
+        "knowledge.Document",
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="read_grants",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.CheckConstraint(
+                name="readgrant_exactly_one_target",
+                condition=(
+                    models.Q(
+                        knowledge_base__isnull=False,
+                        category__isnull=True,
+                        folder__isnull=True,
+                        document__isnull=True,
+                    )
+                    | models.Q(
+                        knowledge_base__isnull=True,
+                        category__isnull=False,
+                        folder__isnull=True,
+                        document__isnull=True,
+                    )
+                    | models.Q(
+                        knowledge_base__isnull=True,
+                        category__isnull=True,
+                        folder__isnull=False,
+                        document__isnull=True,
+                    )
+                    | models.Q(
+                        knowledge_base__isnull=True,
+                        category__isnull=True,
+                        folder__isnull=True,
+                        document__isnull=False,
+                    )
+                ),
+            ),
+            models.UniqueConstraint(
+                fields=["user", "knowledge_base"],
+                condition=models.Q(knowledge_base__isnull=False),
+                name="uniq_readgrant_user_kb",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "category"],
+                condition=models.Q(category__isnull=False),
+                name="uniq_readgrant_user_category",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "folder"],
+                condition=models.Q(folder__isnull=False),
+                name="uniq_readgrant_user_folder",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "document"],
+                condition=models.Q(document__isnull=False),
+                name="uniq_readgrant_user_document",
+            ),
+        ]
+
+    def __str__(self) -> str:
+        target = (
+            f"kb:{self.knowledge_base_id}"
+            if self.knowledge_base_id
+            else f"category:{self.category_id}"
+            if self.category_id
+            else f"folder:{self.folder_id}"
+            if self.folder_id
+            else f"document:{self.document_id}"
+        )
+        return f"ReadGrant(user={self.user_id}, {target})"
+
+
 # ── Hero quote settings ────────────────────────────────────────────────────
 #
 # The blog homepage shows a 题记 ("epigraph") banner at the top — one quote

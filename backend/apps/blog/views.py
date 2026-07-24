@@ -10,21 +10,37 @@ from rest_framework.views import APIView
 from django.db.models.functions import Substr, TruncMonth
 from django.db.models import Count, Q
 
-# Annotation matching PublicKBSerializer.get_post_count — counts published+public,
-# non-deleted documents per KB in one query instead of one COUNT per KB.
-_POST_COUNT_ANNOTATION = Count(
-    "documents",
-    filter=Q(
-        documents__status="published",
-        documents__visibility="public",
-        documents__is_deleted=False,
-    ),
-)
 from django.http import HttpResponse
 from django.utils.feedgenerator import Rss201rev2Feed
 from xml.sax.saxutils import escape as xml_escape
 
-from apps.knowledge.audience import visible_categories, visible_documents, visible_kbs
+from apps.knowledge.audience import (
+    grant_documents_q,
+    visible_categories,
+    visible_documents,
+    visible_kbs,
+)
+
+
+def _post_count_annotation(user):
+    """Per-KB published+public doc count, matching PublicKBSerializer.get_post_count.
+
+    One query instead of one COUNT per KB. For a grant-restricted reader the
+    count is narrowed to their grants so KB cards don't advertise how many
+    documents they can't see.
+    """
+    flt = Q(
+        documents__status="published",
+        documents__visibility="public",
+        documents__is_deleted=False,
+    )
+    gq = grant_documents_q(user)
+    if gq is not None:
+        flt &= gq
+    return Count("documents", filter=flt)
+
+
+
 from apps.knowledge.models import Document, Folder, KnowledgeBase, KnowledgeBaseCategory
 from apps.knowledge.serializers import _FMT_HEAD_EXPR, _favorite_doc_ids_for_user, sort_documents
 from apps.linking.models import DocumentLink
@@ -141,7 +157,7 @@ class PublicKBViewSet(mixins.ListModelMixin, viewsets.GenericViewSet):
             KnowledgeBase.objects.filter(visibility="public")
             .select_related("category")
             .prefetch_related("tags")
-            .annotate(_post_count=_POST_COUNT_ANNOTATION)
+            .annotate(_post_count=_post_count_annotation(self.request.user))
             .order_by("order", "id"),
             self.request.user,
         )
@@ -162,7 +178,7 @@ class PublicKBCategoriesView(APIView):
                 KnowledgeBase.objects.filter(visibility="public", is_deleted=False)
                 .select_related("category")
                 .prefetch_related("tags")
-                .annotate(_post_count=_POST_COUNT_ANNOTATION)
+                .annotate(_post_count=_post_count_annotation(request.user))
                 .order_by("order", "id"),
                 request.user,
             )

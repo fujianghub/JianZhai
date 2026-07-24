@@ -38,8 +38,15 @@ class LoginThrottle(AnonRateThrottle):
 
     scope = "login"
 
+from apps.knowledge.models import (
+    Document,
+    Folder,
+    KnowledgeBase,
+    KnowledgeBaseCategory,
+)
+
 from .avatar import avatar_storage_name, process_avatar_image
-from .models import UserProfile, UserTag
+from .models import ReadGrant, UserProfile, UserTag
 from .permissions import IsRoot, is_root_admin
 
 User = get_user_model()
@@ -378,6 +385,106 @@ class UserTagSerializer(serializers.ModelSerializer):
         read_only_fields = ["id", "created_at"]
 
 
+class ReadGrantItemSerializer(serializers.Serializer):
+    """One write-side grant item — exactly one of the four target keys.
+
+    The default managers on the PK fields exclude soft-deleted targets, so a
+    deleted folder/document can't be granted (categories have no soft-delete).
+    """
+
+    kb_id = serializers.PrimaryKeyRelatedField(
+        queryset=KnowledgeBase.objects.all(), required=False, allow_null=False
+    )
+    category_id = serializers.PrimaryKeyRelatedField(
+        queryset=KnowledgeBaseCategory.objects.all(), required=False, allow_null=False
+    )
+    folder_id = serializers.PrimaryKeyRelatedField(
+        queryset=Folder.objects.all(), required=False, allow_null=False
+    )
+    document_id = serializers.PrimaryKeyRelatedField(
+        queryset=Document.objects.all(), required=False, allow_null=False
+    )
+
+    def validate(self, attrs):
+        present = [k for k in ("kb_id", "category_id", "folder_id", "document_id") if attrs.get(k)]
+        if len(present) != 1:
+            raise serializers.ValidationError(
+                "每条授权必须且只能指定一个目标（kb_id / category_id / folder_id / document_id 四选一）"
+            )
+        return attrs
+
+
+def _grant_brief(grant: ReadGrant) -> dict:
+    """Read-side brief for one grant. Soft-deleted targets still resolve
+    (FK access uses the base manager) and get a ``(已删除)`` suffix."""
+
+    def _deleted(obj) -> str:
+        return "（已删除）" if getattr(obj, "is_deleted", False) else ""
+
+    if grant.knowledge_base_id:
+        kb = grant.knowledge_base
+        return {
+            "id": grant.id,
+            "type": "kb",
+            "target_id": kb.id,
+            "name": f"{kb.name}{_deleted(kb)}",
+        }
+    if grant.category_id:
+        cat = grant.category
+        return {"id": grant.id, "type": "category", "target_id": cat.id, "name": cat.name}
+    if grant.folder_id:
+        folder = grant.folder
+        kb = folder.knowledge_base
+        return {
+            "id": grant.id,
+            "type": "folder",
+            "target_id": folder.id,
+            "name": f"{folder.name}{_deleted(folder)}",
+            "kb_id": kb.id,
+            "kb_name": kb.name,
+        }
+    doc = grant.document
+    kb = doc.knowledge_base
+    return {
+        "id": grant.id,
+        "type": "document",
+        "target_id": doc.id,
+        "name": f"{doc.title}{_deleted(doc)}",
+        "kb_id": kb.id,
+        "kb_name": kb.name,
+    }
+
+
+def _apply_read_grant_items(user, items) -> None:
+    """Full replacement, same semantics as ``account_tags.set()``. ``[]``
+    clears every grant (user back to unrestricted)."""
+    from django.db import transaction
+
+    rows = []
+    seen = set()
+    for item in items:
+        grant = ReadGrant(
+            user=user,
+            knowledge_base=item.get("kb_id"),
+            category=item.get("category_id"),
+            folder=item.get("folder_id"),
+            document=item.get("document_id"),
+        )
+        key = (
+            grant.knowledge_base_id,
+            grant.category_id,
+            grant.folder_id,
+            grant.document_id,
+        )
+        if key in seen:  # payload duplicates would trip the unique constraints
+            continue
+        seen.add(key)
+        rows.append(grant)
+    with transaction.atomic():
+        user.read_grants.all().delete()
+        ReadGrant.objects.bulk_create(rows)
+
+
 class UserSerializer(serializers.ModelSerializer):
     # Plain-text on input only — never echoed back. Optional on update.
     password = serializers.CharField(
@@ -398,6 +505,12 @@ class UserSerializer(serializers.ModelSerializer):
         required=False,
         source="account_tags",
     )
+    # Per-user reading whitelist (see ReadGrant). Empty list on read means
+    # unrestricted; write side is full-replacement via ``read_grant_items``.
+    read_grants = serializers.SerializerMethodField()
+    read_grant_items = ReadGrantItemSerializer(
+        many=True, write_only=True, required=False
+    )
 
     class Meta:
         model = User
@@ -413,6 +526,8 @@ class UserSerializer(serializers.ModelSerializer):
             "role",
             "tags",
             "tag_ids",
+            "read_grants",
+            "read_grant_items",
             "date_joined",
             "last_login",
         ]
@@ -426,20 +541,47 @@ class UserSerializer(serializers.ModelSerializer):
         from .permissions import get_role
         return get_role(obj)
 
+    def get_read_grants(self, obj) -> list[dict]:
+        return [_grant_brief(g) for g in obj.read_grants.all()]
+
+    def validate(self, attrs):
+        # Grants on an author are inert (is_staff bypasses all reader
+        # filtering) — refuse to create the illusion of a restriction. Same
+        # rationale as AudienceSerializerMixin.validate_audience_user_ids.
+        items = attrs.get("read_grant_items")
+        if items:
+            will_be_staff = attrs.get(
+                "is_staff", self.instance.is_staff if self.instance else False
+            )
+            if will_be_staff:
+                raise serializers.ValidationError(
+                    {"read_grant_items": "管理员是作者，不受阅读限制，无需设置阅读权限"}
+                )
+        return attrs
+
     def create(self, validated_data):
+        from django.db import transaction
+
         tags = validated_data.pop("account_tags", None)
+        grant_items = validated_data.pop("read_grant_items", None)
         password = validated_data.pop("password", None)
         if not password:
             raise serializers.ValidationError({"password": "新建用户必须设置密码"})
-        user = User(**validated_data)
-        user.set_password(password)
-        user.save()
-        if tags is not None:
-            user.account_tags.set(tags)
+        # All-or-nothing: a failure anywhere (profile signal, tags, grants)
+        # must not leave a half-created user with missing tags/grants behind.
+        with transaction.atomic():
+            user = User(**validated_data)
+            user.set_password(password)
+            user.save()
+            if tags is not None:
+                user.account_tags.set(tags)
+            if grant_items is not None:
+                _apply_read_grant_items(user, grant_items)
         return user
 
     def update(self, instance, validated_data):
         tags = validated_data.pop("account_tags", None)
+        grant_items = validated_data.pop("read_grant_items", None)
         password = validated_data.pop("password", None)
         for k, v in validated_data.items():
             setattr(instance, k, v)
@@ -448,6 +590,8 @@ class UserSerializer(serializers.ModelSerializer):
         instance.save()
         if tags is not None:
             instance.account_tags.set(tags)
+        if grant_items is not None:
+            _apply_read_grant_items(instance, grant_items)
         return instance
 
 
@@ -474,7 +618,13 @@ class UserViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         # Visibility scoping: root sees everyone; a non-root admin sees only
         # plain normal users plus themselves (never the root or other admins).
-        qs = User.objects.order_by("id").prefetch_related("account_tags")
+        qs = User.objects.order_by("id").prefetch_related(
+            "account_tags",
+            "read_grants__knowledge_base",
+            "read_grants__category",
+            "read_grants__folder__knowledge_base",
+            "read_grants__document__knowledge_base",
+        )
         if not is_root_admin(self.request.user):
             from django.db.models import Q
             qs = qs.filter(
