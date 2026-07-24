@@ -4233,31 +4233,122 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--jz-accent);
 }
 
-/* ── 主题切换过渡（View Transition API）──
-   默认：新旧主题交叉淡融；从主题菜单点击时（stores/theme.ts 写入
-   jz-vt-circle + --jz-vt-x/y/r）改为从点击处圆形揭幕。无 API 浏览器
-   与 reduced-motion 用户自动回退为瞬时切换。 */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation-duration: 0.4s;
-  animation-timing-function: ease;
+/* ── 主题切换过渡（View Transition API）——电影级编排 ──
+   三种拍法（stores/theme.ts 打 class / JS 命名分层）：
+   · 默认「分层溶解」：背景(root)先行 0.85s，玻璃外壳(jz-shell)+120ms、
+     顶栏(jz-header)+200ms 错峰跟进（J/L cut），旧层带轻微失焦退场
+     （rack focus 感）；old/new 由 UA 的 plus-lighter 混合保持溶解中段
+     亮度不塌陷。
+   · 「圆形揭幕」jz-vt-circle（菜单点击默认）：从点击处以 90px 羽化
+     mask 柔边扫开（--jz-vt-cr 为 @property 注册长度，keyframes 内插
+     驱动渐变半径），旧层微降亮度饱和退后，揭幕边缘有进深。
+   · 「随朝暮」jz-vt-clock：1.8s 慢溶解，另叠 .jz-dusk-veil 天色调色层
+     与 canvas 慢交接（AmbientStage）。
+   无 API 浏览器与 reduced-motion 用户自动回退为瞬时切换。 */
+
+/* 快照树默认拦截命中测试——放行，过渡期间页面保持可交互 */
+::view-transition { pointer-events: none; }
+/* new 快照是 live 的：过渡期关掉 body 自己的底色 transition，避免双重动画 */
+:root.jz-vt-live body { transition: none; }
+
+::view-transition-old(root) {
+  animation: jz-vt-dissolve-out 0.85s cubic-bezier(0.45, 0.05, 0.25, 1) both;
 }
+::view-transition-new(root) {
+  animation: jz-vt-fade-in 0.85s cubic-bezier(0.45, 0.05, 0.25, 1) both;
+}
+::view-transition-old(jz-shell) {
+  animation: jz-vt-dissolve-out 0.6s cubic-bezier(0.45, 0.05, 0.25, 1) 0.12s both;
+}
+::view-transition-new(jz-shell) {
+  animation: jz-vt-fade-in 0.6s cubic-bezier(0.45, 0.05, 0.25, 1) 0.12s both;
+}
+::view-transition-old(jz-header) {
+  animation: jz-vt-fade-out 0.5s cubic-bezier(0.45, 0.05, 0.25, 1) 0.2s both;
+}
+::view-transition-new(jz-header) {
+  animation: jz-vt-fade-in 0.5s cubic-bezier(0.45, 0.05, 0.25, 1) 0.2s both;
+}
+@keyframes jz-vt-dissolve-out {
+  from { opacity: 1; filter: blur(0); }
+  to   { opacity: 0; filter: blur(5px); }
+}
+@keyframes jz-vt-fade-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes jz-vt-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* 圆形揭幕：柔边 mask 扫开。--jz-vt-r 已含羽化余量（JS +90px），
+   收尾时远角也在实心区内。mask 不受支持时退化为立即显示（≈瞬切）。 */
+@property --jz-vt-cr { syntax: '<length>'; inherits: false; initial-value: 0px; }
 :root.jz-vt-circle::view-transition-image-pair(root) { isolation: auto; }
-:root.jz-vt-circle::view-transition-old(root),
-:root.jz-vt-circle::view-transition-new(root) {
-  animation: none;
+:root.jz-vt-circle::view-transition-old(root) {
+  animation: jz-vt-recede 0.65s cubic-bezier(0.3, 0.2, 0.2, 1) both;
   mix-blend-mode: normal;
 }
 :root.jz-vt-circle::view-transition-new(root) {
-  animation: jz-vt-reveal 0.5s ease-out both;
+  animation: jz-vt-reveal 0.65s cubic-bezier(0.3, 0.2, 0.2, 1) both;
+  mix-blend-mode: normal;
+  -webkit-mask-image: radial-gradient(
+    circle at var(--jz-vt-x, 50%) var(--jz-vt-y, 5%),
+    #000 calc(var(--jz-vt-cr) - 90px),
+    transparent var(--jz-vt-cr)
+  );
+  mask-image: radial-gradient(
+    circle at var(--jz-vt-x, 50%) var(--jz-vt-y, 5%),
+    #000 calc(var(--jz-vt-cr) - 90px),
+    transparent var(--jz-vt-cr)
+  );
 }
 @keyframes jz-vt-reveal {
-  from { clip-path: circle(0px at var(--jz-vt-x, 50%) var(--jz-vt-y, 5%)); }
-  to   { clip-path: circle(var(--jz-vt-r, 120vmax) at var(--jz-vt-x, 50%) var(--jz-vt-y, 5%)); }
+  from { --jz-vt-cr: 0px; }
+  to   { --jz-vt-cr: var(--jz-vt-r, 130vmax); }
 }
+@keyframes jz-vt-recede {
+  to { filter: brightness(0.9) saturate(0.92); }
+}
+
+/* 随朝暮：慢溶解（层名未分配，整页一体缓变） */
+:root.jz-vt-clock::view-transition-old(root),
+:root.jz-vt-clock::view-transition-new(root) {
+  animation-duration: 1.8s;
+  animation-timing-function: cubic-bezier(0.4, 0.1, 0.3, 1);
+}
+
+/* 随朝暮天色 veil：soft-light 的暮色/晨光调色层，盖满视口随溶解起落 */
+.jz-dusk-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  pointer-events: none;
+  opacity: 0;
+  mix-blend-mode: soft-light;
+}
+.jz-veil-dusk {
+  background: linear-gradient(180deg, #24345f 0%, #7a4d6e 48%, #e08a4e 100%);
+}
+.jz-veil-dawn {
+  background: linear-gradient(180deg, #8fb4dd 0%, #f2c99b 55%, #fbe8bd 100%);
+}
+.jz-dusk-veil.is-on {
+  animation: jz-veil-pass 2.8s ease-in-out both;
+}
+@keyframes jz-veil-pass {
+  0%   { opacity: 0; }
+  35%  { opacity: 0.75; }
+  62%  { opacity: 0.75; }
+  100% { opacity: 0; }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-old(root),
-  ::view-transition-new(root) { animation: none !important; }
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) { animation: none !important; }
+  .jz-dusk-veil { display: none; }
 }
 
 /* ── 滚动显现（useRevealOnScroll）──

@@ -32,6 +32,31 @@
   }
 }
 
+/* AmbientStage 的场景容器：主题切换时旧场景保活淡出、新场景淡入交叠
+   （交叉溶解，代替原先的硬切空一拍）。is-slow = 随朝暮慢交接。
+   淡出 transition 稍短于 useSceneHandoff 的卸载计时（1150/2600ms）。 */
+.jz-ambient-wrap {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.jz-ambient-wrap.is-exiting {
+  opacity: 0;
+  transition: opacity 1.05s ease-out;
+}
+.jz-ambient-wrap.is-slow.is-exiting {
+  transition-duration: 2.5s;
+}
+.jz-ambient-wrap.is-slow .jz-ambient-canvas {
+  animation-duration: 2.4s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-ambient-wrap.is-exiting {
+    transition: none;
+  }
+}
+
 [data-theme='starry'] .ant-layout,
 [data-theme='starry'] .ant-layout-content,
 [data-theme='deepsea'] .ant-layout,

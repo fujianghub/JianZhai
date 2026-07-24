@@ -12,7 +12,6 @@
  * Active only under [data-theme='springwater']; both canvases sit at z-index 0
  * behind the transparent app layout, the 2D overlay painting above the shader.
  */
-import { useThemeStore } from '@/stores/theme';
 import {
   useAmbientCanvas,
   rand,
@@ -354,8 +353,7 @@ const CANVAS_STYLE: React.CSSProperties = {
   zIndex: 0,
 };
 
-export default function SpringWater() {
-  const active = useThemeStore((s) => s.mode === 'springwater');
+export default function SpringWater({ active }: { active: boolean }) {
   const shaderRef = useShaderCanvas(active, WATER_FRAGMENT);
   const overlayRef = useAmbientCanvas(active, buildSpringWaterOverlay);
   if (!active) return null;

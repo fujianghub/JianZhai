@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import ReactDOM from 'react-dom/client';
 import { App as AntdApp, ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
-import { useThemeStore } from '@/stores/theme';
+import { isLightTheme, useThemeStore } from '@/stores/theme';
+import { readThemeAccent } from '@/utils/themeAccent';
 import { setMessageInstance } from '@/utils/notify';
 import { initCodeBlockGlobalPrefs } from '@/utils/codeBlockPrefs';
 
@@ -17,27 +18,15 @@ function MessageBridge() {
   return null;
 }
 
-/** Per-mode accent feeding AntD's colorPrimary. Each theme's palette is owned
- * by CSS ([data-theme=…] in tokens.css / theme.css); these values must match
- * the corresponding --jz-accent so AntD and the CSS-variable-driven UI agree. */
-const MODE_ACCENT: Record<string, string> = {
-  light: '#02b377',
-  dark: '#02b377',
-  starry: '#d9a6ff',
-  deepsea: '#6ff8e4',
-  springwater: '#12b8a0',
-  wintersnow: '#6a93cf',
-};
-const DEFAULT_ACCENT = '#02b377';
-const DARK_MODES = new Set(['dark', 'starry', 'deepsea']);
-
 function Root() {
   const { mode } = useThemeStore();
   useEffect(() => {
     initCodeBlockGlobalPrefs();
   }, []);
-  const isDark = DARK_MODES.has(mode);
-  const colorPrimary = MODE_ACCENT[mode] ?? DEFAULT_ACCENT;
+  const isDark = !isLightTheme(mode);
+  // AntD 主色直接读 CSS 的 --jz-accent（唯一来源）；store 在触发本次
+  // 重渲之前已把 data-theme 应用到 <html>，此处读到的即目标主题的值。
+  const colorPrimary = useMemo(() => readThemeAccent(), [mode]);
   return (
     <ConfigProvider
       locale={zhCN}

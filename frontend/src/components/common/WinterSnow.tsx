@@ -17,7 +17,6 @@
  * Active only under [data-theme='wintersnow']; canvas at z-index 0 behind the
  * transparent app layout.
  */
-import { useThemeStore } from '@/stores/theme';
 import {
   useAmbientCanvas,
   rand,
@@ -494,8 +493,7 @@ function buildWinterSnow(
   };
 }
 
-export default function WinterSnow() {
-  const active = useThemeStore((s) => s.mode === 'wintersnow');
+export default function WinterSnow({ active }: { active: boolean }) {
   const ref = useAmbientCanvas(active, buildWinterSnow);
   if (!active) return null;
   return (

@@ -15,7 +15,6 @@
  * the (transparent) app layout, painting purely additive light over the dark
  * body gradient.
  */
-import { useThemeStore } from '@/stores/theme';
 import {
   useAmbientCanvas,
   rand,
@@ -775,8 +774,7 @@ function buildStarry(
   };
 }
 
-export default function StarryNight() {
-  const active = useThemeStore((s) => s.mode === 'starry');
+export default function StarryNight({ active }: { active: boolean }) {
   const ref = useAmbientCanvas(active, buildStarry);
   if (!active) return null;
   return (

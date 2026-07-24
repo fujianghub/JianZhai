@@ -18,7 +18,6 @@
  * Active only under [data-theme='deepsea']; canvas at z-index 0 behind the
  * transparent app layout.
  */
-import { useThemeStore } from '@/stores/theme';
 import {
   useAmbientCanvas,
   rand,
@@ -724,8 +723,7 @@ function buildDeepSea(
   };
 }
 
-export default function DeepSea() {
-  const active = useThemeStore((s) => s.mode === 'deepsea');
+export default function DeepSea({ active }: { active: boolean }) {
   const ref = useAmbientCanvas(active, buildDeepSea);
   if (!active) return null;
   return (
