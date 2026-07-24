@@ -2,7 +2,7 @@
 
 > 四角色 RBAC 权威依据。后端是唯一安全边界，前端按 `role` 收口仅为体验。
 > 图例：✅允许 / ❌禁止 / —不适用。
-> 最后更新：2026-06-21
+> 最后更新：2026-07-24（新增第八节：读者可见性两道闸——内容侧受众 + 用户侧阅读授权白名单）
 
 ---
 
@@ -146,3 +146,40 @@
 
 1. **降级历史超管**：现有用 `createsuperuser` 建的非根账号是 `is_superuser=True`，需降为 `is_staff=True`，否则仍能跨内容池越权。
 2. **排查存量普通用户内容**：若有普通用户曾建过 KB / 文档，改规则后将无法访问，需决定迁移或转交作者。
+
+## 八、读者可见性两道闸（2026-07-24）
+
+读者（user / anon）能在博客端看到哪些内容，由 `apps/knowledge/audience.py` 的
+`visible_kbs / visible_categories / visible_documents` **唯一收口**执行两道闸，
+**取 AND**（两道都过才可见）。所有读者入口（blog `_published_qs`、公开 KB/大类/树、
+backlinks、评论 `_commentable_doc`、收藏 `_readable_doc`）都必须经这三个函数；
+新增读者入口同样必须接入，否则直链泄露。**作者（`is_staff`）一律绕过两道闸。**
+
+### 闸一：内容侧受众（朋友圈式，存在 KB / 大类上）
+
+- KB 与大类各有 `audience_mode`（`all` 全员 / `exclude` 黑名单 / `include` 白名单，默认 `all`）
+  + `audience_users`（按用户）+ `audience_tags`（按 `UserTag` 用户标签）。
+- 文档可见 ⇔ 其 KB 受众可见 且（无大类 或 大类受众可见）。
+- 匿名：白名单不可见、黑名单可见（匿名无身份无标签，永远不被定向）。
+- 序列化器拒绝把作者加入受众名单（`validate_audience_user_ids` → 400）。
+
+### 闸二：用户侧阅读授权白名单（`accounts.ReadGrant`，存在用户上）
+
+- 用户管理里给**普通用户**配置授权条目，每条恰好指向一个目标（DB CheckConstraint）：
+  **整个 KB** / **整个大类** / **某文件夹（含全部子文件夹）** / **单篇文档**。
+- **无任何条目 = 不受限**（向后兼容，走闸一即可）；**有条目 = 白名单**，
+  只有命中至少一条授权的内容可读，未命中的 KB 名 / 大类名 / 文件夹名 / 文档均不出现。
+- folder / 文档级授权的**宿主 KB 及其大类保持可导航**（否则有权却无入口），
+  但其下未授权的兄弟内容仍被文档级过滤挡住。
+- 管理员（staff）不受限也不可被授权：序列化器拒绝给 staff 设授权（400）；
+  用户后被提拔为管理员时残留条目自动失效（inert）。
+- 软删目标 **fail-closed**：授权条目保留（用户仍算受限），但软删内容自身不可见；
+  UI 显示「（已删除）」由作者手动移除。硬删目标时条目 CASCADE 清除。
+- 编辑入口（三处）：用户管理新建用户 Modal「阅读权限」区块 / 用户行眼睛按钮 /
+  「阅读范围」列点击直达，均为同一 `ReadGrantControl`（知识库**可多选批量整库授权**；
+  恰好选中单个知识库时展开目录树，精细到文件夹 / 文档）。写入 `read_grant_items`
+  全量替换；传 `[]` 清空恢复不受限；权限沿用 `IsStaffUser` + `can_manage_user`。
+- `UserSerializer.create()` 全程 `transaction.atomic`：建用户任一步失败（profile
+  信号 / 标签 / 授权）整体回滚，不留半成品用户。
+- 测试：`apps/accounts/tests/test_read_grants.py`（模型约束 + API）、
+  `apps/knowledge/tests/test_read_grants_visibility.py`（四粒度 + AND 叠加 + 端到端防泄露）。
