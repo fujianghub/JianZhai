@@ -60,11 +60,14 @@ canvas 之上的「近景」动效，全部尊重 `prefers-reduced-motion`：
 1. **「重音」一律走 token**：组件主色、hover 边框/光晕、激活态渐变 → `var(--jz-accent)` / `var(--jz-accent-soft)` / `var(--jz-gold)`，**禁止**写死 `rgba(16,185,129,…)` / `#02b377` / `#10b981` / `#06d6a0`。半透明用 `color-mix(in srgb, var(--jz-accent) N%, transparent)`（与 `rgba(c, 0.N)` 渲染等价）。
 2. **`var(--jz-accent, #10b981)` 的 fallback 无害**：token 永有值，fallback 永不触发，无需改。
 3. **保持写死的三类**：① 语义色（成功绿 `#10b981`/`.is-success`、错误红、批注琥珀 `#f59e0b`）跨主题恒定；② 图标多彩色板（`jz-ico-tone-*`、`#059669` 等）是固定调色盘；③ 刻意的页面识别色（架构总览 hero 的青蓝 `rgba(58,110,165)`、AI hero 的紫罗兰）。
-4. **代码块深底 `#282c34`/`#1f2329` 是有意设计**：六主题统一深底（含默认 light），勿改成跟随主题。
+4. **代码块深底是有意设计**：六主题统一深底（含默认 light），勿改成跟随主题；底色统一走 `var(--jz-code-bg, #282c34)`（编辑器裸 pre 曾另写 `#1f2329`，2026-07-25 已对齐）。**行内代码**供色走派生令牌 `--jz-code-inline-fg/bg/border`（tokens.css，fg = `color-mix(accent 54%, --jz-text)` 六主题自动可读，实测对比度 4.88–10.96 全过 WCAG AA），新增行内代码消费点（阅读/编辑/表格内/AI 面板/导出端五处镜像）一律用它，勿再写纯 accent 前景。
 5. **暖宣纸**（`paper-rice/kraft/parchment`）在 `.jz-blog-glass` 已 `!important` 中性化；但**后台编辑器预览**（`.jz-admin-glass`）会露暖色，新增亮色主题须在 `paper.css` 补冷调变体。
-6. **亮色集合**：新增亮色主题必须加入 `stores/theme.ts` 的 `LIGHT_MODES`（`colorScheme: light`）+ `main.tsx` 的 `MODE_ACCENT`（喂 AntD `colorPrimary`，须等于该主题 `--jz-accent`），否则原生控件/AntD 算法误判暗色。
+6. **亮色集合**：新增亮色主题必须加入 `stores/theme.ts` 的 `LIGHT_MODES`（`colorScheme: light`），否则原生控件/AntD 算法误判暗色。AntD `colorPrimary` 已单源化——运行时读根元素 `--jz-accent`（`utils/themeAccent.ts`），无需再配 JS 色表（旧 `MODE_ACCENT` 已删）。
 7. **accent 渐变上的前景一律 `var(--jz-on-accent, <fallback>)`**：主按钮/Segmented 选中态/印章/书卡 CTA 等亮 accent 底上的文字**禁止**写死 `#fff` 或某主题的墨绿——白字压亮 accent 最低只有 1.8:1。六主题各配「accent 墨色」（tokens.css），新增消费点带旧值 fallback 即可。
 8. **层背景改动先验证真的在渲染**：`background: X !important` 简写会把**同规则及后续规则的普通 background-* 长手全部压死**（cascade 中 important 恒胜 normal）——布局光晕曾因此长期是死代码。改层背景先 `getComputedStyle` 确认 `backgroundImage ≠ none`；要在 !important 声明上做动画，用 `@property` 注册变量从 `var()` 内部驱动。
+9. **portal 弹层不透明底走 `:root` 的 `--jz-overlay-surface`**（2026-07-25）：AntD Dropdown/Popover/tippy 弹层挂 `document.body`，拿不到 `.jz-glass` 作用域的 `--glass-*`/`--jz-ai-*`（slash 菜单/块面板/AI 菜单在 dark 下曾因半透明 `--jz-surface` 近全透明）。新弹层背景写 `var(<作用域令牌>, var(--jz-overlay-surface, #fff))` 兜底链。
+10. **表格格面背景走 `--jz-cell-surface(-2)`**（2026-07-25）：冻结首行/首列靠单元格自身背景遮挡滚动内容，**必须完全不透明**——light/dark 的 `--jz-surface` 是半透明玻璃令牌，直接用会透底。该令牌 = surface 预合成到 bg-app 的实底换算值（tokens.css），**改任一主题的 surface/bg-app 须同步重算 cell 值**。
+11. **编辑器标题装饰伪元素分工**（2026-07-25）：`.tiptap` 标题的 `::before` 归**章节自动编号**专用（`.jz-has-heading-num::before`），折叠箭头等其他标题装饰一律用 `::after`——折叠箭头曾占 `::before` 且特异性更高，把 H1–H4 编号整层覆盖（编号只在 H5/H6 出现）。
 
 ---
 
