@@ -61,7 +61,13 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 | backup | `backup.sh` 每日 `pg_dump` |
 
 - `SITE_REQUIRE_LOGIN=true` 开启**友邻可见**；`JIANZHAI_ROOT_ADMIN_USERNAME` 指定根。域名/ICP/DNS 见 `infra/README.md`
-- **重部署**：本地 build dist + rsync（排除 `.env.prod`、`.git`、`Caddyfile`、`backend.Dockerfile`、compose 等服务器专属文件）；改 compose 后须 `docker compose up -d backend celery` 重建（见 memory `project_deploy_tencent`）
+
+### 重部署两条路径（2026-07-25 现行）
+
+- **纯前端快路径**（无后端/迁移改动时）：本地 `pnpm build`（用带 `JZ_API_PROXY_TARGET` 的隔离 `cacheDir` 实例，勿污染主 dev server 缓存）→ rsync `frontend/dist/`（**带 `--delete`**）→ 服务器 `docker compose build caddy && docker compose up -d caddy`
+- **含后端/迁移标准路径**：快路径基础上另加 rsync `backend/`（**无 `--delete`**，排除 `.venv/.env/media/exports/staticfiles` 等；`static/vendor/` 的 katex/mermaid 离线渲染资源随之带上）→ `docker compose build backend caddy && docker compose up -d`；有新迁移则容器内 `python manage.py migrate`
+- rsync 统一排除服务器专属文件：`.env.prod`、`.git`、`Caddyfile`、`backend.Dockerfile`、compose（见 memory `project_deploy_tencent`）
+- **部署后验证绿三件**：线上 JS hash == 本地 dist 产物；匿名访问 `/api/v1/public/*` 返 403；`/auth/session/` 返 `require_login: true`
 - **导出共享卷**（必须）：backend + celery 各挂命名卷 `exports_data:/app/exports`（顶层声明 `name: jianzhai_exports_data`），否则 celery 写、backend 读不到 → 下载返 404 HTML → 浏览器「无法从网站上提取文件」。详见 [export-search.md](./export-search.md) 与 memory `project_export_shared_volume`
 
 ---
