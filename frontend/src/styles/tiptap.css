@@ -21,16 +21,18 @@
 .tiptap-shell .ProseMirror > :first-child {
   margin-top: 0;
 }
+/* 段落/列表节奏与阅读端 markdown.css 逐项对齐（p .8em / ul .6em / li .25em），
+   编辑态与发布态不再有肉眼可辨的密度差。 */
 .tiptap-shell .ProseMirror p {
-  margin: 0.85em 0;
+  margin: 0.8em 0;
 }
 .tiptap-shell .ProseMirror ul,
 .tiptap-shell .ProseMirror ol {
-  margin: 0.75em 0;
+  margin: 0.6em 0;
   padding-left: 1.6em;
 }
 .tiptap-shell .ProseMirror li {
-  margin: 0.4em 0;
+  margin: 0.25em 0;
 }
 .tiptap-shell .ProseMirror li > p {
   margin: 0.2em 0;
@@ -43,44 +45,58 @@
   pointer-events: none;
   height: 0;
 }
+/* 标题与阅读端 markdown.css h1–h4 对齐：同 margin/行高，h1/h2 同款下划分隔线；
+   补上此前完全缺失的 h4/h5/h6 规则（缺失时走浏览器默认，编辑/阅读观感割裂）。 */
 .tiptap-shell .ProseMirror h1,
 .tiptap-shell .ProseMirror h2,
-.tiptap-shell .ProseMirror h3 {
-  margin: 1.5em 0 0.6em;
+.tiptap-shell .ProseMirror h3,
+.tiptap-shell .ProseMirror h4,
+.tiptap-shell .ProseMirror h5,
+.tiptap-shell .ProseMirror h6 {
+  margin: 1.4em 0 0.6em;
   font-weight: 600;
+  line-height: 1.35;
   color: var(--jz-text);
 }
-.tiptap-shell .ProseMirror h1 { font-size: 1.9em; }
-.tiptap-shell .ProseMirror h2 { font-size: 1.5em; }
+.tiptap-shell .ProseMirror h1 { font-size: 1.9em; border-bottom: 1px solid var(--jz-divider); padding-bottom: 0.3em; }
+.tiptap-shell .ProseMirror h2 { font-size: 1.5em; border-bottom: 1px solid var(--jz-divider); padding-bottom: 0.25em; }
 .tiptap-shell .ProseMirror h3 { font-size: 1.25em; }
+.tiptap-shell .ProseMirror h5 { font-size: 0.95em; }
+.tiptap-shell .ProseMirror h6 { font-size: 0.9em; color: var(--jz-text-muted); }
 .tiptap-shell .ProseMirror blockquote {
+  /* 与阅读端 blockquote 一致（.4em 1em、直角）——此前编辑态圆角+更宽 padding */
   border-left: 4px solid color-mix(in srgb, var(--jz-accent) 65%, var(--jz-divider));
-  padding: 0.6em 1.2em;
-  margin: 1.1em 0;
-  border-radius: 0 8px 8px 0;
+  padding: 0.4em 1em;
+  margin: 0.8em 0;
   color: var(--jz-text-muted);
   background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
 }
+/* 行内代码 —— 与阅读端 .markdown-preview code 逐项镜像（令牌见 tokens.css） */
 .tiptap-shell .ProseMirror code {
-  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
-  color: var(--jz-accent);
-  padding: 1px 6px;
+  background: var(--jz-code-inline-bg, color-mix(in srgb, var(--jz-surface-2) 70%, transparent));
+  color: var(--jz-code-inline-fg, var(--jz-accent));
+  border: 1px solid var(--jz-code-inline-border, transparent);
+  padding: 0.12em 0.4em;
   border-radius: 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 /* Code blocks intentionally keep a darker neutral background — code is
    easiest to read on a single uniform ground regardless of page theme. */
 .tiptap-shell .ProseMirror pre {
-  background: #1f2329;
+  /* 与阅读端裸 pre 同底（走代码主题令牌）——此前 #1f2329 vs 阅读端 #282c34 */
+  background: var(--jz-code-bg, #282c34);
   color: #eaeaea;
   padding: 12px 16px;
   border-radius: 6px;
   overflow: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.9em;
+  line-height: 1.5;
 }
-.tiptap-shell .ProseMirror pre code { background: transparent; color: inherit; padding: 0; }
+.tiptap-shell .ProseMirror pre code { background: transparent; color: inherit; padding: 0; border: none; }
 .tiptap-shell .ProseMirror ul[data-type='taskList'] { list-style: none; padding-left: 0.5em; }
 .tiptap-shell .ProseMirror ul[data-type='taskList'] li { display: flex; gap: 8px; }
 .tiptap-shell .ProseMirror ul[data-type='taskList'] li > label { user-select: none; }
@@ -135,12 +151,14 @@
 }
 .tiptap-shell .ProseMirror th {
   /* opaque — frozen header cells must cover rows scrolling underneath
-     (the 题签 gradient rules in markdown.css repaint this on most themes) */
-  background: color-mix(in srgb, var(--jz-surface-2) 70%, var(--jz-surface));
+     (the 题签 gradient rules in markdown.css repaint this on most themes)。
+     必须用不透明 --jz-cell-surface 令牌：light/dark 的 --jz-surface 是半透明
+     玻璃，冻结面会直接透出滚动内容。 */
+  background: color-mix(in srgb, var(--jz-cell-surface-2, var(--jz-surface-2)) 70%, var(--jz-cell-surface, var(--jz-surface)));
   font-weight: 600;
 }
 .tiptap-shell .ProseMirror td {
-  background: var(--jz-surface);
+  background: var(--jz-cell-surface, var(--jz-surface));
 }
 
 /* ── 编辑器表格冻结首行 / 首列 ──
@@ -167,6 +185,33 @@
   background: color-mix(in srgb, var(--jz-accent) 15%, transparent);
   pointer-events: none;
 }
+/* ── 列宽拖拽（prosemirror-tables columnResizing）──
+   官方样式表未随 @tiptap/extension-table 注入，缺失时把手是一个无定位的
+   裸 <div>、col-resize 光标不出现 —— 列宽调整功能实际不可发现。 */
+.tiptap-shell .ProseMirror .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  z-index: 20;
+  background-color: color-mix(in srgb, var(--jz-accent) 75%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+}
+.tiptap-shell .ProseMirror.resize-cursor,
+.tiptap-shell .resize-cursor .ProseMirror {
+  cursor: col-resize;
+}
+.tiptap-shell .ProseMirror table .column-resize-dragging {
+  cursor: col-resize;
+}
+/* ── gapcursor / dropcursor 主题化 ──
+   库默认硬编码黑色（@tiptap/core gapcursor / prosemirror-dropcursor），
+   暗色主题下不可见。 */
+.tiptap-shell .ProseMirror .ProseMirror-gapcursor:after {
+  border-top: 1px solid var(--jz-text);
+}
 .tiptap-shell .ProseMirror hr {
   border: none;
   border-top: 1px solid var(--jz-divider);
@@ -179,9 +224,11 @@
 .tiptap-shell .ProseMirror a:hover { text-decoration: underline; }
 .tiptap-shell .ProseMirror img { max-width: 100%; height: auto; }
 
-/* Slash menu (rendered into document.body via tippy) */
+/* Slash menu (rendered into document.body via tippy)。
+   portal 到 body → 拿不到 .jz-glass 作用域令牌；--jz-surface 在 dark 下是
+   4.5% 白的近透明玻璃 → 菜单直接透出正文。用不透明的 overlay 令牌。 */
 .slash-menu {
-  background: var(--jz-surface);
+  background: var(--jz-overlay-surface, var(--jz-surface));
   color: var(--jz-text);
   border: 1px solid var(--jz-border);
   border-radius: 8px;
@@ -427,7 +474,9 @@
 }
 .tiptap-shell .jz-find-match-current {
   background: color-mix(in srgb, var(--jz-accent) 65%, transparent);
-  color: var(--jz-surface);
+  /* on-accent 墨色：暗色主题下 --jz-surface 是近透明玻璃令牌，用它当前景
+     文字会直接消失（曾致当前匹配项不可读）。 */
+  color: var(--jz-on-accent);
 }
 
 /* 查找替换浮窗 */
@@ -437,11 +486,12 @@
   right: 24px;
   width: 320px;
   padding: 10px 12px;
-  background: var(--jz-surface);
+  background: var(--jz-overlay-surface, var(--jz-surface));
   border: 1px solid var(--jz-border);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
-  z-index: 1000;
+  /* 高于全屏外壳 .jz-fullscreen-shell(1080)，否则全屏模式下整个面板被压住 */
+  z-index: 1150;
 }
 
 /* ── 行内批注 ──────────────────────────────────────────────────────── */
@@ -461,7 +511,7 @@
   z-index: 2100;
   max-width: 280px;
   padding: 7px 11px;
-  background: var(--jz-surface);
+  background: var(--jz-overlay-surface, var(--jz-surface));
   border: 1px solid var(--jz-border);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
@@ -1649,10 +1699,10 @@ body.jz-fullscreen-active .jz-admin-content {
   opacity: 0.9;
 }
 
-/* Popover 面板 */
+/* Popover 面板（portal 到 body → --glass-* 不可达，兜底走不透明 overlay 令牌） */
 .jz-block-panel-overlay .ant-popover-inner {
   padding: 0 !important;
-  background: var(--glass-surface, var(--jz-surface)) !important;
+  background: var(--glass-surface, var(--jz-overlay-surface, var(--jz-surface))) !important;
   border: 1px solid var(--jz-border) !important;
   border-radius: 12px !important;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.08) !important;
@@ -1924,7 +1974,8 @@ img.jz-image-style-sepia { filter: sepia(0.6) contrast(0.95) brightness(0.95); }
    ════════════════════════════════════════════════════════════════════════ */
 
 .jz-emoji-picker {
-  background: var(--jz-surface);
+  /* portal 到 body（tippy）——同 .slash-menu，用不透明 overlay 令牌 */
+  background: var(--jz-overlay-surface, var(--jz-surface));
   border: 1px solid var(--jz-border);
   border-radius: 10px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
@@ -2118,11 +2169,14 @@ a.jz-link-card-static .jz-link-card-title {
   margin-left: -28px;
   transition: color 0.15s ease;
 }
-/* 默认隐藏；hover heading 才出现 */
-.tiptap-shell .ProseMirror h1::before,
-.tiptap-shell .ProseMirror h2::before,
-.tiptap-shell .ProseMirror h3::before,
-.tiptap-shell .ProseMirror h4::before {
+/* 默认隐藏；hover heading 才出现。
+   注意：必须用 ::after（绝对定位与 DOM 顺序无关）—— ::before 被章节自动编号
+   （.jz-has-heading-num::before，见上文「章节自动编号」）占用；此前箭头占
+   ::before 时，其更高特异性把 H1–H4 的编号整个覆盖掉（编号只在 H5/H6 出现）。 */
+.tiptap-shell .ProseMirror h1::after,
+.tiptap-shell .ProseMirror h2::after,
+.tiptap-shell .ProseMirror h3::after,
+.tiptap-shell .ProseMirror h4::after {
   content: '▾';
   position: absolute;
   left: 4px;
@@ -2141,23 +2195,23 @@ a.jz-link-card-static .jz-link-card-title {
   opacity: 0;
   transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease, transform 0.18s ease;
 }
-.tiptap-shell .ProseMirror h1:hover::before,
-.tiptap-shell .ProseMirror h2:hover::before,
-.tiptap-shell .ProseMirror h3:hover::before,
-.tiptap-shell .ProseMirror h4:hover::before {
+.tiptap-shell .ProseMirror h1:hover::after,
+.tiptap-shell .ProseMirror h2:hover::after,
+.tiptap-shell .ProseMirror h3:hover::after,
+.tiptap-shell .ProseMirror h4:hover::after {
   opacity: 0.7;
 }
-.tiptap-shell .ProseMirror h1::before:hover,
-.tiptap-shell .ProseMirror h2::before:hover,
-.tiptap-shell .ProseMirror h3::before:hover,
-.tiptap-shell .ProseMirror h4::before:hover {
+.tiptap-shell .ProseMirror h1::after:hover,
+.tiptap-shell .ProseMirror h2::after:hover,
+.tiptap-shell .ProseMirror h3::after:hover,
+.tiptap-shell .ProseMirror h4::after:hover {
   background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
   color: var(--jz-accent);
   opacity: 1;
 }
 
 /* 折叠态：箭头变 ▸ + 标题色变 accent */
-.tiptap-shell .ProseMirror [data-folded='1']::before {
+.tiptap-shell .ProseMirror [data-folded='1']::after {
   content: '▸';
   opacity: 1 !important;
   color: var(--jz-accent);
@@ -2231,8 +2285,11 @@ sup.jz-footnote-ref:hover,
    作用域：仅 .jz-admin-glass（博客阅读端保留宣纸朱砂）
    ════════════════════════════════════════════════════════════════════════ */
 
-/* —— 亮色后台 —— */
-.jz-admin-glass .tiptap-shell,
+/* —— 亮色后台 ——
+   注意 :not([class*='paper-'])：裸 .tiptap-shell 会把用户主动选的
+   paper-rice / paper-kraft 等纹理一并刷白（与下方注释矛盾）；
+   只中性化「未选纸张」与 paper-default 两种情形。 */
+.jz-admin-glass .tiptap-shell:not([class*='paper-']),
 .jz-admin-glass .jz-md-editor-preview,
 .jz-admin-glass .tiptap-shell.paper-default,
 .jz-admin-glass .jz-md-editor-preview.paper-default {
@@ -2245,15 +2302,15 @@ sup.jz-footnote-ref:hover,
 }
 
 /* —— 暗色 / 星空 / 深海 —— */
-[data-theme='dark']  .jz-admin-glass .tiptap-shell,
+[data-theme='dark']  .jz-admin-glass .tiptap-shell:not([class*='paper-']),
 [data-theme='dark']  .jz-admin-glass .jz-md-editor-preview,
 [data-theme='dark']  .jz-admin-glass .tiptap-shell.paper-default,
 [data-theme='dark']  .jz-admin-glass .jz-md-editor-preview.paper-default,
-[data-theme='starry'] .jz-admin-glass .tiptap-shell,
+[data-theme='starry'] .jz-admin-glass .tiptap-shell:not([class*='paper-']),
 [data-theme='starry'] .jz-admin-glass .jz-md-editor-preview,
 [data-theme='starry'] .jz-admin-glass .tiptap-shell.paper-default,
 [data-theme='starry'] .jz-admin-glass .jz-md-editor-preview.paper-default,
-[data-theme='deepsea'] .jz-admin-glass .tiptap-shell,
+[data-theme='deepsea'] .jz-admin-glass .tiptap-shell:not([class*='paper-']),
 [data-theme='deepsea'] .jz-admin-glass .jz-md-editor-preview,
 [data-theme='deepsea'] .jz-admin-glass .tiptap-shell.paper-default,
 [data-theme='deepsea'] .jz-admin-glass .jz-md-editor-preview.paper-default {
@@ -2440,12 +2497,13 @@ sup.jz-footnote-ref:hover,
 .jz-admin-glass .jz-doc-header-bar .ant-segmented-item-selected,
 .jz-blog-glass .jz-doc-header-bar .ant-segmented-item-selected {
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
-  color: #ffffff !important;
+  /* on-accent 墨色前景（白字压亮 accent 渐变最低 1.8:1，theme.css 已有同款结论） */
+  color: var(--jz-on-accent) !important;
   box-shadow: 0 2px 10px var(--jz-accent-glow) !important;
 }
 .jz-admin-glass .jz-doc-header-bar .ant-segmented-item-selected .ant-segmented-item-label,
 .jz-blog-glass .jz-doc-header-bar .ant-segmented-item-selected .ant-segmented-item-label {
-  color: #ffffff !important;
+  color: var(--jz-on-accent) !important;
   font-weight: 600;
 }
 [data-theme='dark']  .jz-admin-glass .jz-doc-header-bar .ant-segmented-item,
@@ -2969,7 +3027,8 @@ sup.jz-footnote-ref:hover,
 .jz-glass .jz-editor-toolbar .ant-btn-primary.jz-toolbar-save-btn {
   background: var(--jz-accent) !important;
   border-color: var(--jz-accent) !important;
-  color: #ffffff !important;
+  /* on-accent 墨色：白字压亮 accent 最低仅 ~1.8:1（见 theme.css Segmented 同款结论） */
+  color: var(--jz-on-accent) !important;
 }
 
 /* 工具栏内的 Space.Compact 视觉分组 */
@@ -2986,15 +3045,16 @@ sup.jz-footnote-ref:hover,
   color: var(--jz-accent);
 }
 
-/* 选区浮动 BubbleMenu */
-.jz-admin-glass .jz-bubble-menu {
+/* 选区浮动 BubbleMenu（.jz-glass：admin 与博客 .jz-doc-shell-blog 两壳共用，
+   原先只写 .jz-admin-glass → 博客「完整编辑」入口气泡条半透明） */
+.jz-glass .jz-bubble-menu {
   background: rgba(255, 255, 255, 0.96);
   border-color: var(--jz-border);
   backdrop-filter: blur(12px);
 }
-[data-theme='dark']  .jz-admin-glass .jz-bubble-menu,
-[data-theme='starry'] .jz-admin-glass .jz-bubble-menu,
-[data-theme='deepsea'] .jz-admin-glass .jz-bubble-menu {
+[data-theme='dark']  .jz-glass .jz-bubble-menu,
+[data-theme='starry'] .jz-glass .jz-bubble-menu,
+[data-theme='deepsea'] .jz-glass .jz-bubble-menu {
   background: rgba(20, 25, 35, 0.94);
 }
 .jz-glass .jz-bubble-btn,
@@ -3006,7 +3066,7 @@ sup.jz-footnote-ref:hover,
   background: color-mix(in srgb, var(--jz-accent) 12%, transparent);
   color: var(--jz-accent);
 }
-.jz-admin-glass .jz-bubble-btn.is-active {
+.jz-glass .jz-bubble-btn.is-active {
   background: color-mix(in srgb, var(--jz-accent) 22%, transparent);
   color: var(--jz-accent);
 }
@@ -3033,9 +3093,10 @@ sup.jz-footnote-ref:hover,
   opacity: 0.5;
 }
 
-/* 选中态高亮：从内置浅蓝改为朱砂 */
-.jz-admin-glass .tiptap-shell .ProseMirror::selection,
-.jz-admin-glass .tiptap-shell .ProseMirror ::selection {
+/* 选中态高亮：从内置浅蓝改为主题 accent（.jz-glass 两壳共用——原先只写
+   admin 壳，博客完整编辑/内联编辑仍是浏览器默认蓝） */
+.jz-glass .tiptap-shell .ProseMirror::selection,
+.jz-glass .tiptap-shell .ProseMirror ::selection {
   background: color-mix(in srgb, var(--jz-accent) 25%, transparent);
 }
 
@@ -3052,7 +3113,7 @@ html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepse
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-select-dropdown {
   background: rgba(255, 255, 255, 0.98) !important;
-  color: #1c1c1e !important;
+  color: var(--jz-text) !important;
   border: 1px solid rgba(60, 60, 67, 0.12) !important;
   box-shadow:
     0 8px 24px rgba(0, 0, 0, 0.10),
@@ -3062,18 +3123,20 @@ html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepse
   .ant-dropdown-menu-item,
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-select-item {
-  color: #1c1c1e !important;
+  color: var(--jz-text) !important;
 }
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-dropdown-menu-item:hover,
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-select-item-option-active {
-  background: rgba(2, 179, 119, 0.08) !important;
+  /* 走 accent 变量：春水(#12b8a0)/冬雪(#6a93cf) 也落入本亮色分支，
+     硬编码翡翠绿会与主题重音撞色 */
+  background: color-mix(in srgb, var(--jz-accent) 8%, transparent) !important;
 }
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-select-item-option-selected {
-  background: rgba(2, 179, 119, 0.14) !important;
-  color: #02b377 !important;
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent) !important;
+  color: var(--jz-accent) !important;
 }
 
 /* tippy 弹层（emoji / slash menu / mention） */
@@ -3088,7 +3151,7 @@ html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepse
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .jz-emoji-picker {
   background: rgba(255, 255, 255, 0.98) !important;
-  color: #1c1c1e !important;
+  color: var(--jz-text) !important;
   border-color: rgba(60, 60, 67, 0.12) !important;
 }
 
@@ -3099,7 +3162,7 @@ html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepse
 html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepsea'])
   .ant-tooltip-inner {
   background: rgba(255, 255, 255, 0.98) !important;
-  color: #1c1c1e !important;
+  color: var(--jz-text) !important;
   border: 1px solid rgba(60, 60, 67, 0.13) !important;
   box-shadow:
     0 6px 24px rgba(0, 0, 0, 0.10),

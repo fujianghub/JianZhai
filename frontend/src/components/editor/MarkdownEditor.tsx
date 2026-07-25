@@ -1046,7 +1046,7 @@ export default function MarkdownEditor({
           }}
         >
           <Tooltip title="文字颜色">
-            <Button size="small" icon={<BgColorsOutlined />} disabled={readOnly} />
+            <Button size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} disabled={readOnly} />
           </Tooltip>
         </Dropdown>
         <Dropdown.Button

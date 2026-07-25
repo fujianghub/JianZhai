@@ -108,4 +108,30 @@
     color: #111 !important;
     border: 1px solid #ddd;
   }
+
+  /* 解除屏幕端 70vh 滚动限高：打印没有滚动条，超高的表格/代码块内容会被
+     永久裁掉（长图在上方已有同款解除，此处曾是遗漏）。 */
+  .markdown-preview .jz-table-wrap,
+  .markdown-preview table,
+  .markdown-preview pre,
+  .jz-code-block,
+  .jz-code-pre {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  /* 代码块 chrome：深色工具条打印只剩一条空色带 → 隐藏；代码底/字改印刷友好，
+     并压掉 hljs token 的暗色配色（浅灰底上的暗灰注释打印几乎不可读）。 */
+  .jz-code-toolbar {
+    display: none !important;
+  }
+  .jz-code-block,
+  .jz-code-pre {
+    background: #f5f5f5 !important;
+  }
+  .jz-code-pre code,
+  .jz-code-pre code span,
+  .jz-code-line::before {
+    color: #111 !important;
+  }
 }

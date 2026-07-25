@@ -294,6 +294,11 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 .jz-post-inline-edit .jz-post-main .paper.jz-post-inline-editor {
   border: 1px solid color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 35%, var(--jz-border));
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 8%, transparent);
+  /* 内层 .paper 去卡面：外层 <article class="paper"> 已是承载面，双层纸卡
+     曾叠出 44+44px 双 padding 与两层 blur —— 只保留 accent 描边作编辑信号。 */
+  background: transparent;
+  backdrop-filter: none;
+  padding: 0 8px 8px;
 }
 .jz-post-inline-editor {
   min-height: min(75vh, 720px);
@@ -311,14 +316,17 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 }
 .jz-post-inline-editor .tiptap-shell {
   flex: 1;
-  min-height: min(68vh, 640px);
-  font-size: 16px;
-  line-height: 1.85;
-  padding: 20px 24px 28px;
+  /* !important：RichTextEditor 以 inline style 写死 padding 12/16 与 minHeight:0，
+     无 !important 时本组设计版式整段失效（曾长期是死代码）。 */
+  min-height: min(68vh, 640px) !important;
+  padding: 20px 24px 28px !important;
 }
+/* 编辑态吃阅读态的字体/字号/行高变量（外层 <article> inline style 提供）——
+   否则按 E 进编辑瞬间从宋体 16.5px×scale 跳回系统无衬线 16px。 */
 .jz-post-inline-editor .tiptap-shell .ProseMirror {
-  font-size: 16px;
-  line-height: 1.85;
+  font-family: var(--jz-article-font, inherit);
+  font-size: calc(16.5px * var(--jz-reader-scale, 1));
+  line-height: var(--jz-reader-lh, 1.85);
 }
 .jz-post-inline-html {
   padding: 0;

@@ -87,4 +87,10 @@
 .global-search-item:hover {
   background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
 }
-.global-search-item:focus { outline: none; }
+/* 鼠标点击不出焦点环，键盘 Tab/方向键导航保留可见焦点（此前一刀切
+   outline:none 让键盘用户在搜索结果里完全失去焦点指示）。 */
+.global-search-item:focus:not(:focus-visible) { outline: none; }
+.global-search-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--jz-accent) 70%, transparent);
+  outline-offset: -2px;
+}

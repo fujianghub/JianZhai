@@ -201,7 +201,8 @@ export default function RichTextEditor({
   }, []);
   const imageFileInputRef = useRef<HTMLInputElement | null>(null);
   const attachmentFileInputRef = useRef<HTMLInputElement | null>(null);
-  const [, setUploading] = useState(false);
+  // 图片上传中的工具栏状态提示（此前 state 值被丢弃，上传全程零反馈）。
+  const [uploading, setUploading] = useState(false);
   const lastSavedRef = useRef(value);
   /** Last markdown emitted via onChange (live editor view). Used to detect
    *  whether prop `value` is a server echo or an out-of-band external update. */
@@ -246,6 +247,9 @@ export default function RichTextEditor({
         link: false,
         underline: false,
         heading: { levels: [1, 2, 3, 4, 5, 6] },
+        // prosemirror-dropcursor 默认硬编码黑色，暗色主题下拖放插入线不可见；
+        // inline style 支持 CSS 变量，跟随主题 accent。
+        dropcursor: { color: 'var(--jz-accent)', width: 2 },
       }),
       CodeBlockLowlight.extend({
         addAttributes() {
@@ -1033,6 +1037,11 @@ export default function RichTextEditor({
             {statusLabel[status].text}
           </Tag>
           <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
+          {uploading && (
+            <Tag color="blue" style={{ margin: 0 }}>
+              图片上传中…
+            </Tag>
+          )}
           <Tooltip title="立即保存 (Ctrl/⌘+S)">
             <Button
               size="small"

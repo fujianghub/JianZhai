@@ -15,12 +15,17 @@
   --jz-overlay-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
 }
 
+/* 暗色列表必须与上面的亮色列表一一对应 —— .jz-doc-shell-blog（博客「完整编辑」
+   入口）曾漏配，导致该入口暗色下 AI 面板/插入菜单仍是 92% 白底。 */
 [data-theme='dark'] .jz-admin-glass,
 [data-theme='starry'] .jz-admin-glass,
 [data-theme='deepsea'] .jz-admin-glass,
 [data-theme='dark'] .jz-post-inline-editor,
 [data-theme='starry'] .jz-post-inline-editor,
-[data-theme='deepsea'] .jz-post-inline-editor {
+[data-theme='deepsea'] .jz-post-inline-editor,
+[data-theme='dark'] .jz-doc-shell-blog,
+[data-theme='starry'] .jz-doc-shell-blog,
+[data-theme='deepsea'] .jz-doc-shell-blog {
   --jz-ai-gradient: linear-gradient(135deg, #0284c7 0%, #4f46e5 55%, #7c3aed 100%);
   --jz-ai-glow: 0 4px 24px rgba(79, 70, 229, 0.4);
   --jz-ai-surface: rgba(22, 26, 36, 0.94);
@@ -315,19 +320,17 @@
   min-width: 240px;
   max-width: 300px;
   padding: 6px 0;
-  background: var(--jz-ai-surface, #fff);
+  /* AntD Dropdown portal 到 body → --jz-ai-surface（shell 作用域）不可达时
+     落到不透明的 --jz-overlay-surface（:root 按主题翻转）。
+     此前暗色兜底 var(--jz-ai-surface) 无 fallback → 变量未定义整条失效
+     → 暗色下 AI 菜单透明。 */
+  background: var(--jz-ai-surface, var(--jz-overlay-surface, #fff));
   border: 1px solid var(--jz-border);
-  border-radius: var(--jz-overlay-radius);
-  box-shadow: var(--jz-overlay-shadow);
+  border-radius: var(--jz-overlay-radius, 10px);
+  box-shadow: var(--jz-overlay-shadow, 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06));
   backdrop-filter: blur(20px) saturate(192%);
   -webkit-backdrop-filter: blur(20px) saturate(192%);
   overflow: hidden;
-}
-
-[data-theme='dark'] .jz-ai-menu,
-[data-theme='starry'] .jz-ai-menu,
-[data-theme='deepsea'] .jz-ai-menu {
-  background: var(--jz-ai-surface);
 }
 
 .jz-ai-menu-item {
@@ -546,9 +549,10 @@
 }
 .jz-ai-panel-body .jz-ai-md code:not(pre code) {
   font-size: 0.88em;
-  padding: 1px 5px;
-  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
-  color: color-mix(in srgb, var(--jz-accent) 80%, var(--jz-text) 20%);
+  padding: 0.1em 0.35em;
+  /* 与正文行内代码同源令牌（此前自成一套 80/20 混色） */
+  background: var(--jz-code-inline-bg, color-mix(in srgb, var(--jz-accent) 10%, transparent));
+  color: var(--jz-code-inline-fg, var(--jz-accent));
   border-radius: 4px;
 }
 /* 代码块（jz-code-block）在 panel 内收紧外边距，禁止溢出 panel 宽。 */
@@ -665,6 +669,17 @@
   text-decoration: line-through;
   border-radius: 2px;
   padding: 1px 2px;
+}
+/* 暗色下深色前景（#047857/#b91c1c）压暗底几乎不可读 —— 换浅色调 */
+[data-theme='dark'] .jz-ai-diff-added,
+[data-theme='starry'] .jz-ai-diff-added,
+[data-theme='deepsea'] .jz-ai-diff-added {
+  color: #6ee7b7;
+}
+[data-theme='dark'] .jz-ai-diff-removed,
+[data-theme='starry'] .jz-ai-diff-removed,
+[data-theme='deepsea'] .jz-ai-diff-removed {
+  color: #fca5a5;
 }
 
 .jz-ai-panel-empty {
@@ -1498,4 +1513,65 @@
   gap: 4px;
   font-size: 12px;
   color: var(--jz-text-muted);
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   移动端工具栏适配（收口）
+   tiptap.css 里的同名 ≤768px 规则被本文件（加载更晚）的桌面规则以同特异性
+   覆盖成死代码 —— 移动端收敛规则必须住在层叠末端的本文件里。
+   ════════════════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  .jz-editor-toolbar-divider {
+    display: none;
+  }
+  .jz-editor-toolbar .ant-btn-sm {
+    padding: 0 6px;
+  }
+}
+
+/* HTML 编辑器工具栏三区允许换行：.jz-glass 壳的 nowrap !important
+   （tiptap.css）会把三区压扁/溢出（该工具栏没有 -main 滚动区可依赖）。 */
+.jz-glass .jz-html-editor-toolbar {
+  flex-wrap: wrap !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   键盘可达性：编辑器/阅读端自定义按钮的 focus-visible 焦点环
+   （此前编辑器与阅读端范围内为零，键盘用户无任何焦点指示）
+   ════════════════════════════════════════════════════════════════════════ */
+.jz-bubble-btn:focus-visible,
+.jz-toolbar-icon-btn:focus-visible,
+.jz-toolbar-ai-btn:focus-visible,
+.jz-quick-insert-btn:focus-visible,
+.jz-block-panel-btn:focus-visible,
+.jz-block-anchor-btn:focus-visible,
+.jz-md-float-btn:focus-visible,
+.jz-table-tb-btn:focus-visible,
+.jz-image-toolbar-btn:focus-visible,
+.jz-code-btn:focus-visible,
+.jz-reader-control-btn:focus-visible,
+.jz-ai-menu-item:focus-visible,
+.jz-insert-item:focus-visible,
+.jz-outline-item:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--jz-accent) 70%, transparent);
+  outline-offset: 1px;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Reduced motion：编辑器与阅读端动效静态兜底
+   （主题层已有 VT/canvas 兜底，编辑器/阅读端 60+ 处 transition 此前无覆盖）
+   ════════════════════════════════════════════════════════════════════════ */
+@media (prefers-reduced-motion: reduce) {
+  .jz-editor-surface *,
+  .jz-editor-toolbar *,
+  .tiptap-shell *,
+  .jz-md-editor-root *,
+  .markdown-preview *,
+  .jz-bubble-menu,
+  .jz-block-hover-menu,
+  .jz-doc-ai-fab {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

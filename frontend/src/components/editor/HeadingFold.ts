@@ -4,7 +4,7 @@
  * 实现：纯 CSS + 一个轻量 PM Plugin。
  *
  *   1. 编辑器 shell 上加 mouseover 监听，给 hover 的 heading 元素加
- *      `data-fold-controllable` + 一个 ::before 按钮（CSS 控制）
+ *      `data-fold-controllable` + 一个 ::after 按钮（CSS 控制；::before 已被章节编号占用）
  *   2. 点击按钮时翻转 `data-folded` 属性
  *   3. CSS 选择器：`[data-folded] ~ *` 隐藏到下一个同级或更高级 heading
  *

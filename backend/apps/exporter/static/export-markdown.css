@@ -46,13 +46,19 @@
   color: #555;
 }
 
+/* 行内代码 —— 对齐阅读端 --jz-code-inline-*（导出为静态亮色，取 light 主题
+   的换算值：fg = accent58%+墨42% ≈ #0e6f4f，bg = accent 8% 淡染）。
+   旧 #b94a3b 朱砂是阅读端已废弃的配色，导出与线上观感曾不一致。 */
 .jz-markdown.export-markdown code {
-  background: #f0f0f0;
-  padding: 1px 6px;
+  background: rgba(2, 179, 119, 0.08);
+  border: 1px solid rgba(2, 179, 119, 0.16);
+  padding: 0.12em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  color: #b94a3b;
+  color: #0e6f4f;
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 
 /* Scroll wrapper emitted by markdown_render — wide tables scroll instead of
@@ -178,6 +184,7 @@
   background: transparent;
   color: inherit;
   padding: 0;
+  border: none;
 }
 
 /* Syntax highlighting — one-dark-pro (offline export default) */

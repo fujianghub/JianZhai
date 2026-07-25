@@ -367,14 +367,20 @@ a:hover { opacity: 0.85; }
    for long-form CJK + ASCII mixed content). The reader can switch fonts via
    the ``ReaderFontPicker`` which writes ``--jz-article-font`` on the article
    element. Available presets and their stacks live in utils/articleFont.ts. */
-.paper .markdown-preview {
+/* ``.paper.markdown-preview``（同元素双 class）：CM6 分屏预览把两个 class 放在
+   同一元素上，仅有后代选择器时预览既拿不到 16.5px 也拿不到 --jz-article-font
+   （宋体默认在分屏预览完全不生效）。 */
+.paper .markdown-preview,
+.paper.markdown-preview {
   font-family: var(--jz-article-font,
     Verdana, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
     'Noto Sans CJK SC', sans-serif);
   font-size: 16.5px;
 }
 .paper .markdown-preview p,
-.paper .markdown-preview li {
+.paper.markdown-preview p,
+.paper .markdown-preview li,
+.paper.markdown-preview li {
   font-feature-settings: 'kern' 1, 'liga' 1;
 }
 

@@ -27,6 +27,7 @@
   margin: 0;
 }
 .markdown-preview .jz-math-inline,
+.tiptap-shell .ProseMirror .jz-math-inline,
 .export-markdown .jz-math-inline {
   /* Subtle background hint so inline math reads as an integrated token,
      not raw text. Stays invisible enough not to clash with surrounding
@@ -73,13 +74,21 @@
   background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
   color: var(--jz-text-muted);
 }
+/* 行内代码 —— 供色统一走 --jz-code-inline-* 派生令牌（tokens.css）：
+   前景可读（纯 accent 亮色白底仅 2.7:1）、accent 淡染底 + 细描边在暗色玻璃
+   上也有形（旧的半透明白底暗色下几乎隐形）。padding 用 em：随阅读端
+   50–150% 字号滑块等比缩放（旧固定 px 不缩放）。 */
 .markdown-preview code {
-  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
-  color: var(--jz-accent);
-  padding: 1px 6px;
+  background: var(--jz-code-inline-bg, color-mix(in srgb, var(--jz-surface-2) 70%, transparent));
+  color: var(--jz-code-inline-fg, var(--jz-accent));
+  border: 1px solid var(--jz-code-inline-border, transparent);
+  padding: 0.12em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  /* 跨行折行时每个片段保留完整的底/边/圆角 */
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
 }
 .markdown-preview pre {
   background: #282c34;
@@ -95,18 +104,20 @@
      flow. Keep it large enough that 25-line snippets still fit unscrolled. */
   max-height: 70vh;
 }
-.markdown-preview pre code { background: transparent; color: inherit; padding: 0; }
+.markdown-preview pre code { background: transparent; color: inherit; padding: 0; border: none; }
 
 /* Links — use the active theme's accent so the colour reads on all four
    palettes. The previous hardcoded #1677ff worked on light/dark but was the
    wrong hue against the朱砂 (#b94a3b) on the starry / deepsea palettes. */
-.markdown-preview a:not(.doc-link):not(.footnote-ref):not(.footnote-backref) {
+/* 链接卡片（jz-link-card-*）是块级 <a>，必须排除——否则整卡多一条 accent
+   底边、hover 整卡叠色，与卡片自身的 hover 动效打架。 */
+.markdown-preview a:not(.doc-link):not(.footnote-ref):not(.footnote-backref):not(.jz-link-card-shell):not(.jz-link-card-static) {
   color: var(--jz-accent);
   text-decoration: none;
   border-bottom: 1px solid color-mix(in srgb, var(--jz-accent) 35%, transparent);
   transition: border-color 120ms ease, background-color 120ms ease;
 }
-.markdown-preview a:not(.doc-link):not(.footnote-ref):not(.footnote-backref):hover {
+.markdown-preview a:not(.doc-link):not(.footnote-ref):not(.footnote-backref):not(.jz-link-card-shell):not(.jz-link-card-static):hover {
   border-bottom-color: var(--jz-accent);
   background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
 }
@@ -143,7 +154,8 @@
   position: sticky;
   top: 0;
   z-index: 2;
-  background: color-mix(in srgb, var(--jz-surface-2, var(--jz-surface)) 80%, var(--jz-surface));
+  /* 不透明格面令牌：冻结表头必须盖住底下滚动的行 */
+  background: color-mix(in srgb, var(--jz-cell-surface-2, var(--jz-surface-2)) 80%, var(--jz-cell-surface, var(--jz-surface)));
   /* sticky removes the cell's border-collapse; recreate via box-shadow so
      the bottom border still draws on top of scrolled content. */
   box-shadow: inset 0 -1px 0 var(--jz-divider);
@@ -1390,7 +1402,9 @@
 [data-theme='dark'] .jz-diagram-fullscreen-inner,
 [data-theme='starry'] .jz-diagram-fullscreen-inner,
 [data-theme='deepsea'] .jz-diagram-fullscreen-inner {
-  background: #f5f5f5;
+  /* 暗色主题下 mermaid 以 dark theme 渲染（浅色文字）——全屏底必须是深色，
+     此前 #f5f5f5 浅灰底 + 浅色文字几乎不可读。 */
+  background: var(--jz-overlay-surface, #141925);
 }
 
 /* Toolbar — top-right, glass tile with cluster buttons. */
@@ -1636,7 +1650,9 @@
 .jz-callout-info    { --c: #6366f1; --c-icon: 'i'; }
 .jz-callout-note    { --c: #d97706; --c-icon: '⌖'; }
 .jz-callout-warning { --c: #f59e0b; --c-icon: '!'; }
-.jz-callout-danger  { --c: var(--jz-accent); --c-icon: '✕'; }
+/* danger 用真实危险红：此前 var(--jz-accent) 让「危险」块在多数主题渲染为绿/紫 */
+.jz-callout-danger  { --c: #ef4444; --c-icon: '✕'; }
+.jz-callout-error   { --c: #ef4444; --c-icon: '✕'; }
 .jz-callout-success { --c: #10b981; --c-icon: '✓'; }
 .jz-callout-quote   { --c: var(--jz-gold); --c-icon: '❝'; }
 
@@ -1646,6 +1662,7 @@
 .jz-callout-color3 { --c: #22c55e; --c-icon: '③'; }
 .jz-callout-color4 { --c: #f97316; --c-icon: '④'; }
 .jz-callout-color5 { --c: #ef4444; --c-icon: '⑤'; }
+.jz-callout-color6 { --c: #f43f5e; --c-icon: '⑥'; }
 
 /* Dark / starry / deepsea — deepen the tint so cards still pop on the
    deep ground without lighting up too brightly. One rule covers every kind
@@ -1665,10 +1682,11 @@
 .tiptap-shell .ProseMirror th code {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.88em;
-  padding: 1px 5px;
+  padding: 0.1em 0.35em;
   border-radius: 4px;
-  background: color-mix(in srgb, var(--jz-surface-2) 75%, transparent);
-  color: var(--jz-accent);
+  /* 与正文行内代码同源令牌（表格格面本身有底色，故不加描边免嘈杂） */
+  background: var(--jz-code-inline-bg, color-mix(in srgb, var(--jz-surface-2) 75%, transparent));
+  color: var(--jz-code-inline-fg, var(--jz-accent));
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -1764,8 +1782,15 @@
 }
 .markdown-preview sup { top: -0.55em; }
 .markdown-preview sub { top: 0.35em; }
-.markdown-preview a { color: var(--jz-accent); text-decoration: none; }
-.markdown-preview a:hover { text-decoration: underline; }
+/* doc-link / 脚注专用兜底色（它们被上方通用 a 规则的 :not() 排除）。
+   此前是无差别 `.markdown-preview a` —— 把通用规则精心排除的类全部重新
+   染色 + 给链接卡片整卡加 hover 下划线。 */
+.markdown-preview a.doc-link,
+.markdown-preview a.footnote-ref,
+.markdown-preview a.footnote-backref { color: var(--jz-accent); text-decoration: none; }
+.markdown-preview a.doc-link:hover,
+.markdown-preview a.footnote-ref:hover,
+.markdown-preview a.footnote-backref:hover { text-decoration: underline; }
 /* 古纹章节分割: 双侧暗金细线夹一朵朱砂五瓣梅花。Inline SVG via data URI so
    no extra asset is needed and we can recolor per theme.
    Same rule applies inside the Tiptap editor surface so ``---`` and ``***``
@@ -1835,8 +1860,8 @@
 .tiptap-shell .ProseMirror tr:first-child th {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--jz-accent) 14%, var(--jz-surface-2)),
-    color-mix(in srgb, var(--jz-accent) 8%, var(--jz-surface))
+    color-mix(in srgb, var(--jz-accent) 14%, var(--jz-cell-surface-2, var(--jz-surface-2))),
+    color-mix(in srgb, var(--jz-accent) 8%, var(--jz-cell-surface, var(--jz-surface)))
   );
   color: var(--jz-text);
   font-weight: 600;
@@ -1858,20 +1883,22 @@
 [data-theme='deepsea'] .tiptap-shell .ProseMirror tr:first-child th {
   background: linear-gradient(
     180deg,
-    color-mix(in srgb, var(--jz-accent) 24%, var(--jz-surface-2)),
-    color-mix(in srgb, var(--jz-accent) 14%, var(--jz-surface))
+    color-mix(in srgb, var(--jz-accent) 24%, var(--jz-cell-surface-2, var(--jz-surface-2))),
+    color-mix(in srgb, var(--jz-accent) 14%, var(--jz-cell-surface, var(--jz-surface)))
   );
   color: var(--jz-text);
 }
 
-/* Zebra body rows — pale gold tint on even rows. */
+/* Zebra body rows — pale gold tint on even rows.
+   全部走不透明 --jz-cell-surface 令牌：冻结首行/首列靠单元格自身背景遮挡
+   滚动内容，light/dark 的半透明 --jz-surface 曾致冻结面透底。 */
 .markdown-preview tbody tr:nth-child(odd) td,
 .tiptap-shell .ProseMirror tbody tr:nth-child(odd) td {
-  background: var(--jz-surface);
+  background: var(--jz-cell-surface, var(--jz-surface));
 }
 .markdown-preview tbody tr:nth-child(even) td,
 .tiptap-shell .ProseMirror tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--jz-gold) 5%, var(--jz-surface));
+  background: color-mix(in srgb, var(--jz-gold) 5%, var(--jz-cell-surface, var(--jz-surface)));
 }
 [data-theme='dark'] .markdown-preview tbody tr:nth-child(even) td,
 [data-theme='dark'] .tiptap-shell .ProseMirror tbody tr:nth-child(even) td,
@@ -1879,13 +1906,13 @@
 [data-theme='starry'] .tiptap-shell .ProseMirror tbody tr:nth-child(even) td,
 [data-theme='deepsea'] .markdown-preview tbody tr:nth-child(even) td,
 [data-theme='deepsea'] .tiptap-shell .ProseMirror tbody tr:nth-child(even) td {
-  background: color-mix(in srgb, var(--jz-gold) 8%, var(--jz-surface-2));
+  background: color-mix(in srgb, var(--jz-gold) 8%, var(--jz-cell-surface-2, var(--jz-surface-2)));
 }
 
 /* Hover — soft accent wash. */
 .markdown-preview tbody tr:hover td,
 .tiptap-shell .ProseMirror tbody tr:hover td {
-  background: color-mix(in srgb, var(--jz-accent) 8%, var(--jz-surface));
+  background: color-mix(in srgb, var(--jz-accent) 8%, var(--jz-cell-surface, var(--jz-surface)));
   transition: background-color 120ms ease;
 }
 [data-theme='dark'] .markdown-preview tbody tr:hover td,
@@ -1894,7 +1921,7 @@
 [data-theme='starry'] .tiptap-shell .ProseMirror tbody tr:hover td,
 [data-theme='deepsea'] .markdown-preview tbody tr:hover td,
 [data-theme='deepsea'] .tiptap-shell .ProseMirror tbody tr:hover td {
-  background: color-mix(in srgb, var(--jz-accent) 18%, var(--jz-surface-2));
+  background: color-mix(in srgb, var(--jz-accent) 18%, var(--jz-cell-surface-2, var(--jz-surface-2)));
 }
 
 .markdown-preview img { max-width: 100%; height: auto; }
