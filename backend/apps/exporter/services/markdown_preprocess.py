@@ -218,8 +218,42 @@ def normalize_bold_wrapping_inline_html(src: str) -> str:
     return re.sub(pattern, r"<strong>\1</strong>", src, flags=re.I | re.S)
 
 
+# 语雀导出会把公式节点包成两侧带空格的行内美元 ``$ … $``——撞上四端一致的
+# 货币防误判边界规则（开 ``$`` 后、闭 ``$`` 前不得有空白）→ 整条退化为纯文本。
+# 仅抢救「独立成行 + ``$`` 内侧留白 + 含 LaTeX 信号（``\cmd``/``_{``/``^{``）」
+# 的行——货币文本不含信号永不触发；无留白的 ``$x$`` 本就可渲染，不动。叠加
+# 修复：``\\frac`` 双反斜杠命令 → ``\frac``（真换行 ``\\`` 后跟空白/``[``，
+# 不受影响）；丢反斜杠的 display 方括号 ``[ … ]`` 包住整个公式体 → 剥掉
+# （区间形态内部含 ``[``/``]``，保留不动）。输出多行 ``$$`` 块。镜像 frontend
+# ``markdown.ts rescueSpacePaddedDollarMath``，改动须两端同步。
+_SPACE_PADDED_DOLLAR_LINE = re.compile(r"^[ \t]*\$([^$\n]+)\$[ \t]*$", re.M)
+_LATEX_SIGNAL = re.compile(r"\\[a-zA-Z]|_\{|\^\{")
+_LOST_DISPLAY_BRACKETS = re.compile(r"^\[\s*([^\[\]]+?)\s*\]$")
+
+
+def rescue_space_padded_dollar_math(src: str) -> str:
+    if "$" not in src:
+        return src
+
+    def _repl(m: re.Match) -> str:
+        body = m.group(1)
+        trimmed = body.strip()
+        if trimmed == body:
+            return m.group(0)
+        if not trimmed or not _LATEX_SIGNAL.search(trimmed):
+            return m.group(0)
+        out = re.sub(r"\\\\(?=[a-zA-Z])", r"\\", trimmed)
+        bracket = _LOST_DISPLAY_BRACKETS.match(out)
+        if bracket:
+            out = bracket.group(1)
+        return f"$$\n{out}\n$$"
+
+    return _SPACE_PADDED_DOLLAR_LINE.sub(_repl, src)
+
+
 def apply_yuque_compat_mode(src: str) -> str:
-    out = unwrap_backticked_emphasis(src)
+    out = rescue_space_padded_dollar_math(src)
+    out = unwrap_backticked_emphasis(out)
     out = normalize_yuque_images(out)
     out = unwrap_backticked_html(out)
     out = normalize_legacy_html_tags(out)

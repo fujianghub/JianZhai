@@ -1205,11 +1205,44 @@ export function convertBlockPlaceholders(src: string): string {
 }
 
 /**
+ * 语雀导出会把公式节点包成两侧带空格的行内美元 ``$ … $``——恰好撞上四端
+ * 一致的货币防误判边界规则（开 ``$`` 后、闭 ``$`` 前不得有空白），整条公式
+ * 退化为纯文本。仅抢救「独立成行 + ``$`` 内侧留白 + 内容含 LaTeX 信号
+ * （``\cmd`` / ``_{`` / ``^{``）」的行——货币文本（``$ 5 到 10 $``）不含这些
+ * 信号，永不触发；无留白的 ``$x$`` 本就可渲染，不动。同时修复两类叠加畸变：
+ *  - ``\\frac`` 双反斜杠命令（语雀对 ``\`` 的转义）→ ``\frac``；真正的换行
+ *    ``\\`` 后跟的是空白 / ``[``，不在 ``\\``+字母 模式内，不受影响；
+ *  - 丢失反斜杠的 display 方括号 ``[ … ]`` 包住整个公式体（ChatGPT
+ *    ``\[..\]`` 进语雀丢反斜杠的残骸）→ 剥掉；区间形态（``[0,1] \cup
+ *    [2,3]``，内部含 ``[``/``]``）保留不动。
+ * 这类节点源头都是 display math，输出多行 ``$$`` 块（与
+ * {@link normalizeLatexDelimiters} 的块级输出同构）。镜像后端
+ * ``markdown_preprocess.rescue_space_padded_dollar_math``，改动须两端同步。
+ */
+const SPACE_PADDED_DOLLAR_LINE_RE = /^[ \t]*\$([^$\n]+)\$[ \t]*$/gm;
+const LATEX_SIGNAL_RE = /\\[a-zA-Z]|_\{|\^\{/;
+const LOST_DISPLAY_BRACKETS_RE = /^\[\s*([^[\]]+?)\s*\]$/;
+
+export function rescueSpacePaddedDollarMath(src: string): string {
+  if (!src.includes('$')) return src;
+  return src.replace(SPACE_PADDED_DOLLAR_LINE_RE, (match, body: string) => {
+    const trimmed = body.trim();
+    if (trimmed === body) return match;
+    if (!trimmed || !LATEX_SIGNAL_RE.test(trimmed)) return match;
+    let out = trimmed.replace(/\\\\(?=[a-zA-Z])/g, '\\');
+    const bracketed = out.match(LOST_DISPLAY_BRACKETS_RE);
+    if (bracketed) out = bracketed[1]!;
+    return `$$\n${out}\n$$`;
+  });
+}
+
+/**
  * Yuque / 语雀 Markdown 兼容模式：在 fence 外统一修复导出怪癖，避免逐条补丁遗漏。
- * 顺序：反引号 unwrap → 图片 emoji → font→span → emphasis 合并 → 括号 bold → bold+HTML。
+ * 顺序：公式抢救 → 反引号 unwrap → 图片 emoji → font→span → emphasis 合并 → 括号 bold → bold+HTML。
  */
 export function applyYuqueCompatMode(src: string): string {
   let out = src;
+  out = rescueSpacePaddedDollarMath(out);
   out = unwrapBacktickedEmphasis(out);
   out = normalizeYuqueImages(out);
   out = unwrapBacktickedHtml(out);

@@ -93,3 +93,36 @@ def test_recover_yuque_diagram_comment_plantuml():
     src = "<!-- 这是一个文本绘图，源码为：@startuml\nA --> B\n@enduml -->\n![](/media/x.svg)"
     out = recover_yuque_diagram_comments(src)
     assert "```plantuml\n@startuml" in out
+
+
+# 语雀空格包裹公式抢救（rescue_space_padded_dollar_math），镜像前端
+# rescueSpacePaddedDollarMath。真实样本：doc 516（NUMA 架构）/ doc 503（AI Infra）。
+
+
+def test_rescue_space_padded_dollar_math_doc516_brackets():
+    src = "前文\n\n$ [ B_{\\text{total}}\\approx2B ] $\n\n后文"
+    out = preprocess_markdown(src)
+    assert "$$\nB_{\\text{total}}\\approx2B\n$$" in out
+    assert "$ [" not in out
+
+
+def test_rescue_space_padded_dollar_math_doc503_double_backslash():
+    src = "$ MFU = \\\\frac{有效吞吐}{峰值吞吐} $"
+    out = preprocess_markdown(src)
+    assert "$$\nMFU = \\frac{有效吞吐}{峰值吞吐}\n$$" in out
+
+
+def test_rescue_keeps_interval_union_brackets():
+    out = preprocess_markdown("$ [0,1] \\cup [2,3] $")
+    assert "$$\n[0,1] \\cup [2,3]\n$$" in out
+
+
+def test_rescue_ignores_currency_and_plain_text():
+    assert "$ 5 到 10 $" in preprocess_markdown("单价在 $ 5 到 10 $ 之间")
+    assert "$ x + y $" in preprocess_markdown("$ x + y $")
+
+
+def test_rescue_ignores_valid_inline_and_fenced_code():
+    assert "$E=mc^2$" in preprocess_markdown("$E=mc^2$")
+    assert "$ \\alpha $" in preprocess_markdown("```\n$ \\alpha $\n```")
+    assert "$ \\alpha $" in preprocess_markdown("价格 $ \\alpha $ 收尾还有字")

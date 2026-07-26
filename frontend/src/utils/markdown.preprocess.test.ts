@@ -457,3 +457,47 @@ describe('colored sentence with inner bold colored words', () => {
     expect(html).not.toContain('<strong><span style="color:#C75C00;">由大量');
   });
 });
+
+/**
+ * 语雀导出的空格包裹公式抢救（rescueSpacePaddedDollarMath）。真实样本来自
+ * doc 516（NUMA 架构）与 doc 503（AI Infra）：``$ … $`` 两侧留白撞上货币
+ * 防误判边界规则退化为纯文本，叠加丢反斜杠方括号 / 双反斜杠命令两类畸变。
+ */
+describe('rescueSpacePaddedDollarMath', () => {
+  it('rescues doc-516 form: space-padded + lost-backslash display brackets', () => {
+    const src = '前文\n\n$ [ B_{\\text{total}}\\approx2B ] $\n\n后文';
+    const out = preprocessMarkdown(src);
+    expect(out).toContain('$$\nB_{\\text{total}}\\approx2B\n$$');
+    expect(out).not.toContain('$ [');
+    const html = renderMarkdown(src);
+    expect(html).toContain('jz-math-block');
+    expect(html).not.toContain('jz-math-error');
+  });
+
+  it('rescues doc-503 form: double-escaped \\\\frac restored to \\frac', () => {
+    const src = '$ MFU = \\\\frac{模型实际获得的有效计算吞吐}{GPU 理论峰值计算吞吐} $';
+    const out = preprocessMarkdown(src);
+    expect(out).toContain('$$\nMFU = \\frac{模型实际获得的有效计算吞吐}{GPU 理论峰值计算吞吐}\n$$');
+  });
+
+  it('keeps interval-union brackets that are not a display wrapper', () => {
+    const src = '$ [0,1] \\cup [2,3] $';
+    expect(preprocessMarkdown(src)).toContain('$$\n[0,1] \\cup [2,3]\n$$');
+  });
+
+  it('leaves currency and non-LaTeX padded dollars alone', () => {
+    expect(preprocessMarkdown('单价在 $ 5 到 10 $ 之间')).toContain('$ 5 到 10 $');
+    expect(preprocessMarkdown('$ x + y $')).toContain('$ x + y $');
+  });
+
+  it('leaves already-valid inline math and fenced code alone', () => {
+    expect(preprocessMarkdown('$E=mc^2$')).toContain('$E=mc^2$');
+    const fenced = '```\n$ \\alpha $\n```';
+    expect(preprocessMarkdown(fenced)).toContain('$ \\alpha $');
+  });
+
+  it('does not fire mid-line (real row-break \\\\ untouched elsewhere)', () => {
+    const src = '价格 $ \\alpha $ 收尾还有字';
+    expect(preprocessMarkdown(src)).toContain('$ \\alpha $');
+  });
+});
