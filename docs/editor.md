@@ -188,7 +188,13 @@
 2. **`<font>` 交替模式误合并**：语雀「整句染色+局部加粗」= `<font>文</font>**<font>词</font>**<font>文</font>…`；`normalizeYuqueEmphasis` 步骤 (0)（拆分加粗绕行内标签合并）的 A/B 连接符原为 `[^*\n]+?`（允许 `<`），把整个染色 span 当拆分两半合并 → 整句全粗。修复=收紧为 `[^*\n<]+?`（真实拆分模式两侧是纯文本）。
 3. **CJK 双加粗吞并**：已删除的步骤 (1)（`**A**B**C**`→`**ABC**` 合并启发式）——无空格连接符与 `\w` lookaround 两道防线在中文全失效（中文无空格、CJK 不算 `\w`），任何含两个加粗的中文句子被吞并成巨型加粗，或错配「上一加粗闭合+下一加粗开启」**静默删除**加粗标记（表格单元格触发）。`**A**B**C**` 本是合法 CommonMark；后端 `normalize_yuque_emphasis` 从无此步骤，删除后前后端对齐。
 
-> 改 `applyYuqueCompatMode` 任何正则，回归须过三类用例：CJK 标点连接双加粗、font 交替染色句、含 ` --> ` 的图表注释（`markdown.preprocess.test.ts` + 后端 `test_markdown_preprocess.py` 已钉住）。
+> 改 `applyYuqueCompatMode` 任何正则，回归须过四类用例：CJK 标点连接双加粗、font 交替染色句、含 ` --> ` 的图表注释、空格包裹公式（抢救 vs 货币文本不触发）（`markdown.preprocess.test.ts` + 后端 `test_markdown_preprocess.py` 已钉住）。
+
+### 语雀空格包裹公式抢救（2026-07-26）
+
+语雀导出会把公式节点包成**两侧带空格的行内美元** `$ … $`（真实样本：`$ [ B_{\text{total}}\approx2B ] $`、`$ MFU = \\frac{…}{…} $`），恰好撞上四端一致的**货币防误判边界规则**（开 `$` 后、闭 `$` 前不得有空白，见 §5）→ 整条公式退化为纯文本。可叠加两类畸变：`[ … ]` 是 ChatGPT display math `\[..\]` 进语雀丢反斜杠的残骸（`normalizeLatexDelimiters` 只认带反斜杠形态，管不到）；`\\frac` 是语雀对 `\` 的转义。
+
+修复=`applyYuqueCompatMode` **首步** `rescueSpacePaddedDollarMath`（后端 `markdown_preprocess.rescue_space_padded_dollar_math` 镜像）。触发须同时满足三条件：**独立成行 + `$` 内侧留白 + 内容含 LaTeX 信号**（`\cmd` / `_{` / `^{`）→ 输出多行 `$$` 块，并还原 `\\`+字母 → `\`+字母（真换行 `\\` 后跟空白/`[`，不受影响）、剥掉包住整个公式体的裸 `[ … ]`（区间并集形态内部含 `[`/`]`，保留不动）。货币文本（`$ 5 到 10 $`）无信号永不触发，无留白 `$x$` 本就可渲染不动；**修复落在兼容层而非四端 tokenizer**——放宽边界规则需四端同步+货币回归，得不偿失。因 `preprocessMarkdown` 是渲染/加载时预处理，存量文档无需改数据即生效。
 
 ### PPT 有道云式阅读器（`.pptx` → 逐页图 + 缩略图 + 讲者备注）
 
