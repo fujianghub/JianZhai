@@ -412,13 +412,27 @@ def _render_heading_open(self, tokens, idx, options, env):
         n = ids.get(base, 0)
         anchor = base if n == 0 else f"{base}-{n}"
         ids[base] = n + 1
+        # anchor_prefix（如 ``d42-``）：合订本里多篇文档同名标题的锚点会
+        # 逐篇重置去重计数而互相撞 id——前缀按文档命名空间隔离。
+        anchor = f"{env.get('anchor_prefix', '')}{anchor}"
         token.attrSet("id", anchor)
         toc.append({"id": anchor, "level": level, "text": text, "numbering": number or None})
-        if number:
-            return (
-                self.renderToken(tokens, idx, options, env)
-                + f'<span class="jz-heading-num">{_escape(number)}</span> '
-            )
+
+    # heading_shift（print/PDF 合订本 = 1）：输出标签整体降级（h1→h2…，
+    # 封顶 h6），让正文标题在 Chromium 书签树里嵌套到「文档标题 h1」之下。
+    # 锚点 / 编号 / TOC 层级仍按原始 level 计算，只有输出标签变。
+    shift = int(env.get("heading_shift", 0) or 0)
+    if shift:
+        shifted = f"h{min(level + shift, 6)}"
+        token.tag = shifted
+        if idx + 2 < len(tokens) and tokens[idx + 2].type == "heading_close":
+            tokens[idx + 2].tag = shifted
+
+    if level <= 4 and text and number:
+        return (
+            self.renderToken(tokens, idx, options, env)
+            + f'<span class="jz-heading-num">{_escape(number)}</span> '
+        )
     return self.renderToken(tokens, idx, options, env)
 
 
@@ -428,14 +442,76 @@ _TOC_MARK_RE = re.compile(r'data-jz-toc="(section)?"')
 def _render_html_block(self, tokens, idx, options, env):
     """Record ``[TOC]`` / ``[TOC:section]`` placeholder positions in document
     order (``at`` = headings seen so far) so a section TOC can later scope to the
-    subtree under its enclosing heading. Non-TOC html blocks pass through."""
+    subtree under its enclosing heading. Other html blocks pass through after
+    heading processing (see ``_process_html_headings``)."""
     content = tokens[idx].content
     m = _TOC_MARK_RE.search(content)
     if m:
         env.setdefault("_toc_marks", []).append(
             {"scope": "section" if m.group(1) == "section" else "all", "at": len(env.get("toc", []))}
         )
-    return content
+        return content
+    return _process_html_headings(content, env)
+
+
+def process_html_headings(
+    html_str: str,
+    *,
+    anchor_prefix: str = "",
+    heading_shift: int = 0,
+    toc_out: list | None = None,
+) -> str:
+    """Standalone heading pass for HTML-format documents (print/PDF path):
+    same anchor + TOC + shift treatment as ``_process_html_headings``, with a
+    self-contained env (one call = one document namespace)."""
+    env: dict = {"anchor_prefix": anchor_prefix, "heading_shift": heading_shift}
+    out = _process_html_headings(html_str, env)
+    if toc_out is not None:
+        toc_out.extend(env.get("toc", []))
+    return out
+
+
+_HTML_HEADING_RE = re.compile(r"<h([1-6])([^>]*)>([\s\S]*?)</h\1>", re.I)
+_ID_ATTR_RE = re.compile(r'id="([^"]+)"')
+
+
+def _process_html_headings(content: str, env: dict) -> str:
+    """Inline-HTML headings inside markdown bodies (the dominant shape of
+    Word-imported docs) get the same treatment as markdown headings: anchor id
+    + TOC collection + print-mode level shift. Without this they bypass
+    ``_render_heading_open`` entirely — no 篇内/卷首目录 entries, and their raw
+    ``<h1>`` pollutes the PDF bookmark tree's top level."""
+    if "<h" not in content.lower():
+        return content
+    shift = int(env.get("heading_shift", 0) or 0)
+    prefix = env.get("anchor_prefix", "")
+
+    def repl(m: re.Match) -> str:
+        level = int(m.group(1))
+        attrs = m.group(2)
+        inner = m.group(3)
+        text = re.sub(r"<[^>]+>", " ", inner)
+        text = re.sub(r"\s+", " ", html.unescape(text)).strip()
+        out_attrs = attrs
+        if level <= 4 and text:
+            existing = _ID_ATTR_RE.search(attrs)
+            if existing:
+                anchor = existing.group(1)
+            else:
+                ids = env.setdefault("_ids", {})
+                base = _slugify(text)
+                n = ids.get(base, 0)
+                anchor = base if n == 0 else f"{base}-{n}"
+                ids[base] = n + 1
+                anchor = f"{prefix}{anchor}"
+                out_attrs = f'{attrs} id="{anchor}"'
+            env.setdefault("toc", []).append(
+                {"id": anchor, "level": level, "text": text, "numbering": None}
+            )
+        out_level = min(level + shift, 6) if shift else level
+        return f"<h{out_level}{out_attrs}>{inner}</h{out_level}>"
+
+    return _HTML_HEADING_RE.sub(repl, content)
 
 
 # Whole-line ``[TOC]`` / ``[TOC:section]`` → placeholder divs (mirrors the
@@ -601,6 +677,9 @@ def render_markdown(
     math_html: dict[str, str] | None = None,
     numbering: bool = False,
     card_meta: CardMeta | None = None,
+    anchor_prefix: str = "",
+    heading_shift: int = 0,
+    toc_out: list | None = None,
 ) -> str:
     """Preprocess + render Markdown to an HTML fragment.
 
@@ -641,12 +720,18 @@ def render_markdown(
         "diagram_svgs": diagram_svgs or {},
         "math_html": math_html or {},
         "numbering": numbering,
+        "anchor_prefix": anchor_prefix,
+        "heading_shift": heading_shift,
     }
     try:
         rendered = _RENDERER.render(prepared, env)
         rendered = _expand_toc_placeholders(
             rendered, env.get("toc", []), env.get("_toc_marks", [])
         )
+        if toc_out is not None:
+            # 外传本篇标题树（id 已带 anchor_prefix、level 为原始层级），
+            # 供合订本卷首层级目录与篇内目录复用。
+            toc_out.extend(env.get("toc", []))
         return _rewrite_doc_links(rendered)
     finally:
         _CODE_THEME["value"] = previous

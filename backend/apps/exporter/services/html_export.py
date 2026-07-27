@@ -83,14 +83,21 @@ def _render_anthology(
     math_html: dict[str, str] | None = None,
 ) -> str:
     is_print = mode == "print"
+    panel_tocs: dict[int, list] = {}
     panels = common.doc_panels_html(
-        scope, export_mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
+        scope,
+        export_mode=mode,
+        diagram_svgs=diagram_svgs,
+        math_html=math_html,
+        toc_collector=panel_tocs,
     )
     # Print/PDF replaces the fixed interactive sidebar (which cannot paginate)
-    # with book front matter: a cover page + a clickable TOC page. Combined
-    # with pdf outline bookmarks + footer page numbers this is what makes the
-    # bound PDF navigable.
-    toc = _build_print_front_matter(scope) if is_print else _build_toc(scope)
+    # with book front matter: a cover page + a clickable hierarchical TOC page
+    # (docs + their headings). Combined with pdf outline bookmarks + footer
+    # page numbers this is what makes the bound PDF navigable.
+    toc = (
+        _build_print_front_matter(scope, panel_tocs) if is_print else _build_toc(scope)
+    )
     script = "" if is_print else f"<script>{ANTHOLOGY_JS}</script>"
     return ANTHOLOGY_SHELL.format(
         title=common._escape(scope.label),
@@ -102,7 +109,19 @@ def _render_anthology(
     )
 
 
-def _build_print_front_matter(scope: ExportScope) -> str:
+# 卷首目录页每篇文档下嵌套的标题深度（h1–h3；h4 留给篇内目录）
+_FRONT_TOC_MAX_LEVEL = 3
+
+
+def _build_print_front_matter(
+    scope: ExportScope, panel_tocs: dict[int, list] | None = None
+) -> str:
+    """封面页 + 层级目录页。
+
+    书签语义刻意安排：封面标题是 ``div``（不进 Chromium 书签树）、目录页
+    标题是 ``h1`` ——顶层书签因此恰为「目录 + 各文档标题」，正文标题经
+    ``heading_shift`` 降级嵌套在各文档之下。
+    """
     from django.utils import timezone
 
     category = scope.kb.category
@@ -115,15 +134,41 @@ def _build_print_front_matter(scope: ExportScope) -> str:
     cover = (
         '<section class="export-cover">'
         f"{cat_line}"
-        f'<h1 class="export-cover-title">{common._escape(scope.label)}</h1>'
+        f'<div class="export-cover-title">{common._escape(scope.label)}</div>'
         f'<div class="export-cover-meta">共 {len(scope.documents)} 篇 · {date}</div>'
         '<div class="export-cover-brand">简斋 · JianZhai</div>'
         "</section>"
     )
-    items = render_toc_list_html(scope.kb, scope.documents)
+
+    def _doc_sublist(doc_data: dict, depth: int) -> str:
+        entries = [
+            e
+            for e in (panel_tocs or {}).get(doc_data["id"], [])
+            if e["level"] <= _FRONT_TOC_MAX_LEVEL
+        ]
+        if not entries:
+            return ""
+        min_level = min(e["level"] for e in entries)
+        out = []
+        for e in entries:
+            item_depth = depth + 1 + (e["level"] - min_level)
+            num = e.get("numbering")
+            num_html = (
+                f'<span class="jz-toc-num">{common._escape(num)}</span> ' if num else ""
+            )
+            out.append(
+                f'<li class="export-toc-heading" style="--toc-depth:{item_depth}">'
+                f'<a href="#{common._escape(e["id"])}">{num_html}'
+                f'{common._escape(e["text"])}</a></li>'
+            )
+        return "\n".join(out)
+
+    items = render_toc_list_html(
+        scope.kb, scope.documents, doc_sublist=_doc_sublist if panel_tocs else None
+    )
     toc_page = (
         '<section class="export-print-toc">'
-        '<h2 class="export-print-toc-title">目录</h2>'
+        '<h1 class="export-print-toc-title">目录</h1>'
         f"<ol>{items}</ol>"
         "</section>"
     )

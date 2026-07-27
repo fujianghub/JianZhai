@@ -8,6 +8,7 @@ GFM 管道表转真表格、原生 HTML 表格提取文字矩阵、callout 降�
 from __future__ import annotations
 
 import html as html_lib
+import itertools
 import re
 from html.parser import HTMLParser
 from pathlib import Path
@@ -52,6 +53,9 @@ install_math_rules(_md)
 
 _LAYOUT_COL_SEP = re.compile(r"^::col\s*$", re.M)
 _LAYOUT_TAB_SEP = re.compile(r"^::tab[ \t]*(.*)$", re.M)
+_TOC_PLACEHOLDER_LINE = re.compile(r"^\[TOC(?::section)?\]\s*$", re.M)
+# 本篇目录/书签只收 h1–h4（与 PDF 端 anchor 收集一致）
+_TOC_MAX_LEVEL = 4
 
 
 def _degrade_layout_separators(src: str) -> str:
@@ -70,6 +74,10 @@ def _docx_preprocess(body: str) -> str:
     out = map_outside_fenced_code_blocks(out, normalize_latex_delimiters)
     out = map_outside_fenced_code_blocks(out, apply_yuque_compat_mode)
     out = map_outside_fenced_code_blocks(out, _degrade_layout_separators)
+    # ``[TOC]`` 占位符：docx 由「本篇目录」替代其职能，剥掉防字面量泄漏
+    out = map_outside_fenced_code_blocks(
+        out, lambda s: _TOC_PLACEHOLDER_LINE.sub("", s)
+    )
     return out
 
 
@@ -86,6 +94,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     if multi:
         _emit_front_matter(docx, scope)
 
+    bid_iter = itertools.count(1)  # Word 书签 id 全文档唯一
     for idx, doc in enumerate(scope.documents):
         if idx > 0 or multi:
             docx.add_page_break()
@@ -99,17 +108,20 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         meta_run.italic = True
         meta_run.font.size = Pt(10)
 
+        # ctx：正文渲染沿途给每个 h1–h4 标题挂书签并收集条目，
+        # 渲完后把「本篇目录」回插到 meta 段之后（镜像 PDF 的篇内目录）。
+        ctx = {"prefix": f"d{doc.id}", "bid": bid_iter, "headings": []}
         body = common.doc_export_body(doc)
         if detect_doc_format(doc) == "html":
-            # 逐块断行提取，而非整篇折叠成一个巨型段落
-            for line in _html_to_lines(body):
-                docx.add_paragraph(line)
+            _emit_html_fragment(docx, body, ctx)
         else:
             body = card_placeholders.degrade_card_placeholders(
                 body, doc_titles=card_titles
             )
             tokens = _md.parse(_docx_preprocess(body))
-            _render_tokens(docx, tokens)
+            _render_tokens(docx, tokens, ctx)
+        if multi and ctx["headings"]:
+            _insert_doc_toc_after(docx, meta_para, ctx["headings"])
 
     path = common.reserve_export_path(".docx")
     docx.save(path)
@@ -179,7 +191,56 @@ def _style_fonts(docx, style_name: str, ascii_name: str, east_asia: str, size=No
     style.element.rPr.rFonts.set(qn("w:eastAsia"), east_asia)
 
 
-def _render_tokens(docx: DocxDocument, tokens) -> None:
+def _bookmark_heading(para, ctx: dict, level: int, text: str) -> None:
+    """给标题段挂 Word 书签并收进本篇目录条目（h1–h4，与 PDF 端一致）。"""
+    if ctx is None or level > _TOC_MAX_LEVEL or not text:
+        return
+    name = f"{ctx['prefix']}_h{len(ctx['headings'])}"
+    bid = str(next(ctx["bid"]))
+    start = OxmlElement("w:bookmarkStart")
+    start.set(qn("w:id"), bid)
+    start.set(qn("w:name"), name)
+    end = OxmlElement("w:bookmarkEnd")
+    end.set(qn("w:id"), bid)
+    para._p.insert(0, start)
+    para._p.append(end)
+    ctx["headings"].append({"name": name, "level": level, "text": text})
+
+
+def _insert_doc_toc_after(docx: DocxDocument, after_para, headings: list[dict]) -> None:
+    """「本篇目录」——正文渲染完成后回插到文档 meta 段之后（先渲后插避免
+    两遍扫描的顺序对齐风险）。每条是 ``w:hyperlink w:anchor`` 内链书签。"""
+    min_level = min(h["level"] for h in headings)
+    paras = []
+    title = docx.add_paragraph()
+    title_run = title.add_run("本篇目录")
+    title_run.bold = True
+    paras.append(title)
+    for h in headings:
+        para = docx.add_paragraph()
+        para.paragraph_format.left_indent = Pt(14 * (h["level"] - min_level))
+        link = OxmlElement("w:hyperlink")
+        link.set(qn("w:anchor"), h["name"])
+        run_el = OxmlElement("w:r")
+        rpr = OxmlElement("w:rPr")
+        color = OxmlElement("w:color")
+        color.set(qn("w:val"), "2E6E4F")
+        rpr.append(color)
+        run_el.append(rpr)
+        text_el = OxmlElement("w:t")
+        text_el.text = h["text"]
+        run_el.append(text_el)
+        link.append(run_el)
+        para._p.append(link)
+        paras.append(para)
+    # 目前段落都挂在文档末尾——按序搬到 meta 段之后
+    marker = after_para._p
+    for para in paras:
+        marker.addnext(para._p)
+        marker = para._p
+
+
+def _render_tokens(docx: DocxDocument, tokens, ctx: dict | None = None) -> None:
     """Lightweight pass over markdown-it tokens. Tracks lists/blockquote/heading state."""
     list_stack: list[tuple[str, int]] = []  # (kind: 'bullet'|'ordered', counter)
     quote_depth = 0
@@ -198,11 +259,15 @@ def _render_tokens(docx: DocxDocument, tokens) -> None:
         if tt == "heading_open":
             level = min(int(t.tag[1]), 6)  # h1..h6
             inline = tokens[i + 1]
+            # 正文标题降一级（镜像 PDF heading_shift）：文档标题独占
+            # Heading 1，导航窗格与 TOC 域按篇嵌套。
+            style_level = min(level + 1, 6)
             try:
-                para = docx.add_paragraph(style=f"Heading {level}")
+                para = docx.add_paragraph(style=f"Heading {style_level}")
             except KeyError:
                 para = docx.add_paragraph()
             _emit_inline_runs(para, inline)
+            _bookmark_heading(para, ctx, level, _inline_text(inline))
             i += 3  # heading_open, inline, heading_close
             continue
 
@@ -294,7 +359,7 @@ def _render_tokens(docx: DocxDocument, tokens) -> None:
             continue
 
         if tt == "html_block":
-            _emit_html_block(docx, t.content)
+            _emit_html_block(docx, t.content, ctx)
             i += 1
             continue
 
@@ -385,9 +450,9 @@ _HTML_IMG_SRC = re.compile(r"<img\b[^>]*?src=[\"'](?P<url>/media/[^\"']+)[\"']",
 _BLOCK_BREAK = re.compile(r"(?i)<(?:/p|/div|/h[1-6]|/li|/tr|/table|br\s*/?)\s*>")
 
 
-def _emit_html_block(docx: DocxDocument, content: str) -> None:
-    """html_block 三分支：表格 → 文字矩阵真表格；图片 → 内嵌；其余 → 剥
-    标签按行落段。此前 html_block 无分支直接跳过——带色表格整块蒸发。"""
+def _emit_html_block(docx: DocxDocument, content: str, ctx: dict | None = None) -> None:
+    """html_block 三分支：表格 → 文字矩阵真表格；图片 → 内嵌；其余 →
+    heading 感知逐段落地。此前 html_block 无分支直接跳过——带色表格整块蒸发。"""
     if "<table" in content.lower():
         parser = _HtmlTableExtractor()
         try:
@@ -402,7 +467,34 @@ def _emit_html_block(docx: DocxDocument, content: str) -> None:
         for m in imgs:
             _add_picture(docx.add_paragraph(), m.group("url"), alt="")
         return
-    for line in _html_to_lines(content):
+    _emit_html_fragment(docx, content, ctx)
+
+
+_HTML_HEADING_SPLIT = re.compile(r"<h([1-6])[^>]*>([\s\S]*?)</h\1>", re.I)
+
+
+def _emit_html_fragment(docx: DocxDocument, html_src: str, ctx: dict | None) -> None:
+    """HTML 内容 heading 感知落地：``<h1-6>`` → 真 Heading 样式（+1 降级，
+    镜像 markdown 路径）+ 书签 + 进本篇目录；标题之间的内容按行成段。
+    Word/模板导入的 HTML 格式文档整篇标题都长这样——此前全部退化纯文本，
+    导航窗格/TOC 域对这些文档完全失明。"""
+    pos = 0
+    for m in _HTML_HEADING_SPLIT.finditer(html_src or ""):
+        for line in _html_to_lines(html_src[pos : m.start()]):
+            docx.add_paragraph(line)
+        level = int(m.group(1))
+        text = re.sub(r"<[^>]+>", " ", m.group(2))
+        text = re.sub(r"\s+", " ", html_lib.unescape(text)).strip()
+        if text:
+            style_level = min(level + 1, 6)
+            try:
+                para = docx.add_paragraph(style=f"Heading {style_level}")
+            except KeyError:
+                para = docx.add_paragraph()
+            para.add_run(text)
+            _bookmark_heading(para, ctx, level, text)
+        pos = m.end()
+    for line in _html_to_lines(html_src[pos:]):
         docx.add_paragraph(line)
 
 

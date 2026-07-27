@@ -31,9 +31,14 @@ def test_headings_use_real_heading_styles(owner, kb):
     make_doc(kb, "d", published="# 一级\n\n## 二级\n\n正文")
     document, _ = _export_docx(owner, kb)
     styles = [p.style.name for p in document.paragraphs]
-    assert "Heading 1" in styles  # 文档标题
-    assert "Heading 2" in styles
-    # 导航窗格可用的前提：标题不再是普通加粗段落
+    # 文档标题独占 Heading 1；正文标题降一级嵌套（镜像 PDF heading_shift）
+    assert "Heading 1" in styles
+    assert "Heading 2" in styles  # 正文 h1
+    assert "Heading 3" in styles  # 正文 h2
+    body_styles = [
+        p.style.name for p in document.paragraphs if p.text.strip() in ("一级", "二级")
+    ]
+    assert body_styles == ["Heading 2", "Heading 3"]
 
 
 @pytest.mark.django_db
@@ -117,6 +122,59 @@ def test_html_format_doc_not_one_giant_paragraph(owner, kb):
     document, _ = _export_docx(owner, kb)
     texts = [p.text for p in document.paragraphs if p.text.strip()]
     assert "段一" in texts and "段二" in texts  # 逐块成段，而非折叠为一行
+
+
+@pytest.mark.django_db
+def test_multi_doc_per_doc_toc_with_bookmarks(owner, kb):
+    """多篇导出：每篇 meta 后有可点击「本篇目录」，标题挂书签、条目为内链。"""
+    from apps.knowledge.models import Document
+
+    make_doc(kb, "a", published="# 甲章\n\n## 甲节\n\n正文")
+    make_doc(kb, "b", published="# 乙章\n\n正文")
+    document, _ = _export_docx(owner, kb)
+    doc_a = Document.objects.get(knowledge_base=kb, slug="a")
+    xml = document.element.xml
+    text = _all_text(document)
+    assert text.count("本篇目录") == 2
+    assert f'w:name="d{doc_a.id}_h0"' in xml  # 标题书签
+    assert 'w:anchor="d' in xml  # 目录条目内链
+    # 本篇目录出现在正文之前：目录条目「甲章」在标题段之前出现
+    texts = [p.text for p in document.paragraphs]
+    assert texts.index("本篇目录") < texts.index("甲章")
+
+
+@pytest.mark.django_db
+def test_single_doc_no_per_doc_toc(owner, kb):
+    make_doc(kb, "only", published="# 甲\n\n正文")
+    document, _ = _export_docx(owner, kb)
+    assert "本篇目录" not in _all_text(document)
+
+
+@pytest.mark.django_db
+def test_html_doc_headings_get_styles_and_toc(owner, kb):
+    """HTML 格式文档的 <h1-6> 转真 Heading 样式并进本篇目录（此前全退化纯文本）。"""
+    html_doc = (
+        "<html><body><h1>总纲</h1><p>引言</p>"
+        "<h2>第一节</h2><p>内容一</p></body></html>"
+    )
+    make_doc(kb, "h", published=html_doc)
+    make_doc(kb, "other", published="伴篇")
+    document, _ = _export_docx(owner, kb)
+    styled = {
+        p.text.strip(): p.style.name
+        for p in document.paragraphs
+        if p.text.strip() in ("总纲", "第一节")
+    }
+    assert styled == {"总纲": "Heading 2", "第一节": "Heading 3"}
+    assert "本篇目录" in _all_text(document)
+    assert "引言" in _all_text(document)
+
+
+@pytest.mark.django_db
+def test_toc_placeholder_stripped(owner, kb):
+    make_doc(kb, "d", published="[TOC]\n\n# 一\n\n正文")
+    document, _ = _export_docx(owner, kb)
+    assert "[TOC]" not in _all_text(document)
 
 
 @pytest.mark.django_db

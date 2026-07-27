@@ -164,6 +164,9 @@ def render_markdown(
     diagram_svgs: dict[str, str] | None = None,
     math_html: dict[str, str] | None = None,
     numbering: bool = False,
+    anchor_prefix: str = "",
+    heading_shift: int = 0,
+    toc_out: list | None = None,
 ) -> str:
     """Render Markdown to HTML (preprocess + enhanced markdown-it).
 
@@ -182,6 +185,9 @@ def render_markdown(
         diagram_svgs=diagram_svgs,
         math_html=math_html,
         numbering=numbering,
+        anchor_prefix=anchor_prefix,
+        heading_shift=heading_shift,
+        toc_out=toc_out,
         card_meta=CardMeta(
             doc_titles=doc_titles_for([text]), link_meta=default_link_meta
         ),
@@ -301,6 +307,9 @@ def render_document_body_html(
     export_mode: str = "interactive",
     diagram_svgs: dict[str, str] | None = None,
     math_html: dict[str, str] | None = None,
+    anchor_prefix: str = "",
+    heading_shift: int = 0,
+    toc_out: list | None = None,
 ) -> str:
     """Render one document body to an HTML fragment for export shells.
 
@@ -317,7 +326,14 @@ def render_document_body_html(
         # offline (the doc's CDN mermaid runtime won't run in an export).
         content = diagram_render.inline_html_mermaid(content, diagram_svgs or {})
         if export_mode == "print":
-            return render_html_document_print(content)
+            # HTML 文档的标题同样要锚点/收集/降级——Word/模板导入的文档
+            # 整篇是原生 HTML，标题从不经过 markdown 渲染钩子。
+            return markdown_render.process_html_headings(
+                render_html_document_print(content),
+                anchor_prefix=anchor_prefix,
+                heading_shift=heading_shift,
+                toc_out=toc_out,
+            )
         return render_html_document_iframe_deferred(content)
 
     md = content
@@ -328,6 +344,9 @@ def render_document_body_html(
         diagram_svgs=diagram_svgs,
         math_html=math_html,
         numbering=bool(getattr(doc, "heading_numbering", False)),
+        anchor_prefix=anchor_prefix,
+        heading_shift=heading_shift,
+        toc_out=toc_out,
     )
     html = rewrite_html_media(
         html,
@@ -576,40 +595,84 @@ def _doc_meta_html(doc) -> str:
     return f'<div class="post-meta">{meta}</div>'
 
 
+_TOC_WHOLE_LINE = re.compile(r"^\[TOC(?::section)?\]\s*$", re.M)
+
+
+def _doc_toc_nav_html(entries: list[dict]) -> str:
+    """篇内目录（print/PDF 每篇开头）：本篇 h1–h4 锚点列表。"""
+    if not entries:
+        return ""
+    min_level = min(e["level"] for e in entries)
+    items = []
+    for e in entries:
+        num = e.get("numbering")
+        num_html = f'<span class="jz-toc-num">{_escape(num)}</span> ' if num else ""
+        items.append(
+            f'<li class="export-doc-toc-l{e["level"] - min_level + 1}">'
+            f'<a href="#{_escape(e["id"])}">{num_html}{_escape(e["text"])}</a></li>'
+        )
+    return (
+        '<nav class="export-doc-toc"><div class="export-doc-toc-title">本篇目录</div>'
+        f"<ul>{''.join(items)}</ul></nav>\n"
+    )
+
+
 def doc_panels_html(
     scope: ExportScope,
     *,
     export_mode: str = "interactive",
     diagram_svgs: dict[str, str] | None = None,
     math_html: dict[str, str] | None = None,
+    toc_collector: dict[int, list] | None = None,
 ) -> str:
     """Render each document as a switchable ``.export-doc-panel`` section.
 
     In ``interactive`` mode all panels but the first carry ``hidden`` (the TOC
-    JS toggles them); in ``print`` mode every panel stays visible for pagination.
+    JS toggles them); in ``print`` mode every panel stays visible for pagination,
+    body headings shift one level down (bookmark nesting under the doc-title h1)
+    and each markdown doc opens with its own 本篇目录 nav.
+
+    ``toc_collector``: caller-provided ``{doc.id: [toc entries]}`` — filled with
+    each markdown doc's heading tree (anchor-prefixed ids, original levels) for
+    the print front-matter TOC page.
     """
     from apps.exporter.anthology_tree import iter_tree_documents
     from apps.knowledge.serializers import detect_doc_format
 
+    is_print = export_mode == "print"
     parts: list[str] = []
     docs_ordered = iter_tree_documents(scope.kb, scope.documents)
     for idx, doc in enumerate(docs_ordered):
         fmt = "html" if detect_doc_format(doc) == "html" else "markdown"
+        doc_toc: list = []
         body = render_document_body_html(
             doc,
             embed_media=True,
             export_mode=export_mode,
             diagram_svgs=diagram_svgs,
             math_html=math_html,
+            # 每篇独立锚点命名空间——多篇同名标题曾生成重复 id、目录跳错篇
+            anchor_prefix=f"d{doc.id}-",
+            heading_shift=1 if is_print else 0,
+            toc_out=doc_toc,
         )
+        if toc_collector is not None:
+            toc_collector[doc.id] = doc_toc
         hidden = " hidden" if export_mode == "interactive" and idx > 0 else ""
-        if fmt == "html":
+        if fmt == "html" and not is_print:
+            # interactive：iframe 样式隔离，不加外部头（会与文档自带样式冲突）
             header = ""
         else:
             header = (
                 f'<header class="export-doc-header"><h1>{_escape(doc.title)}</h1>'
                 f"{_doc_meta_html(doc)}</header>\n"
             )
+            if is_print and doc_toc and not (
+                fmt == "markdown"
+                and _TOC_WHOLE_LINE.search(doc_export_body(doc) or "")
+            ):
+                # 正文自带 [TOC] 的 markdown 文档不重复注入
+                header += _doc_toc_nav_html(doc_toc)
         parts.append(
             f'<section class="export-doc-panel" id="doc-{doc.id}" '
             f'data-format="{fmt}"{hidden}>\n'

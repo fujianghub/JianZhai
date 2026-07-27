@@ -224,3 +224,38 @@ body.is-print-doc h3 {
   page-break-after: avoid;
   break-after: avoid-page;
 }
+
+/* 卷首目录页：文档条目下嵌套的标题子条目 */
+.export-print-toc .export-toc-heading {
+  border-bottom: none;
+  font-size: 13px;
+  color: #555;
+  padding: 3px 0;
+}
+.export-print-toc .export-toc-heading a { color: #555; }
+.export-print-toc .jz-toc-num { color: #9a9481; font-size: 12px; }
+.export-cover-title {
+  margin: 0 0 20px;  /* div 化后补 h1 时代的下间距 */
+}
+
+/* 篇内目录（print/PDF 每篇开头「本篇目录」） */
+.export-anthology.is-print .export-doc-toc {
+  border: 1px solid #e5e2d9;
+  border-radius: 8px;
+  padding: 12px 16px;
+  margin: 12px 0 20px;
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.export-doc-toc-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 6px;
+  color: #6b665a;
+}
+.export-doc-toc ul { list-style: none; padding-left: 0; margin: 0; }
+.export-doc-toc li { font-size: 13px; padding: 2px 0; }
+.export-doc-toc li a { color: #1f1f1f; text-decoration: none; }
+.export-doc-toc .export-doc-toc-l2 { padding-left: 16px; }
+.export-doc-toc .export-doc-toc-l3 { padding-left: 32px; }
+.export-doc-toc .export-doc-toc-l4 { padding-left: 48px; }

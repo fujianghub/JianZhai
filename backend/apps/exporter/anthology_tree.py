@@ -40,13 +40,22 @@ def iter_tree_documents(
 
 
 def render_toc_list_html(
-    kb: KnowledgeBase, documents: list[Document], *, user=None, doc_href=None
+    kb: KnowledgeBase,
+    documents: list[Document],
+    *,
+    user=None,
+    doc_href=None,
+    doc_sublist=None,
 ) -> str:
     """Nested ``<li>`` items for the anthology sidebar (folders + doc links).
 
     ``doc_href`` maps a tree doc-dict to its link target; defaults to the
     in-page ``#doc-N`` anchors used by the single-file anthology. The static
     site passes per-page filenames instead.
+
+    ``doc_sublist(doc_data, depth) -> str``: optional extra ``<li>`` HTML
+    appended right after a document item — the print front-matter TOC uses it
+    to nest each doc's own heading entries under the doc line.
     """
     if not documents:
         return ""
@@ -79,12 +88,20 @@ def render_toc_list_html(
         for doc_data in folder_node.get("documents", []):
             if doc_data["id"] in doc_ids:
                 items.append(_toc_doc_item(doc_data, depth + 1, doc_href))
+                if doc_sublist is not None:
+                    extra = doc_sublist(doc_data, depth + 1)
+                    if extra:
+                        items.append(extra)
         for child in folder_node.get("children", []):
             walk_folder(child, depth + 1)
 
     for doc_data in tree.get("documents", []):
         if doc_data["id"] in doc_ids:
             items.append(_toc_doc_item(doc_data, 0, doc_href))
+            if doc_sublist is not None:
+                extra = doc_sublist(doc_data, 0)
+                if extra:
+                    items.append(extra)
 
     for folder_node in tree.get("folders", []):
         walk_folder(folder_node, 0)
