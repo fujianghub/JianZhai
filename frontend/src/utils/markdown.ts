@@ -1507,7 +1507,18 @@ export function normalizeYuqueImages(src: string): string {
  * and a single-asterisk ``* italic *`` variant, which Yuque can also export.
  */
 function normalizeYuqueEmphasis(src: string): string {
-  let out = src;
+  // Mask URL spans (link destinations, autolinks, bare URLs) before any
+  // emphasis fix. Yuque's emphasis artifacts never occur inside a URL, but
+  // real-world URLs legitimately contain 4+ consecutive underscores (e.g.
+  // Hillstone docs' ``TocPath=…%25257C_____0``). Without the mask, step (2)
+  // splits the run with an inserted space, the link destination stops
+  // parsing as a link, and the editor's next save round-trip permanently
+  // corrupts the stored markdown (escaped brackets + partial autolink).
+  const maskedUrls: string[] = [];
+  let out = src.replace(/https?:\/\/[^\s<>)"'`]+/g, (m) => {
+    maskedUrls.push(m);
+    return `\x00jzYqUrl${maskedUrls.length - 1}\x00`;
+  });
 
   // (0) Yuque splits a bold span around an inline HTML tag (typically
   // ``<font color>`` used to highlight a term mid-sentence). It comes out in
@@ -1615,6 +1626,7 @@ function normalizeYuqueEmphasis(src: string): string {
   out = out.replace(iOpen, '_$1_');
   out = out.replace(iClose, '_$1_');
 
+  out = out.replace(/\x00jzYqUrl(\d+)\x00/g, (_, i: string) => maskedUrls[Number(i)] ?? '');
   return out;
 }
 

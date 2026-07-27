@@ -389,6 +389,42 @@ describe('adjacent CJK bold spans stay independent', () => {
 });
 
 /**
+ * Regression: URLs containing 4+ consecutive underscores (Hillstone docs'
+ * ``TocPath=…%25257C_____0``) used to be rewritten by the Yuque adjacent-bold
+ * splitter (``_{4,}`` → ``__ __``), inserting a space INSIDE the link
+ * destination. The link then stopped parsing, and the rich editor's next
+ * save round-trip permanently corrupted raw_content (escaped brackets +
+ * partial autolink, escalating each round — real docs 444/438).
+ */
+describe('URLs survive Yuque emphasis normalization', () => {
+  const HILLSTONE =
+    'https://docs.hillstonenet.com.cn/dist/#/DOC_DETAILS?id=2366&page=%23101_Firewall%2Fzone_intro.htm%3FTocPath%3D%2525E9%252598%2525B2%2525E7%252581%2525AB%2525E5%2525A2%252599%25257C%2525E5%2525AE%252589%2525E5%252585%2525A8%2525E5%25259F%25259F%25257C_____0';
+
+  it('keeps a link destination with 5 consecutive underscores byte-identical', () => {
+    const src = `安全域配置：[HillStone安全区域配置](${HILLSTONE})`;
+    expect(preprocessMarkdown(src)).toBe(src);
+  });
+
+  it('renders that link as a real <a> with the untouched href', () => {
+    const html = renderMarkdown(`[HillStone安全区域配置](${HILLSTONE})`);
+    expect(html).toContain('_____0');
+    expect(html).toContain('>HillStone安全区域配置</a>');
+    expect(html).not.toContain('__ __');
+  });
+
+  it('keeps bare URLs and autolinks with underscore/asterisk runs untouched', () => {
+    const src = `见 ${HILLSTONE} 与 <https://example.com/a____b> 及 https://example.com/x****y`;
+    expect(preprocessMarkdown(src)).toBe(src);
+  });
+
+  it('still splits 4+ underscore/asterisk runs in plain text (Yuque adjacent bolds)', () => {
+    expect(preprocessMarkdown('__A____B__')).toBe('__A__ __B__');
+    // ``**``: after the split, step (4) merges the adjacent bolds back into one.
+    expect(preprocessMarkdown('**A****B**')).toBe('**A B**');
+  });
+});
+
+/**
  * Regression: Yuque exports diagrams as ``<!-- 这是一个文本绘图，源码为：… -->``
  * comments + a static SVG image. The generic comment strip truncated at the
  * first ``-->`` INSIDE the source (flowchart arrows), leaking the rest as
