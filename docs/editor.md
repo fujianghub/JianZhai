@@ -184,7 +184,7 @@
 
 三个渲染层 bug（前端 `utils/markdown.ts`；后端导出镜像 `exporter/services/markdown_preprocess.py`）：
 
-1. **图表注释被 `-->` 截断（主凶）**：`preprocessMarkdown` 首步懒惰正则 `<!--[\s\S]*?-->` 在源码**内部箭头** ` --> ` 处提前截断 → 剩余源码（`classDef`、`:::jam` 等）泄漏成正文，`:::jam` 再被 `unglueContainerFences` 拆行触发**失控 callout 吞掉后文**。修复=`recoverYuqueDiagramComments`（后端 `recover_yuque_diagram_comments` 镜像）：闭合锚定「`-->` + 行尾」（flowchart 箭头后同行必有目标、真闭合必在行尾），把注释**还原成 ```` ```mermaid ```` fence**（`@startuml` 开头则 plantuml）并丢弃静态 SVG——阅读端原生渲染（主题跟随/全屏/源码切换），导出端走既有离线 SVG 管线；**必须在通用注释剥离之前运行**。docx 导出降级为源码面板（已知低保真目标）。
+1. **图表注释被 `-->` 截断（主凶）**：`preprocessMarkdown` 首步懒惰正则 `<!--[\s\S]*?-->` 在源码**内部箭头** ` --> ` 处提前截断 → 剩余源码（`classDef`、`:::jam` 等）泄漏成正文，`:::jam` 再被 `unglueContainerFences` 拆行触发**失控 callout 吞掉后文**。修复=`recoverYuqueDiagramComments`（后端 `recover_yuque_diagram_comments` 镜像）：闭合锚定「`-->` + 行尾」（flowchart 箭头后同行必有目标、真闭合必在行尾），把注释**还原成 ```` ```mermaid ```` fence**（`@startuml` 开头则 plantuml）并丢弃静态 SVG——阅读端原生渲染（主题跟随/全屏/源码切换），导出端走既有离线 SVG 管线；**必须在通用注释剥离之前运行**。docx 导出以等宽源码段落呈现（fence 分支；2026-07-27 起 docx 也跑同套还原预处理，此前该注释整块蒸发）。
 2. **`<font>` 交替模式误合并**：语雀「整句染色+局部加粗」= `<font>文</font>**<font>词</font>**<font>文</font>…`；`normalizeYuqueEmphasis` 步骤 (0)（拆分加粗绕行内标签合并）的 A/B 连接符原为 `[^*\n]+?`（允许 `<`），把整个染色 span 当拆分两半合并 → 整句全粗。修复=收紧为 `[^*\n<]+?`（真实拆分模式两侧是纯文本）。
 3. **CJK 双加粗吞并**：已删除的步骤 (1)（`**A**B**C**`→`**ABC**` 合并启发式）——无空格连接符与 `\w` lookaround 两道防线在中文全失效（中文无空格、CJK 不算 `\w`），任何含两个加粗的中文句子被吞并成巨型加粗，或错配「上一加粗闭合+下一加粗开启」**静默删除**加粗标记（表格单元格触发）。`**A**B**C**` 本是合法 CommonMark；后端 `normalize_yuque_emphasis` 从无此步骤，删除后前后端对齐。
 

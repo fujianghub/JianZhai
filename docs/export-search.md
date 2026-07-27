@@ -40,19 +40,21 @@ def refresh_search_vector(doc):
 | Markdown | `application/zip` | `markdown_export.py`（单 `.md` / 多文档 zip） |
 | HTML | `text/html` | `html_export.py`（单 / anthology） |
 | PDF | `application/pdf` | `pdf_export.py`（Playwright，渲染 anthology `mode="print"`） |
-| DOCX | `application/...wordprocessingml...` | `docx_export.py`（`python-docx`） |
-| 静态站 | `application/zip` | `static_site.py`（Jinja2 + 流式写盘） |
+| DOCX | `application/...wordprocessingml...` | `docx_export.py`（`python-docx`；真 Heading 样式 + eastAsia 字体 + 图片内嵌 + GFM/HTML 表格 + 多篇封面与 TOC 域，2026-07-27 大修；彩色/间距与 OMML 公式仍为已知限制） |
+| 静态站 | `application/zip` | `static_site.py`（流式写盘；共享 style.css/katex.css + 树形导航 + 绝对 URL sitemap/RSS，仅已发布 fail-closed） |
 
 **粒度**（`SCOPE_*`）：单文档 / 文件夹（递归子项）/ 整 KB / 多选（folder_ids + doc_ids 任意组合，JSON 存）。
 
-**正文策略**：除整站 zip 仅 scope 内 `status=published` 外，各格式均 `doc_export_body()` —— 优先 `published_content`，空则 `raw_content`。
+**默认文件名**（2026-07-27，`common.build_export_filename` 唯一枢纽）：`大类-知识库-[文档标题|文件夹-N篇|N篇]-YYYY-MM-DD-HH-mm(-site).ext`——单篇（含 selection 恰 1 篇）带文档标题、folder 带文件夹名+篇数、selection 多篇带篇数、kb 只到库名；大类为空省略该段；每段截 60 字符（`ExportTask.filename` 上限 255）。磁盘路径始终是 UUID，与下载名无关。
+
+**正文策略**：各格式默认 `doc_export_body()` —— 优先 `published_content`，空则回落 `raw_content`（作者私人归档的有意设计）。两个例外：① **整站 zip fail-closed**——仅收 `published_content` 非空的文档，**绝不回落 raw**（与博客端 `resolve_published_html_body` 同规矩；全库无已发布则产出 stub 首页），feed.xml 摘要同样只取已发布正文；② 创建任务可传 **`only_published: true`**（存 `selection` JSON，免迁移）——过滤 `status=published`，缺省沿用历史行为，site 无论传什么服务端恒强制 true。
 
 ### HTML Anthology（多文档合订本）
 
 `html_export.py → render_html(scope, mode)`：
 
 - **`interactive`**：固定左侧 TOC + 一次只显示一篇的 `.export-doc-panel`（目录点击 / `#doc-N` hash 同步，内联 ES5 JS）。HTML 篇用 `<iframe srcdoc>`（首次展开才注入，样式互不污染）；Markdown 篇渲染为 `.jz-markdown.export-markdown` 片段。
-- **`print`**（PDF 用）：展开全部 panel、去目录与脚本、篇章间 `page-break-before`；HTML 篇**不用 iframe**，改抽 `<style>` + body 扁平嵌入（`export-html-print`），避免 Chromium 打印空白 iframe。Playwright `emulate_media("screen")` 保留屏幕样式。
+- **`print`**（PDF 用）：展开全部 panel、交互目录换成**卷首封面页 + 可点击目录页**（`_build_print_front_matter`：大类/标题/篇数/日期 + `render_toc_list_html` 树形 `#doc-N` 内链）、篇章间 `page-break-before` + 表格/代码块/图/callout `break-inside: avoid` 分页护栏、`<details>` 后处理强制 `open`（Chromium 打印闭合 details 内容不可见且 CSS 无法展开）；HTML 篇**不用 iframe**，改抽 `<style>` + body 扁平嵌入（`export-html-print`），避免 Chromium 打印空白 iframe。Playwright `emulate_media("screen")` 保留屏幕样式；`page.pdf(outline=True, tagged=True)` 生成标题书签树 + 页脚页码——**outline 单独传静默无效，必须与 tagged 同开**（Chromium 147 实测）。
 - 样式：`BASE_CSS` + `export-markdown.css` + `export-anthology.css`（后者仅 html_export 加载）。
 - **单篇** HTML 导出仍 `export()` 原样写出（不套外壳）。
 
@@ -72,8 +74,9 @@ def refresh_search_vector(doc):
 
 ### 异步与下载
 
-- Celery `exporter.run_export` 异步；broker 不可达时 create 内联 fallback（同步执行）
+- Celery `exporter.run_export` 异步；broker 不可达时 create 内联 fallback（同步执行，PDF/site 重格式快速失败）
+- **运维护栏（2026-07-27）**：Celery `task_time_limit` 600s / soft 540s；创建限流 `export_create` 10/min（仅 create，历史页 2s 轮询的 list 不受限）；同 owner+scope+target+format 已有 pending/running 任务**去重复用**（200 返回既有任务）；`manage.py cleanup_exports` + beat 每日三段清理（TTL `EXPORT_TTL_DAYS` 默认 7 天过期任务、僵尸 pending/running 标失败、孤儿文件清扫，`exports/backups/` 永不触碰）；md 多篇 zip 流式写盘；媒体单文件 `EXPORT_MAX_ASSET_BYTES`（默认 200MB）超限不进包、正文保留 /media/ 原链
 - 前端 `/admin/exports` 轮询 + `downloadExport()` 用原生 `<a href>`（不用 fetch+blob，规避 Chrome 不安全下载警告）
-- **导出权限**：owner 自己 / superuser；跨租户访问写审计日志
+- **导出权限**：`is_staff`（作者共享池——任一作者可见/可下载全部导出任务，与内容池一致）；跨作者下载写审计日志（依赖 settings `LOGGING`，2026-07-27 起才真正落盘）
 
 > **部署坑（已修）**：`export_root()` = `MEDIA_ROOT` 同级 `exports/`（容器内 `/app/exports`，**刻意不在 `/app/media` 下**，否则被 Caddy 公开 `/media/*` 绕过鉴权服出）。导出由 celery worker 异步写盘、下载请求落 backend 容器，**两者须共享命名卷 `exports_data:/app/exports`**，否则下载返 404。详见 [deployment.md](./deployment.md) 与 memory。
