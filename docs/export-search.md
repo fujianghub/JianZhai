@@ -40,7 +40,7 @@ def refresh_search_vector(doc):
 | Markdown | `application/zip` | `markdown_export.py`（单 `.md` / 多文档 zip） |
 | HTML | `text/html` | `html_export.py`（单 / anthology） |
 | PDF | `application/pdf` | `pdf_export.py`（Playwright，渲染 anthology `mode="print"`） |
-| DOCX | `application/...wordprocessingml...` | `docx_export.py`（`python-docx`；真 Heading 样式 + eastAsia 字体 + 图片内嵌 + GFM/HTML 表格 + 多篇封面与 TOC 域，2026-07-27 大修；彩色/间距与 OMML 公式仍为已知限制） |
+| DOCX | `application/...wordprocessingml...` | `docx_export.py`（`python-docx`；真 Heading 样式 + eastAsia 字体 + 图片内嵌 + GFM/HTML 表格 + 多篇封面与 TOC 域 + **对齐 PDF 目录体系**：正文标题降一级嵌套（文档标题独占 Heading 1）、每篇可点击「本篇目录」（`w:bookmarkStart` + `w:hyperlink w:anchor` 内链）、HTML 格式文档标题转真 Heading、`[TOC]` 剥离，2026-07-27；彩色/间距与 OMML 公式仍为已知限制） |
 | 静态站 | `application/zip` | `static_site.py`（流式写盘；共享 style.css/katex.css + 树形导航 + 绝对 URL sitemap/RSS，仅已发布 fail-closed） |
 
 **粒度**（`SCOPE_*`）：单文档 / 文件夹（递归子项）/ 整 KB / 多选（folder_ids + doc_ids 任意组合，JSON 存）。
@@ -54,7 +54,8 @@ def refresh_search_vector(doc):
 `html_export.py → render_html(scope, mode)`：
 
 - **`interactive`**：固定左侧 TOC + 一次只显示一篇的 `.export-doc-panel`（目录点击 / `#doc-N` hash 同步，内联 ES5 JS）。HTML 篇用 `<iframe srcdoc>`（首次展开才注入，样式互不污染）；Markdown 篇渲染为 `.jz-markdown.export-markdown` 片段。
-- **`print`**（PDF 用）：展开全部 panel、交互目录换成**卷首封面页 + 可点击目录页**（`_build_print_front_matter`：大类/标题/篇数/日期 + `render_toc_list_html` 树形 `#doc-N` 内链）、篇章间 `page-break-before` + 表格/代码块/图/callout `break-inside: avoid` 分页护栏、`<details>` 后处理强制 `open`（Chromium 打印闭合 details 内容不可见且 CSS 无法展开）；HTML 篇**不用 iframe**，改抽 `<style>` + body 扁平嵌入（`export-html-print`），避免 Chromium 打印空白 iframe。Playwright `emulate_media("screen")` 保留屏幕样式；`page.pdf(outline=True, tagged=True)` 生成标题书签树 + 页脚页码——**outline 单独传静默无效，必须与 tagged 同开**（Chromium 147 实测）。
+- **`print`**（PDF 用）：展开全部 panel、交互目录换成**卷首封面页 + 层级目录页**（`_build_print_front_matter`：封面大类/标题/篇数/日期，目录页文件夹→文档→篇内 h1–h3 标题三级缩进、全部 `#锚点` 内链可点击）、每篇 header 后注入**「本篇目录」**（h1–h4；正文自带 `[TOC]` 的 markdown 篇不重复注入）、篇章间 `page-break-before` + 表格/代码块/图/callout `break-inside: avoid` 分页护栏、`<details>` 后处理强制 `open`（Chromium 打印闭合 details 内容不可见且 CSS 无法展开）；HTML 篇**不用 iframe**，改抽 `<style>` + body 扁平嵌入（`export-html-print`），避免 Chromium 打印空白 iframe。Playwright `emulate_media("screen")` 保留屏幕样式；`page.pdf(outline=True, tagged=True)` 生成标题书签树 + 页脚页码——**outline 单独传静默无效，必须与 tagged 同开**（Chromium 147 实测）。
+- **书签层级三约定（2026-07-27）**：封面标题是 `div`（不进 Chromium 书签树）、目录页标题是 `h1`、正文标题经 `heading_shift=1` 降级输出（锚点/编号仍按原始层级）→ 顶层书签恰为「目录 + 各文档标题」。**锚点按篇命名空间**：`render_markdown(anchor_prefix="d{doc.id}-")`——多篇同名标题此前锚点重复、目录跳错篇。**HTML 格式文档**（Word/模板导入，标题是原生 `<h1-6>` 不经 markdown 钩子）由 `process_html_headings` 补同等待遇（锚点/收集/降级），print 模式并加文档标题头；改标题渲染须同时顾及 `_render_heading_open` 与 `_process_html_headings` 两条通路。
 - 样式：`BASE_CSS` + `export-markdown.css` + `export-anthology.css`（后者仅 html_export 加载）。
 - **单篇** HTML 导出仍 `export()` 原样写出（不套外壳）。
 
