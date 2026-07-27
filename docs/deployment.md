@@ -67,6 +67,8 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 - **纯前端快路径**（无后端/迁移改动时）：本地 `pnpm build`（用带 `JZ_API_PROXY_TARGET` 的隔离 `cacheDir` 实例，勿污染主 dev server 缓存）→ rsync `frontend/dist/`（**带 `--delete`**）→ 服务器 `docker compose build caddy && docker compose up -d caddy`
 - **含后端/迁移标准路径**：快路径基础上另加 rsync `backend/`（**无 `--delete`**，排除 `.venv/.env/media/exports/staticfiles` 等；`static/vendor/` 的 katex/mermaid 离线渲染资源随之带上）→ `docker compose build backend caddy && docker compose up -d`；有新迁移则容器内 `python manage.py migrate`
 - rsync 统一排除服务器专属文件：`.env.prod`、`.git`、`Caddyfile`、`backend.Dockerfile`、compose（见 memory `project_deploy_tencent`）
+- **服务器专属文件的变更须手工合并**（rsync 排除 ≠ 永不更新）：main 若改了 `backend.Dockerfile` / compose，要把语义变更手工套进服务器版（CN 镜像/concurrency=1 变体保留）。例：2026-07-27 Playwright 层 = `pip install -e .[pdf]` + `PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright playwright install --with-deps chromium`（服务器连不通官方 CDN，浏览器二进制必须走 npmmirror）+ compose celery `-B` + `mem_limit 3g`；改前先 `cp xxx xxx.bak.日期`
+- **知识库内容同步**（DB + media，与代码部署互不干扰）：仓库根 `Local_to_Cloud_Server_kb_sysnc.py`（gitignore 不入库的本地运维工具）。先 `--dry-run` 盘点，自带安全闸门（服务器有本地没有的评论/收藏/用户即中止）+ 服务器兜底备份 + 停机窗口压缩（media 先传、库切换只需几十秒）；`--db-only` / `--media-only` / `--max-size` 见脚本 docstring
 - **部署后验证绿三件**：线上 JS hash == 本地 dist 产物；匿名访问 `/api/v1/public/*` 返 403；`/auth/session/` 返 `require_login: true`
 - **导出共享卷**（必须）：backend + celery 各挂命名卷 `exports_data:/app/exports`（顶层声明 `name: jianzhai_exports_data`），否则 celery 写、backend 读不到 → 下载返 404 HTML → 浏览器「无法从网站上提取文件」。详见 [export-search.md](./export-search.md) 与 memory `project_export_shared_volume`
 
