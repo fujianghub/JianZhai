@@ -39,20 +39,41 @@ function errorSummary(err: string, max = 200): string {
   return line.length > max ? `${line.slice(0, max)}…` : line;
 }
 
+function formatSize(size: number): string {
+  if (!size || size <= 0) return '-';
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatDuration(t: ExportTask): string {
+  if (!t.started_at) return '-';
+  const end = t.completed_at ? dayjs(t.completed_at) : dayjs();
+  const secs = end.diff(dayjs(t.started_at), 'second');
+  if (secs < 0) return '-';
+  const label = secs < 60 ? `${secs}s` : `${Math.floor(secs / 60)}m${secs % 60}s`;
+  return t.completed_at ? label : `已运行 ${label}`;
+}
+
 export default function ExportsPage() {
   const [tasks, setTasks] = useState<ExportTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<number[]>([]);
   const [downloadingId, setDownloadingId] = useState<number | null>(null);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [retryingId, setRetryingId] = useState<number | null>(null);
   const pollRef = useRef<number | null>(null);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (opts?: { silent?: boolean; spin?: boolean }) => {
+    if (opts?.spin) setLoading(true);
     try {
       const data = await exportsApi.listExports();
       setTasks(data);
       return data;
     } catch (err) {
-      message.error(formatApiError(err, '加载导出历史失败'));
+      // 轮询回调里的报错必须静默——否则后端抖动时每 2 秒糊一个红 toast
+      if (!opts?.silent) {
+        message.error(formatApiError(err, '加载导出历史失败'));
+      }
       return [];
     } finally {
       setLoading(false);
@@ -87,21 +108,36 @@ export default function ExportsPage() {
   async function handleBulkDelete() {
     if (selected.length === 0) return;
     const ids = [...selected];
-    let failed = 0;
-    for (const id of ids) {
-      try {
-        await exportsApi.deleteExport(id);
-      } catch {
-        failed += 1;
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.allSettled(ids.map((id) => exportsApi.deleteExport(id)));
+      const failedIds = ids.filter((_, i) => results[i]?.status === 'rejected');
+      if (failedIds.length === 0) {
+        message.success(`已删除 ${ids.length} 项`);
+        setSelected([]);
+      } else {
+        message.warning(`已删除 ${ids.length - failedIds.length} 项，${failedIds.length} 项失败`);
+        // 失败项保留勾选，便于直接重试
+        setSelected(failedIds);
       }
+    } finally {
+      setBulkDeleting(false);
+      await refresh({ silent: true });
     }
-    if (failed === 0) {
-      message.success(`已删除 ${ids.length} 项`);
-    } else {
-      message.warning(`已删除 ${ids.length - failed} 项，${failed} 项失败`);
+  }
+
+  async function handleRetry(t: ExportTask) {
+    // 以相同参数重建任务（selection 的勾选组合未随任务下发，无法重放）
+    setRetryingId(t.id);
+    try {
+      await exportsApi.createExport({ scope: t.scope, target_id: t.target_id, format: t.format });
+      message.success('已重新创建导出任务');
+      await refresh({ silent: true });
+    } catch (err) {
+      message.error(formatApiError(err, '重试失败'));
+    } finally {
+      setRetryingId(null);
     }
-    setSelected([]);
-    await refresh();
   }
 
   useEffect(() => {
@@ -116,7 +152,7 @@ export default function ExportsPage() {
       return;
     }
     if (pollRef.current) return;
-    pollRef.current = window.setInterval(() => void refresh(), 2000);
+    pollRef.current = window.setInterval(() => void refresh({ silent: true }), 2000);
     return () => {
       if (pollRef.current) window.clearInterval(pollRef.current);
       pollRef.current = null;
@@ -139,12 +175,16 @@ export default function ExportsPage() {
               cancelText="取消"
               okButtonProps={{ danger: true }}
             >
-              <Button danger icon={<DeleteOutlined />}>
+              <Button danger icon={<DeleteOutlined />} loading={bulkDeleting}>
                 批量删除 ({selected.length})
               </Button>
             </Popconfirm>
           )}
-          <Button icon={<ReloadOutlined />} onClick={() => void refresh()}>
+          <Button
+            icon={<ReloadOutlined />}
+            loading={loading}
+            onClick={() => void refresh({ spin: true })}
+          >
             刷新
           </Button>
           </Space>
@@ -171,19 +211,46 @@ export default function ExportsPage() {
                 <Space direction="vertical" size={0}>
                   <span>{label || `#${t.target_id}`}</span>
                   <Typography.Text type="secondary" style={{ fontSize: 12 }}>
-                    {t.scope === 'doc' ? '单文档' : t.scope === 'folder' ? '文件夹' : '整知识库'}
+                    {t.scope === 'doc'
+                      ? '单文档'
+                      : t.scope === 'folder'
+                      ? '文件夹'
+                      : t.scope === 'selection'
+                      ? '批量选择'
+                      : '整知识库'}
                   </Typography.Text>
+                  {t.filename && (
+                    <Typography.Text
+                      type="secondary"
+                      style={{ fontSize: 12, maxWidth: 280 }}
+                      ellipsis={{ tooltip: t.filename }}
+                    >
+                      {t.filename}
+                    </Typography.Text>
+                  )}
                 </Space>
               ),
             },
             {
               title: '格式',
               dataIndex: 'format',
+              filters: Object.entries(FORMAT_LABELS).map(([value, text]) => ({
+                value,
+                text,
+              })),
+              onFilter: (value, t) => t.format === value,
               render: (f: ExportFormat) => <Tag>{FORMAT_LABELS[f]}</Tag>,
             },
             {
               title: '状态',
               dataIndex: 'status',
+              filters: [
+                { value: 'pending', text: '排队中' },
+                { value: 'running', text: '处理中' },
+                { value: 'done', text: '完成' },
+                { value: 'failed', text: '失败' },
+              ],
+              onFilter: (value, t) => t.status === value,
               render: (s: ExportStatus, t) => (
                 <Tooltip title={t.error || ''}>
                   <Tag color={STATUS_COLORS[s]}>
@@ -201,13 +268,18 @@ export default function ExportsPage() {
             {
               title: '大小',
               dataIndex: 'file_size',
-              render: (size: number) =>
-                size > 0 ? `${(size / 1024).toFixed(1)} KB` : '-',
+              render: (size: number) => formatSize(size),
+            },
+            {
+              title: '耗时',
+              key: 'duration',
+              render: (_, t) => formatDuration(t),
             },
             {
               title: '创建时间',
               dataIndex: 'created_at',
-              render: (t: string) => dayjs(t).format('MM-DD HH:mm:ss'),
+              sorter: (a, b) => dayjs(a.created_at).unix() - dayjs(b.created_at).unix(),
+              render: (t: string) => dayjs(t).format('YYYY-MM-DD HH:mm'),
             },
             {
               title: '操作',
@@ -224,18 +296,29 @@ export default function ExportsPage() {
                       下载
                     </Button>
                   ) : t.status === 'failed' ? (
-                    // Status column already carries the 失败 tag — here just a
-                    // compact reason line so failed rows don't balloon to
-                    // twice the height of the rest of the table.
-                    <Tooltip title={errorSummary(t.error || '') || '导出失败'}>
-                      <Paragraph
-                        type="danger"
-                        style={{ margin: 0, fontSize: 12, maxWidth: 220 }}
-                        ellipsis={{ rows: 1 }}
-                      >
-                        {errorSummary(t.error || '') || '导出失败'}
-                      </Paragraph>
-                    </Tooltip>
+                    <>
+                      {/* Status column already carries the 失败 tag — here just a
+                          compact reason line so failed rows don't balloon to
+                          twice the height of the rest of the table. */}
+                      <Tooltip title={errorSummary(t.error || '') || '导出失败'}>
+                        <Paragraph
+                          type="danger"
+                          style={{ margin: 0, fontSize: 12, maxWidth: 220 }}
+                          ellipsis={{ rows: 1 }}
+                        >
+                          {errorSummary(t.error || '') || '导出失败'}
+                        </Paragraph>
+                      </Tooltip>
+                      {t.scope !== 'selection' && (
+                        <Button
+                          size="small"
+                          loading={retryingId === t.id}
+                          onClick={() => void handleRetry(t)}
+                        >
+                          重试
+                        </Button>
+                      )}
+                    </>
                   ) : (
                     <span>—</span>
                   )}

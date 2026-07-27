@@ -1028,6 +1028,7 @@ export default function DocEditorPage({
         targetId={doc.id}
         targetLabel={doc.title}
         allowSiteFormat={false}
+        onSubmitted={() => navigate('/admin/exports')}
       />
 
       {/* AI 助手 — 选区 ✨（md/html/pdf/pptx；富文本自带 AIAssistantMenu，

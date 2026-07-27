@@ -58,11 +58,18 @@ def run_export(task_id: int) -> None:
 
     try:
         selection = task.selection or {}
+        only_published = selection.get("only_published")
+        if only_published is None:
+            # 历史缺省：site 恒过滤，其余格式不过滤
+            only_published = task.format == ExportTask.FORMAT_SITE
+        if task.format == ExportTask.FORMAT_SITE:
+            # 静态站是可部署产物，无论用户怎么传都不碰未发布内容
+            only_published = True
         scope = collect_for_scope(
             owner=task.owner,
             scope=task.scope,
             target_id=task.target_id,
-            only_published=(task.format == ExportTask.FORMAT_SITE),
+            only_published=bool(only_published),
             folder_ids=selection.get("folder_ids") or [],
             doc_ids=selection.get("doc_ids") or [],
         )
@@ -80,10 +87,31 @@ def run_export(task_id: int) -> None:
         task.target_label = scope.label
         task.status = ExportTask.STATUS_DONE
         task.completed_at = timezone.now()
-        task.save()
+        # update_fields: a bare save() would write back the in-memory snapshot
+        # of every column (selection/scope/...) taken when the task started.
+        task.save(
+            update_fields=[
+                "file_path",
+                "filename",
+                "mime_type",
+                "file_size",
+                "target_label",
+                "status",
+                "completed_at",
+            ]
+        )
     except Exception as exc:  # noqa: BLE001
         log.exception("export task %s failed", task_id)
         task.status = ExportTask.STATUS_FAILED
         task.error = _format_task_error(exc)
         task.completed_at = timezone.now()
         task.save(update_fields=["status", "error", "completed_at"])
+
+
+@shared_task(name="exporter.cleanup_exports")
+def cleanup_exports_task() -> dict:
+    """Daily retention sweep (see apps.exporter.maintenance). Wired via
+    CELERY_BEAT_SCHEDULE; also runnable as ``manage.py cleanup_exports``."""
+    from .maintenance import cleanup_exports
+
+    return cleanup_exports()

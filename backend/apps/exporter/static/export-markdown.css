@@ -88,7 +88,11 @@
 .jz-markdown.export-markdown td {
   border-right: 1px solid #e5e5e5;
   border-bottom: 1px solid #e5e5e5;
-  padding: 6px 10px;
+  /* var() form so author table styles survive: the editor serializes custom
+     row/column spacing as --jz-cell-pad-* on the table element and density
+     presets as data-jz-density. A hardcoded padding here (higher specificity
+     than BASE_CSS) silently flattened both in every HTML/PDF/site export. */
+  padding: var(--jz-cell-pad-v, 6px) var(--jz-cell-pad-h, 10px);
   word-break: break-word;
 }
 
@@ -427,3 +431,46 @@
   margin-top: 6px;
   word-break: break-all;
 }
+
+/* ── 结构布局块（cols / tabs / details）──────────────────────────────
+   由 markdown_preprocess.convert_layout_blocks 在预处理期发出（与前端
+   convertLayoutBlocks 同构、同类名）。此前这三类容器被 catch-all callout
+   吞掉：分栏塌缩、::col/::tab 字面量泄漏、details 摘要丢失。 */
+.jz-markdown.export-markdown .jz-columns {
+  display: grid;
+  gap: 16px;
+  margin: 1em 0;
+}
+.jz-markdown.export-markdown .jz-columns-2 { grid-template-columns: repeat(2, 1fr); }
+.jz-markdown.export-markdown .jz-columns-3 { grid-template-columns: repeat(3, 1fr); }
+.jz-markdown.export-markdown .jz-columns-4 { grid-template-columns: repeat(4, 1fr); }
+.jz-markdown.export-markdown .jz-column { min-width: 0; }
+
+.jz-markdown.export-markdown .jz-details-block {
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 1em 0;
+}
+.jz-markdown.export-markdown .jz-details-block > summary {
+  font-weight: 600;
+  cursor: pointer;
+}
+.jz-markdown.export-markdown .jz-details-body { margin-top: 8px; }
+
+/* 无 JS 的导出物里 tabs 平铺为带标签头的面板堆叠（print 哲学：全部展示） */
+.jz-markdown.export-markdown .jz-tabs { margin: 1em 0; }
+.jz-markdown.export-markdown .jz-tab-panel {
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.jz-markdown.export-markdown .jz-tab-panel-label {
+  font-weight: 600;
+  font-size: 13px;
+  padding: 6px 12px;
+  background: #fafafa;
+  border-bottom: 1px solid #eee;
+  border-radius: 6px 6px 0 0;
+}
+.jz-markdown.export-markdown .jz-tab-panel-body { padding: 10px 14px; }

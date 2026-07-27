@@ -92,7 +92,7 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     pdf_bytes = _render_pdf(html)
     path = common.reserve_export_path(".pdf")
     common.write_bytes(path, pdf_bytes)
-    return path, f"{common.safe_slug(scope.label)}.pdf", "application/pdf"
+    return path, common.build_export_filename(scope, ".pdf"), "application/pdf"
 
 
 def _render_pdf(html: str) -> bytes:
@@ -145,6 +145,21 @@ def _render_pdf(html: str) -> bytes:
                         "right": "16mm",
                     },
                     print_background=True,
+                    # Bookmark tree from the HTML heading hierarchy — the
+                    # screen-reading navigation a bound anthology PDF needs.
+                    # 实测（Chromium 147）：outline 必须与 tagged 同开——单独
+                    # outline=True 静默不生成任何书签。tagged 同时带来无障碍
+                    # 结构化 PDF，代价是体积略增。
+                    outline=True,
+                    tagged=True,
+                    display_header_footer=True,
+                    header_template="<div></div>",
+                    footer_template=(
+                        '<div style="width:100%; font-size:9px; color:#999;'
+                        ' text-align:center;">'
+                        '<span class="pageNumber"></span> / '
+                        '<span class="totalPages"></span></div>'
+                    ),
                 )
             finally:
                 browser.close()

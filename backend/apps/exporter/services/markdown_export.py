@@ -105,52 +105,62 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         text = f"# {doc.title}\n\n{body}\n"
         media = common.collect_markdown_media(text)
         if media:
+            # Rewrite /media/ references to the zip-relative assets/ layout —
+            # without this the archived content.md points at paths that don't
+            # exist once unpacked.
+            zip_text = common.rewrite_markdown_media_paths(text)
             data = common.make_zip(
-                [("content.md", text.encode("utf-8")), *media]
+                [("content.md", zip_text.encode("utf-8")), *media]
             )
             path = common.reserve_export_path(".zip")
             common.write_bytes(path, data)
             return (
                 path,
-                f"{common.safe_slug(doc.title)}-markdown.zip",
+                common.build_export_filename(scope, ".zip"),
                 "application/zip",
             )
         path = common.reserve_export_path(".md")
         common.write_text(path, text)
-        return path, f"{common.safe_slug(doc.title)}.md", "text/markdown; charset=utf-8"
+        return (
+            path,
+            common.build_export_filename(scope, ".md"),
+            "text/markdown; charset=utf-8",
+        )
 
-    entries: list[tuple[str, bytes]] = []
     used_names: set[str] = set()
     folder_cache: dict[int, list[str]] = {}
-    asset_entries: list[tuple[str, bytes]] = []
-    asset_names: set[str] = set()
     link_index = _build_doc_link_index(scope.documents, folder_cache)
-    for doc in scope.documents:
-        rel = _doc_relative_path(doc, folder_cache)
-        name = rel
-        i = 1
-        while name in used_names:
-            if name.endswith(".md"):
-                stem = name[:-3]
-                name = f"{stem}-{i}.md"
-            else:
-                name = f"{rel}-{i}.md"
-            i += 1
-        used_names.add(name)
-        body = common.doc_export_body(doc)
-        body = card_placeholders.degrade_card_placeholders(body, doc_titles=card_titles)
-        body = _rewrite_doc_mentions(body, link_index, from_path=name)
-        text = f"# {doc.title}\n\n{body}\n"
-        text = common.rewrite_markdown_media_paths(text)
-        entries.append((name, text.encode("utf-8")))
-        for asset_name, asset_data in common.collect_markdown_media(
-            common.doc_export_body(doc)
-        ):
-            if asset_name not in asset_names:
-                asset_names.add(asset_name)
-                asset_entries.append((asset_name, asset_data))
-
-    data = common.make_zip([*entries, *asset_entries])
     path = common.reserve_export_path(".zip")
-    common.write_bytes(path, data)
-    return path, f"{common.safe_slug(scope.label)}-markdown.zip", "application/zip"
+
+    # Streamed straight to disk (same as static_site) — the old make_zip path
+    # held every doc body + every media file + the whole archive in memory at
+    # once, GB-scale on a large KB.
+    def _entries():
+        asset_names: set[str] = set()
+        for doc in scope.documents:
+            rel = _doc_relative_path(doc, folder_cache)
+            name = rel
+            i = 1
+            while name in used_names:
+                if name.endswith(".md"):
+                    stem = name[:-3]
+                    name = f"{stem}-{i}.md"
+                else:
+                    name = f"{rel}-{i}.md"
+                i += 1
+            used_names.add(name)
+            raw_body = common.doc_export_body(doc)
+            body = card_placeholders.degrade_card_placeholders(
+                raw_body, doc_titles=card_titles
+            )
+            body = _rewrite_doc_mentions(body, link_index, from_path=name)
+            text = f"# {doc.title}\n\n{body}\n"
+            text = common.rewrite_markdown_media_paths(text)
+            yield (name, text.encode("utf-8"))
+            for asset_name, asset_data in common.collect_markdown_media(raw_body):
+                if asset_name not in asset_names:
+                    asset_names.add(asset_name)
+                    yield (asset_name, asset_data)
+
+    common.stream_zip_to_path(path, _entries())
+    return path, common.build_export_filename(scope, ".zip"), "application/zip"

@@ -11,6 +11,7 @@ from io import BytesIO
 from pathlib import Path
 
 from django.conf import settings
+from django.utils import timezone
 
 from ..scope import ExportScope
 from . import markdown_render
@@ -342,6 +343,45 @@ def safe_slug(name: str) -> str:
     return cleaned or "untitled"
 
 
+# Per-segment cap keeps the joined name well under ExportTask.filename's 255 chars
+# even in the worst case (category + kb + folder + count + timestamp + tag).
+_FILENAME_SEGMENT_MAX = 60
+
+
+def build_export_filename(scope: ExportScope, ext: str, *, tag: str | None = None) -> str:
+    """Default download name, shaped by scope type:
+
+    - doc:       大类-知识库-文档标题-时间
+    - kb:        大类-知识库-时间
+    - folder:    大类-知识库-文件夹-N篇-时间
+    - selection: 大类-知识库-N篇-时间（恰好 1 篇时按 doc 形态携带文档标题）
+
+    大类可为空（KB.category 是 SET_NULL），为空时省略该段。``tag``（如 site）
+    追加在时间戳后，用于区分同 scope 的不同 zip 形态。
+    """
+    parts: list[str] = []
+    category = scope.kb.category
+    if category is not None:
+        parts.append(category.name)
+    parts.append(scope.kb.name)
+    if scope.scope_type in ("doc", "selection") and len(scope.documents) == 1:
+        parts.append(scope.documents[0].title)
+    elif scope.scope_type == "folder":
+        if scope.folder is not None:
+            parts.append(scope.folder.name)
+        parts.append(f"{len(scope.documents)}篇")
+    elif scope.scope_type == "selection":
+        parts.append(f"{len(scope.documents)}篇")
+    parts.append(timezone.localtime().strftime("%Y-%m-%d-%H-%M"))
+    if tag:
+        parts.append(tag)
+    segments = [
+        safe_slug(part)[:_FILENAME_SEGMENT_MAX].rstrip(" .-_") or "untitled"
+        for part in parts
+    ]
+    return f"{'-'.join(segments)}{ext}"
+
+
 def reserve_export_path(suffix: str) -> Path:
     """Allocate a unique file path under exports/ with the given suffix."""
     fname = f"{uuid.uuid4().hex}{suffix}"
@@ -431,6 +471,19 @@ def _resolve_media_path(url: str) -> Path | None:
     return path if path.is_file() else None
 
 
+def _max_asset_bytes() -> int:
+    """Per-file cap for zip-bundled assets. A single huge upload (limit is
+    2 GiB) would otherwise be read whole into worker memory."""
+    return int(getattr(settings, "EXPORT_MAX_ASSET_BYTES", 200 * 1024 * 1024))
+
+
+def _bundleable(path: Path) -> bool:
+    try:
+        return path.stat().st_size <= _max_asset_bytes()
+    except OSError:
+        return False
+
+
 def _embed_file_as_data_uri(path: Path) -> str | None:
     size = path.stat().st_size
     if size > MAX_EMBED_BYTES:
@@ -454,7 +507,7 @@ def rewrite_html_media(html: str, *, embed: bool = True, asset_prefix: str = "")
             data_uri = _embed_file_as_data_uri(path)
             if data_uri:
                 return f'{attr}="{data_uri}"'
-        elif asset_prefix:
+        elif asset_prefix and _bundleable(path):
             rel = url[len("/media/") :].lstrip("/")
             return f'{attr}="{asset_prefix}{rel}"'
         return match.group(0)
@@ -469,7 +522,7 @@ def collect_html_media(html: str) -> list[tuple[str, bytes]]:
     for match in _MEDIA_URL_RE.finditer(html or ""):
         url = match.group("url")
         path = _resolve_media_path(url)
-        if not path or url in seen:
+        if not path or url in seen or not _bundleable(path):
             continue
         seen.add(url)
         rel = url[len("/media/") :].lstrip("/")
@@ -478,33 +531,42 @@ def collect_html_media(html: str) -> list[tuple[str, bytes]]:
 
 
 def collect_markdown_media(markdown: str) -> list[tuple[str, bytes]]:
-    """Return ``(zip_path, bytes)`` for local images referenced in markdown."""
+    """Return ``(zip_path, bytes)`` for local files referenced in markdown.
+
+    Covers both ``![](/media/...)`` markdown images and inline-HTML
+    ``src=/href=`` attributes (rich-text images carry attributes and are
+    serialized as raw ``<img>`` tags, not markdown syntax).
+    """
     entries: list[tuple[str, bytes]] = []
     seen: set[str] = set()
-    for match in _MD_IMAGE_RE.finditer(markdown or ""):
-        url = match.group("url")
-        path = _resolve_media_path(url)
-        if not path or url in seen:
-            continue
-        seen.add(url)
-        rel = url[len("/media/") :].lstrip("/")
-        zip_name = f"assets/{rel}"
-        entries.append((zip_name, path.read_bytes()))
+    for regex in (_MD_IMAGE_RE, _MEDIA_URL_RE):
+        for match in regex.finditer(markdown or ""):
+            url = match.group("url")
+            path = _resolve_media_path(url)
+            if not path or url in seen or not _bundleable(path):
+                continue
+            seen.add(url)
+            rel = url[len("/media/") :].lstrip("/")
+            entries.append((f"assets/{rel}", path.read_bytes()))
     return entries
 
 
 def rewrite_markdown_media_paths(markdown: str, prefix: str = "assets/") -> str:
-    """Point ``![](/media/...)`` at zip-relative ``assets/...`` paths."""
+    """Point ``![](/media/...)`` and inline-HTML ``src``/``href`` at
+    zip-relative ``assets/...`` paths."""
 
     def repl(match: re.Match) -> str:
         url = match.group("url")
         path = _resolve_media_path(url)
-        if not path:
+        # Oversized assets stay as /media/ URLs (still valid against the live
+        # site) rather than pointing at an assets/ path that won't be bundled.
+        if not path or not _bundleable(path):
             return match.group(0)
         rel = url[len("/media/") :].lstrip("/")
         return match.group(0).replace(url, f"{prefix}{rel}")
 
-    return _MD_IMAGE_RE.sub(repl, markdown or "")
+    out = _MD_IMAGE_RE.sub(repl, markdown or "")
+    return rewrite_html_media(out, embed=False, asset_prefix=prefix)
 
 
 def _doc_meta_html(doc) -> str:

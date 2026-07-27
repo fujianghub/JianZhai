@@ -24,6 +24,9 @@ SITE_CSS = (
             font-size: 14px; line-height: 1.6; }
 .site-nav a { color: #333; display: block; padding: 3px 0; }
 .site-nav a.is-active { color: #1677ff; font-weight: 600; }
+.site-nav ol { list-style: none; padding-left: 0; margin: 0; }
+.site-nav li { margin-left: calc(var(--toc-depth, 0) * 12px); }
+.site-nav .export-toc-folder { color: #999; font-size: 12px; margin-top: 8px; }
 .site-search { margin-bottom: 16px; }
 .site-search input { width: 100%; padding: 6px 10px; border: 1px solid #ddd; border-radius: 4px; }
 .site-search-results { margin-top: 8px; }
@@ -34,10 +37,14 @@ SITE_CSS = (
 """
 )
 
+# Shared stylesheets are emitted once as style.css / katex.css and referenced
+# with <link> from every page — inlining them per page multiplied ~24KB of
+# site CSS (plus ~420KB of base64 KaTeX fonts when formulas exist) by the
+# number of documents in the archive.
 INDEX_TEMPLATE = """\
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><title>{site_title}</title>
-<style>{css}</style></head><body>
+{head_links}</head><body>
 <div class="site-layout">
 <aside class="site-nav">
 <div class="site-search"><input id="search" placeholder="搜索..."></div>
@@ -62,7 +69,7 @@ INDEX_TEMPLATE = """\
 PAGE_TEMPLATE = """\
 <!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><title>{title} · {site_title}</title>
-<style>{css}</style></head><body>
+{head_links}</head><body>
 <div class="site-layout">
 <aside class="site-nav">
 <div class="site-search"><input id="search" placeholder="搜索..."></div>
@@ -96,15 +103,26 @@ SEARCH_JS = """\
   var docs = [];
   get('index.json', function(data){ docs = data || []; });
   function render(matches){
-    if (!matches.length){ results.innerHTML=''; return; }
-    results.innerHTML = matches.slice(0,8).map(function(m){
-      return '<a href="'+m.url+'"><div>'+m.title+'</div>'+
-             '<div class="hit-snippet">'+(m.snippet||'')+'</div></a>';
-    }).join('');
+    // Build results via DOM APIs + textContent — doc titles/snippets are
+    // author content and must never reach innerHTML (stored XSS once the
+    // site is deployed to a real origin).
+    results.textContent = '';
+    matches.slice(0,8).forEach(function(m){
+      var a = document.createElement('a');
+      a.href = m.url;
+      var t = document.createElement('div');
+      t.textContent = m.title;
+      var s = document.createElement('div');
+      s.className = 'hit-snippet';
+      s.textContent = m.snippet || '';
+      a.appendChild(t);
+      a.appendChild(s);
+      results.appendChild(a);
+    });
   }
   input.addEventListener('input', function(){
     var q = input.value.trim().toLowerCase();
-    if (!q){ results.innerHTML=''; return; }
+    if (!q){ results.textContent=''; return; }
     var matches = docs.filter(function(d){
       var hay = (d.title + ' ' + (d.body||'')).toLowerCase();
       return hay.indexOf(q) >= 0;
@@ -120,20 +138,27 @@ SEARCH_JS = """\
 
 
 def export(scope: ExportScope) -> tuple[Path, str, str]:
-    # Only published+public-friendly content goes in a static site
+    # Only published content goes in a static site — a deployable artifact.
+    # Deliberately NO fallback to raw_content: raw is the private working copy
+    # (same fail-closed stance as blog's resolve_published_html_body). A KB
+    # with nothing published yields a stub index, never draft text.
     docs = [d for d in scope.documents if (d.published_content or "").strip()]
-    if not docs and scope.documents:
-        # Fall back to raw_content if nothing has been published yet — useful for local archives.
-        docs = scope.documents
 
-    nav_html = _render_nav(docs, current_id=None)
+    from apps.exporter.anthology_tree import render_toc_list_html
+
+    fname_by_id = {d.id: _doc_filename(d) for d in docs}
+    # One shared nav for every page (folder tree, no per-page active state) —
+    # re-rendering it per document was O(N²) on large KBs.
+    nav_html = "<ol>" + render_toc_list_html(
+        scope.kb, docs, doc_href=lambda dd: fname_by_id[dd["id"]]
+    ) + "</ol>" if docs else ""
     recent_html = "".join(
         f'<li><a href="{_doc_filename(d)}">{common._escape(d.title)}</a></li>'
         for d in sorted(docs, key=lambda x: x.updated_at, reverse=True)[:20]
     )
     index_html = INDEX_TEMPLATE.format(
         site_title=common._escape(scope.label),
-        css=SITE_CSS,
+        head_links='<link rel="stylesheet" href="style.css">',
         nav=nav_html,
         intro="",
         recent=recent_html or "<li>（暂无文档）</li>",
@@ -150,13 +175,19 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     # Render Mermaid → SVG once (one headless-Chromium launch) up front; the map
     # is small text and shared across the streamed per-doc renders below.
     diagram_svgs = common.build_scope_diagram_svgs(scope)
-    # 同理批量预渲染 KaTeX 公式；有公式的站点每页注入内嵌字体的 KaTeX CSS。
+    # 同理批量预渲染 KaTeX 公式；有公式时 katex.css（内嵌字体）作为共享文件只出一份。
     math_html = common.build_scope_math_html(scope)
-    page_css = SITE_CSS + common.math_stylesheet_if(math_html)
+    math_css = common.math_stylesheet_if(math_html)
+    page_head_links = '<link rel="stylesheet" href="style.css">'
+    if math_css:
+        page_head_links += '\n<link rel="stylesheet" href="katex.css">'
 
     def _entries():
         asset_names: set[str] = set()
         yield ("index.html", index_html.encode("utf-8"))
+        yield ("style.css", SITE_CSS.encode("utf-8"))
+        if math_css:
+            yield ("katex.css", math_css.encode("utf-8"))
         yield ("search.js", SEARCH_JS.encode("utf-8"))
         yield ("robots.txt", b"User-agent: *\nAllow: /\n")
 
@@ -189,6 +220,19 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             body_html = common.render_document_body_html(
                 doc, embed_media=False, diagram_svgs=diagram_svgs, math_html=math_html
             )
+            # Cross-document mentions render as #doc-N anchors (anthology
+            # convention) — dead in a multi-file site. Point them at the
+            # actual per-doc pages; targets outside the archive keep the
+            # anchor (harmless no-op on click).
+            body_html = re.sub(
+                r'href="#doc-(\d+)"',
+                lambda m: (
+                    f'href="{fname_by_id[int(m.group(1))]}"'
+                    if int(m.group(1)) in fname_by_id
+                    else m.group(0)
+                ),
+                body_html,
+            )
             for asset_name, asset_data in common.collect_markdown_media(body_md):
                 if asset_name not in asset_names:
                     asset_names.add(asset_name)
@@ -196,12 +240,11 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             meta = doc.knowledge_base.name + (
                 f" · {doc.published_at:%Y-%m-%d}" if doc.published_at else ""
             )
-            per_nav = _render_nav(docs, current_id=doc.id)
             page = PAGE_TEMPLATE.format(
                 title=common._escape(doc.title),
                 site_title=common._escape(scope.label),
-                css=page_css,
-                nav=per_nav,
+                head_links=page_head_links,
+                nav=nav_html,
                 meta=common._escape(meta),
                 body=body_html,
                 index_link="index.html",
@@ -224,20 +267,20 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
 
     path = common.reserve_export_path(".zip")
     common.stream_zip_to_path(path, _entries())
-    return path, f"{common.safe_slug(scope.label)}-site.zip", "application/zip"
+    return path, common.build_export_filename(scope, ".zip", tag="site"), "application/zip"
 
 
 def _doc_filename(doc: Document) -> str:
     return f"{common.safe_slug(doc.slug or doc.title)}-{doc.id}.html"
 
 
-def _render_nav(docs: list[Document], current_id: int | None) -> str:
-    lines = []
-    for d in docs:
-        href = _doc_filename(d)
-        active = " class=\"is-active\"" if d.id == current_id else ""
-        lines.append(f'<a href="{href}"{active}>{common._escape(d.title)}</a>')
-    return "\n".join(lines)
+def _site_base_url() -> str:
+    """Public base for sitemap/RSS absolute URLs (both specs require them).
+
+    Falls back to empty (relative links) when SITE_PUBLIC_URL isn't set.
+    """
+    base = (getattr(settings, "SITE_PUBLIC_URL", "") or "").strip()
+    return base.rstrip("/") + "/" if base else ""
 
 
 def _plain_text(md: str) -> str:
@@ -251,35 +294,43 @@ def _plain_text(md: str) -> str:
 
 
 def _render_sitemap(docs: list[Document]) -> str:
+    base = _site_base_url()
     items = "\n".join(
-        f"  <url><loc>{xml_escape(_doc_filename(d))}</loc>"
+        f"  <url><loc>{xml_escape(base + _doc_filename(d))}</loc>"
         f"<lastmod>{d.updated_at.strftime('%Y-%m-%d')}</lastmod></url>"
         for d in docs
     )
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-        f"  <url><loc>index.html</loc></url>\n{items}\n</urlset>"
+        f"  <url><loc>{xml_escape(base + 'index.html')}</loc></url>\n{items}\n</urlset>"
     )
 
 
 def _render_rss(scope: ExportScope, docs: list[Document]) -> str:
+    base = _site_base_url()
     site_title = xml_escape(scope.label)
+    now = datetime.now(UTC).strftime("%a, %d %b %Y %H:%M:%S GMT")
     items_xml = []
     for d in sorted(docs, key=lambda x: x.published_at or x.updated_at, reverse=True)[:50]:
         pub = (d.published_at or d.updated_at).strftime("%a, %d %b %Y %H:%M:%S GMT")
-        body = xml_escape(common.doc_export_body(d)[:1000])
+        link = xml_escape(base + _doc_filename(d))
+        # Description from *published* content only, as readable plain text —
+        # never raw_content, and never unrendered markdown source.
+        summary = xml_escape(_plain_text(d.published_content or "")[:1000])
         items_xml.append(
             f"<item><title>{xml_escape(d.title)}</title>"
-            f"<link>{_doc_filename(d)}</link>"
+            f"<link>{link}</link>"
+            f'<guid isPermaLink="false">jianzhai-doc-{d.id}</guid>'
             f"<pubDate>{pub}</pubDate>"
-            f"<description>{body}</description></item>"
+            f"<description>{summary}</description></item>"
         )
     return (
         '<?xml version="1.0" encoding="UTF-8"?>\n<rss version="2.0"><channel>'
         f"<title>{site_title}</title>"
         f"<link>{xml_escape(getattr(settings, 'SITE_PUBLIC_URL', ''))}</link>"
         f"<description>{site_title}</description>"
+        f"<lastBuildDate>{now}</lastBuildDate>"
         + "\n".join(items_xml)
         + "</channel></rss>"
     )

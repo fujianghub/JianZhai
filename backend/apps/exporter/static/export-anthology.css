@@ -141,3 +141,86 @@ body.export-anthology.is-print {
     break-before: page;
   }
 }
+
+/* ── Print/PDF 卷首：封面页 + 目录页 ─────────────────────────────── */
+.export-anthology.is-print .export-cover {
+  page-break-after: always;
+  break-after: page;
+  text-align: center;
+  padding-top: 80mm;
+}
+.export-cover-category {
+  font-size: 14px;
+  letter-spacing: 0.4em;
+  color: #8a8477;
+  margin-bottom: 18px;
+}
+.export-cover-title {
+  font-size: 34px;
+  font-weight: 700;
+  margin: 0 0 20px;
+}
+.export-cover-meta { color: #6b665a; font-size: 14px; }
+.export-cover-brand {
+  margin-top: 64px;
+  color: #9a9481;
+  font-size: 13px;
+  letter-spacing: 0.3em;
+}
+
+.export-anthology.is-print .export-print-toc {
+  page-break-after: always;
+  break-after: page;
+  padding-top: 12mm;
+}
+.export-print-toc-title {
+  font-size: 22px;
+  border-bottom: 2px solid #1f1f1f;
+  padding-bottom: 8px;
+}
+.export-print-toc ol { list-style: none; padding-left: 0; margin: 0; }
+.export-print-toc li {
+  margin-left: calc(var(--toc-depth, 0) * 16px);
+  padding: 5px 0;
+  border-bottom: 1px dotted #e0dcd2;
+  font-size: 14px;
+}
+.export-print-toc .export-toc-folder { font-weight: 600; color: #555; border-bottom: none; }
+.export-print-toc a { color: #1f1f1f; text-decoration: none; }
+
+/* ── Print/PDF 分页护栏：不可分割块避免被腰斩，标题避免孤悬页底 ── */
+.export-anthology.is-print .jz-table-wrap,
+.export-anthology.is-print .jz-code-block,
+.export-anthology.is-print pre,
+.export-anthology.is-print img,
+.export-anthology.is-print .jz-callout,
+.export-anthology.is-print .jz-details-block,
+.export-anthology.is-print .jz-diagram,
+.export-anthology.is-print svg {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+.export-anthology.is-print h1,
+.export-anthology.is-print h2,
+.export-anthology.is-print h3 {
+  page-break-after: avoid;
+  break-after: avoid-page;
+}
+
+/* 单篇 PDF（HTML_SHELL 路径，无 anthology 壳）同享分页护栏 */
+body.is-print-doc .jz-table-wrap,
+body.is-print-doc .jz-code-block,
+body.is-print-doc pre,
+body.is-print-doc img,
+body.is-print-doc .jz-callout,
+body.is-print-doc .jz-details-block,
+body.is-print-doc svg {
+  page-break-inside: avoid;
+  break-inside: avoid;
+}
+body.is-print-doc h1,
+body.is-print-doc h2,
+body.is-print-doc h3 {
+  page-break-after: avoid;
+  break-after: avoid-page;
+}

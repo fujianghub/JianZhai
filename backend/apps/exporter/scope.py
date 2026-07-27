@@ -12,6 +12,8 @@ class ExportScope:
     kb: KnowledgeBase
     documents: list[Document]
     label: str  # human-readable name (folder/doc title or kb name)
+    scope_type: str = "doc"  # doc / folder / kb / selection — drives filename shape
+    folder: Folder | None = None  # set only for folder scope
 
 
 def collect_for_scope(
@@ -33,32 +35,46 @@ def collect_for_scope(
 
     if scope == "doc":
         doc = scope_queryset(
-            Document.objects.select_related("knowledge_base"), owner
+            Document.objects.select_related("knowledge_base__category"), owner
         ).get(pk=target_id)
-        return ExportScope(kb=doc.knowledge_base, documents=[doc], label=doc.title)
+        # Honour only_published here too — before this the doc branch ignored
+        # the flag, so a single unpublished doc could slip into a "published
+        # only" export (e.g. a static site).
+        documents = [] if only_published and doc.status != "published" else [doc]
+        return ExportScope(
+            kb=doc.knowledge_base, documents=documents, label=doc.title, scope_type="doc"
+        )
 
     if scope == "folder":
         folder = scope_queryset(
-            Folder.objects.select_related("knowledge_base"), owner
+            Folder.objects.select_related("knowledge_base__category"), owner
         ).get(pk=target_id)
         descendant_ids = _descendant_folder_ids(folder)
         qs = Document.objects.filter(
             knowledge_base=folder.knowledge_base, folder_id__in=descendant_ids
-        )
+        ).select_related("knowledge_base")
         if only_published:
             qs = qs.filter(status="published")
         docs = list(qs.order_by("order", "id"))
-        return ExportScope(kb=folder.knowledge_base, documents=docs, label=folder.name)
+        return ExportScope(
+            kb=folder.knowledge_base,
+            documents=docs,
+            label=folder.name,
+            scope_type="folder",
+            folder=folder,
+        )
 
     if scope == "kb":
-        kb = scope_queryset(KnowledgeBase.objects.all(), owner, field="owner").get(
-            pk=target_id
-        )
-        qs = Document.objects.filter(knowledge_base=kb)
+        kb = scope_queryset(
+            KnowledgeBase.objects.select_related("category"), owner, field="owner"
+        ).get(pk=target_id)
+        # select_related: renderers touch doc.knowledge_base.name per doc —
+        # without it a large KB export re-queries the KB N times.
+        qs = Document.objects.filter(knowledge_base=kb).select_related("knowledge_base")
         if only_published:
             qs = qs.filter(status="published")
         docs = list(qs.order_by("order", "id"))
-        return ExportScope(kb=kb, documents=docs, label=kb.name)
+        return ExportScope(kb=kb, documents=docs, label=kb.name, scope_type="kb")
 
     raise ValueError(f"unknown scope: {scope}")
 
@@ -107,7 +123,7 @@ def collect_for_selection(
         if only_published:
             filtered = filtered.filter(status="published")
         for doc in scope_queryset(
-            filtered.select_related("knowledge_base"), owner
+            filtered.select_related("knowledge_base__category"), owner
         ):
             docs_by_id[doc.id] = doc
             kb_ids.add(doc.knowledge_base_id)
@@ -122,10 +138,14 @@ def collect_for_selection(
     kb = (
         documents[0].knowledge_base
         if documents
-        else KnowledgeBase.objects.get(pk=next(iter(kb_ids)))
+        else KnowledgeBase.objects.select_related("category").get(
+            pk=next(iter(kb_ids))
+        )
     )
     label = f"{kb.name} · 选定 {len(documents)} 篇"
-    return ExportScope(kb=kb, documents=documents, label=label)
+    return ExportScope(
+        kb=kb, documents=documents, label=label, scope_type="selection"
+    )
 
 
 def _descendant_folder_ids(folder: Folder) -> list[int]:

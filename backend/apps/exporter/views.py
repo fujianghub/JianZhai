@@ -8,6 +8,7 @@ from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from rest_framework import mixins, viewsets
 from rest_framework.response import Response
+from rest_framework.throttling import ScopedRateThrottle
 
 from apps.accounts.permissions import IsContentAuthor
 from apps.accounts.scoping import scope_queryset
@@ -30,6 +31,13 @@ class ExportTaskViewSet(
     permission_classes = [IsContentAuthor]
     serializer_class = ExportTaskSerializer
     pagination_class = None
+    throttle_scope = "export_create"
+
+    def get_throttles(self):
+        # 只限创建：list 被导出历史页 2s 轮询（30/min），全量限流会误伤轮询。
+        if getattr(self, "action", None) == "create":
+            return [ScopedRateThrottle()]
+        return []
 
     def get_queryset(self):
         return scope_queryset(ExportTask.objects.all(), self.request.user, field="owner")
@@ -72,6 +80,28 @@ class ExportTaskViewSet(
             # Persist the picks so the worker can re-resolve; anchor target_id to the KB.
             selection = {"folder_ids": folder_ids, "doc_ids": doc_ids}
             target_id = scope_info.kb.id
+
+        # only_published 存进 selection JSON（免迁移）；缺省 = 历史行为，
+        # site 在 worker 侧无条件强制 True。
+        if "only_published" in serializer.validated_data:
+            selection["only_published"] = bool(
+                serializer.validated_data["only_published"]
+            )
+
+        # 去重：同 owner + 同 scope/target/format 已有未完成任务 → 复用（200）
+        # 而非再排一个。此前重复点击会无限堆积重型任务。
+        dup_qs = ExportTask.objects.filter(
+            owner=request.user,
+            scope=scope,
+            target_id=target_id,
+            format=fmt,
+            status__in=[ExportTask.STATUS_PENDING, ExportTask.STATUS_RUNNING],
+        )
+        if scope == ExportTask.SCOPE_SELECTION:
+            dup_qs = dup_qs.filter(selection=selection)
+        existing = dup_qs.order_by("-id").first()
+        if existing is not None:
+            return Response(self.get_serializer(existing).data, status=200)
 
         task = ExportTask.objects.create(
             owner=request.user,

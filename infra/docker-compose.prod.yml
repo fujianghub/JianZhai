@@ -135,7 +135,11 @@ services:
       - media_data:/app/media
       # Shared with backend so exports this worker writes are downloadable.
       - exports_data:/app/exports
-    command: celery -A jianzhai worker --loglevel=info --concurrency=2
+    # -B 内嵌 beat：驱动每日 exporter.cleanup_exports 保留清理（settings
+    # CELERY_BEAT_SCHEDULE）。单 worker 场景内嵌即可，无需独立 beat 容器。
+    command: celery -A jianzhai worker -B --loglevel=info --concurrency=2
+    # OOM 护栏：Chromium/LibreOffice 任务失控时先杀本容器，不连坐 postgres
+    mem_limit: 3g
     depends_on:
       backend:
         condition: service_healthy

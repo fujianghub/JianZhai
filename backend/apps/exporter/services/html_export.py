@@ -25,12 +25,22 @@ def render_html(scope: ExportScope, *, mode: str = "interactive") -> str:
     diagram_svgs = common.build_scope_diagram_svgs(scope)
     math_html = common.build_scope_math_html(scope)
     if len(scope.documents) <= 1:
-        return _render_single(
+        html = _render_single(
             scope, mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
         )
-    return _render_anthology(
-        scope, mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
-    )
+    else:
+        html = _render_anthology(
+            scope, mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
+        )
+    if mode == "print":
+        # Chromium prints closed <details> as an empty box and CSS cannot force
+        # the hidden slot open — reveal them in the print/PDF artifact (same
+        # philosophy as showing every panel).
+        html = html.replace(
+            '<details class="jz-details-block">',
+            '<details class="jz-details-block" open>',
+        )
+    return html
 
 
 def _render_single(
@@ -60,7 +70,7 @@ def _render_single(
         css=common.export_stylesheet()
         + common.load_export_anthology_css()
         + common.math_stylesheet_if(math_html),
-        body_class="",
+        body_class="is-print-doc" if mode == "print" else "",
         body=body,
     )
 
@@ -76,7 +86,11 @@ def _render_anthology(
     panels = common.doc_panels_html(
         scope, export_mode=mode, diagram_svgs=diagram_svgs, math_html=math_html
     )
-    toc = "" if is_print else _build_toc(scope)
+    # Print/PDF replaces the fixed interactive sidebar (which cannot paginate)
+    # with book front matter: a cover page + a clickable TOC page. Combined
+    # with pdf outline bookmarks + footer page numbers this is what makes the
+    # bound PDF navigable.
+    toc = _build_print_front_matter(scope) if is_print else _build_toc(scope)
     script = "" if is_print else f"<script>{ANTHOLOGY_JS}</script>"
     return ANTHOLOGY_SHELL.format(
         title=common._escape(scope.label),
@@ -86,6 +100,34 @@ def _render_anthology(
         panels=panels,
         script=script,
     )
+
+
+def _build_print_front_matter(scope: ExportScope) -> str:
+    from django.utils import timezone
+
+    category = scope.kb.category
+    cat_line = (
+        f'<div class="export-cover-category">{common._escape(category.name)}</div>'
+        if category is not None
+        else ""
+    )
+    date = timezone.localtime().strftime("%Y-%m-%d")
+    cover = (
+        '<section class="export-cover">'
+        f"{cat_line}"
+        f'<h1 class="export-cover-title">{common._escape(scope.label)}</h1>'
+        f'<div class="export-cover-meta">共 {len(scope.documents)} 篇 · {date}</div>'
+        '<div class="export-cover-brand">简斋 · JianZhai</div>'
+        "</section>"
+    )
+    items = render_toc_list_html(scope.kb, scope.documents)
+    toc_page = (
+        '<section class="export-print-toc">'
+        '<h2 class="export-print-toc-title">目录</h2>'
+        f"<ol>{items}</ol>"
+        "</section>"
+    )
+    return cover + toc_page
 
 
 def _build_toc(scope: ExportScope) -> str:
@@ -308,10 +350,14 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
             common.write_text(path, common.rewrite_html_media(body))
             return (
                 path,
-                f"{common.safe_slug(doc.title)}.html",
+                common.build_export_filename(scope, ".html"),
                 "text/html; charset=utf-8",
             )
     html = render_html(scope)
     path = common.reserve_export_path(".html")
     common.write_text(path, html)
-    return path, f"{common.safe_slug(scope.label)}.html", "text/html; charset=utf-8"
+    return (
+        path,
+        common.build_export_filename(scope, ".html"),
+        "text/html; charset=utf-8",
+    )

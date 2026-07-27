@@ -63,6 +63,9 @@ export async function createExport(payload: {
   folder_ids?: number[];
   /** scope="selection" only: individually picked documents. */
   doc_ids?: number[];
+  /** Restrict to published docs. Absent = legacy behaviour (site always
+   * filters; other formats include drafts). Site is forced true server-side. */
+  only_published?: boolean;
 }): Promise<ExportTask> {
   await ensureCsrf();
   const { data } = await apiClient.post<ExportTask>('/exports/', payload);

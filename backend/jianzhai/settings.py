@@ -180,6 +180,19 @@ CELERY_RESULT_BACKEND = os.environ.get("CELERY_RESULT_BACKEND", "redis://localho
 CELERY_TASK_SERIALIZER = "json"
 CELERY_RESULT_SERIALIZER = "json"
 CELERY_ACCEPT_CONTENT = ["json"]
+# 单任务硬超时兜底：此前完全没有 time limit，一个卡死的大导出（Playwright/
+# LibreOffice）会永久占住 worker。soft 先抛 SoftTimeLimitExceeded（任务得以
+# 标记 failed），hard 再强杀。eager/同步回退路径不受影响。
+CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get("CELERY_TASK_SOFT_TIME_LIMIT", "540"))
+CELERY_TASK_TIME_LIMIT = int(os.environ.get("CELERY_TASK_TIME_LIMIT", "600"))
+# 导出产物保留天数（0 = 永不过期）；由 exporter.cleanup_exports 定期执行
+EXPORT_TTL_DAYS = int(os.environ.get("EXPORT_TTL_DAYS", "7"))
+CELERY_BEAT_SCHEDULE = {
+    "exporter-cleanup-daily": {
+        "task": "exporter.cleanup_exports",
+        "schedule": 60 * 60 * 24,
+    },
+}
 
 # DRF
 REST_FRAMEWORK = {
@@ -205,6 +218,9 @@ REST_FRAMEWORK = {
         "captcha": "30/min",
         # link-preview 触发服务端外呼抓取，放宽给读者后独立限速防滥用
         "link_preview": "30/min",
+        # 导出创建会派发重型 Celery 任务（Playwright/LibreOffice），认证用户
+        # 此前完全不限速——单账号可无限堆积任务挤占 worker
+        "export_create": "10/min",
     },
 }
 
@@ -288,3 +304,25 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024 * 1024  # 2 GiB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 5 * 1024 * 1024  # 5 MB
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# Logging —— 此前全仓无 LOGGING 配置：apps.* 的 INFO 级日志（含导出下载的
+# 跨作者审计日志）经 lastResort 直接丢弃，安全控制点名存实亡。console 输出
+# 带 logger 名与时间戳，docker/systemd 日志均可检索。
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "default": {
+            "format": "[{asctime}] {levelname} {name}: {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {"class": "logging.StreamHandler", "formatter": "default"},
+    },
+    "root": {"handlers": ["console"], "level": "WARNING"},
+    "loggers": {
+        "django": {"handlers": ["console"], "level": "INFO", "propagate": False},
+        "apps": {"handlers": ["console"], "level": "INFO", "propagate": False},
+    },
+}

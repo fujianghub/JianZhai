@@ -13,6 +13,9 @@ class ExportTaskSerializer(serializers.ModelSerializer):
     doc_ids = serializers.ListField(
         child=serializers.IntegerField(), required=False, write_only=True
     )
+    # 仅导出已发布内容。缺省沿用历史行为（site 恒过滤、其余不过滤）；
+    # site 格式无论传什么都强制 True（可部署产物不碰未发布内容）。
+    only_published = serializers.BooleanField(required=False, write_only=True)
 
     class Meta:
         model = ExportTask
@@ -32,6 +35,7 @@ class ExportTaskSerializer(serializers.ModelSerializer):
             "completed_at",
             "folder_ids",
             "doc_ids",
+            "only_published",
         ]
         read_only_fields = [
             "id",

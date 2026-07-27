@@ -42,9 +42,17 @@ COPY backend/pyproject.toml ./
 # .[dev] is intentionally NOT installed — pytest etc are dev-only.
 # anthropic + openai (Qwen SDK) ship as core deps so the AI assistant
 # works in production.
+# .[pdf] = Playwright：没有它线上 PDF 导出 100% 失败，且 HTML/site 导出的
+# Mermaid 图与 KaTeX 公式会静默降级成源码面板（ImportError 分支无任何告警）。
 RUN pip install --upgrade pip && \
-    pip install -e . && \
+    pip install -e .[pdf] && \
     pip install gunicorn whitenoise[brotli]
+
+# Chromium for Playwright (PDF 渲染 + mermaid/KaTeX 离线预渲染)。
+# --with-deps 同时装齐 chromium 的系统依赖库；约增 ~400 MB，与 LibreOffice
+# 层一样是导出功能的运行时地基。放在代码 COPY 之前以最大化层缓存。
+RUN playwright install --with-deps chromium && \
+    rm -rf /var/lib/apt/lists/*
 
 # Now the actual code.  Anything below this line invalidates the
 # layer cache on every code change — that's intentional.

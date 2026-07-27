@@ -8,6 +8,16 @@ from apps.knowledge.models import Document, Folder, KnowledgeBase
 User = get_user_model()
 
 
+@pytest.fixture(autouse=True)
+def _isolated_media_and_exports(settings, tmp_path):
+    """导出产物全部落 tmp。此前测试套件不覆盖 MEDIA_ROOT，export_root()
+    直接写进真实 backend/exports/——实测曾累积 566 个孤儿文件。"""
+    from pathlib import Path
+
+    settings.MEDIA_ROOT = str(tmp_path / "media")
+    Path(settings.MEDIA_ROOT).mkdir(parents=True, exist_ok=True)
+
+
 @pytest.fixture
 def owner(db):
     # v1.0 RBAC: authoring content lives in a single shared pool gated by

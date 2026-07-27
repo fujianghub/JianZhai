@@ -40,11 +40,18 @@ def iter_tree_documents(
 
 
 def render_toc_list_html(
-    kb: KnowledgeBase, documents: list[Document], *, user=None
+    kb: KnowledgeBase, documents: list[Document], *, user=None, doc_href=None
 ) -> str:
-    """Nested ``<li>`` items for the anthology sidebar (folders + doc links)."""
+    """Nested ``<li>`` items for the anthology sidebar (folders + doc links).
+
+    ``doc_href`` maps a tree doc-dict to its link target; defaults to the
+    in-page ``#doc-N`` anchors used by the single-file anthology. The static
+    site passes per-page filenames instead.
+    """
     if not documents:
         return ""
+    if doc_href is None:
+        doc_href = lambda doc_data: f"#doc-{doc_data['id']}"  # noqa: E731
     doc_ids = {d.id for d in documents}
     tree = build_tree(kb, user=user)
     items: list[str] = []
@@ -71,13 +78,13 @@ def render_toc_list_html(
         )
         for doc_data in folder_node.get("documents", []):
             if doc_data["id"] in doc_ids:
-                items.append(_toc_doc_item(doc_data, depth + 1))
+                items.append(_toc_doc_item(doc_data, depth + 1, doc_href))
         for child in folder_node.get("children", []):
             walk_folder(child, depth + 1)
 
     for doc_data in tree.get("documents", []):
         if doc_data["id"] in doc_ids:
-            items.append(_toc_doc_item(doc_data, 0))
+            items.append(_toc_doc_item(doc_data, 0, doc_href))
 
     for folder_node in tree.get("folders", []):
         walk_folder(folder_node, 0)
@@ -85,10 +92,10 @@ def render_toc_list_html(
     return "\n".join(items)
 
 
-def _toc_doc_item(doc_data: dict, depth: int) -> str:
+def _toc_doc_item(doc_data: dict, depth: int, doc_href) -> str:
     title = html.escape(doc_data.get("title") or "")
-    did = doc_data["id"]
+    href = html.escape(doc_href(doc_data), quote=True)
     return (
         f'<li class="export-toc-doc" style="--toc-depth:{depth}">'
-        f'<a href="#doc-{did}">{title}</a></li>'
+        f'<a href="{href}">{title}</a></li>'
     )

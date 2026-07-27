@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Radio, Space, Typography } from 'antd';
+import { Alert, Modal, Radio, Space, Switch, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import { formatApiError } from '@/api/client';
 import * as exportsApi from '@/api/exports';
@@ -27,7 +27,7 @@ const FORMAT_OPTIONS: { value: ExportFormat; label: string; hint: string }[] = [
   { value: 'md', label: 'Markdown', hint: '发布版 Markdown，单文件或 zip 打包' },
   { value: 'html', label: 'HTML', hint: '单页 HTML，内联样式与图片' },
   { value: 'pdf', label: 'PDF', hint: 'Playwright 渲染 Chromium，需后端已安装' },
-  { value: 'docx', label: 'Word (.docx)', hint: '基础结构（标题/段落/列表/代码块）' },
+  { value: 'docx', label: 'Word (.docx)', hint: '真标题样式 + 表格 + 图片；多篇含封面与目录域' },
   { value: 'site', label: '整站 zip', hint: '多页 HTML + 目录 + 搜索索引 + RSS（仅已发布）' },
 ];
 
@@ -43,21 +43,35 @@ export default function ExportDialog({
   onSubmitted,
 }: Props) {
   const [format, setFormat] = useState<ExportFormat>('md');
+  const [onlyPublished, setOnlyPublished] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (open) setFormat('md');
+    if (open) {
+      setFormat('md');
+      setOnlyPublished(false);
+    }
   }, [open]);
 
   async function handleSubmit() {
     setSubmitting(true);
     try {
+      // 开关未开 = 不传字段（保持后端历史行为）；site 服务端恒过滤已发布。
+      const published = onlyPublished && format !== 'site' ? { only_published: true } : {};
       if (scope === 'selection') {
-        await exportsApi.createExport({ scope, format, folder_ids: folderIds, doc_ids: docIds });
+        await exportsApi.createExport({
+          scope,
+          format,
+          folder_ids: folderIds,
+          doc_ids: docIds,
+          ...published,
+        });
       } else {
-        await exportsApi.createExport({ scope, target_id: targetId, format });
+        await exportsApi.createExport({ scope, target_id: targetId, format, ...published });
       }
-      message.success('已创建导出任务，正在前往导出历史…');
+      message.success(
+        onSubmitted ? '已创建导出任务，正在前往导出历史…' : '已创建导出任务，可在「导出历史」查看进度。',
+      );
       onSubmitted?.();
       onClose();
     } catch (err: unknown) {
@@ -91,9 +105,24 @@ export default function ExportDialog({
               ? '整知识库'
               : `已选 ${docIds.length} 篇文档 · ${folderIds.length} 个文件夹（含子级，合并为一个文件）`}
       </Paragraph>
-      <Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 12 }}>
-        默认导出发布版正文；若尚未发布则使用草稿内容。
-      </Paragraph>
+      {format === 'site' ? (
+        <Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 12 }}>
+          整站导出仅包含已发布文档，不含任何草稿内容。
+        </Paragraph>
+      ) : (
+        <Paragraph type="secondary" style={{ marginBottom: 12, fontSize: 12 }}>
+          <Switch
+            size="small"
+            checked={onlyPublished}
+            onChange={setOnlyPublished}
+            style={{ marginRight: 8 }}
+          />
+          仅导出已发布文档
+          {onlyPublished
+            ? '（未发布的草稿将被排除）'
+            : '（默认包含全部：已发布用发布版正文，未发布用草稿）'}
+        </Paragraph>
+      )}
       <Radio.Group
         value={format}
         onChange={(e) => setFormat(e.target.value)}

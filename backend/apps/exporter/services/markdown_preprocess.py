@@ -262,6 +262,157 @@ def apply_yuque_compat_mode(src: str) -> str:
     return out
 
 
+# ── structural layout containers → HTML (mirrors frontend convertLayoutBlocks) ──
+#
+# ``:::details`` / ``:::tabs`` / ``:::cols-N`` are STRUCTURAL blocks, not
+# callouts. Without this step the catch-all callout container swallows them in
+# export renders: the details summary is lost, columns collapse to one flow
+# and the ``::col`` / ``::tab`` separator lines (2 colons — unparseable by
+# markdown-it-container, 3+ required) leak into the output as literal text.
+# The emitted HTML matches the frontend's exactly (same class names) so the
+# export stylesheets can share the layout rules.
+
+_LAYOUT_OPEN_RE = re.compile(r"^:::\s*(details|tabs|cols-([2-9]))(?:\s+(.*?))?\s*$")
+_CONTAINER_OPENER = re.compile(r"^:::+\s*\S")
+_CONTAINER_CLOSER = re.compile(r"^:::+$")
+_TAB_SEP = re.compile(r"^::tab(\s+.*)?$")
+_COL_SEP = re.compile(r"^::col$")
+
+
+def _esc_html(s: str) -> str:
+    return (
+        s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    )
+
+
+def _esc_attr(s: str) -> str:
+    return _esc_html(s).replace('"', "&quot;")
+
+
+def _split_on_top_level_separator(inner: list[str], sep_re: re.Pattern) -> list[dict]:
+    parts: list[dict] = [{"sep": None, "lines": []}]
+    depth = 0
+    for line in inner:
+        t = line.strip()
+        if depth == 0 and sep_re.match(t):
+            parts.append({"sep": t, "lines": []})
+            continue
+        if _CONTAINER_OPENER.match(t):
+            depth += 1
+        elif _CONTAINER_CLOSER.match(t):
+            depth = max(0, depth - 1)
+        parts[-1]["lines"].append(line)
+    return parts
+
+
+def convert_layout_blocks(src: str) -> str:
+    if ":::" not in (src or ""):
+        return src
+    lines = src.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        m = _LAYOUT_OPEN_RE.match(line)
+        if not m:
+            out.append(line)
+            i += 1
+            continue
+
+        depth = 1
+        close = -1
+        for j in range(i + 1, len(lines)):
+            t = lines[j].strip()
+            if _CONTAINER_OPENER.match(t):
+                depth += 1
+            elif _CONTAINER_CLOSER.match(t):
+                depth -= 1
+                if depth == 0:
+                    close = j
+                    break
+        if close == -1:
+            # Unterminated fence — leave untouched (degrades to visible
+            # literal text rather than silently corrupting into a callout).
+            out.append(line)
+            i += 1
+            continue
+
+        inner = lines[i + 1 : close]
+        kind = m.group(1)
+
+        if kind == "details":
+            summary = (m.group(3) or "").strip() or "详细内容"
+            out.extend(
+                [
+                    '<details class="jz-details-block">',
+                    f"<summary>{_esc_html(summary)}</summary>",
+                    '<div class="jz-details-body">',
+                    "",
+                    convert_layout_blocks("\n".join(inner)),
+                    "",
+                    "</div></details>",
+                ]
+            )
+        elif kind == "tabs":
+            raw_parts = _split_on_top_level_separator(inner, _TAB_SEP)
+            panels = [
+                p
+                for idx, p in enumerate(raw_parts)
+                if idx > 0 or any(l.strip() for l in p["lines"])
+            ]
+            if not panels:
+                panels.append({"sep": None, "lines": []})
+            while len(panels) > 8:
+                extra = panels.pop()
+                panels[-1]["lines"].extend(["", *extra["lines"]])
+            out.append('<div data-jz-tabs="" class="jz-tabs">')
+            for p in panels:
+                label = (
+                    re.sub(r"^::tab\s*", "", p["sep"]).strip() if p["sep"] else ""
+                ) or "标签页"
+                out.extend(
+                    [
+                        f'<div data-jz-tab-panel="" data-label="{_esc_attr(label)}" class="jz-tab-panel">',
+                        f'<div class="jz-tab-panel-label">{_esc_html(label)}</div>',
+                        '<div class="jz-tab-panel-body">',
+                        "",
+                        convert_layout_blocks("\n".join(p["lines"])),
+                        "",
+                        "</div></div>",
+                    ]
+                )
+            out.append("</div>")
+        else:  # cols-N
+            try:
+                declared = int(m.group(2) or "2")
+            except ValueError:
+                declared = 2
+            parts = _split_on_top_level_separator(inner, _COL_SEP)
+            while len(parts) < 2:
+                parts.append({"sep": None, "lines": []})
+            while len(parts) > 4:
+                extra = parts.pop()
+                parts[-1]["lines"].extend(["", *extra["lines"]])
+            count = max(2, min(4, declared))
+            out.append(
+                f'<div data-jz-columns="" data-cols="{count}" class="jz-columns jz-columns-{count}">'
+            )
+            for p in parts:
+                out.extend(
+                    [
+                        '<div data-jz-column="" class="jz-column">',
+                        "",
+                        convert_layout_blocks("\n".join(p["lines"])),
+                        "",
+                        "</div>",
+                    ]
+                )
+            out.append("</div>")
+
+        i = close + 1
+    return "\n".join(out)
+
+
 def preprocess_markdown(src: str) -> str:
     # Diagram recovery MUST precede the generic comment strip — see
     # ``recover_yuque_diagram_comments`` for why the naive strip corrupts.
@@ -270,4 +421,7 @@ def preprocess_markdown(src: str) -> str:
     out = map_outside_fenced_code_blocks(out, unglue_container_fences)
     out = map_outside_fenced_code_blocks(out, normalize_latex_delimiters)
     out = map_outside_fenced_code_blocks(out, apply_yuque_compat_mode)
+    # Mirrors the frontend step order: layout containers convert AFTER the
+    # Yuque compat pass, BEFORE markdown-it ever sees the text.
+    out = map_outside_fenced_code_blocks(out, convert_layout_blocks)
     return out
