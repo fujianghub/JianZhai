@@ -8,7 +8,7 @@
 ## 1. 本地开发启动
 
 ```bash
-docker compose up -d                              # postgres 14 + redis 7
+docker compose up -d                              # postgres 16 + redis 7
 
 cd backend
 cp .env.example .env                              # DATABASE_URL / REDIS_URL / SECRET_KEY …
