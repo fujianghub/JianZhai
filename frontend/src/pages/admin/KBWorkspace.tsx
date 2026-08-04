@@ -20,6 +20,7 @@ import {
   Typography,
 } from 'antd';
 import { message } from '@/utils/notify';
+import { burstAtPointer } from '@/utils/inkBurst';
 import {
   CheckSquareOutlined,
   CloudUploadOutlined,
@@ -488,7 +489,9 @@ export default function KBWorkspace() {
 
   async function handleToggleFavorite(doc: TreeDocument) {
     try {
-      await docsApi.toggleDocumentFavorite(doc.id);
+      const { is_favorited } = await docsApi.toggleDocumentFavorite(doc.id);
+      // 加入收藏 → 星标处缃金墨点迸发（取消不庆祝；reduce/档位内部自裁决）
+      if (is_favorited) burstAtPointer();
       await refreshTree();
     } catch (err) {
       message.error(formatApiError(err, '收藏操作失败'));

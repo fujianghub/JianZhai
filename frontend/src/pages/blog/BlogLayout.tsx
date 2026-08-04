@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
 import { Button, Layout, Space, Spin, Tooltip } from 'antd';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
@@ -6,6 +6,7 @@ import LiveClock from '@/components/common/LiveClock';
 import { useScrolled } from '@/hooks/useScrolled';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
+import { signalRouteReady } from '@/utils/routeTransition';
 import {
   JzArchiveIcon,
   JzRssIcon,
@@ -72,6 +73,12 @@ export default function BlogLayout() {
     if (!authLoaded) void loadSession();
   }, [authLoaded, loadSession]);
 
+  // 路由级 View Transition 的集中 ready 信号：任一博客路由的首帧提交即放行
+  // new 快照（TransitionLink 导航；懒 chunk 首载慢时由 600ms 超时兜底）。
+  useLayoutEffect(() => {
+    signalRouteReady();
+  }, [location.pathname]);
+
   // NOTE: every hook must run on every render. Keep this above the
   // conditional early returns below — when SITE_REQUIRE_LOGIN flips
   // ``requireLogin`` to true and we bail out early, a hook declared
@@ -114,6 +121,10 @@ export default function BlogLayout() {
 
   return (
     <Layout className="jz-blog-glass jz-glass" style={{ minHeight: '100vh' }}>
+      {/* 键盘 Tab 首站：跳过顶栏导航直达正文（.jz-skip-link 仅聚焦时显形） */}
+      <a className="jz-skip-link" href="#jz-main">
+        跳到正文
+      </a>
       <Header
         className={'blog-header' + (scrolled ? ' is-scrolled' : '')}
         style={{
@@ -175,7 +186,7 @@ export default function BlogLayout() {
           <ThemeSwitcher />
         </Space>
       </Header>
-      <Content className="blog-content jz-fade-in">
+      <Content id="jz-main" tabIndex={-1} className="blog-content jz-fade-in">
         <Outlet />
       </Content>
       <GlobalSearch

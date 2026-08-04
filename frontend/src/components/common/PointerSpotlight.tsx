@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
+import { decorativeMotionEnabled } from '@/utils/motionPref';
 
-/** cards that get the pointer-tracking glass highlight */
-const SPOT_SELECTOR = '.jz-book, .ant-card.jz-card';
+/** cards that get the pointer-tracking glass highlight
+ * （光感下沉：后台功能卡 2026-08-03 加入；新卡片类型 = 此处 + 对应 ::after） */
+const SPOT_SELECTOR = '.jz-book, .ant-card.jz-card, .jz-feature-card';
 
 /**
  * Glass spotlight — one delegated, rAF-throttled mousemove listener that
@@ -28,6 +30,13 @@ export default function PointerSpotlight() {
       raf = 0;
       const e = lastEvent;
       if (!e) return;
+      // 光斑是纯装饰 —— reduced-motion / 动效档位「适中/精简」下不点亮。
+      // 在 rAF 回调里裁决而非挂载时：档位运行时可切，无需重挂组件。
+      if (!decorativeMotionEnabled()) {
+        if (lastCard) lastCard.classList.remove('jz-spot-on');
+        lastCard = null;
+        return;
+      }
       const target = e.target as HTMLElement | null;
       const card =
         target && typeof target.closest === 'function'

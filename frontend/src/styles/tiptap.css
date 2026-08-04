@@ -1303,12 +1303,9 @@
   background: linear-gradient(135deg, #06b6d4 0%, #8b5cf6 100%) !important;
   border: none !important;
   box-shadow: 0 6px 20px rgba(6, 182, 212, 0.45), 0 0 24px rgba(139, 92, 246, 0.3) !important;
-  animation: jz-ai-fab-pulse 3s ease-in-out infinite;
-}
-@keyframes jz-ai-fab-pulse {
-  0%, 100% { box-shadow: 0 6px 20px rgba(6, 182, 212, 0.45), 0 0 20px rgba(139, 92, 246, 0.25); }
-  50% { box-shadow: 0 8px 28px rgba(6, 182, 212, 0.6), 0 0 32px rgba(139, 92, 246, 0.45); }
-}
+  /* 呼吸动画单源在 editor-ui.css 的 @keyframes jz-ai-fab-pulse（4s）——
+     此处曾另有一份 3s 同名定义，因 editor-ui 后加载而恒被覆盖（死代码），
+     2026-08-03 收敛删除，勿在本文件重新定义同名 keyframes。 */
 .jz-doc-ai-fab:hover {
   transform: scale(1.06);
 }

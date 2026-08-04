@@ -7,9 +7,11 @@ import {
   MoonOutlined,
   StarOutlined,
   SunOutlined,
+  ThunderboltOutlined,
 } from '@ant-design/icons';
 import { useThemeStore, type ThemeMode } from '@/stores/theme';
 import { moonPhaseName } from '@/utils/moonPhase';
+import { setMotionLevel, useMotionLevel, type MotionLevel } from '@/utils/motionPref';
 
 /** Inline water-drop SVG — spring water (春水). */
 function DropIcon() {
@@ -88,6 +90,16 @@ const THEME_TINT: Record<ThemeMode, string> = {
 
 const FOLLOW_KEY = 'follow-clock';
 
+/** 动效档位（HarmonyOS 式用户主观三档，叠加在自动降质与系统 reduce 之上）：
+ * 足量=默认全开；适中=氛围 canvas 钉最低质量档 + 关指针光斑/交互粒子；
+ * 精简=等同系统 reduced-motion（canvas 静帧、主题切换瞬切、进场即位）。 */
+const MOTION_PREFIX = 'motion:';
+const MOTION_OPTIONS: ReadonlyArray<{ value: MotionLevel; label: string; hint: string }> = [
+  { value: 'full', label: '动效 · 足量', hint: '全部动效与氛围' },
+  { value: 'medium', label: '动效 · 适中', hint: '氛围降质、关装饰光效' },
+  { value: 'min', label: '动效 · 精简', hint: '接近无动画' },
+];
+
 const MODE_OPTIONS = [
   { value: 'light',       label: '亮色',   icon: <SunOutlined /> },
   { value: 'dark',        label: '暗色',   icon: <MoonOutlined /> },
@@ -99,6 +111,7 @@ const MODE_OPTIONS = [
 
 export default function ThemeSwitcher() {
   const { mode, setMode, followClock, setFollowClock } = useThemeStore();
+  const motionLevel = useMotionLevel();
   const current = MODE_OPTIONS.find((o) => o.value === mode) ?? MODE_OPTIONS[0];
   // starry nights get tonight's real phase in the tooltip (drawn on canvas too)
   const title = mode === 'starry' ? `主题 · 今夜${moonPhaseName(new Date())}` : '主题';
@@ -140,6 +153,27 @@ export default function ThemeSwitcher() {
         </span>
       ),
     },
+    { type: 'divider' as const },
+    ...MOTION_OPTIONS.map((o) => ({
+      key: `${MOTION_PREFIX}${o.value}`,
+      icon: (
+        <span
+          style={{
+            color: o.value === motionLevel ? 'var(--jz-accent)' : 'var(--jz-text-muted, #888)',
+            display: 'inline-flex',
+            fontSize: 15,
+          }}
+        >
+          <ThunderboltOutlined />
+        </span>
+      ),
+      label: (
+        <span className="jz-theme-item" title={o.hint}>
+          <span>{o.label}</span>
+          {o.value === motionLevel && <CheckOutlined className="jz-theme-check" />}
+        </span>
+      ),
+    })),
   ];
 
   return (
@@ -150,10 +184,18 @@ export default function ThemeSwitcher() {
       menu={{
         items,
         selectable: true,
-        selectedKeys: followClock ? [mode, FOLLOW_KEY] : [mode],
+        selectedKeys: [
+          mode,
+          ...(followClock ? [FOLLOW_KEY] : []),
+          `${MOTION_PREFIX}${motionLevel}`,
+        ],
         onClick: ({ key, domEvent }) => {
           if (key === FOLLOW_KEY) {
             setFollowClock(!followClock);
+            return;
+          }
+          if (key.startsWith(MOTION_PREFIX)) {
+            setMotionLevel(key.slice(MOTION_PREFIX.length) as MotionLevel);
             return;
           }
           // click origin drives the circular reveal view-transition

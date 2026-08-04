@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
 import { Button, Col, Modal, Row, Select, Skeleton, Typography } from 'antd';
 import { CalendarOutlined, PlusOutlined } from '@ant-design/icons';
 import { dailyNote } from '@/api/docs';
@@ -182,13 +183,13 @@ export default function AdminDashboard() {
         <Row gutter={[16, 16]}>
           {entries.filter((e) => e.show).map((e) => (
             <Col xs={12} sm={8} lg={6} key={e.to}>
-              <Link to={e.to} className="jz-feature-card">
+              <TransitionLink to={e.to} className="jz-feature-card">
                 <div className="jz-feature-card-head">
                   <span className={'jz-feature-card-icon' + (e.tone ? ` jz-ico-toned jz-ico-tone-${e.tone}` : '')}>{e.icon}</span>
                   <span className="jz-feature-card-title">{e.title}</span>
                 </div>
                 <p className="jz-feature-card-desc">{e.desc}</p>
-              </Link>
+              </TransitionLink>
             </Col>
           ))}
         </Row>
@@ -197,7 +198,7 @@ export default function AdminDashboard() {
       <section>
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
           <Title level={4} style={{ margin: 0 }}>最近的知识库</Title>
-          <Link to="/admin/kbs"><Text type="secondary">查看全部 →</Text></Link>
+          <TransitionLink to="/admin/kbs"><Text type="secondary">查看全部 →</Text></TransitionLink>
         </div>
         {err ? (
           <div className="jz-admin-panel">
@@ -210,15 +211,15 @@ export default function AdminDashboard() {
         ) : recentKbs.length === 0 ? (
           <div className="jz-admin-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
             <Text type="secondary">还没有知识库——一切就绪,创建你的第一个吧。</Text>
-            <Link to="/admin/kbs">
+            <TransitionLink to="/admin/kbs">
               <Button type="primary" icon={<PlusOutlined />}>新建知识库</Button>
-            </Link>
+            </TransitionLink>
           </div>
         ) : (
           <Row gutter={[16, 16]}>
             {recentKbs.map((kb) => (
               <Col xs={24} sm={12} lg={8} key={kb.id}>
-                <Link to={`/admin/kbs/${kb.id}`} className="jz-feature-card">
+                <TransitionLink to={`/admin/kbs/${kb.id}`} className="jz-feature-card">
                   <div className="jz-feature-card-head">
                     <span
                       className="jz-feature-card-icon"
@@ -231,7 +232,7 @@ export default function AdminDashboard() {
                   <p className="jz-feature-card-desc">
                     {kb.document_count} 篇文档 · {kb.visibility === 'public' ? '已公开' : '私密'}
                   </p>
-                </Link>
+                </TransitionLink>
               </Col>
             ))}
           </Row>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Empty, Spin, Typography } from 'antd';
-import { Link } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 import { getArchive, type ArchiveBucket } from '@/api/archive';
 
@@ -98,9 +98,9 @@ export default function ArchivePage() {
                           <span className="jz-archive-date" title={d.format('YYYY-MM-DD HH:mm')}>
                             {dayCn(d.date())}日
                           </span>
-                          <Link to={`/posts/${encodeURIComponent(p.slug)}`} className="jz-archive-title">
+                          <TransitionLink to={`/posts/${encodeURIComponent(p.slug)}`} className="jz-archive-title">
                             {p.title}
-                          </Link>
+                          </TransitionLink>
                         </li>
                       );
                     })}

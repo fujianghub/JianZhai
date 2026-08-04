@@ -24,7 +24,8 @@ import {
   FolderOutlined,
   PlusOutlined,
 } from '@ant-design/icons';
-import { Link, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
 import * as kbsApi from '@/api/kbs';
 import * as usersApi from '@/api/users';
 import { formatApiError } from '@/api/client';
@@ -244,7 +245,7 @@ export default function KBListPage() {
             >
               <BookOutlined />
             </span>
-            <Link to={`/admin/kbs/${kb.id}`}>{kb.name}</Link>
+            <TransitionLink to={`/admin/kbs/${kb.id}`}>{kb.name}</TransitionLink>
           </Space>
         }
         extra={

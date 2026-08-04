@@ -29,7 +29,7 @@
   box-shadow:
     0 2px 6px color-mix(in srgb, var(--jz-accent) 35%, transparent),
     0 0 0 1px rgba(255, 255, 255, 0.18) inset;
-  transition: transform 0.3s cubic-bezier(.34, 1.56, .64, 1);
+  transition: transform 0.3s var(--jz-ease-spring);
 }
 .jz-brand:hover {
   transform: translateY(-1px);
@@ -100,7 +100,7 @@
   background: var(--jz-accent);
   transform: scaleX(0);
   transform-origin: center;
-  transition: transform 0.28s cubic-bezier(.34, 1.56, .64, 1);
+  transition: transform 0.28s var(--jz-ease-spring);
   border-radius: 1px;
 }
 .jz-nav-link:hover {
@@ -925,7 +925,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-post-nav-arrow {
   display: inline-block;
-  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring);
 }
 .jz-post-nav-card--prev:hover .jz-post-nav-arrow {
   transform: translateX(-3px);
@@ -1425,7 +1425,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   box-shadow:
     0 6px 18px var(--jz-accent-glow),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-  transition: transform 0.25s cubic-bezier(.34,1.56,.64,1);
+  transition: transform 0.25s var(--jz-ease-spring);
 }
 .jz-admin-glass .jz-admin-brand:hover .jz-admin-brand-seal {
   transform: rotate(-6deg) scale(1.05);
@@ -2424,7 +2424,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   /* 动效 token：颜色类 120ms / 位移类 200ms（弹簧曲线保留给位移） */
-  transition: transform 200ms cubic-bezier(.34, 1.56, .64, 1), box-shadow 120ms ease, border-color 120ms ease, color 120ms ease, background 120ms ease;
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring), box-shadow var(--jz-dur-fast) ease, border-color var(--jz-dur-fast) ease, color var(--jz-dur-fast) ease, background var(--jz-dur-fast) ease;
 }
 .jz-blog-glass .jz-nav-link-icon .jz-icon {
   display: block;
@@ -3490,7 +3490,7 @@ a.jz-meta-full-edit-btn:focus-visible {
    gentle drift. Best paired with serif weight bumped slightly so the
    blur edge reads clearly. */
 .jz-hero-anim-ink-wash {
-  animation: jz-hero-ink-in 0.85s cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: jz-hero-ink-in 0.85s var(--jz-ease-decel) both;
 }
 .jz-hero-anim-ink-wash.is-leaving {
   animation: jz-hero-ink-out 0.5s cubic-bezier(0.6, 0, 0.7, 0.2) both;
@@ -3935,7 +3935,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* 图标微跳：轻提 + 微倾 + 放大，弹簧曲线 */
 .jz-admin-glass .jz-menu-icon-slot svg,
 .jz-blog-glass .jz-nav-link-icon svg {
-  transition: transform 200ms cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring);
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot svg,
 .jz-blog-glass .jz-nav-link:hover .jz-nav-link-icon svg,
@@ -4049,7 +4049,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   box-shadow:
     0 10px 26px var(--jz-accent-glow),
     0 0 0 1px rgba(255, 255, 255, 0.14) inset;
-  transition: transform 0.35s cubic-bezier(.34, 1.56, .64, 1);
+  transition: transform 0.35s var(--jz-ease-spring);
 }
 .jz-login-card:hover .jz-login-seal {
   transform: rotate(-6deg) scale(1.06);
@@ -4258,22 +4258,22 @@ a.jz-meta-full-edit-btn:focus-visible {
 :root.jz-vt-live body { transition: none; }
 
 ::view-transition-old(root) {
-  animation: jz-vt-dissolve-out 0.85s cubic-bezier(0.45, 0.05, 0.25, 1) both;
+  animation: jz-vt-dissolve-out 0.85s var(--jz-ease-vt) both;
 }
 ::view-transition-new(root) {
-  animation: jz-vt-fade-in 0.85s cubic-bezier(0.45, 0.05, 0.25, 1) both;
+  animation: jz-vt-fade-in 0.85s var(--jz-ease-vt) both;
 }
 ::view-transition-old(jz-shell) {
-  animation: jz-vt-dissolve-out 0.6s cubic-bezier(0.45, 0.05, 0.25, 1) 0.12s both;
+  animation: jz-vt-dissolve-out 0.6s var(--jz-ease-vt) 0.12s both;
 }
 ::view-transition-new(jz-shell) {
-  animation: jz-vt-fade-in 0.6s cubic-bezier(0.45, 0.05, 0.25, 1) 0.12s both;
+  animation: jz-vt-fade-in 0.6s var(--jz-ease-vt) 0.12s both;
 }
 ::view-transition-old(jz-header) {
-  animation: jz-vt-fade-out 0.5s cubic-bezier(0.45, 0.05, 0.25, 1) 0.2s both;
+  animation: jz-vt-fade-out 0.5s var(--jz-ease-vt) 0.2s both;
 }
 ::view-transition-new(jz-header) {
-  animation: jz-vt-fade-in 0.5s cubic-bezier(0.45, 0.05, 0.25, 1) 0.2s both;
+  animation: jz-vt-fade-in 0.5s var(--jz-ease-vt) 0.2s both;
 }
 @keyframes jz-vt-dissolve-out {
   from { opacity: 1; filter: blur(0); }
@@ -4364,7 +4364,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-reveal { opacity: 0; }
 .jz-reveal.is-in {
   opacity: 1;
-  animation: jz-reveal-in 0.5s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  animation: jz-reveal-in 0.5s var(--jz-ease-decel) backwards;
   animation-delay: var(--jz-reveal-d, 0ms);
 }
 @keyframes jz-reveal-in {
@@ -4381,8 +4381,10 @@ a.jz-meta-full-edit-btn:focus-visible {
    这里画一枚跟随指针的 accent 辉光。仅桌面精确指针。.jz-book 的对应规则在
    book-card.css（其 ::after 原被 content:none 占位）。 */
 @media (hover: hover) and (pointer: fine) {
-  .ant-card.jz-card { position: relative; }
-  .ant-card.jz-card::after {
+  .ant-card.jz-card,
+  .jz-feature-card { position: relative; }
+  .ant-card.jz-card::after,
+  .jz-feature-card::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -4397,7 +4399,37 @@ a.jz-meta-full-edit-btn:focus-visible {
       transparent 70%
     );
   }
-  .ant-card.jz-card.jz-spot-on::after { opacity: 1; }
+  .ant-card.jz-card.jz-spot-on::after,
+  .jz-feature-card.jz-spot-on::after { opacity: 1; }
+
+  /* ── 指针边缘光（2026-08-03）──
+     玻璃「活化」：1px 边框环上随指针方位游走的一段 accent 光（mask 双层
+     异或抠出 padding 环，只亮边不糊面）。.jz-book 的 ::before 被 accent
+     色条占用，书卡不参与边缘光（已有色条 + 光斑两层）。强度走 token，
+     六主题自适应；reduce / 档位「适中」由 .jz-spot-on 缺席自然关闭。 */
+  .ant-card.jz-card::before,
+  .jz-feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    padding: 1px;
+    background: radial-gradient(
+      170px circle at var(--jz-mx, 50%) var(--jz-my, 50%),
+      color-mix(in srgb, var(--jz-accent) 65%, transparent) 0%,
+      transparent 72%
+    );
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }
+  .ant-card.jz-card.jz-spot-on::before,
+  .jz-feature-card.jz-spot-on::before { opacity: 1; }
 }
 
 /* ── light/dark 呼吸背景 ──
@@ -4440,4 +4472,267 @@ a.jz-meta-full-edit-btn:focus-visible {
   [data-theme='light'] .jz-blog-glass.ant-layout,
   [data-theme='dark'] .jz-admin-glass.ant-layout,
   [data-theme='dark'] .jz-blog-glass.ant-layout { animation: none; }
+}
+
+/* ── reduced-motion 补漏（2026-08-03）──
+   卡片悬浮位移 / 指针光斑 / 页面进场浮起 / 印章弹簧 / 登录光团此前不在任何
+   reduce 块覆盖内。纯透明度的淡入淡出（lightbox 遮罩等）刻意保留 —— reduce
+   的语义是消除位移/视差/持续动画，交叉淡化是它的替代品而非清除对象。
+   .jz-book 的同款补漏在 book-card.css 尾部（就近其 hover 规则，靠顺序取胜）。 */
+@media (prefers-reduced-motion: reduce) {
+  .jz-fade-in { animation: none; }
+  .ant-card.jz-card { transition: none; }
+  .ant-card.jz-card:hover { transform: none; }
+  .ant-card.jz-card::after,
+  .ant-card.jz-card::before,
+  .jz-feature-card::after,
+  .jz-feature-card::before { display: none; }
+  .jz-admin-glass .jz-feature-card:hover { transform: none; }
+  .jz-brand,
+  .jz-brand::before,
+  .jz-admin-glass .jz-admin-brand-seal,
+  .jz-login-seal { transition: none; }
+  .jz-brand:hover::before,
+  .jz-admin-glass .jz-admin-brand:hover .jz-admin-brand-seal,
+  .jz-login-card:hover .jz-login-seal { transform: none; }
+  .jz-login-glow { animation: none; }
+}
+
+/* ── 路由级 View Transition（2026-08-03）──
+   utils/routeTransition 在导航期给根元素挂 .jz-vt-route。共享元素两端：
+   源侧（被点击的书卡标签）由 JS 写 inline view-transition-name —— 主题 VT
+   的教训：同名两处 = 整场静默跳过，故只命名被点击那张；目标侧
+   .jz-kb-hero-title 页面级唯一，纯 CSS 依 root 类打名安全。
+   根图层沿用 UA 默认交叉溶解；反向导航（返回）无源元素命名，自然退化为
+   普通溶解。reduce / 精简档在 navigateWithTransition 入口即跳过。 */
+:root.jz-vt-route .jz-kb-hero-title {
+  view-transition-name: jz-kb-hero;
+}
+::view-transition-group(jz-kb-hero) {
+  animation-duration: 0.45s;
+  animation-timing-function: var(--jz-ease-decel);
+}
+::view-transition-old(jz-kb-hero),
+::view-transition-new(jz-kb-hero) {
+  /* 两端宽高比不同（卡片标签 vs 页头大标题）——按高度适配、避免拉伸变形 */
+  height: 100%;
+  width: auto;
+}
+
+/* ── 交互粒子 · 缃金墨点迸发（utils/inkBurst，收藏星标专用 2026-08-03）──
+   一次性 DOM 粒子：宿主定位在触发点，粒子按 --jz-burst-* 自定义属性外抛、
+   轻微上飘、淡出即宿主自删。缃金为主 accent 点缀，六主题随 token 换色。 */
+.jz-ink-burst {
+  position: fixed;
+  z-index: 9999;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.jz-ink-burst-p {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: var(--jz-burst-s, 5px);
+  height: var(--jz-burst-s, 5px);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--jz-accent) 85%, #fff) 0%,
+    color-mix(in srgb, var(--jz-accent) 45%, transparent) 70%,
+    transparent 100%
+  );
+  animation: jz-ink-burst-fly var(--jz-burst-dur, 620ms) var(--jz-ease-decel)
+    var(--jz-burst-delay, 0ms) both;
+}
+.jz-ink-burst-p.is-gold {
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--jz-gold) 90%, #fff) 0%,
+    color-mix(in srgb, var(--jz-gold) 50%, transparent) 70%,
+    transparent 100%
+  );
+}
+@keyframes jz-ink-burst-fly {
+  0% { transform: translate(0, 0) scale(0.4); opacity: 0; }
+  12% { opacity: 1; }
+  100% { transform: translate(var(--jz-burst-dx, 0px), var(--jz-burst-dy, -30px)) scale(1); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-ink-burst { display: none; }
+}
+
+/* ── 动效档位「精简」的 CSS 伴生（2026-08-03）──
+   JS 检查点（主题 VT / canvas 静帧 / 滚动显现 / 光斑 / 粒子）由 motionPref
+   统一裁决；此块承接纯 CSS 动画，与上方各 reduce 块语义一一对齐——
+   media query 无法与属性选择器 OR，故以伴生规则复述。 */
+:root[data-motion='min'] .jz-hero-anim-fade,
+:root[data-motion='min'] .jz-hero-anim-slide,
+:root[data-motion='min'] .jz-hero-anim-ink-wash,
+:root[data-motion='min'] .jz-hero-anim-typewriter,
+:root[data-motion='min'] .jz-hero-anim-fade.is-leaving,
+:root[data-motion='min'] .jz-hero-anim-slide.is-leaving,
+:root[data-motion='min'] .jz-hero-anim-ink-wash.is-leaving,
+:root[data-motion='min'] .jz-hero-anim-typewriter.is-leaving,
+:root[data-motion='min'] .jz-hero-typewriter-char,
+:root[data-motion='min'] .jz-hero-typewriter-caret {
+  animation: none !important;
+  opacity: 1 !important;
+  transform: none !important;
+  filter: none !important;
+}
+:root[data-motion='min'] .jz-fade-in,
+:root[data-motion='min'] .jz-login-glow { animation: none; }
+:root[data-motion='min'] .jz-reveal { opacity: 1; }
+:root[data-motion='min'] .jz-reveal.is-in { animation: none; }
+:root[data-motion='min'] .ant-card.jz-card,
+:root[data-motion='min'] .jz-book { transition: none; }
+:root[data-motion='min'] .ant-card.jz-card:hover,
+:root[data-motion='min'] .jz-book:hover,
+:root[data-motion='min'] .jz-admin-glass .jz-feature-card:hover { transform: none; }
+:root[data-motion='min'] .ant-card.jz-card::before,
+:root[data-motion='min'] .ant-card.jz-card::after,
+:root[data-motion='min'] .jz-feature-card::before,
+:root[data-motion='min'] .jz-feature-card::after,
+:root[data-motion='min'] .jz-book::after { display: none; }
+:root[data-motion='min'] .jz-ink-burst { display: none; }
+:root[data-motion='min'] .jz-blog-glass .jz-nav-link-icon::after { animation: none !important; }
+:root[data-motion='min'] .jz-admin-glass .jz-menu-icon-slot svg,
+:root[data-motion='min'] .jz-blog-glass .jz-nav-link-icon svg { transition: none; }
+:root[data-motion='min'][data-theme='light'] .jz-admin-glass.ant-layout,
+:root[data-motion='min'][data-theme='light'] .jz-blog-glass.ant-layout,
+:root[data-motion='min'][data-theme='dark'] .jz-admin-glass.ant-layout,
+:root[data-motion='min'][data-theme='dark'] .jz-blog-glass.ant-layout { animation: none; }
+
+/* ── 导出实况胶囊（ExportCapsule，2026-08-03）──
+   App 级常驻左下角（右下归 AI FAB / 专注退出）。挂在 .jz-glass 作用域外，
+   底色走 :root 的 --jz-overlay-surface 实底令牌（portal 同款兜底逻辑）。 */
+.jz-export-capsule-stack {
+  position: fixed;
+  left: 24px;
+  bottom: 24px;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: min(420px, calc(100vw - 48px));
+}
+.jz-export-capsule {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  background: var(--jz-overlay-surface, #fff);
+  border: 1px solid var(--jz-border);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.06);
+  backdrop-filter: blur(12px) saturate(150%);
+  -webkit-backdrop-filter: blur(12px) saturate(150%);
+  color: var(--jz-text);
+  font-size: 13px;
+  animation: jz-fade-in var(--jz-dur-base) ease;
+}
+.jz-export-capsule.is-failed {
+  border-color: color-mix(in srgb, #dc2626 45%, var(--jz-border));
+}
+.jz-export-capsule-ico { color: var(--jz-accent); font-size: 15px; flex: none; }
+.jz-export-capsule-ico.is-done { color: #10b981; }   /* 语义成功绿，跨主题恒定 */
+.jz-export-capsule-ico.is-failed { color: #dc2626; } /* 语义错误红，跨主题恒定 */
+.jz-export-capsule-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.jz-export-capsule-close {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--jz-text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  transition: background var(--jz-dur-fast) ease, color var(--jz-dur-fast) ease;
+}
+.jz-export-capsule-close:hover {
+  background: color-mix(in srgb, var(--jz-text) 8%, transparent);
+  color: var(--jz-text);
+}
+.jz-export-capsule-close:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--jz-accent) 70%, transparent);
+  outline-offset: 1px;
+}
+
+/* ── 骨架屏（2026-08-03）──
+   替换博客端居中转圈：加载态保持目标布局的几何（书卡网格/列表行/文章版心），
+   落地时不跳版。shimmer 扫光走文字混色令牌、六主题自适应；
+   reduce / 档位「精简」静止不闪（骨架仍显示，闪烁才是动效）。 */
+.jz-skel {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--jz-text) 7%, transparent);
+}
+.jz-skel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in srgb, var(--jz-text) 6%, transparent) 50%,
+    transparent 80%
+  );
+  transform: translateX(-100%);
+  animation: jz-skel-sweep 1.4s ease-in-out infinite;
+}
+@keyframes jz-skel-sweep {
+  to { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-skel::after { animation: none; }
+}
+:root[data-motion='min'] .jz-skel::after { animation: none; }
+.jz-skel-title { height: 26px; width: 55%; margin: 6px 0 18px; }
+.jz-skel-line { height: 14px; margin: 10px 0; }
+.jz-book-skel { pointer-events: none; }
+
+/* ── 可访问性地基（2026-08-03）── */
+/* 视觉隐藏但读屏可达（此前全站无此工具类） */
+.jz-sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+/* 跳到正文：键盘 Tab 首站显形（鼠标用户不可见），供长导航跳过 */
+.jz-skip-link {
+  position: fixed;
+  top: -56px;
+  left: 16px;
+  z-index: 10000;
+  padding: 10px 18px;
+  border-radius: 0 0 10px 10px;
+  background: var(--jz-overlay-surface, #fff);
+  color: var(--jz-text);
+  border: 1px solid var(--jz-border);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  font-size: 14px;
+  text-decoration: none;
+  transition: top var(--jz-dur-fast) ease;
+}
+.jz-skip-link:focus-visible {
+  top: 0;
+  outline: 2px solid var(--jz-accent);
+  outline-offset: -2px;
 }

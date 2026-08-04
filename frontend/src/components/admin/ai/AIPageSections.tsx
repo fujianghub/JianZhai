@@ -126,7 +126,7 @@ export function MyModelPreferenceSection({ cap }: { cap: AICapabilities }) {
                   }
                   writeAIModel(m.id);
                   setPreferredId(m.id);
-                  message.success(`已切换为 ${m.label}`);
+                  // 反馈就地化：卡片立即获得 is-active 高亮，成功 toast 冗余
                 }}
                 className={'jz-model-card' + (active ? ' is-active' : '') + (configured ? '' : ' is-unconfigured')}
                 style={{

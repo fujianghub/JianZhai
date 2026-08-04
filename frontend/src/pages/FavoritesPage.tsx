@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Empty, Popconfirm, Spin, Tag, Typography, message } from 'antd';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
 import { StarFilled } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import {
@@ -96,9 +97,9 @@ export default function FavoritesPage() {
         {header}
         <Empty description="还没有收藏的文档">
           {isAuthor ? (
-            <Link to="/admin/kbs">去知识库</Link>
+            <TransitionLink to="/admin/kbs">去知识库</TransitionLink>
           ) : (
-            <Link to="/">去藏经阁逛逛</Link>
+            <TransitionLink to="/">去藏经阁逛逛</TransitionLink>
           )}
         </Empty>
       </div>
@@ -129,7 +130,7 @@ export default function FavoritesPage() {
               >
                 <span className="jz-favorites-title">{doc.title}</span>
                 <div className="jz-favorites-meta">
-                  <Link
+                  <TransitionLink
                     to={
                       isAuthor
                         ? `/admin/kbs/${doc.knowledge_base.id}`
@@ -144,7 +145,7 @@ export default function FavoritesPage() {
                     onClick={(e) => e.stopPropagation()}
                   >
                     {doc.knowledge_base.name}
-                  </Link>
+                  </TransitionLink>
                   {isAuthor && (
                     <Tag color={doc.status === 'published' ? 'green' : 'default'}>
                       {doc.status === 'published' ? '已发布' : '草稿'}
@@ -170,13 +171,13 @@ export default function FavoritesPage() {
               </div>
               <div className="jz-favorites-actions">
                 {isAuthor && (
-                  <Link
+                  <TransitionLink
                     to={docEditorHref(doc.knowledge_base.id, doc.id)}
                     className="jz-favorites-edit"
                     onClick={(e) => e.stopPropagation()}
                   >
                     编辑
-                  </Link>
+                  </TransitionLink>
                 )}
                 <Popconfirm
                   title="取消收藏该文档？"

@@ -33,6 +33,26 @@
   --jz-code-inline-bg: color-mix(in srgb, var(--jz-accent) 8%, transparent);
   --jz-code-inline-border: color-mix(in srgb, var(--jz-accent) 16%, transparent);
   --jz-gold: #ecac12;
+  /* ── 动效令牌 ──
+     此前只有一条注释约定（「颜色类 120ms / 位移类 200ms（弹簧曲线保留给位移）」，
+     旧 theme.css:2426），数值散落逐处硬编码且弹簧曲线出现过三种书写。此处机器化：
+       dur-fast  = 颜色/透明度/边框类反馈
+       dur-base  = 位移/尺寸类微交互
+       dur-slow  = 面板/揭示类
+       dur-epic  = 主题级过渡（与 VT 分层首拍同值）
+       ease-standard = 通用位移（缓入缓出，重出）
+       ease-decel    = 入场减速（expo-out：快到慢，用于 reveal/ink 入场）
+       ease-spring   = 位移弹簧（下方 @supports 升级为 linear() 真弹簧采样）
+       ease-vt       = 主题 View Transition 溶解专用
+     新动效一律引用令牌；改档位值 = 全站同步换挡。 */
+  --jz-dur-fast: 120ms;
+  --jz-dur-base: 200ms;
+  --jz-dur-slow: 350ms;
+  --jz-dur-epic: 850ms;
+  --jz-ease-standard: cubic-bezier(0.2, 0, 0, 1);
+  --jz-ease-decel: cubic-bezier(0.16, 1, 0.3, 1);
+  --jz-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --jz-ease-vt: cubic-bezier(0.45, 0.05, 0.25, 1);
   /* Code blocks — One Dark Pro (blog / preview); admin glass overrides below */
   --jz-code-bg: #282c34;
   --jz-code-toolbar-bg: #21252b;
@@ -42,6 +62,19 @@
   --jz-code-gutter-bg: #1e2227;
   --jz-code-line-number: #5c6370;
 }
+/* 真弹簧（underdamped spring 采样，过冲 ~10% + 一次轻微回摆后收敛）——
+   cubic-bezier 只能模拟单次过冲，linear() 才能表达完整阻尼振荡。
+   不支持 linear() 的浏览器停留在上面的 cubic-bezier 近似，手感一致只少一摆。 */
+@supports (transition-timing-function: linear(0, 1)) {
+  :root {
+    --jz-ease-spring: linear(
+      0, 0.008 1%, 0.06 4%, 0.16 8%, 0.325 14%, 0.554 22%, 0.79 30%,
+      0.96 37%, 1.06 44%, 1.098 50%, 1.09 56%, 1.06 62%, 1.03 68%,
+      1.007 74%, 0.994 80%, 0.99 84%, 0.993 89%, 0.998 94%, 1
+    );
+  }
+}
+
 [data-theme='dark'] {
   --jz-accent: #2ee79c;
   --jz-accent-soft: #62efb6;

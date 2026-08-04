@@ -9,6 +9,7 @@ import RequireSuperuser from '@/components/common/RequireSuperuser';
 import LoginPage from '@/pages/admin/LoginPage';
 import AmbientStage from '@/components/common/AmbientStage';
 import PointerSpotlight from '@/components/common/PointerSpotlight';
+import ExportCapsule from '@/components/common/ExportCapsule';
 import ErrorBoundary from '@/components/common/ErrorBoundary';
 
 /** Inline loading fallback with a contextual hint — used for heavier chunks
@@ -73,6 +74,8 @@ export default function App() {
     <>
       <AmbientStage />
       <PointerSpotlight />
+      {/* 导出实况胶囊：挂在路由外，任务进行中跨页面常驻（stores/exportWatch） */}
+      <ExportCapsule />
       <ErrorBoundary context="root">
       <Suspense fallback={<RouteFallback />}>
       <Routes>

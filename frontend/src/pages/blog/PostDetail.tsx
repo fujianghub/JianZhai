@@ -12,7 +12,8 @@ import type { AdjacentPosts, RelatedPost } from '@/api/blog';
 import { Alert, Breadcrumb, Button, Drawer, Result, Spin, Tag, Tooltip, Typography } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 import { isAxiosError } from 'axios';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 /* 自制 SF 分层系列；小尺寸（13-14px）用 strokeWidth=2 做笔画补偿 */
 import {
@@ -529,7 +530,7 @@ export default function PostDetail() {
   );
 
   if (notFound) {
-    return <Result status="404" title="未找到该文章" extra={<Link to="/">返回首页</Link>} />;
+    return <Result status="404" title="未找到该文章" extra={<TransitionLink to="/">返回首页</TransitionLink>} />;
   }
   if (loadError) {
     return (
@@ -537,14 +538,19 @@ export default function PostDetail() {
         status="error"
         title={loadError}
         subTitle={slug ? `文章：${slug}` : undefined}
-        extra={<Link to="/">返回首页</Link>}
+        extra={<TransitionLink to="/">返回首页</TransitionLink>}
       />
     );
   }
   if (!post) {
+    // 文章骨架按默认版心 860 排布：标题 + meta 行 + 正文行，落地不跳版
     return (
-      <div style={{ display: 'grid', placeItems: 'center', minHeight: 300 }}>
-        <Spin />
+      <div aria-busy="true" aria-label="加载文章" style={{ maxWidth: 860, margin: '0 auto', padding: '24px 8px' }}>
+        <div className="jz-skel jz-skel-title" style={{ width: '68%', height: 34 }} />
+        <div className="jz-skel jz-skel-line" style={{ width: '34%', marginBottom: 28 }} />
+        {[100, 96, 88, 100, 72, 94, 60].map((w, i) => (
+          <div key={i} className="jz-skel jz-skel-line" style={{ width: `${w}%` }} />
+        ))}
       </div>
     );
   }
@@ -688,12 +694,12 @@ export default function PostDetail() {
         <Breadcrumb
           style={{ marginBottom: 12 }}
           items={[
-            { title: <Link to="/"><JzHomeIcon size={13} strokeWidth={2} style={{ verticalAlign: '-0.125em' }} /> 首页</Link> },
+            { title: <TransitionLink to="/"><JzHomeIcon size={13} strokeWidth={2} style={{ verticalAlign: '-0.125em' }} /> 首页</TransitionLink> },
             {
               title: (
-                <Link to={`/kb/${encodeURIComponent(post.knowledge_base.slug)}`}>
+                <TransitionLink to={`/kb/${encodeURIComponent(post.knowledge_base.slug)}`}>
                   {post.knowledge_base.name}
-                </Link>
+                </TransitionLink>
               ),
             },
             { title: post.title },
@@ -746,7 +752,7 @@ export default function PostDetail() {
               }
             >
               {/* KB + format — these belong together: "knowledge base · document type". */}
-              <Link
+              <TransitionLink
                 to={`/kb/${encodeURIComponent(post.knowledge_base.slug)}`}
                 className="jz-meta-pill jz-meta-pill-kb"
                 aria-label={`知识库 ${post.knowledge_base.name}`}
@@ -754,7 +760,7 @@ export default function PostDetail() {
               >
                 <JzBookIcon size={14} strokeWidth={2} className="jz-meta-icon" />
                 <span className="jz-meta-pill-text">{post.knowledge_base.name}</span>
-              </Link>
+              </TransitionLink>
               <span className="jz-meta-format" aria-label={`文档格式 ${post.doc_format}`}>
                 <DocFormatTag format={post.doc_format} size="default" />
               </span>
@@ -947,10 +953,10 @@ export default function PostDetail() {
                       title="打开完整编辑页：切换 MD/富文本/HTML、发布、版本历史、导出与附件管理等"
                     >
                       <span className="jz-tooltip-trigger-wrap">
-                        <Link to={editHref} className="jz-meta-full-edit-btn">
+                        <TransitionLink to={editHref} className="jz-meta-full-edit-btn">
                           <JzComposeIcon size={13} strokeWidth={2} aria-hidden />
                           <span>完整编辑</span>
-                        </Link>
+                        </TransitionLink>
                       </span>
                     </Tooltip>
                   </span>
@@ -1070,7 +1076,7 @@ export default function PostDetail() {
             <nav className="jz-post-nav" aria-label="前后文章导航">
               <div className="jz-post-nav-grid">
                 {adjacent.prev && (
-                  <Link
+                  <TransitionLink
                     to={postHref(
                       adjacent.prev.slug,
                       kbSlug ?? post.knowledge_base.slug,
@@ -1081,10 +1087,10 @@ export default function PostDetail() {
                       <span className="jz-post-nav-arrow">←</span> 上一篇
                     </span>
                     <span className="jz-post-nav-title">{adjacent.prev.title}</span>
-                  </Link>
+                  </TransitionLink>
                 )}
                 {adjacent.next && (
-                  <Link
+                  <TransitionLink
                     to={postHref(
                       adjacent.next.slug,
                       kbSlug ?? post.knowledge_base.slug,
@@ -1095,7 +1101,7 @@ export default function PostDetail() {
                       下一篇 <span className="jz-post-nav-arrow">→</span>
                     </span>
                     <span className="jz-post-nav-title">{adjacent.next.title}</span>
-                  </Link>
+                  </TransitionLink>
                 )}
               </div>
             </nav>

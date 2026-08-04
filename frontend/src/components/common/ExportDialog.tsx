@@ -4,6 +4,7 @@ import { message } from '@/utils/notify';
 import { formatApiError } from '@/api/client';
 import * as exportsApi from '@/api/exports';
 import type { ExportFormat, ExportScope } from '@/api/exports';
+import { watchExport } from '@/stores/exportWatch';
 
 const { Text, Paragraph } = Typography;
 
@@ -58,19 +59,20 @@ export default function ExportDialog({
     try {
       // 开关未开 = 不传字段（保持后端历史行为）；site 服务端恒过滤已发布。
       const published = onlyPublished && format !== 'site' ? { only_published: true } : {};
-      if (scope === 'selection') {
-        await exportsApi.createExport({
-          scope,
-          format,
-          folder_ids: folderIds,
-          doc_ids: docIds,
-          ...published,
-        });
-      } else {
-        await exportsApi.createExport({ scope, target_id: targetId, format, ...published });
-      }
+      const task =
+        scope === 'selection'
+          ? await exportsApi.createExport({
+              scope,
+              format,
+              folder_ids: folderIds,
+              doc_ids: docIds,
+              ...published,
+            })
+          : await exportsApi.createExport({ scope, target_id: targetId, format, ...published });
+      // 实况胶囊接管进度展示（跨页面常驻，完成即可下载）
+      watchExport(task);
       message.success(
-        onSubmitted ? '已创建导出任务，正在前往导出历史…' : '已创建导出任务，可在「导出历史」查看进度。',
+        onSubmitted ? '已创建导出任务，正在前往导出历史…' : '已创建导出任务，进度见左下角胶囊。',
       );
       onSubmitted?.();
       onClose();

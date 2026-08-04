@@ -16,6 +16,7 @@
  * the effect only re-runs when `active` flips.
  */
 import { useEffect, useRef } from 'react';
+import { currentMotionLevel, prefersReducedMotion } from '@/utils/motionPref';
 
 export interface PointerState {
   /** eased horizontal position, -1 (left edge) … 1 (right edge) */
@@ -82,9 +83,7 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const reduced =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = prefersReducedMotion();
     // Render at full devicePixelRatio (capped at 2) for crisp HiDPI visuals.
     // `dpr` drops with the adaptive quality level on sustained low FPS.
     const baseDpr = Math.min(window.devicePixelRatio || 1, 2);
@@ -126,7 +125,10 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
     // ── adaptive quality: EMA of raw frame time; sustained jank sheds
     //    particles (pointer.quality) + backing-store DPR, sustained
     //    smoothness recovers. Hysteresis + cooldown prevent ping-pong. ──
-    let level = 0;
+    // 动效档位「适中」把质量地板钉在最低档（用户主观降耗，叠加在自动降质上；
+    // AmbientStage 在档位变化时重挂场景，故初始化读一次即可）
+    const minLevel = currentMotionLevel() === 'medium' ? AMBIENT_LEVELS.length - 1 : 0;
+    let level = minLevel;
     let emaDt = 1 / 60;
     let adaptClock = 0;
     let goodStreak = 0;
@@ -138,6 +140,7 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
       // so controller.resize is deliberately NOT called — no particle rebuild.
       resizeCanvas();
     }
+    if (minLevel > 0) applyLevel();
 
     function stepAdaptive(rawDt: number, dt: number) {
       if (rawDt < 0.25) emaDt += (rawDt - emaDt) * 0.06; // skip tab-switch gaps
@@ -150,7 +153,7 @@ export function useAmbientCanvas(active: boolean, build: SceneBuilder) {
         applyLevel();
         goodStreak = 0;
         cooldown = 2.5;
-      } else if (emaDt < 1 / 55 && level > 0) {
+      } else if (emaDt < 1 / 55 && level > minLevel) {
         goodStreak++;
         if (goodStreak >= 8) {
           level--;

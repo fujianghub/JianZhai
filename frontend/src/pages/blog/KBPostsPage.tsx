@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import {
   Breadcrumb,
   Button,
@@ -12,12 +12,12 @@ import {
   Radio,
   Result,
   Space,
-  Spin,
   Tag,
   Tooltip,
   Typography,
 } from 'antd';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 import {
   AppstoreOutlined,
@@ -52,8 +52,39 @@ import {
   NEW_HTML_DOCUMENT_TEMPLATE,
   type NewDocContentKind,
 } from '@/utils/htmlTemplate';
+import { signalRouteReady } from '@/utils/routeTransition';
 
 const { Title, Paragraph } = Typography;
+
+/** KB 页头容器/图标样式 —— 正式页头与加载壳共用，保证路由共享元素过渡
+ * （jz-kb-hero，见 utils/routeTransition）两端的几何一致。 */
+function kbHeaderStyle(accent: string): React.CSSProperties {
+  return {
+    padding: '24px 28px',
+    marginBottom: 24,
+    borderRadius: 14,
+    border: '1px solid var(--jz-border)',
+    background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 18%, var(--jz-surface)), var(--jz-surface))`,
+    display: 'flex',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: 16,
+    flexWrap: 'wrap',
+  };
+}
+function kbHeaderIconStyle(accent: string): React.CSSProperties {
+  return {
+    width: 56,
+    height: 56,
+    borderRadius: 14,
+    background: `linear-gradient(135deg, ${accent}, color-mix(in srgb, ${accent} 60%, white))`,
+    color: '#fff',
+    display: 'grid',
+    placeItems: 'center',
+    fontSize: 24,
+    boxShadow: `0 8px 24px color-mix(in srgb, ${accent} 30%, transparent)`,
+  };
+}
 
 function postHref(postSlug: string, kbSlug?: string) {
   const path = `/posts/${encodeURIComponent(postSlug)}`;
@@ -63,6 +94,14 @@ function postHref(postSlug: string, kbSlug?: string) {
 export default function KBPostsPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
+  /** 书卡点击先行带来的 KB 名/accent（route state）——数据未落地时先渲染
+   * 页头壳，给共享元素过渡一个承接端；直接访问 URL 时为空、走旧 Spin。 */
+  const routeSeed = (location.state ?? {}) as { kbName?: string; kbAccent?: string | null };
+  // 路由 VT 的 new 快照等待首帧提交（无过渡进行时为 no-op）
+  useLayoutEffect(() => {
+    signalRouteReady();
+  }, []);
   const [tree, setTree] = useState<PublicKBTree | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [newDocOpen, setNewDocOpen] = useState(false);
@@ -167,12 +206,44 @@ export default function KBPostsPage() {
   }
 
   if (notFound) {
-    return <Result status="404" title="未找到该知识库" extra={<Link to="/">返回首页</Link>} />;
+    return <Result status="404" title="未找到该知识库" extra={<TransitionLink to="/">返回首页</TransitionLink>} />;
   }
   if (!tree) {
+    const seedAccent = routeSeed.kbAccent || 'var(--jz-accent)';
     return (
-      <div style={{ display: 'grid', placeItems: 'center', minHeight: 300 }}>
-        <Spin />
+      <div>
+        {routeSeed.kbName ? (
+          <>
+            <Breadcrumb
+              style={{ marginBottom: 16 }}
+              items={[
+                { title: <TransitionLink to="/"><HomeOutlined /> 首页</TransitionLink> },
+                { title: routeSeed.kbName },
+              ]}
+            />
+            <header style={kbHeaderStyle(seedAccent)}>
+              <Space align="start" size="middle">
+                <div style={kbHeaderIconStyle(seedAccent)}>
+                  <BookOutlined />
+                </div>
+                <div>
+                  <Title
+                    level={2}
+                    className="jz-post-title jz-kb-hero-title"
+                    style={{ margin: 0, color: 'var(--jz-text)' }}
+                  >
+                    {routeSeed.kbName}
+                  </Title>
+                </div>
+              </Space>
+            </header>
+          </>
+        ) : null}
+        <div aria-busy="true" aria-label="加载中" style={{ display: 'grid', gap: 12 }}>
+          {Array.from({ length: 5 }, (_, i) => (
+            <div key={i} className="jz-skel" style={{ height: 64, borderRadius: 12 }} />
+          ))}
+        </div>
       </div>
     );
   }
@@ -184,42 +255,21 @@ export default function KBPostsPage() {
       <Breadcrumb
         style={{ marginBottom: 16 }}
         items={[
-          { title: <Link to="/"><HomeOutlined /> 首页</Link> },
+          { title: <TransitionLink to="/"><HomeOutlined /> 首页</TransitionLink> },
           { title: tree.name },
         ]}
       />
-      <header
-        style={{
-          padding: '24px 28px',
-          marginBottom: 24,
-          borderRadius: 14,
-          border: '1px solid var(--jz-border)',
-          background: `linear-gradient(135deg, color-mix(in srgb, ${accent} 18%, var(--jz-surface)), var(--jz-surface))`,
-          display: 'flex',
-          alignItems: 'flex-start',
-          justifyContent: 'space-between',
-          gap: 16,
-          flexWrap: 'wrap',
-        }}
-      >
+      <header style={kbHeaderStyle(accent)}>
         <Space align="start" size="middle">
-          <div
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 14,
-              background: `linear-gradient(135deg, ${accent}, color-mix(in srgb, ${accent} 60%, white))`,
-              color: '#fff',
-              display: 'grid',
-              placeItems: 'center',
-              fontSize: 24,
-              boxShadow: `0 8px 24px color-mix(in srgb, ${accent} 30%, transparent)`,
-            }}
-          >
+          <div style={kbHeaderIconStyle(accent)}>
             <BookOutlined />
           </div>
           <div>
-            <Title level={2} className="jz-post-title" style={{ margin: 0, color: 'var(--jz-text)' }}>
+            <Title
+              level={2}
+              className="jz-post-title jz-kb-hero-title"
+              style={{ margin: 0, color: 'var(--jz-text)' }}
+            >
               {tree.name}
             </Title>
             {tree.description && (
@@ -284,9 +334,9 @@ export default function KBPostsPage() {
                   : '上传 ▾'}
               </Button>
             </Dropdown>
-            <Link to={`/admin/kbs/${tree.id}`}>
+            <TransitionLink to={`/admin/kbs/${tree.id}`}>
               <Button>个人空间</Button>
-            </Link>
+            </TransitionLink>
             <input
               ref={batchInputRef}
               type="file"
@@ -730,7 +780,7 @@ function FolderGroup({
 function PostRow({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
   return (
     <li className="jz-post-row">
-      <Link
+      <TransitionLink
         to={postHref(p.slug, kbSlug)}
         className="jz-post-row-link"
       >
@@ -753,7 +803,7 @@ function PostRow({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
         <span className="jz-post-row-date">
           {dayjs(p.published_at).format('YYYY-MM-DD')}
         </span>
-      </Link>
+      </TransitionLink>
     </li>
   );
 }
@@ -766,7 +816,7 @@ function PostCard({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
       hoverable
       style={{ borderRadius: 12 }}
     >
-      <Link
+      <TransitionLink
         to={postHref(p.slug, kbSlug)}
         style={{ color: 'inherit', textDecoration: 'none' }}
       >
@@ -780,7 +830,7 @@ function PostCard({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
             <DocFormatTag format={p.doc_format} size="default" />
           </Space>
         </Title>
-      </Link>
+      </TransitionLink>
       <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 8 }}>
         {p.excerpt || '（无摘要）'}
       </Paragraph>

@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { prefersReducedMotion } from '@/utils/motionPref';
 
 /**
  * Scroll-reveal for card grids / lists: elements matching `selector` carry the
@@ -17,10 +18,7 @@ export function useRevealOnScroll(selector: string, bindKey: unknown) {
   useEffect(() => {
     const els = Array.from(document.querySelectorAll<HTMLElement>(selector));
     if (els.length === 0) return;
-    const reduced =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduced || typeof IntersectionObserver === 'undefined') {
+    if (prefersReducedMotion() || typeof IntersectionObserver === 'undefined') {
       for (const el of els) el.classList.add('is-in');
       return;
     }

@@ -174,3 +174,11 @@
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 24px;
 }
+
+/* ── reduced-motion 补漏（2026-08-03，与 theme.css 尾部同批）──
+   书卡悬浮位移与指针光斑此前无 reduce 覆盖；颜色/阴影过渡保留。 */
+@media (prefers-reduced-motion: reduce) {
+  .jz-book { transition: box-shadow 220ms ease, border-color 220ms ease; }
+  .jz-book:hover { transform: none; }
+  .jz-book::after { display: none; }
+}

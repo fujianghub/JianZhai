@@ -8,6 +8,11 @@ import { isLightTheme, useThemeStore } from '@/stores/theme';
 import { readThemeAccent } from '@/utils/themeAccent';
 import { setMessageInstance } from '@/utils/notify';
 import { initCodeBlockGlobalPrefs } from '@/utils/codeBlockPrefs';
+import { applyMotionLevel, loadMotionLevel } from '@/utils/motionPref';
+
+// 动效档位在首帧渲染前落 DOM（data-motion）——与主题 data-theme 同一时机，
+// 避免「足量首帧 → 精简回跳」的闪动
+applyMotionLevel(loadMotionLevel());
 
 /** Captures the App-scoped message instance so `notify.*` calls work app-wide. */
 function MessageBridge() {

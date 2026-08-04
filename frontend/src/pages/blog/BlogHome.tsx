@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Button, Empty, Space, Spin, Tag, Typography } from 'antd';
-import { Link } from 'react-router-dom';
+import { Button, Empty, Space, Tag, Typography } from 'antd';
+import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
 import * as kbsApi from '@/api/kbs';
@@ -9,14 +9,31 @@ import type { PublicKB, PublicKBCategoryGroup } from '@/types';
 import { resolveTagColor } from '@/utils/tagColor';
 import HeroQuoteRotator from '@/components/blog/HeroQuoteRotator';
 import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
+import { isPlainLeftClick, navigateWithTransition } from '@/utils/routeTransition';
 
 const { Text } = Typography;
 
 function KBCard({ kb }: { kb: PublicKB }) {
+  const navigate = useNavigate();
   return (
     <Link
       to={`/kb/${encodeURIComponent(kb.slug)}`}
       className="jz-book jz-reveal"
+      onClick={(e) => {
+        // 一镜到底：书卡标签 → KB 页头标题的共享元素过渡（View Transition）。
+        // 修饰键/中键交还浏览器默认行为；KB 名/accent 经 route state 先行，
+        // 目标页在数据落地前即可渲染页头壳承接（KBPostsPage routeSeed）。
+        if (!isPlainLeftClick(e.nativeEvent)) return;
+        e.preventDefault();
+        const label = (e.currentTarget as HTMLElement).querySelector<HTMLElement>('.jz-book-label');
+        navigateWithTransition(
+          () =>
+            navigate(`/kb/${encodeURIComponent(kb.slug)}`, {
+              state: { kbName: kb.name, kbAccent: kb.accent_color || null },
+            }),
+          { el: label, name: 'jz-kb-hero' },
+        );
+      }}
       style={
         {
           ['--jz-book-accent' as string]: kb.accent_color || 'var(--jz-accent)',
@@ -86,9 +103,17 @@ export default function BlogHome() {
   ) : null;
 
   if (groups === null) {
+    // 骨架保持书卡网格几何，数据落地不跳版（shimmer 见 theme.css .jz-skel）
     return (
-      <div style={{ display: 'grid', placeItems: 'center', minHeight: 300 }}>
-        <Spin />
+      <div className="jz-kb-category-grid" aria-busy="true" aria-label="加载中">
+        {Array.from({ length: 6 }, (_, i) => (
+          <div key={i} className="jz-book jz-book-skel" aria-hidden>
+            <div className="jz-skel jz-skel-title" />
+            <div className="jz-skel jz-skel-line" />
+            <div className="jz-skel jz-skel-line" style={{ width: '78%' }} />
+            <div className="jz-skel jz-skel-line" style={{ width: '42%', marginTop: 26 }} />
+          </div>
+        ))}
       </div>
     );
   }

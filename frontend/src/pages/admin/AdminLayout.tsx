@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
 import { StarOutlined } from '@ant-design/icons';
 /* 自制 SF 分层系列（市场标准字形 + 单色双层渲染，2026-06-06 定稿） */
@@ -16,7 +16,9 @@ import {
   JzTrashIcon,
   JzUserGroupIcon,
 } from '@/components/common/JzIcon';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
+import { signalRouteReady } from '@/utils/routeTransition';
 import { useAuthStore } from '@/stores/auth';
 import GlobalSearch from '@/components/common/GlobalSearch';
 import QuickSwitcher from '@/components/common/QuickSwitcher';
@@ -57,6 +59,11 @@ export default function AdminLayout() {
     if (typeof window !== 'undefined' && window.innerWidth < 992) {
       setSiderCollapsed(true);
     }
+  }, [location.pathname]);
+
+  // 路由级 VT 的集中 ready 信号（与 BlogLayout 同款；TransitionLink 导航）
+  useLayoutEffect(() => {
+    signalRouteReady();
   }, [location.pathname]);
 
   useEffect(() => {
@@ -106,6 +113,10 @@ export default function AdminLayout() {
 
   return (
     <Layout className="jz-admin-glass jz-glass" style={{ minHeight: '100vh' }}>
+      {/* 键盘 Tab 首站：跳过侧栏/顶栏直达正文（.jz-skip-link 仅聚焦时显形） */}
+      <a className="jz-skip-link" href="#jz-main">
+        跳到正文
+      </a>
       <Sider
         width={232}
         breakpoint="lg"
@@ -119,7 +130,7 @@ export default function AdminLayout() {
             v0.9.4 deletion of the explicit ``查看博客`` menu item makes
             this the only "leave-admin" anchor, so keep the click target
             generous and the aria label descriptive. */}
-        <Link
+        <TransitionLink
           to="/"
           className="jz-admin-brand"
           style={{ color: 'inherit', textDecoration: 'none' }}
@@ -131,7 +142,7 @@ export default function AdminLayout() {
             <div className="jz-admin-brand-name">简斋</div>
             <div className="jz-admin-brand-sub">个人空间</div>
           </div>
-        </Link>
+        </TransitionLink>
         <Menu
           mode="inline"
           selectedKeys={[selectedKey]}
@@ -147,7 +158,7 @@ export default function AdminLayout() {
                 <JzDashboardIcon size={MENU_ICON_SIZE} />,
                 'dashboard',
               ),
-              label: <Link to="/admin">工作台</Link>,
+              label: <TransitionLink to="/admin">工作台</TransitionLink>,
             },
             {
               key: 'kbs',
@@ -155,7 +166,7 @@ export default function AdminLayout() {
                 <JzKbIcon size={MENU_ICON_SIZE} />,
                 'kb',
               ),
-              label: <Link to="/admin/kbs">知识库</Link>,
+              label: <TransitionLink to="/admin/kbs">知识库</TransitionLink>,
             },
             {
               key: 'graph',
@@ -163,7 +174,7 @@ export default function AdminLayout() {
                 <JzGraphIcon size={MENU_ICON_SIZE} />,
                 'graph',
               ),
-              label: <Link to="/admin/graph">知识图谱</Link>,
+              label: <TransitionLink to="/admin/graph">知识图谱</TransitionLink>,
             },
               ]
               : []),
@@ -173,7 +184,7 @@ export default function AdminLayout() {
                 <StarOutlined style={{ fontSize: MENU_ICON_SIZE }} />,
                 'star',
               ),
-              label: <Link to="/admin/favorites">收藏</Link>,
+              label: <TransitionLink to="/admin/favorites">收藏</TransitionLink>,
             },
             ...(user?.is_staff
               ? [
@@ -183,7 +194,7 @@ export default function AdminLayout() {
                 <JzExportIcon size={MENU_ICON_SIZE} />,
                 'exports',
               ),
-              label: <Link to="/admin/exports">导出</Link>,
+              label: <TransitionLink to="/admin/exports">导出</TransitionLink>,
             },
             {
               key: 'trash',
@@ -191,7 +202,7 @@ export default function AdminLayout() {
                 <JzTrashIcon size={21} />, // viewBox 已裁至字形边界，21px 满框居中
                 'trash',
               ),
-              label: <Link to="/admin/trash">回收站</Link>,
+              label: <TransitionLink to="/admin/trash">回收站</TransitionLink>,
             },
             {
               key: 'ai',
@@ -199,7 +210,7 @@ export default function AdminLayout() {
                 <JzAiIcon size={25} />,
                 'ai',
               ),
-              label: <Link to="/admin/ai">AI 助手</Link>,
+              label: <TransitionLink to="/admin/ai">AI 助手</TransitionLink>,
             },
               ]
               : []),
@@ -210,7 +221,7 @@ export default function AdminLayout() {
                     <JzUserGroupIcon size={31} />, // +30%，源稿叠 14 描边轻微加粗
                 'users',
                   ),
-                  label: <Link to="/admin/users">用户管理</Link>,
+                  label: <TransitionLink to="/admin/users">用户管理</TransitionLink>,
                 }]
               : []),
             ...(user?.is_superuser
@@ -221,7 +232,7 @@ export default function AdminLayout() {
                       <JzArchitectureIcon size={MENU_ICON_SIZE} />,
                 'overview',
                     ),
-                    label: <Link to="/admin/overview">架构总览</Link>,
+                    label: <TransitionLink to="/admin/overview">架构总览</TransitionLink>,
                   },
                 ]
               : []),
@@ -236,7 +247,7 @@ export default function AdminLayout() {
                     <JzQuoteIcon size={MENU_ICON_SIZE} />,
                 'hero',
                   ),
-                  label: <Link to="/admin/hero">题记</Link>,
+                  label: <TransitionLink to="/admin/hero">题记</TransitionLink>,
                 }]
               : []),
             {
@@ -245,7 +256,7 @@ export default function AdminLayout() {
                 <JzProfileIcon size={28} />, // +20%，源稿已叠描边加粗
                 'profile',
               ),
-              label: <Link to="/admin/profile">个人资料</Link>,
+              label: <TransitionLink to="/admin/profile">个人资料</TransitionLink>,
             },
             // 「查看博客」菜单项已删除（v0.9.4）；点击左上角「簡」logo 直返首页。
           ]}
@@ -287,7 +298,7 @@ export default function AdminLayout() {
             </Space>
           </div>
         </Header>
-        <Content className="jz-fade-in jz-admin-content">
+        <Content id="jz-main" tabIndex={-1} className="jz-fade-in jz-admin-content">
           <Outlet />
         </Content>
       </Layout>

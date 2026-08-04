@@ -10,7 +10,7 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
-import { Link } from 'react-router-dom';
+import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 import {
   getPublicTagEntries,
@@ -61,13 +61,13 @@ function TagEntriesBody({
           <time dateTime={p.published_at} className="jz-tagcloud-post-date">
             {dayjs(p.published_at).format('YYYY-MM-DD')}
           </time>
-          <Link
+          <TransitionLink
             to={`/posts/${encodeURIComponent(p.slug)}`}
             onClick={onNavigate}
             className="jz-archive-title"
           >
             {p.title}
-          </Link>
+          </TransitionLink>
         </li>
       ))}
     </ul>

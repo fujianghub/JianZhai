@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button, Empty, Select, Spin, Tooltip, Typography } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
+import { burstAtPointer } from '@/utils/inkBurst';
 import * as kbsApi from '@/api/kbs';
 import * as docsApi from '@/api/docs';
 import { formatApiError } from '@/api/client';
@@ -95,7 +96,7 @@ export default function BlogKbNavPanel({
     try {
       await kbsApi.updateKBSortMode(tree.id, mode);
       await reloadTree();
-      message.success('排序方式已更新');
+      // 反馈就地化：Select 已显示新值、列表随即重排，成功 toast 与可见状态重复
     } catch (err) {
       message.error(formatApiError(err, '更新排序失败'));
     }
@@ -112,7 +113,9 @@ export default function BlogKbNavPanel({
 
   async function handleToggleFavorite(doc: PublicPost) {
     try {
-      await docsApi.toggleDocumentFavorite(doc.id);
+      const { is_favorited } = await docsApi.toggleDocumentFavorite(doc.id);
+      // 加入收藏 → 星标处缃金墨点迸发（取消不庆祝；reduce/档位内部自裁决）
+      if (is_favorited) burstAtPointer();
       await reloadTree();
     } catch (err) {
       message.error(formatApiError(err, '收藏操作失败'));

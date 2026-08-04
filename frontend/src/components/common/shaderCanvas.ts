@@ -22,6 +22,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { Renderer, Triangle, Program, Mesh } from 'ogl';
+import { currentMotionLevel, prefersReducedMotion } from '@/utils/motionPref';
 
 const VERTEX = /* glsl */ `
   attribute vec2 uv;
@@ -60,9 +61,7 @@ export function useShaderCanvas(
     const canvas = ref.current;
     if (!canvas) return;
 
-    const reduced =
-      typeof window.matchMedia === 'function' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const reduced = prefersReducedMotion();
     const baseDpr = Math.min(window.devicePixelRatio || 1, 2);
 
     // remounting on the same canvas (StrictMode) — keep its context alive
@@ -114,7 +113,9 @@ export function useShaderCanvas(
     // backing-store resolution (the shader's only real cost lever), sustained
     // smoothness recovers it. Hysteresis + cooldown prevent ping-pong.
     const DPR_LEVELS = [1, 0.8, 0.66] as const;
-    let level = 0;
+    // 动效档位「适中」钉最低档（与 2D 脚手架同规；档位切换由 AmbientStage 重挂）
+    const minLevel = currentMotionLevel() === 'medium' ? DPR_LEVELS.length - 1 : 0;
+    let level = minLevel;
     let emaDt = 1 / 60;
     let adaptClock = 0;
     let goodStreak = 0;
@@ -124,6 +125,7 @@ export function useShaderCanvas(
       (renderer as unknown as { dpr: number }).dpr = Math.max(1, baseDpr * DPR_LEVELS[level]);
       resize();
     }
+    if (minLevel > 0) applyLevel();
 
     function stepAdaptive(rawDt: number, dt: number) {
       if (rawDt < 0.25) emaDt += (rawDt - emaDt) * 0.06;
@@ -136,7 +138,7 @@ export function useShaderCanvas(
         applyLevel();
         goodStreak = 0;
         cooldown = 2.5;
-      } else if (emaDt < 1 / 55 && level > 0) {
+      } else if (emaDt < 1 / 55 && level > minLevel) {
         goodStreak++;
         if (goodStreak >= 8) {
           level--;

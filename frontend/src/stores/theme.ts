@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { flushSync } from 'react-dom';
+import { prefersReducedMotion } from '@/utils/motionPref';
 
 export type ThemeMode = 'light' | 'dark' | 'starry' | 'deepsea' | 'springwater' | 'wintersnow';
 
@@ -84,14 +85,6 @@ interface ViewTransitionLike {
 type DocWithVT = Document & {
   startViewTransition?: (cb: () => void) => ViewTransitionLike;
 };
-
-function prefersReducedMotion(): boolean {
-  return (
-    typeof window !== 'undefined' &&
-    typeof window.matchMedia === 'function' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
-}
 
 /* ── 分层错峰（J/L cut）──
    默认溶解时给「玻璃外壳」「顶栏」独立的 view-transition-name，让背景先变、

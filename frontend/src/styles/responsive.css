@@ -59,3 +59,14 @@
     color: var(--glass-text, var(--jz-text));
   }
 }
+
+/* ── 导出实况胶囊：窄屏贴边拉通（2026-08-03）── */
+@media (max-width: 720px) {
+  .jz-export-capsule-stack {
+    left: 12px;
+    right: 12px;
+    bottom: 12px;
+    max-width: none;
+  }
+  .jz-export-capsule { font-size: 12px; }
+}
