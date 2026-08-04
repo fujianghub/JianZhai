@@ -50,8 +50,20 @@ canvas 之上的「近景」动效，全部尊重 `prefers-reduced-motion`：
 
 - **顶栏滚动态**：`hooks/useScrolled.ts`（rAF 节流）→ `.blog-header.is-scrolled`（blur 16px + 底色变实 + 纵深影；双金线书口线保留）。
 - **滚动显现**：`hooks/useRevealOnScroll.ts`（selector+bindKey 范式）——标记 `.jz-reveal` 的元素入视口获 `.is-in`，批内 `--jz-reveal-d` 阶梯。**用 animation（`fill: backwards`）而非 transition**：播完不残留动画值，hover 的 transform/transition 不被劫持（`fill: both` 的终帧 transform 会永久压住 `:hover`）。现接首页 KB 网格，归档/收藏可按需扩展。
-- **玻璃 spotlight**：`PointerSpotlight.tsx` 全局单例委托（rAF 节流 mousemove），对 `.jz-book`/`.ant-card.jz-card` 写 `--jz-mx/--jz-my` + `.jz-spot-on`；CSS 各在 book-card.css / theme.css（`@media (hover:hover) and (pointer:fine)` 圈定）。新卡片类型加进 `SPOT_SELECTOR` + 补对应 `::after` 即可。
+- **玻璃 spotlight**：`PointerSpotlight.tsx` 全局单例委托（rAF 节流 mousemove），对 `.jz-book`/`.ant-card.jz-card`/`.jz-feature-card` 写 `--jz-mx/--jz-my` + `.jz-spot-on`；CSS 各在 book-card.css / theme.css（`@media (hover:hover) and (pointer:fine)` 圈定）。新卡片类型加进 `SPOT_SELECTOR` + 补对应 `::after` 即可。2026-08-04 起卡片另有**指针边缘光**（`::before` mask 双层异或抠 1px 环、accent 光随指针方位游走；`.jz-book` 的 `::before` 被 accent 色条占用不参与）；光斑/边缘光在 rAF 回调里经 `decorativeMotionEnabled()` 裁决（reduce / 档位适中即关）。
 - **light/dark 呼吸背景**：布局三枚光晕 64s 缓漂。**关键坑**：基样 `.jz-*-glass.ant-layout` 的 `background: …!important` **简写把后置普通 `background-image` 长手全部压死**（布局光晕曾长期是死代码，computed `none`）——复活须 `!important` 长手；动画须 `@property` 注册 `--jz-bg-x/y` 从 `var()` 内部驱动（keyframes 直接动 !important 声明无效）。
+
+### 动效令牌 · 档位 · 路由连续性（2026-08-04 批次）
+
+- **动效令牌（tokens.css）**：`--jz-dur-fast(120ms)/base(200ms)/slow(350ms)/epic(850ms)` + `--jz-ease-standard/decel/spring/vt`。弹簧经 `@supports (transition-timing-function: linear(0,1))` 升级为 **`linear()` 真弹簧采样**（过冲 ~10% + 一次回摆；旧浏览器留 cubic-bezier(.34,1.56,.64,1) 近似）。**新动效一律引用令牌**，勿再写裸 cubic-bezier / 硬编码时长（旧值散落曾致同一弹簧三种书写、`0.15s` vs `140/160ms` 同义分裂）。
+- **动效偏好唯一裁决点 `utils/motionPref.ts`**：`prefersReducedMotion()`（系统 reduce **或**用户档位「精简」）与 `decorativeMotionEnabled()`（档位「适中」即关装饰）。**JS 侧勿再内联 `matchMedia('(prefers-reduced-motion…')`**——theme store / AmbientStage / ambientCanvas / shaderCanvas / useRevealOnScroll 曾五处重复，已全部收敛改引。
+- **动效档位（HarmonyOS 式三档）**：主题菜单尾部「动效 · 足量/适中/精简」，`setMotionLevel` 持久化 localStorage `jianzhai:motionLevel` + 落根元素 `data-motion`（full 不落保持零痕迹），main.tsx 首帧前应用防闪动。适中=canvas 质量钉 `AMBIENT_LEVELS` 最低档（脚手架初始化读一次，AmbientStage 以 `key` 含档位重挂场景）+ 关光斑/粒子；精简=reduce 语义，纯 CSS 动画由 theme.css 尾部 **`[data-motion='min']` 伴生规则**承接（media query 无法与属性选择器 OR，新增 reduce 块须同步补伴生条目）。React 反应式消费走 `useMotionLevel()`（useSyncExternalStore）。
+- **路由级 View Transition**：`utils/routeTransition.ts`——`navigateWithTransition(doNavigate, shared?)` 包 VT，目标页首帧 `signalRouteReady()` 放行 new 快照（**两 Layout 按 `location.pathname` 集中发信号**），600ms 超时兜底防懒 chunk 冻屏；reduce/精简档入口瞬切。**内链默认用 `components/common/TransitionLink`**（`Link` 等价替身：左键同窗走 VT，修饰键/中键/`target` 放行）——博客 5 页面 + 后台三入口已全量替换。**共享元素**：源侧只给被点击那一个元素写 inline `view-transition-name`（主题 VT 同教训：同名两处=整场静默跳过），目标侧由 `:root.jz-vt-route` 前缀的 CSS 打名；现有一对 `jz-kb-hero`（书卡标签→KB 页头标题，KB 名/accent 经 route state 先行渲染页头壳承接）。
+- **交互粒子 `utils/inkBurst.ts`**：缃金墨点迸发，仅「加入收藏」成功触发（取消不庆祝）；坐标取最近一次 pointerdown（>4s 过期即静默，键盘操作不放）；一次性 DOM + keyframes 播完自删，不进 rAF 循环；`decorativeMotionEnabled` 门控。**克制约定沿用彩蛋哲学：一个操作一种粒子，勿加多。**
+- **导出实况胶囊**：`stores/exportWatch.ts`（观察池 + 单 interval 2.5s 轮询 `getExport`，全部终态自停；done 停留 60s 自动消失、failed 留驻）+ `components/common/ExportCapsule.tsx`（App 级左下角，右下归 AI FAB；底色走 `--jz-overlay-surface` 实底令牌；≤720px 贴边拉通见 responsive.css）。ExportDialog 创建任务后 `watchExport(task)` 注册。
+- **骨架屏**：`.jz-skel`（+`.jz-skel-title/-line`，theme.css）——shimmer 扫光走 `--jz-text` 混色令牌六主题自适应，reduce / `[data-motion='min']` 静止不闪（骨架仍显示）。博客端三处（首页书卡网格复用 `.jz-book` 真实几何 / KB 列表行 / 文章 860 版心），**骨架保持目标布局几何、落地不跳版**，新增加载态照此办理勿回退居中 Spin。
+- **a11y 地基**：`.jz-sr-only` 工具类 + `.jz-skip-link`「跳到正文」（键盘 Tab 首站显形）在两 Layout 顶部，Content 挂 `id="jz-main"` + `tabIndex={-1}`。
+- **同名 keyframes 单源**：AI FAB 呼吸 `jz-ai-fab-pulse` 唯一定义在 editor-ui.css（tiptap.css 曾另有一份 3s 同名、因加载序恒被覆盖的死代码，2026-08-04 已删并留注释）——**跨文件重复定义 keyframes 是静默陷阱，后加载者赢**。
 
 ### 主题适配自查清单（新增组件/页面照此核对）
 
