@@ -72,14 +72,16 @@ const STACK: StackLayer[] = [
       { name: 'Django 5.2', hint: 'Web 框架' },
       { name: 'DRF 3.15', hint: 'REST API' },
       { name: 'PostgreSQL 14+', hint: '主存储 + tsvector' },
-      { name: 'Redis 5+', hint: '缓存 / Celery broker' },
-      { name: 'Celery 5.4', hint: '搜索 / 链接 / 导出' },
-      { name: 'apps.ai', hint: 'Claude 代理 · SSE' },
-      { name: 'anthropic', hint: '可选 SDK' },
+      { name: 'Redis 5+', hint: '缓存 / Celery broker / 验证码答案' },
+      { name: 'Celery 5.4', hint: '搜索 / 链接 / 导出 / 远程图镜像' },
+      { name: 'apps.ai', hint: '多供应商 AI 代理 · SSE' },
+      { name: 'anthropic + openai SDK', hint: 'Claude / 通义千问 DashScope' },
       { name: 'jieba', hint: '中文分词' },
-      { name: 'Playwright', hint: 'PDF 导出' },
+      { name: 'Playwright', hint: 'PDF 导出 + KaTeX/Mermaid 离线渲染' },
       { name: 'python-docx', hint: 'Word 导出' },
+      { name: 'mammoth + LibreOffice', hint: 'Word / PPT 保真导入' },
       { name: 'markdown-it-py', hint: 'Markdown / HTML 解析' },
+      { name: 'Pillow', hint: '缩略图 + 拼图滑块验证码生成' },
     ],
   },
   {
@@ -88,17 +90,19 @@ const STACK: StackLayer[] = [
     tone: 'ai',
     tagClass: 'jz-stack-tag--frontend',
     items: [
-      { name: 'React 18 + TS' },
+      { name: 'React 18 + TS 5' },
       { name: 'Vite 5', hint: '构建 / 开发代理' },
       { name: 'Ant Design 5', hint: 'UI 组件库' },
       { name: 'Zustand', hint: 'auth / theme' },
       { name: 'React Router v6' },
-      { name: 'Tiptap 3', hint: 'Rich / MD / HTML 三模式' },
+      { name: 'Tiptap 3', hint: '富文本编辑器（ProseMirror 内核）' },
+      { name: 'CodeMirror 6', hint: 'Markdown 源码编辑器' },
+      { name: 'KaTeX 0.16 + Mermaid 11', hint: '公式 / 图表渲染' },
+      { name: 'markdown-it', hint: '阅读端渲染（含章节编号 / [TOC]）' },
       { name: 'HtmlPostReader', hint: 'HTML 文章原位阅读' },
       { name: 'react-force-graph-2d', hint: '知识图谱' },
       { name: 'dompurify', hint: '公开端 HTML 净化' },
       { name: 'diff-match-patch', hint: '版本 diff' },
-      { name: 'plantuml-encoder', hint: 'PlantUML 嵌入' },
       { name: 'JzIcon', hint: '自制 SVG 图标库' },
     ],
   },
@@ -108,11 +112,14 @@ const STACK: StackLayer[] = [
     tone: 'kb',
     tagClass: 'jz-stack-tag--infra',
     items: [
-      { name: 'Docker Compose', hint: 'postgres + redis' },
+      { name: 'Docker Compose', hint: '本地 postgres + redis；生产 6 容器 + Caddy HTTPS' },
       { name: 'Session Auth', hint: 'Django + CSRF' },
-      { name: 'owner 多租户', hint: 'scope_queryset' },
-      { name: '乐观并发 version', hint: 'PATCH expected_version' },
-      { name: 'MEDIA_ROOT', hint: '本地附件' },
+      { name: '登录三因子', hint: '密码 + 邮箱匹配 + 服务端拼图滑块验证码' },
+      { name: '四角色 RBAC', hint: 'root / admin / user / anon；作者共享内容池（scope_queryset 按 is_staff）' },
+      { name: '友邻闸门', hint: 'PublicOrLoginGated；SITE_REQUIRE_LOGIN 默认开' },
+      { name: '受众 + ReadGrant', hint: '朋友圈式定向 × 阅读授权白名单，两道闸取 AND' },
+      { name: '乐观并发 version', hint: 'PATCH expected_version，冲突 409' },
+      { name: 'MEDIA_ROOT', hint: '本地附件；exports/ 独立目录鉴权下载' },
       { name: 'PostgreSQL GIN', hint: '全文搜索' },
       { name: 'pnpm + uv', hint: '依赖管理' },
     ],
@@ -130,25 +137,37 @@ interface FeatureModule {
 const FEATURE_MODULES: FeatureModule[] = [
   {
     title: '知识库与目录',
-    desc: 'KB / 文件夹嵌套、树拖拽排序、软删除回收站、封面与主题色',
+    desc: 'KB 大类 / 文件夹嵌套、树拖拽排序、置顶收藏、软删除回收站、封面与主题色',
     icon: <JzKbIcon size={24} />,
     tone: 'kb',
   },
   {
     title: '文档与编辑器',
-    desc: 'Rich · Markdown · HTML 三模式；Tiptap 3 扩展（数学、分栏、DocCard、Mermaid 等）',
+    desc: 'Tiptap 3 富文本 · CodeMirror 6 Markdown · HTML 三编辑器；章节编号 + [TOC]；数学 / 分栏 / DocCard / Mermaid',
     icon: <JzComposeIcon size={24} />,
     tone: 'edit',
   },
   {
+    title: '权限与可见性',
+    desc: '四角色 RBAC 共享内容池；受众定向（朋友圈式）× ReadGrant 阅读白名单两道闸',
+    icon: <JzUserGroupIcon size={24} />,
+    tone: 'users',
+  },
+  {
+    title: '登录安全',
+    desc: '三因子：密码 + 邮箱匹配 + 服务端拼图滑块验证码；默认友邻可见（匿名跳登录）',
+    icon: <JzOverviewIcon size={24} />,
+    tone: 'dashboard',
+  },
+  {
     title: '历史版本',
-    desc: '快照 diff / 回滚；每文档保留 100 个版本',
+    desc: '快照 diff / 回滚；乐观并发 expected_version，冲突 409 + 本地草稿备份',
     icon: <JzClockIcon size={24} />,
     tone: 'version',
   },
   {
     title: '双向链接',
-    desc: '@提及解析、反向链接、doc 悬浮卡',
+    desc: '@提及解析、反向链接、doc 悬浮卡；语雀式三形态（链接 / 标题 / 卡片）',
     icon: <JzBacklinkIcon size={24} />,
     tone: 'link',
   },
@@ -165,21 +184,27 @@ const FEATURE_MODULES: FeatureModule[] = [
     tone: 'tags',
   },
   {
+    title: '导入',
+    desc: 'Word / PPT 保真导入（LibreOffice 管线）· 语雀 MD 兼容层 · 本地图片整组打包',
+    icon: <JzAttachmentIcon size={24} />,
+    tone: 'attach',
+  },
+  {
     title: '导出',
-    desc: 'MD / HTML / PDF / DOCX / 整站 zip；Celery 异步',
+    desc: '5 格式（MD / HTML / PDF / DOCX / 整站）；三层目录体系 + KaTeX / Mermaid 离线渲染；Celery 异步',
     icon: <JzExportIcon size={24} />,
     tone: 'exports',
   },
   {
     title: '博客前台',
-    desc: '匿名阅读；4 主题 + 纸张样式；RSS；slug 按 KB 消歧 ?kb=',
+    desc: '默认友邻可见（需登录）；6 主题 + 阅读排版定制 / 专注模式 / 位置记忆；RSS；?kb= slug 消歧',
     icon: <JzBlogIcon size={24} />,
     tone: 'hero',
   },
   {
-    title: '附件与媒体',
-    desc: '上传 / 媒体库 / PDF 内联预览；单文件 2GB',
-    icon: <JzAttachmentIcon size={24} />,
+    title: '附件与阅读器',
+    desc: '上传 / 媒体库；PDF · PPT 内联阅读器；单文件 2GB',
+    icon: <JzFolderOpenIcon size={24} />,
     tone: 'attach',
   },
   {
@@ -190,13 +215,19 @@ const FEATURE_MODULES: FeatureModule[] = [
   },
   {
     title: 'AI 助手',
-    desc: '多供应商（Claude + 通义千问）· 模板 · 多轮对话；/admin/ai 配置与用量',
+    desc: '多供应商（Claude + 通义千问）· 模板 · 多轮对话 · 日预算；/admin/ai 配置与用量',
     icon: <JzAiIcon size={24} />,
     tone: 'ai',
   },
   {
-    title: '视觉系统',
-    desc: '玄黑玻璃后台 + 宣纸博客；JzIcon · PWA · 印章 favicon',
+    title: '题记',
+    desc: '名句轮播（朝代 / 作者 / 篇名）· 随机播放 · dnd-kit 拖拽排序',
+    icon: <JzModelIcon size={24} />,
+    tone: 'star',
+  },
+  {
+    title: '视觉与动效',
+    desc: '6 主题玻璃拟态 + 电影级主题过渡；动效令牌 + 路由转场 + 三档位；JzIcon · PWA',
     icon: <JzArchitectureIcon size={24} />,
     tone: 'overview',
   },
@@ -365,13 +396,15 @@ export default function SystemOverviewPage() {
             架构总览
           </Title>
           <Paragraph type="secondary" style={{ marginBottom: 12, maxWidth: 920 }}>
-            简斋 / JianZhai v0.9.10 — Monorepo「个人知识库 + 公开博客」。
+            简斋 / JianZhai v0.9.10+ — Monorepo「个人知识库 + 公开博客」双形态合一。
             核心理念是<strong>一份内容两形态</strong>（<code>raw_content</code> 私人笔记 ·{' '}
-            <code>published_content</code> 发布版），三种编辑器（Rich / Markdown / HTML），
-            公开端支持 HTML 原位阅读；AI 全部走后端代理；多账号按 <code>owner</code> 隔离数据。
+            <code>published_content</code> 发布版），三种编辑器（Tiptap 富文本 / CodeMirror
+            Markdown / HTML），公开端支持 HTML 原位阅读；博客<strong>默认友邻可见</strong>
+            （匿名跳登录页）；四角色 RBAC，作者共享单一内容池，读者按受众定向 + ReadGrant
+            白名单两道闸过滤；AI 多供应商全部走后端代理。
           </Paragraph>
           <Space size={[8, 8]} wrap>
-            <Tag color="processing">v0.9.10</Tag>
+            <Tag color="processing">v0.9.10+</Tag>
             {info && (
               <>
                 <Tag icon={<CodeOutlined />}>Python {info.runtime.python}</Tag>
@@ -537,16 +570,17 @@ function ArchitectureSection() {
         <>
           <Paragraph type="secondary">
             最小心智模型：用户 → 前端 SPA → 后端 Django → PostgreSQL。
-            AI 为外部依赖（虚线），所有调用经后端代理；公开文章 slug 可用 <code>?kb=</code> 按知识库消歧。
+            AI 供应商（Claude / 通义千问）为外部依赖（虚线），所有调用经后端代理；
+            博客默认友邻可见，匿名访问跳登录页；公开文章 slug 可用 <code>?kb=</code> 按知识库消歧。
           </Paragraph>
           <MermaidDiagram source={SIMPLE_ARCH_DIAGRAM} />
         </>
       ) : (
         <>
           <Paragraph type="secondary">
-            四层结构：客户端 SPA → Vite 边缘代理 → Django 应用层（<strong>11</strong> 个 app + Celery worker）→
-            持久层（PG / Redis / 本地文件系统）。主路径上的光点表示同步 ORM；虚线为异步 / 匿名 / 外部 API。
-            鼠标悬停节点查看说明。
+            四层结构：客户端 SPA → 边缘代理（开发 Vite / 生产 Caddy）→ Django 应用层（<strong>11</strong> 个
+            app + Celery worker）→ 持久层（PG / Redis / 本地文件系统）。主路径上的光点表示同步 ORM；
+            虚线为异步 / 读者 / 外部 API。鼠标悬停节点查看说明。
           </Paragraph>
           <ArchitectureSVG />
         </>

@@ -160,14 +160,14 @@ export default function ArchitectureSVG() {
           lines={[
             ['React 18', 'TypeScript'],
             ['React Router v6', 'Zustand 状态'],
-            ['Ant Design 5', '主题 4 套'],
+            ['Ant Design 5', '主题 6 套'],
             ['axios + ensureCsrf()', 'Session Cookie'],
             ['─ 编辑器 ─', ''],
-            ['Tiptap', 'ProseMirror 内核'],
-            ['StarterKit · Table · TaskList', ''],
+            ['Tiptap 3 · CodeMirror 6', '富文本 / MD 源码'],
+            ['Table · 数学 · 分栏 · DocCard', ''],
             ['CodeBlock(lowlight) · Mermaid · KaTeX', ''],
             ['HtmlEditor · HtmlPostReader', ''],
-            ['SelectionAI · DocAIPanel', '三模式编辑'],
+            ['SelectionAI · DocAIPanel', '三编辑器'],
           ]}
         />
         <Box
@@ -176,7 +176,7 @@ export default function ArchitectureSVG() {
           w={320}
           h={260}
           title="公开阅读 · 博客前台"
-          tip="完全匿名，无需登录"
+          tip="默认友邻可见（SITE_REQUIRE_LOGIN）：匿名跳登录页；受众定向 + ReadGrant 白名单过滤"
           lines={[
             ['/', 'BlogHome'],
             ['/kb/:slug', 'KBPostsPage'],
@@ -196,7 +196,7 @@ export default function ArchitectureSVG() {
           w={170}
           h={240}
           title="Vite Dev · :3001"
-          tip="开发期反向代理；生产可换 Nginx"
+          tip="开发期反向代理；生产为 Caddy（HTTPS + SPA fallback）"
           lines={[
             ['/api/* → :8002', ''],
             ['/media/* → :8002', ''],
@@ -211,17 +211,17 @@ export default function ArchitectureSVG() {
           w={170}
           h={280}
           title="安全 / 权限"
-          tip="CSRF + Session + 速率限制 + DRF 权限类"
+          tip="CSRF + Session + 登录三因子（密码 + 邮箱匹配 + 拼图滑块验证码）+ 速率限制 + 四角色 RBAC"
           lines={[
             ['corsheaders', ''],
             ['CSRF_TRUSTED_ORIGINS', ''],
             ['X-CSRFToken header', ''],
-            ['Session Auth', ''],
+            ['Session + 登录三因子', ''],
+            ['PublicOrLoginGated', '友邻闸门'],
+            ['IsContentAuthor / IsRoot', ''],
             ['─ DRF Throttle ─', ''],
             ['anon 120/min', ''],
-            ['IsAuthenticated', ''],
-            ['IsStaffUser', ''],
-            ['IsSuperUser', ''],
+            ['login 10/min · captcha 30/min', ''],
             ['ai_write 30/min', ''],
           ]}
         />
@@ -247,7 +247,7 @@ export default function ArchitectureSVG() {
           <SubLabel x={577} y={142} text="apps/" />
 
           {/* 4 列 × 3 行的 app 网格；cell w=110 h=52，水平间距 8（保证最右列在 Django 盒内） */}
-          <AppCell x={577} y={150} label="accounts" desc="登录·权限·系统信息" />
+          <AppCell x={577} y={150} label="accounts" desc="三因子·RBAC·授权" />
           <AppCell x={695} y={150} label="knowledge" desc="KB · Folder · Doc" />
           <AppCell x={813} y={150} label="editor" desc="附件 · 上传" />
           <AppCell x={931} y={150} label="versioning" desc="快照·diff·回滚" />
@@ -257,9 +257,9 @@ export default function ArchitectureSVG() {
           <AppCell x={813} y={216} label="tags" desc="标签 · 多对多" />
           <AppCell x={931} y={216} label="comments" desc="文档级·段落级" />
 
-          <AppCell x={577} y={282} label="exporter" desc="MD/HTML/PDF/DOCX" />
+          <AppCell x={577} y={282} label="exporter" desc="5 格式 · 结构化命名" />
           <AppCell x={695} y={282} label="blog" desc="公开 API · slug 消歧" />
-          <AppCell x={813} y={282} label="ai" desc="Claude 代理 · SSE" />
+          <AppCell x={813} y={282} label="ai" desc="多供应商代理 · SSE" />
 
           {/* signal → on_commit → .delay() 说明区，留充足上边距避免压到第三行 */}
           <SubLabel x={577} y={362} text="post_save signal" />
@@ -302,27 +302,27 @@ export default function ArchitectureSVG() {
           />
           <TaskRow
             x={577}
-            y={622}
+            y={620}
             name="linking.sync_document_links"
             desc="正则解析 @[doc:id] → DocumentLink 重建"
           />
           <TaskRow
             x={577}
-            y={666}
+            y={662}
             name="exporter.run_export"
-            desc="Playwright(PDF) / python-docx / Jinja2 整站"
+            desc="Playwright(PDF) / python-docx / Jinja2 整站 · KaTeX/Mermaid 离线渲染"
           />
-          <text x={577} y={720} fontSize={11.5} fill="var(--jz-text-muted)">
-            并发 4 · 失败自动重试 · 导出任务串行避免内存峰值
-          </text>
-          <text x={577} y={740} fontSize={11.5} fill="var(--jz-text-muted)" fontStyle="italic">
+          <TaskRow
+            x={577}
+            y={704}
+            name="editor.mirror_document_images"
+            desc="导入文档的远程图并行镜像为本地附件"
+          />
+          <text x={577} y={756} fontSize={11.5} fill="var(--jz-text-muted)" fontStyle="italic">
             未启动 worker → 保存仍 OK；但搜索 / 双向链接索引不更新
           </text>
-          <text x={577} y={760} fontSize={11.5} fill="var(--jz-text-muted)">
-            celery -A jianzhai worker -l info
-          </text>
-          <text x={577} y={778} fontSize={11.5} fill="var(--jz-text-muted)" fontStyle="italic">
-            apps.ai → Anthropic API（仅后端，key 不暴露前端）
+          <text x={577} y={776} fontSize={11.5} fill="var(--jz-text-muted)" fontStyle="italic">
+            apps.ai → Claude / 通义千问 API（仅后端，key 不暴露前端）
           </text>
         </Box>
 
@@ -342,9 +342,9 @@ export default function ArchitectureSVG() {
           <DBRow x={1092} y={148} table="document_version  (快照)" />
           <DBRow x={1092} y={172} table="document_link  (反向链接)" />
           <DBRow x={1092} y={196} table="attachment · tag · documenttag" />
-          <DBRow x={1092} y={220} table="comment · export_task" />
+          <DBRow x={1092} y={220} table="comment · export_task · hero" />
           <DBRow x={1092} y={244} table="ai_settings · ai_usage_log" />
-          <DBRow x={1092} y={268} table="auth_user · django_session" />
+          <DBRow x={1092} y={268} table="auth_user · user_tag · read_grant" />
 
           <SubLabel x={1092} y={308} text="索引 / 约束" />
           <text x={1092} y={326} fontSize={11.5} fill="var(--jz-text-muted)">
@@ -387,13 +387,13 @@ export default function ArchitectureSVG() {
           y={644}
           w={340}
           h={180}
-          title="MEDIA_ROOT · 本地文件系统"
+          title="本地文件系统"
           accent="#6b8e23"
-          tip="未引入对象存储；备份纳入 pg_dump + 文件夹打包"
+          tip="未引入对象存储；exports/ 刻意不在 media/ 下（鉴权下载，不被静态服出）"
           lines={[]}
         >
-          <DBRow x={1092} y={690} table="uploads/YYYY/MM/uuid.ext" />
-          <DBRow x={1092} y={720} table="exports/*.zip · *.pdf · *.docx" />
+          <DBRow x={1092} y={690} table="media/uploads/YYYY/MM/uuid.ext" />
+          <DBRow x={1092} y={720} table="exports/（独立目录 · 鉴权下载）" />
           <text x={1092} y={758} fontSize={11.5} fill="var(--jz-text-muted)">
             单文件上限 2 GB · Pillow 缩略图
           </text>
@@ -528,7 +528,7 @@ export default function ArchitectureSVG() {
           opacity={0.85}
         />
         <text x={343} y={408} fontSize={10.5} fill="var(--jz-text-muted)">
-          匿名读者
+          读者(需登录)
         </text>
 
         {/* ─── 动态光点 ───────────────────────────────────────── */}
@@ -597,7 +597,7 @@ export default function ArchitectureSVG() {
             strokeDasharray="4,3"
           />
           <text x={210} y={20} fontSize={11.5} fill="var(--jz-text)">
-            异步 / 匿名访问
+            异步 / 读者访问
           </text>
           <line x1={320} y1={16} x2={352} y2={16} stroke="var(--jz-accent)" strokeWidth={1.8} />
           <text x={360} y={20} fontSize={11.5} fill="var(--jz-text)">
