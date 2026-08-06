@@ -210,7 +210,7 @@ cd backend && python manage.py seed_architecture_kb
 | **导出功能大修** | 四维审计后 15 项落地：结构化默认命名（`大类-知识库-[标题\|N篇]-时间`）；PDF 书签树（Chromium `outline` 须与 `tagged` 同开）+ 页码 + 封面/目录页；docx 真 Heading 样式 + eastAsia 字体 + 图片内嵌 + 表格转真表格 + Word TOC 域；静态站 fail-closed（绝不回落 raw）+ XSS 修复 + 共享静态资源；布局块后端镜像；Celery 超时/日志/限流/去重/`cleanup_exports` 三段清理运维补齐；生产镜像补 Playwright（线上 PDF 此前必失败）。后端 498 + 前端 484 测试绿。2026-07-27 随镜像重建部署上线 |
 | **多篇导出三层目录体系** | PDF/Word 边栏层级书签（文档标题独占顶层、正文标题降一级嵌套）+ 卷首层次目录可点击 + 每篇开头本篇目录；跨篇同名标题锚点按 `d{id}-` 命名空间根治跳错篇；Word/模板导入的原生 `<h1-6>` HTML 文档接入同套锚点/书签/降级（标题渲染双通路）。真实数据实拍 107 条层级书签。后端 506 测试绿。2026-07-27 部署上线 |
 | **语雀 URL 腐蚀修复** | 语雀兼容 `_{4,}` 拆分正则无差别改写链接目标 URL 内的下划线串，富文本每保存一轮把破碎结构写回 `raw_content` 腐蚀一层（第 3 轮不动点）；修=`normalizeYuqueEmphasis` 入口掩码 `https?://` 段、出口还原（星号版同护），受损文档数据重建 + 纯显示层受害自愈；回归升五类（URL 免疫）。前端 488 测试绿。2026-07-28 推 main，2026-08-03 部署上线 |
-| **前端动效体系升级（Apple/鸿蒙对标）** | 动效令牌机器化（`--jz-dur-*`/`--jz-ease-*`，弹簧升级 `linear()` 真采样）+ 路由连续性转场（`TransitionLink` VT + 首页书卡→KB 共享元素过渡）+ 指针边缘光 + 收藏缃金墨点粒子 + 主题菜单「动效·足量/适中/精简」三档位 + 导出实况胶囊（跨页常驻可下载）+ 博客端骨架屏 + skip-link a11y 地基；收敛重复 `@keyframes` 与散落 `prefersReducedMotion`。前端 518 测试 + Playwright 双视口冒烟。2026-08-04 推 main，2026-08-06 部署上线 |
+| **前端动效体系升级（Apple/鸿蒙对标）** | 动效令牌机器化（`--jz-dur-*`/`--jz-ease-*`，弹簧升级 `linear()` 真采样）+ 路由连续性转场（`TransitionLink` VT + 首页书卡→KB 共享元素过渡）+ 指针边缘光 + 收藏缃金墨点粒子 + 主题菜单「动效·足量/适中/精简」三档位 + 导出实况胶囊（跨页常驻可下载）+ 博客端骨架屏 + skip-link a11y 地基；收敛重复 `@keyframes` 与散落 `prefersReducedMotion`。前端 518 测试 + Playwright 双视口冒烟。2026-08-04 推 main，2026-08-06 部署上线（同日 hotfix `2da4a9a`：批次误删 tiptap.css 一个右花括号，prod 单 bundle 下其后 10 个样式文件被 CSS 嵌套语义吞并致线上书卡/阅读页样式失效——dev 每文件独立 `<style>` 无症状；补回后重部署恢复） |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
