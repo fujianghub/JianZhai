@@ -45,6 +45,7 @@ import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import UploadDropZone from '@/components/common/UploadDropZone';
 import {
   collectPickedFiles,
+  notifyImportResult,
   runChunkedImport,
   skippedSummary,
   UPLOAD_ACCEPT,
@@ -88,6 +89,9 @@ export default function KBWorkspace() {
   const mdInputRef = useRef<HTMLInputElement | null>(null);
   const bundleImagesInputRef = useRef<HTMLInputElement | null>(null);
   const zipInputRef = useRef<HTMLInputElement | null>(null);
+  // 导入目标文件夹（null = KB 根目录）。所有上传入口共用：文件/文件夹选择器、
+  // 拖拽、带图 MD、ZIP；树上文件夹行的「上传到此文件夹」按钮切换它后直接拉起选择器。
+  const [importTargetId, setImportTargetId] = useState<number | null>(null);
   const [docForm] = Form.useForm<{
     title: string;
     folder?: number | null;
@@ -171,6 +175,17 @@ export default function KBWorkspace() {
     ? flattenFolders(tree).map((f) => ({ value: f.id, label: f.label }))
     : [];
 
+  // 目标文件夹被删除/移出后自动回退根目录，避免上传时对着已不存在的 id 404。
+  useEffect(() => {
+    if (
+      importTargetId !== null &&
+      tree &&
+      !flattenFolders(tree).some((f) => f.id === importTargetId)
+    ) {
+      setImportTargetId(null);
+    }
+  }, [tree, importTargetId]);
+
   async function handleCreateDoc() {
     let values;
     try {
@@ -229,7 +244,7 @@ export default function KBWorkspace() {
       const result = await runChunkedImport(
         collected.items,
         kbId,
-        null,
+        importTargetId,
         {
           onProgress: (loaded, total) => setBatchProgress({ loaded, total }),
           onChunkDone: async () => {
@@ -239,16 +254,7 @@ export default function KBWorkspace() {
         undefined,
         importOptions,
       );
-      const msg = `已导入 ${result.created.length} 个文件` +
-        (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
-        (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
-      if (result.errors.length) {
-        message.warning(msg);
-        // Surface the first few errors so the user knows what to retry.
-        console.warn('batch import errors:', result.errors);
-      } else {
-        message.success(msg);
-      }
+      notifyImportResult(result);
     } finally {
       setImporting(false);
       setBatchProgress(null);
@@ -261,7 +267,7 @@ export default function KBWorkspace() {
   async function runImport(
     fn: () => Promise<{
       created: unknown[];
-      errors: unknown[];
+      errors: Array<{ name: string; detail: string }>;
       folders_created: number;
       skipped?: string[];
     }>
@@ -270,18 +276,7 @@ export default function KBWorkspace() {
     setBatchProgress({ loaded: 0, total: 1 });
     try {
       const r = await fn();
-      const msg =
-        `已导入 ${r.created.length} 个文件` +
-        (r.folders_created ? ` · 创建 ${r.folders_created} 个文件夹` : '') +
-        (r.errors.length ? ` · ${r.errors.length} 个失败` : '') +
-        (r.skipped?.length ? ` · 跳过 ${r.skipped.length} 个` : '');
-      if (r.errors.length || r.skipped?.length) {
-        message.warning(msg);
-        if (r.errors.length) console.warn('import errors:', r.errors);
-        if (r.skipped?.length) console.warn('import skipped:', r.skipped);
-      } else {
-        message.success(msg);
-      }
+      notifyImportResult(r);
     } catch (err) {
       message.error(formatApiError(err, '导入失败'));
     } finally {
@@ -323,7 +318,7 @@ export default function KBWorkspace() {
       importBatch(
         items,
         kbId,
-        null,
+        importTargetId,
         (loaded, total) => setBatchProgress({ loaded, total }),
         importOptions,
       )
@@ -338,7 +333,7 @@ export default function KBWorkspace() {
       importZip(
         file,
         kbId,
-        null,
+        importTargetId,
         (loaded, total) => setBatchProgress({ loaded, total }),
         importOptions,
       )
@@ -574,6 +569,27 @@ export default function KBWorkspace() {
                   onClick: () => setNewFolderModal(true),
                 },
                 { type: 'divider' as const },
+                {
+                  key: 'opt-target',
+                  label: (
+                    <span
+                      onClick={(e) => e.stopPropagation()}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                    >
+                      <Text type="secondary" style={{ fontSize: 12 }}>上传到</Text>
+                      <Select
+                        size="small"
+                        allowClear
+                        placeholder="（根目录）"
+                        value={importTargetId ?? undefined}
+                        onChange={(v) => setImportTargetId(v ?? null)}
+                        options={folderOptions}
+                        style={{ minWidth: 200 }}
+                        getPopupContainer={(t) => t.parentElement as HTMLElement}
+                      />
+                    </span>
+                  ),
+                },
                 {
                   key: 'import-files',
                   icon: <CloudUploadOutlined />,
@@ -930,6 +946,14 @@ export default function KBWorkspace() {
             onCheckedChange={setChecked}
             onEditFolderTags={openFolderTagsModal}
             onExportFolder={batchMode ? undefined : (f) => setFolderExport(f)}
+            onUploadToFolder={
+              batchMode
+                ? undefined
+                : (f) => {
+                    setImportTargetId(f.id);
+                    batchInputRef.current?.click();
+                  }
+            }
             filterQuery={filterQuery}
             filterStatus={filterStatus}
             onTogglePin={batchMode ? undefined : handleTogglePin}

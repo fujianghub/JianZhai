@@ -298,6 +298,11 @@ if not DEBUG and _site_uses_https:
 # apps.editor.views.MAX_UPLOAD_SIZE). DATA_UPLOAD_MAX_MEMORY_SIZE bounds the
 # request body Django will parse, so it must clear the cap too.
 DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024 * 1024  # 2 GiB
+# Django's default of 100 files per request breaks folder imports: planUploadChunks
+# (frontend uploadBatch.ts) must send a doc+image folder as ONE request so the
+# server can rewrite ./images/x.png references, and such folders routinely exceed
+# 100 files.
+DATA_UPLOAD_MAX_NUMBER_FILES = 1000
 # In-memory buffer threshold ONLY — files larger than this stream to a temp
 # file on disk instead of being held in RAM. Deliberately kept small (NOT 1
 # GiB) so a big upload never balloons memory.

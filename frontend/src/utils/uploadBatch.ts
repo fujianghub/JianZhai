@@ -16,12 +16,14 @@
  * 每片完成后立即刷新列表（文档渐进出现），不再是一个挂几分钟的巨型请求。
  * 后端 _ensure_folder_path 幂等（先查后建），跨片重复路径不会建重复文件夹。
  */
+import { createElement } from 'react';
 import {
   importBatch,
   type BatchImportItem,
   type BatchImportResult,
   type ImportParseOptions,
 } from '@/api/attachments';
+import { message, notification } from '@/utils/notify';
 
 export const UPLOAD_MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GiB
 
@@ -295,4 +297,48 @@ export async function runChunkedImport(
 export function skippedSummary(skipped: string[]): string {
   const head = skipped.slice(0, 3).join('、');
   return `已跳过 ${skipped.length} 个文件：${head}${skipped.length > 3 ? ' …' : ''}`;
+}
+
+/** 失败/跳过明细在通知里最多列出的条数，其余折叠为「另有 N 个」。 */
+const RESULT_LIST_MAX = 5;
+
+/**
+ * 导入结果统一提示（KBWorkspace 与 KBPostsPage 共用）：
+ * 全部成功 → 轻量 message；有失败/跳过 → notification 列出具体文件名 + 原因
+ * （失败时不自动关闭，用户看完手动关），完整明细同时落 console。
+ */
+export function notifyImportResult(r: {
+  created: unknown[];
+  errors: Array<{ name: string; detail: string }>;
+  folders_created: number;
+  skipped?: string[];
+}): void {
+  const summary =
+    `已导入 ${r.created.length} 个文件` +
+    (r.folders_created ? ` · 创建 ${r.folders_created} 个文件夹` : '') +
+    (r.errors.length ? ` · ${r.errors.length} 个失败` : '') +
+    (r.skipped?.length ? ` · 跳过 ${r.skipped.length} 个` : '');
+  if (!r.errors.length && !r.skipped?.length) {
+    message.success(summary);
+    return;
+  }
+  const lines: string[] = [];
+  for (const e of r.errors.slice(0, RESULT_LIST_MAX)) {
+    lines.push(`✕ ${e.name}：${e.detail}`);
+  }
+  if (r.errors.length > RESULT_LIST_MAX) {
+    lines.push(`…另有 ${r.errors.length - RESULT_LIST_MAX} 个失败（完整清单见浏览器控制台）`);
+  }
+  if (r.skipped?.length) lines.push(skippedSummary(r.skipped));
+  if (r.errors.length) console.warn('import errors:', r.errors);
+  if (r.skipped?.length) console.warn('import skipped:', r.skipped);
+  notification.warning({
+    message: summary,
+    description: createElement(
+      'div',
+      { style: { whiteSpace: 'pre-line', wordBreak: 'break-all' } },
+      lines.join('\n')
+    ),
+    duration: r.errors.length ? 0 : 8,
+  });
 }

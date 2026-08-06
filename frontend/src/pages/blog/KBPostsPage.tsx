@@ -42,6 +42,7 @@ import BlogKbNavPanel from '@/components/common/BlogKbNavPanel';
 import UploadDropZone from '@/components/common/UploadDropZone';
 import {
   collectPickedFiles,
+  notifyImportResult,
   runChunkedImport,
   skippedSummary,
   UPLOAD_ACCEPT,
@@ -187,11 +188,7 @@ export default function KBPostsPage() {
         onProgress: (loaded, total) => setUploadProgress({ loaded, total }),
         onChunkDone: () => reload(),
       });
-      const msg = `已导入 ${result.created.length} 个文件` +
-        (result.folders_created ? ` · 创建 ${result.folders_created} 个文件夹` : '') +
-        (result.errors.length ? ` · ${result.errors.length} 个失败` : '');
-      if (result.errors.length) message.warning(msg);
-      else message.success(msg);
+      notifyImportResult(result);
       if (openSingle && collected.items.length === 1 && result.created.length === 1) {
         navigate(
           `/admin/kbs/${tree.id}/docs/${result.created[0].id}?return=${encodeURIComponent(`/kb/${slug}`)}`

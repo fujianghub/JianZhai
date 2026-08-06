@@ -8,11 +8,17 @@
  * shape so callers don't all need to switch to hooks.
  */
 import type { MessageInstance } from 'antd/es/message/interface';
+import type { NotificationInstance } from 'antd/es/notification/interface';
 
 let _msg: MessageInstance | null = null;
+let _notif: NotificationInstance | null = null;
 
 export function setMessageInstance(m: MessageInstance): void {
   _msg = m;
+}
+
+export function setNotificationInstance(n: NotificationInstance): void {
+  _notif = n;
 }
 
 type Args = Parameters<MessageInstance['success']>;
@@ -36,4 +42,22 @@ export const message = {
   warning: wrap('warning'),
   loading: wrap('loading'),
   open: wrap('open'),
+};
+
+type NotifArgs = Parameters<NotificationInstance['success']>;
+
+function wrapNotif(method: 'success' | 'error' | 'info' | 'warning' | 'open') {
+  return (...args: NotifArgs) => {
+    if (_notif) return _notif[method](...args);
+    if (typeof console !== 'undefined') console.warn(`[notification.${method} before mount]`, args);
+    return undefined;
+  };
+}
+
+export const notification = {
+  success: wrapNotif('success'),
+  error: wrapNotif('error'),
+  info: wrapNotif('info'),
+  warning: wrapNotif('warning'),
+  open: wrapNotif('open'),
 };

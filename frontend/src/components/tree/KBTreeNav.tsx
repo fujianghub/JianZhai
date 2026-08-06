@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { Button, Tag, Tooltip, Tree } from 'antd';
 import {
+  CloudUploadOutlined,
   FileTextOutlined,
   FolderOutlined,
   PushpinFilled,
@@ -33,6 +34,8 @@ interface Props {
   onEditFolderTags?: (folder: TreeFolder) => void;
   /** Export this folder (including subfolders). */
   onExportFolder?: (folder: TreeFolder) => void;
+  /** Upload files directly into this folder. Optional — button hidden if omitted. */
+  onUploadToFolder?: (folder: TreeFolder) => void;
   /** Filter documents whose titles match this substring (case-insensitive). */
   filterQuery?: string;
   /** Filter documents by status. */
@@ -219,6 +222,7 @@ function folderNode(
   q: string,
   onEditFolderTags?: (folder: TreeFolder) => void,
   onExportFolder?: (folder: TreeFolder) => void,
+  onUploadToFolder?: (folder: TreeFolder) => void,
   onTogglePin?: (doc: TreeDocument) => void,
   onToggleFavorite?: (doc: TreeDocument) => void,
 ): DataNode {
@@ -236,6 +240,21 @@ function folderNode(
             {t.name}
           </Tag>
         ))}
+        {onUploadToFolder && (
+          <Tooltip title="上传文件到此文件夹">
+            <Button
+              size="small"
+              type="text"
+              icon={<CloudUploadOutlined />}
+              aria-label="上传文件到此文件夹"
+              onClick={(e) => {
+                e.stopPropagation();
+                onUploadToFolder(f);
+              }}
+              style={{ fontSize: 11, padding: '0 4px', height: 18, lineHeight: '18px' }}
+            />
+          </Tooltip>
+        )}
         {onExportFolder && (
           <Tooltip title="导出文件夹">
             <Button
@@ -272,7 +291,7 @@ function folderNode(
     selectable: false,
     children: [
       ...f.children.map((c) =>
-        folderNode(c, q, onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite)
+        folderNode(c, q, onEditFolderTags, onExportFolder, onUploadToFolder, onTogglePin, onToggleFavorite)
       ),
       ...f.documents.map((d) => docNode(d, q, onTogglePin, onToggleFavorite)),
     ],
@@ -306,6 +325,7 @@ export default function KBTreeNav({
   onCheckedChange,
   onEditFolderTags,
   onExportFolder,
+  onUploadToFolder,
   filterQuery,
   filterStatus,
   onTogglePin,
@@ -335,14 +355,16 @@ export default function KBTreeNav({
   // docNode hide their buttons when a handler is absent, so we gate each stable
   // wrapper on whether the prop is currently supplied. A ref keeps the wrappers
   // calling the latest parent callback (no stale closures).
-  const cbRef = useRef({ onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite });
-  cbRef.current = { onEditFolderTags, onExportFolder, onTogglePin, onToggleFavorite };
+  const cbRef = useRef({ onEditFolderTags, onExportFolder, onUploadToFolder, onTogglePin, onToggleFavorite });
+  cbRef.current = { onEditFolderTags, onExportFolder, onUploadToFolder, onTogglePin, onToggleFavorite };
   const sEditFolderTags = useCallback((f: TreeFolder) => cbRef.current.onEditFolderTags?.(f), []);
   const sExportFolder = useCallback((f: TreeFolder) => cbRef.current.onExportFolder?.(f), []);
+  const sUploadToFolder = useCallback((f: TreeFolder) => cbRef.current.onUploadToFolder?.(f), []);
   const sTogglePin = useCallback((d: TreeDocument) => cbRef.current.onTogglePin?.(d), []);
   const sToggleFavorite = useCallback((d: TreeDocument) => cbRef.current.onToggleFavorite?.(d), []);
   const editFolderTagsCb = onEditFolderTags ? sEditFolderTags : undefined;
   const exportFolderCb = onExportFolder ? sExportFolder : undefined;
+  const uploadToFolderCb = onUploadToFolder ? sUploadToFolder : undefined;
   const togglePinCb = onTogglePin ? sTogglePin : undefined;
   const toggleFavoriteCb = onToggleFavorite ? sToggleFavorite : undefined;
 
@@ -350,11 +372,11 @@ export default function KBTreeNav({
     const q = filterQuery ?? '';
     return [
       ...filteredTree.folders.map((f) =>
-        folderNode(f, q, editFolderTagsCb, exportFolderCb, togglePinCb, toggleFavoriteCb)
+        folderNode(f, q, editFolderTagsCb, exportFolderCb, uploadToFolderCb, togglePinCb, toggleFavoriteCb)
       ),
       ...filteredTree.documents.map((d) => docNode(d, q, togglePinCb, toggleFavoriteCb)),
     ];
-  }, [filteredTree, filterQuery, editFolderTagsCb, exportFolderCb, togglePinCb, toggleFavoriteCb]);
+  }, [filteredTree, filterQuery, editFolderTagsCb, exportFolderCb, uploadToFolderCb, togglePinCb, toggleFavoriteCb]);
 
   return (
     <Tree

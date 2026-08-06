@@ -6,7 +6,7 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { isLightTheme, useThemeStore } from '@/stores/theme';
 import { readThemeAccent } from '@/utils/themeAccent';
-import { setMessageInstance } from '@/utils/notify';
+import { setMessageInstance, setNotificationInstance } from '@/utils/notify';
 import { initCodeBlockGlobalPrefs } from '@/utils/codeBlockPrefs';
 import { applyMotionLevel, loadMotionLevel } from '@/utils/motionPref';
 
@@ -14,12 +14,13 @@ import { applyMotionLevel, loadMotionLevel } from '@/utils/motionPref';
 // 避免「足量首帧 → 精简回跳」的闪动
 applyMotionLevel(loadMotionLevel());
 
-/** Captures the App-scoped message instance so `notify.*` calls work app-wide. */
+/** Captures the App-scoped message/notification instances so `notify.*` calls work app-wide. */
 function MessageBridge() {
-  const { message } = AntdApp.useApp();
+  const { message, notification } = AntdApp.useApp();
   useEffect(() => {
     setMessageInstance(message);
-  }, [message]);
+    setNotificationInstance(notification);
+  }, [message, notification]);
   return null;
 }
 
