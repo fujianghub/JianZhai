@@ -63,6 +63,7 @@
 - **Vite dev 缓存 desync** → 编辑器 `useRef-null` / CM 多实例崩溃。**不是代码 bug**；根治 = `systemctl restart jianzhai-frontend.service` + 浏览器 hard-reload。勿在主 server 运行时另起共用缓存的 vite。
 - **Tiptap 表格保真**：带色/表级样式表条件序列化为原生 HTML（含 `.jz-table-wrap` + `data-jz-*`），无色保持干净 GFM；**docx 导出彩色/间距会丢**（已知限制）。
 - **MD 本地图片导入**：须拖**整个含 `.md` 的文件夹**（图片随上传一起交给后端打包，浏览器沙箱读不了硬盘）；旧文档缺图用 `manage.py import_local_images` 补。
+- **导入整组发送 ↔ 文件数上限耦合**：`planUploadChunks` 对「文本文档+图片」同顶层目录**整组一个请求**发送（相对图路径改写的前提），故 `settings.py` 显式 `DATA_UPLOAD_MAX_NUMBER_FILES=1000`（Django 默认 100 曾把 HCIE 级大文件夹整组 400 拒收，`TooManyFilesSent` 只进后端日志不落响应明细）；改任一侧须对照另一侧。导入失败明细仅存在于接口响应 `errors`（后端不落日志），前端经 `notifyImportResult` 弹 notification 展示。图片与文本同组导入时按设计转为文档附件**不单独成篇**；单独图片走「一图一篇」（`doc_format:image`）。
 - **AI 日预算对端点流量失效** = 「AI 仅作者 + 管理员绕过预算」两条规格的预期后果，非 bug。
 - **博客内联「普通编辑」双写**：博客渲染 `published_content`，而 `raw_content` 自动保存**故意不同步**到 published（`_apply_update` 注释；`get_published_content` 不回退 raw）。故内联编辑（`PostInlineEditor`）走 `patchDocumentBody` **一次 PATCH 双写** raw+published（version 只 +1），否则内联的编辑/`[TOC]` 上不了博客。完整编辑器仍是「编 raw、显式发布」不受影响。
 - **章节编号 = 显示层**：序号不写入 `raw/published_content`；改编号逻辑须四端同步（阅读 `markdown.ts heading_open` / CM6 `extensions/headingNumber.ts` / Tiptap `HeadingNumber.ts` / 导出 `markdown_render.py`），算法唯一源 `utils/headingNumber.ts`。`renderMarkdownWithToc` 的 LRU key 必须含 numbering 标志。详见 docs/editor.md §7。
