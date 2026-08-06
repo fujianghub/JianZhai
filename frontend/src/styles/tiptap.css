@@ -1306,6 +1306,7 @@
   /* 呼吸动画单源在 editor-ui.css 的 @keyframes jz-ai-fab-pulse（4s）——
      此处曾另有一份 3s 同名定义，因 editor-ui 后加载而恒被覆盖（死代码），
      2026-08-03 收敛删除，勿在本文件重新定义同名 keyframes。 */
+}
 .jz-doc-ai-fab:hover {
   transform: scale(1.06);
 }
