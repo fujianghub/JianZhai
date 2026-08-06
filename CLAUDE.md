@@ -109,7 +109,7 @@
 
 ## 线上状态与实现基线
 
-- **线上**：腾讯云 `www.jianzhai.site`，线上 = main `0841cc3`（2026-08-03 部署，纯前端快路径，无后端/迁移变更，最新迁移仍为 `accounts 0008`）。2026-07-27 那次为**含镜像重建**部署：Playwright/Chromium 已进生产镜像（浏览器二进制走 npmmirror，服务器连不通官方 CDN），celery 已带 `-B` beat + `mem_limit 3g`（服务器 concurrency=1 变体保留）。**知识库内容未随 2026-07-27 同步完成**（当时在 media 阶段按用户要求中止，服务器为旧内容 176 篇 vs 本地 194 篇——07-27 快照；重跑 `Local_to_Cloud_Server_kb_sysnc.py` 可续传）。**语雀 URL 腐蚀修复已上线止损，但线上库存量坏 `raw_content` 不会自愈**（本地已重建 444/438，服务器侧需另行重建或随下次内容同步带过）。重部署两条路径与部署后验证绿清单 → `docs/deployment.md` §3
+- **线上**：腾讯云 `www.jianzhai.site`，线上 = main `e5f0a52`（2026-08-06 部署动效体系批次，纯前端快路径，无后端/迁移变更，最新迁移仍为 `accounts 0008`）。2026-07-27 那次为**含镜像重建**部署：Playwright/Chromium 已进生产镜像（浏览器二进制走 npmmirror，服务器连不通官方 CDN），celery 已带 `-B` beat + `mem_limit 3g`（服务器 concurrency=1 变体保留）。**知识库内容未随 2026-07-27 同步完成**（当时在 media 阶段按用户要求中止，服务器为旧内容 176 篇 vs 本地 194 篇——07-27 快照；重跑 `Local_to_Cloud_Server_kb_sysnc.py` 可续传）。**语雀 URL 腐蚀修复已上线止损，但线上库存量坏 `raw_content` 不会自愈**（本地已重建 444/438，服务器侧需另行重建或随下次内容同步带过）。重部署两条路径与部署后验证绿清单 → `docs/deployment.md` §3
 - **实现基线**（v0.9.10+，2026-08-04）：四角色 RBAC + 登录三因子 + 默认要求登录 + 受众可见性/ReadGrant 两道闸 · 6 主题 + 电影级主题过渡 · 三编辑器（Tiptap 3 / CM6 / HTML）+ 章节编号 + `[TOC]` · LaTeX/Mermaid 全链路（含导出端离线渲染）· Word/PPT 保真导入 + 语雀 MD 兼容 · 5 格式导出（结构化命名 / PDF+Word 三层目录体系：层级书签+卷首目录+篇内目录 / 站点 fail-closed / 保留清理与限流）· AI 多供应商 · PDF/PPT 阅读器 + 阅读排版定制/专注模式/位置记忆 · 编辑器/预览样式体系优化（portal/冻结面/行内代码令牌，六主题 WCAG AA）· 动效体系（motion 令牌+`linear()` 真弹簧 / 路由连续性转场+共享元素 / 指针边缘光 / 收藏墨点粒子 / 动效三档位 / 导出实况胶囊 / 骨架屏 / skip-link）。**逐批次详情 → `docs/CHANGELOG.md`（时间序全量）；坑与决策复盘 → memory（`MEMORY.md` 索引）**
 
 > **本段维护约定**：新批次上线后——`docs/CHANGELOG.md` 加一行详情、memory 记坑、有新约束则进上文「不变量/陷阱」，本段只更新「线上 =」指针与基线关键词；**勿在本文追加批次长文**（该段历史上曾膨胀至 11KB 单行，2026-07-25 已全部归档进 CHANGELOG）。
