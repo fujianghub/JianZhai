@@ -459,7 +459,10 @@ function KbBody({
    * Persisted under a KB-scoped key so each library remembers its own
    * preference. */
   const groupKey = `jz-kb-view:${tree.slug}`;
-  const densityKey = `jz-kb-density:${tree.slug}`;
+  /* v2: key bumped when the default flipped to ``list`` — the mount effect
+   * below auto-persists the density, so every past visitor had the old
+   * ``summary`` default stored and would never see the new one. */
+  const densityKey = `jz-kb-density-v2:${tree.slug}`;
   const sidebarKey = `jz-kb-side-w:${tree.slug}`;
 
   const initialView = (() => {
@@ -478,7 +481,7 @@ function KbBody({
     } catch {
       /* ignore */
     }
-    return 'summary' as Density;
+    return 'list' as Density;
   })();
   const initialSidebar = (() => {
     try {
