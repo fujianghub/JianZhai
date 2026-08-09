@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import re
 import uuid
+from datetime import date
 from typing import Iterable
 
+from django.utils import timezone
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from apps.accounts.permissions import IsContentAuthor, PublicOrLoginGated
@@ -36,6 +38,22 @@ _DYNASTY_PREFIX_RE = re.compile(r"^[\[\(（〔【]([^\]\)）〕】]+)[\]\)）〕
 # separators — gives consistent semantics across "load existing data" and
 # "import a textarea full of new lines".
 _ATTR_INNER_RE = re.compile(r"\s+[—–\-]{1,2}\s+|\s+by\s+|\s*[·•]\s*", re.IGNORECASE)
+
+
+def _clean_date(v) -> str | None:
+    """Normalize a per-quote date value to ``YYYY-MM-DD``.
+
+    Returns ``""`` when absent/blank, ``None`` when present but invalid
+    (caller decides whether that's a 400 or a silent drop). Accepts full
+    ISO datetimes by truncating to the date part.
+    """
+    s = str(v or "").strip()
+    if not s:
+        return ""
+    try:
+        return date.fromisoformat(s[:10]).isoformat()
+    except ValueError:
+        return None
 
 
 def _split_attribution(raw: str) -> tuple[str, str]:
@@ -90,6 +108,10 @@ def _serialize_quote(q: dict) -> dict:
         "author": author,
         "source": source,
         "attribution": attribution,
+        # 心境时间戳 — created_at 表示「录入当时」（首页展示），
+        # updated_at 由服务端在内容变更时盖章（仅后台展示）。
+        "created_at": _clean_date(q.get("created_at")) or "",
+        "updated_at": _clean_date(q.get("updated_at")) or "",
     }
 
 
@@ -121,6 +143,9 @@ def _serialize_public(obj: HeroSettings) -> dict:
                 "author": q["author"],
                 "source": q["source"],
                 "attribution": q["attribution"],
+                # Homepage shows the 录入 date only — the mood belongs to
+                # when the quote was added, not to later edits.
+                "created_at": q["created_at"],
             }
             for q in (_serialize_quote(q) for q in (obj.quotes or []))
             if q["text"]
@@ -167,15 +192,63 @@ def _validated_quotes(raw) -> list[dict] | str:
         if qid in seen_ids:
             qid = uuid.uuid4().hex[:12]
         seen_ids.add(qid)
-        cleaned.append(
-            {
-                "id": qid,
-                "text": text,
-                "dynasty": dynasty,
-                "author": author,
-                "source": source,
-            }
-        )
+        entry = {
+            "id": qid,
+            "text": text,
+            "dynasty": dynasty,
+            "author": author,
+            "source": source,
+        }
+        # created_at is user-editable (backfilling the mood date of legacy
+        # quotes). Key-presence matters: an absent key means "old client,
+        # inherit the stored value" while an explicit "" means "clear it" —
+        # so only copy it over when the client actually sent the key.
+        if "created_at" in item:
+            created = _clean_date(item.get("created_at"))
+            if created is None:
+                return f"第 {i + 1} 条添加日期格式须为 YYYY-MM-DD"
+            entry["created_at"] = created
+        # updated_at is server-managed (see _stamp_quote_dates) — parse it
+        # leniently and let the stamping step decide the final value.
+        entry["updated_at"] = _clean_date(item.get("updated_at")) or ""
+        cleaned.append(entry)
+    return cleaned
+
+
+def _stamp_quote_dates(
+    cleaned: list[dict], existing, *, default_new_created: str
+) -> list[dict]:
+    """Maintain per-quote ``created_at`` / ``updated_at`` after validation.
+
+    - New id (not in the stored list): created_at = client-provided value
+      or ``default_new_created`` (today for panel PATCHes, "" for batch
+      imports so restoring an old backup can't fabricate mood dates);
+      updated_at stays blank.
+    - Existing id with content changes (text/dynasty/author/source):
+      updated_at = today. Editing only created_at (a manual backfill) is
+      NOT a content change and does not bump updated_at.
+    - Existing id, unchanged: both dates carried over from storage —
+      whatever the client echoed back for updated_at is ignored.
+    """
+    today = timezone.localdate().isoformat()
+    prev = {str(q.get("id") or ""): q for q in (existing or [])}
+    for q in cleaned:
+        p = prev.get(q["id"])
+        if p is None:
+            if not q.get("created_at"):
+                q["created_at"] = default_new_created
+            q["updated_at"] = ""
+        else:
+            if "created_at" not in q:
+                q["created_at"] = _clean_date(p.get("created_at")) or ""
+            changed = any(
+                (q.get(f) or "") != str(p.get(f) or "").strip()
+                for f in ("text", "dynasty", "author", "source")
+            )
+            if changed:
+                q["updated_at"] = today
+            else:
+                q["updated_at"] = _clean_date(p.get("updated_at")) or ""
     return cleaned
 
 
@@ -256,7 +329,11 @@ def hero_settings(request):
             result = _validated_quotes(data["quotes"])
             if isinstance(result, str):
                 return Response({"detail": result}, status=400)
-            obj.quotes = result
+            obj.quotes = _stamp_quote_dates(
+                result,
+                obj.quotes,
+                default_new_created=timezone.localdate().isoformat(),
+            )
 
         obj.save()
 
@@ -272,6 +349,10 @@ def hero_settings(request):
 # so we only fall back to them when no dash is present.
 _STRONG_SEPARATORS_RE = re.compile(r"\s+[—–\-]{1,2}\s+|\s+by\s+", re.IGNORECASE)
 _WEAK_SEPARATORS_RE = re.compile(r"\s+[·•]\s+")
+
+# Optional trailing date token: ``… @2026-08-10`` records the 录入 date.
+# Emitted by the frontend export so backups round-trip the mood dates.
+_BATCH_DATE_RE = re.compile(r"\s+@(\d{4}-\d{2}-\d{2})\s*$")
 
 
 def _parse_batch_lines(text: str) -> Iterable[dict]:
@@ -306,6 +387,17 @@ def _parse_batch_lines(text: str) -> Iterable[dict]:
             continue
         if line.startswith("#"):
             continue
+        # Stage 0: optional trailing ``@YYYY-MM-DD`` 录入 date. Stripped
+        # BEFORE the separator stages so it can't be mistaken for source
+        # text. An impossible date (2026-13-40) fails _clean_date and the
+        # token is left in place as ordinary text.
+        created_part = ""
+        dm = _BATCH_DATE_RE.search(line)
+        if dm:
+            parsed_date = _clean_date(dm.group(1))
+            if parsed_date:
+                created_part = parsed_date
+                line = line[: dm.start()].rstrip()
         strong = list(_STRONG_SEPARATORS_RE.finditer(line))
         if strong:
             cut = strong[-1]
@@ -347,6 +439,7 @@ def _parse_batch_lines(text: str) -> Iterable[dict]:
                 "dynasty": dynasty_part[:MAX_DYNASTY],
                 "author": author_part[:MAX_AUTHOR],
                 "source": source_part[:MAX_SOURCE],
+                "created_at": created_part,
             }
 
 
@@ -380,6 +473,9 @@ def hero_batch_import(request):
         result = _validated_quotes(parsed)
     if isinstance(result, str):
         return Response({"detail": result}, status=400)
-    obj.quotes = result
+    # default_new_created="" — a batch line only gets a 录入 date from an
+    # explicit @YYYY-MM-DD token. Stamping "today" here would fabricate
+    # mood dates whenever an old backup is restored via replace mode.
+    obj.quotes = _stamp_quote_dates(result, obj.quotes, default_new_created="")
     obj.save()
     return Response(_serialize_settings(obj))

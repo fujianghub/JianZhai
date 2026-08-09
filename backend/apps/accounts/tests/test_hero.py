@@ -443,3 +443,172 @@ def test_member_cannot_patch_play_order(member_client):
         "/api/v1/auth/hero/", {"play_order": "sequential"}, format="json"
     )
     assert r.status_code == 403
+
+
+# ── 心境时间戳 created_at / updated_at（2026-08-10）────────────────────
+
+
+def _today():
+    from django.utils import timezone
+
+    return timezone.localdate().isoformat()
+
+
+def test_patch_new_quote_stamped_with_today(staff_client):
+    r = staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "新句子"}]},
+        format="json",
+    )
+    assert r.status_code == 200
+    q = r.json()["quotes"][0]
+    assert q["created_at"] == _today()
+    assert q["updated_at"] == ""
+
+
+def test_patch_new_quote_manual_created_at_wins(staff_client):
+    r = staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "旧心境", "created_at": "2024-03-15"}]},
+        format="json",
+    )
+    assert r.status_code == 200
+    assert r.json()["quotes"][0]["created_at"] == "2024-03-15"
+
+
+def test_patch_content_edit_bumps_updated_at_keeps_created_at(staff_client):
+    r1 = staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "原文", "created_at": "2024-03-15"}]},
+        format="json",
+    )
+    q = r1.json()["quotes"][0]
+    q["text"] = "改后的文"
+    r2 = staff_client.patch("/api/v1/auth/hero/", {"quotes": [q]}, format="json")
+    out = r2.json()["quotes"][0]
+    assert out["created_at"] == "2024-03-15"
+    assert out["updated_at"] == _today()
+
+
+def test_patch_unchanged_quote_preserves_dates(staff_client):
+    r1 = staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "不变", "created_at": "2024-03-15"}]},
+        format="json",
+    )
+    # Round-trip the exact server shape back — nothing changed.
+    r2 = staff_client.patch(
+        "/api/v1/auth/hero/", {"quotes": r1.json()["quotes"]}, format="json"
+    )
+    out = r2.json()["quotes"][0]
+    assert out["created_at"] == "2024-03-15"
+    assert out["updated_at"] == ""
+
+
+def test_patch_created_at_backfill_does_not_bump_updated_at(staff_client):
+    r1 = staff_client.patch(
+        "/api/v1/auth/hero/", {"quotes": [{"text": "存量"}]}, format="json"
+    )
+    q = r1.json()["quotes"][0]
+    q["created_at"] = "2020-01-01"  # manual backfill only, content untouched
+    r2 = staff_client.patch("/api/v1/auth/hero/", {"quotes": [q]}, format="json")
+    out = r2.json()["quotes"][0]
+    assert out["created_at"] == "2020-01-01"
+    assert out["updated_at"] == ""
+
+
+def test_patch_omitted_created_at_inherits_stored_value(staff_client):
+    staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"id": "q1", "text": "句", "created_at": "2024-03-15"}]},
+        format="json",
+    )
+    # Old-client shape: same id, no created_at key at all.
+    r = staff_client.patch(
+        "/api/v1/auth/hero/", {"quotes": [{"id": "q1", "text": "句"}]}, format="json"
+    )
+    assert r.json()["quotes"][0]["created_at"] == "2024-03-15"
+
+
+def test_patch_explicit_blank_created_at_clears_it(staff_client):
+    staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"id": "q1", "text": "句", "created_at": "2024-03-15"}]},
+        format="json",
+    )
+    r = staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"id": "q1", "text": "句", "created_at": ""}]},
+        format="json",
+    )
+    assert r.json()["quotes"][0]["created_at"] == ""
+
+
+def test_patch_invalid_created_at_rejected(staff_client):
+    r = staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "句", "created_at": "2026-13-40"}]},
+        format="json",
+    )
+    assert r.status_code == 400
+    assert "YYYY-MM-DD" in r.json()["detail"]
+
+
+def test_public_hero_includes_created_at_not_updated_at(staff_client):
+    staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "公开句", "created_at": "2024-03-15"}]},
+        format="json",
+    )
+    body = staff_client.get("/api/v1/public/hero/").json()
+    q = body["quotes"][0]
+    assert q["created_at"] == "2024-03-15"
+    assert "updated_at" not in q
+
+
+def test_batch_line_date_suffix_parsed():
+    out = parse("莫听穿林打叶声 — [宋]苏轼 · 定风波 @2026-08-10")
+    assert out[0]["text"] == "莫听穿林打叶声"
+    assert out[0]["dynasty"] == "宋"
+    assert out[0]["author"] == "苏轼"
+    assert out[0]["source"] == "定风波"
+    assert out[0]["created_at"] == "2026-08-10"
+
+
+def test_batch_line_without_date_stays_blank():
+    out = parse("臣本布衣 — 诸葛亮 · 出师表")
+    assert out[0]["created_at"] == ""
+
+
+def test_batch_invalid_date_token_kept_as_text():
+    out = parse("some text @2026-13-40")
+    assert out[0]["created_at"] == ""
+    assert out[0]["text"] == "some text @2026-13-40"
+
+
+def test_batch_import_does_not_fabricate_dates(staff_client):
+    r = staff_client.post(
+        "/api/v1/auth/hero/batch/",
+        {"text": "无日期句 — 作者\n带日期句 — 作者 @2025-05-05", "mode": "replace"},
+        format="json",
+    )
+    assert r.status_code == 200
+    quotes = {q["text"]: q for q in r.json()["quotes"]}
+    assert quotes["无日期句"]["created_at"] == ""
+    assert quotes["带日期句"]["created_at"] == "2025-05-05"
+
+
+def test_batch_append_preserves_existing_dates(staff_client):
+    staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"id": "q1", "text": "老句", "created_at": "2024-03-15"}]},
+        format="json",
+    )
+    r = staff_client.post(
+        "/api/v1/auth/hero/batch/",
+        {"text": "新句 — 作者", "mode": "append"},
+        format="json",
+    )
+    quotes = {q["text"]: q for q in r.json()["quotes"]}
+    assert quotes["老句"]["created_at"] == "2024-03-15"
+    assert quotes["新句"]["created_at"] == ""

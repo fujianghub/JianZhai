@@ -12,6 +12,12 @@ export interface HeroQuote {
   /** Legacy ``"〔朝代〕作者 · 篇名"`` derived on the server for back-compat
    *  with v0.9.3 clients. Newer code reads the split fields directly. */
   attribution?: string;
+  /** 录入日期 ``YYYY-MM-DD`` — 「当时的心境」时间戳，首页展示。用户可在
+   *  后台回填/修改；留空表示未记录（此功能上线前的存量题记）。 */
+  created_at?: string;
+  /** 最近内容修改日期 ``YYYY-MM-DD`` — 服务端在正文/朝代/作者/篇名变更时
+   *  盖章，仅后台列表展示。公开端点不返回此字段。 */
+  updated_at?: string;
 }
 
 export type HeroAnimation = 'fade' | 'slide' | 'typewriter' | 'ink-wash';

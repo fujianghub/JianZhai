@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildPlayOrder, quotesToBatchText } from './heroPlayback';
+import { buildPlayOrder, formatHeroDate, quotesToBatchText } from './heroPlayback';
 import type { HeroQuote } from '@/api/hero';
 
 const q = (over: Partial<HeroQuote>): HeroQuote => ({
@@ -80,5 +80,30 @@ describe('quotesToBatchText', () => {
       q({ text: '乙', author: 'b' }),
     ]);
     expect(out).toBe('甲 — a\n乙 — b');
+  });
+
+  it('emits a trailing @date only when created_at is recorded', () => {
+    expect(
+      quotesToBatchText([q({ text: 'A', author: '苏轼', created_at: '2026-08-10' })]),
+    ).toBe('A — 苏轼 @2026-08-10');
+    expect(quotesToBatchText([q({ text: 'A', created_at: '2026-08-10' })])).toBe(
+      'A @2026-08-10',
+    );
+    expect(quotesToBatchText([q({ text: 'A', author: '苏轼' })])).toBe('A — 苏轼');
+    expect(quotesToBatchText([q({ text: 'A', created_at: '  ' })])).toBe('A');
+  });
+});
+
+describe('formatHeroDate', () => {
+  it('formats YYYY-MM-DD without zero padding', () => {
+    expect(formatHeroDate('2026-08-10')).toBe('2026 · 8 · 10');
+    expect(formatHeroDate('2024-12-01')).toBe('2024 · 12 · 1');
+  });
+
+  it('returns empty string for blank or malformed input', () => {
+    expect(formatHeroDate('')).toBe('');
+    expect(formatHeroDate('   ')).toBe('');
+    expect(formatHeroDate('yesterday')).toBe('');
+    expect(formatHeroDate('2026/08/10')).toBe('');
   });
 });

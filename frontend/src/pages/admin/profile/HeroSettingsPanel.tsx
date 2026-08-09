@@ -5,14 +5,18 @@
  * - Slider    : rotation_seconds (1 – 60 秒)
  * - Radio     : animation (fade / slide / typewriter / ink-wash)
  * - Radio     : play_order (random / sequential，v0.9.10)
- * - Table     : per-quote text + dynasty + author + source, inline-edit,
- *               whole-row drag-reorder (dnd-kit handle column), delete
+ * - Table     : rows render as styled text（正文衬线 + 三色署名，复用首页
+ *               .jz-hero-cite-* 样式）；click a row（或编辑按钮）切换为该行
+ *               编辑态。新增 = 顶部草稿行（正文留空不落库，首次填写并失焦
+ *               才提交）。搜索框按正文/朝代/作者/篇名过滤；表体内滚动
+ *               （56vh sticky 表头）。whole-row drag-reorder（dnd-kit handle
+ *               column，过滤时禁用）、delete。
  * - Modal     : 批量导入（textarea, replace / append 模式）
  * - Modal     : 导出（反向生成批量导入格式文本，复制 / 下载）
  * - Preview   : live HeroQuoteCard，可 ‹ › 翻看任意一条的渲染效果
  *
  * Saves are debounced — every commit-able change (Slider release, Radio
- * click, row blur, drag drop) calls PATCH /auth/hero/.
+ * click, row focus-out, drag drop) calls PATCH /auth/hero/.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
@@ -20,6 +24,7 @@ import {
   AutoComplete,
   Button,
   Card,
+  DatePicker,
   Empty,
   Input,
   Modal,
@@ -32,10 +37,13 @@ import {
   Tooltip,
   Typography,
 } from 'antd';
+import dayjs from 'dayjs';
 import {
+  CheckOutlined,
   CopyOutlined,
   DeleteOutlined,
   DownloadOutlined,
+  EditOutlined,
   ExportOutlined,
   HolderOutlined,
   ImportOutlined,
@@ -43,6 +51,7 @@ import {
   PlusOutlined,
   ReloadOutlined,
   RightOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import {
   DndContext,
@@ -116,14 +125,15 @@ const DYNASTY_OPTIONS: { value: string }[] = [
 ];
 
 const SAMPLE_BATCH = `# 行首 # 开头为注释；空行忽略
-# 格式：正文 — [朝代]作者 · 篇名
+# 格式：正文 — [朝代]作者 · 篇名 @录入日期
 #
 # 分隔符（优先级 高 → 低）：
 #   1. 全角/半角破折号  —  –  -
 #   2. 单词 "by"
 #   3. 中圆点  ·  •（仅当行内无破折号时）
 # 朝代可选，写在「作者」前并用 [xxx] / 〔xxx〕 / 【xxx】 / (xxx) 包裹。
-莫听穿林打叶声 — [宋]苏轼 · 定风波
+# 行尾可加 @YYYY-MM-DD 记录录入日期（心境时间戳，首页展示；缺省不记）。
+莫听穿林打叶声 — [宋]苏轼 · 定风波 @2026-08-10
 臣本布衣 — 〔三国〕诸葛亮 · 出师表
 人生如逆旅，我亦是行人 - 苏轼 · 临江仙
 天行健，君子以自强不息 by 周易
@@ -205,6 +215,15 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
   const [previewIdx, setPreviewIdx] = useState(0);
   const [batchOpen, setBatchOpen] = useState(false);
   const [exportOpen, setExportOpen] = useState(false);
+  /** Row currently showing inputs; all other rows render as styled text. */
+  const [editingId, setEditingId] = useState<string | null>(null);
+  /** Uncommitted new quote — lives OUTSIDE data.quotes because the server
+   *  silently drops empty-text quotes: if the draft rode along in another
+   *  row's PATCH, the response setData() would erase it mid-typing. It is
+   *  promoted into the real list on the first commit with non-empty text. */
+  const [draft, setDraft] = useState<HeroQuote | null>(null);
+  /** List filter — matches 正文/朝代/作者/篇名, case-insensitive. */
+  const [filter, setFilter] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -253,37 +272,69 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
 
   const onRowChange = (
     id: string,
-    field: 'text' | 'dynasty' | 'author' | 'source',
+    field: 'text' | 'dynasty' | 'author' | 'source' | 'created_at',
     value: string,
   ) => {
+    if (draft && id === draft.id) {
+      setDraft({ ...draft, [field]: value });
+      return;
+    }
     if (!data) return;
     setLocalQuotes(data.quotes.map((q) => (q.id === id ? { ...q, [field]: value } : q)));
   };
 
-  const onRowCommit = () => {
+  // Draft → real quote at the TOP of the list. No-op while text is empty
+  // (the server would drop it anyway); the draft just stays local.
+  const promoteDraft = () => {
+    if (!data || !draft) return;
+    const text = draft.text.trim();
+    if (!text) return;
+    const next = [{ ...draft, text }, ...data.quotes];
+    setDraft(null);
+    setLocalQuotes(next);
+    setPreviewIdx(0); // preview jumps to the freshly added quote
+    void commit({ quotes: next });
+  };
+
+  /** Commit a row when focus leaves it (or on Enter / ✓). */
+  const commitRow = (id: string) => {
+    if (draft && id === draft.id) {
+      promoteDraft();
+      return;
+    }
     if (!data) return;
     void commit({ quotes: data.quotes });
   };
 
   const onAdd = () => {
-    if (!data) return;
+    if (!data || !canEdit) return;
+    setFilter('');
+    if (draft) {
+      // Only one draft at a time — re-focus it instead of stacking another.
+      setEditingId(draft.id);
+      return;
+    }
     const next: HeroQuote = {
       id: `local-${Date.now().toString(36)}`,
-      text: '新题记',
+      text: '',
       dynasty: '',
       author: '',
       source: '',
     };
-    const draft = [...data.quotes, next];
-    setLocalQuotes(draft);
-    void commit({ quotes: draft });
+    setDraft(next);
+    setEditingId(next.id);
   };
 
   const onDelete = (id: string) => {
+    if (editingId === id) setEditingId(null);
+    if (draft && id === draft.id) {
+      setDraft(null); // uncommitted — discard locally, nothing to PATCH
+      return;
+    }
     if (!data) return;
-    const draft = data.quotes.filter((q) => q.id !== id);
-    setLocalQuotes(draft);
-    void commit({ quotes: draft });
+    const next = data.quotes.filter((q) => q.id !== id);
+    setLocalQuotes(next);
+    void commit({ quotes: next });
   };
 
   // ── Drag reorder — arrayMove between the dragged row and its drop slot,
@@ -292,15 +343,34 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
   );
 
+  const filterNorm = filter.trim().toLowerCase();
+
   const onDragEnd = ({ active, over }: DragEndEvent) => {
-    if (!data || !canEdit || !over || active.id === over.id) return;
+    // Reorder is disabled while filtering — the visible indexes wouldn't
+    // map back onto the full authored list.
+    if (!data || !canEdit || filterNorm || !over || active.id === over.id) return;
     const from = data.quotes.findIndex((q) => q.id === active.id);
     const to = data.quotes.findIndex((q) => q.id === over.id);
     if (from < 0 || to < 0) return;
-    const draft = arrayMove(data.quotes, from, to);
-    setLocalQuotes(draft);
-    void commit({ quotes: draft });
+    const next = arrayMove(data.quotes, from, to);
+    setLocalQuotes(next);
+    void commit({ quotes: next });
   };
+
+  // ── Row list for the table — draft (if any) pinned on top, then the
+  //    authored list, optionally narrowed by the filter box. The draft is
+  //    always visible so it can't get "lost" behind an active filter.
+  const visibleRows = useMemo<HeroQuote[]>(() => {
+    const base = draft ? [draft, ...(data?.quotes ?? [])] : data?.quotes ?? [];
+    if (!filterNorm) return base;
+    return base.filter(
+      (q) =>
+        (draft && q.id === draft.id) ||
+        [q.text, q.dynasty, q.author, q.source].some((v) =>
+          (v || '').toLowerCase().includes(filterNorm),
+        ),
+    );
+  }, [data, draft, filterNorm]);
 
   // ── Batch import modal ───────────────────────────────────────────────
   const [batchText, setBatchText] = useState(SAMPLE_BATCH);
@@ -502,13 +572,25 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
         </Space>
       </Card>
 
-      {/* ── Quote list — drag the ⠿ handle to reorder. ──────────────── */}
+      {/* ── Quote list — styled display rows, click a row to edit. ──── */}
       <Card
         size="small"
         className="jz-hero-admin-card"
-        title={`题记列表（共 ${data.quotes.length} 条）`}
+        title={
+          filterNorm
+            ? `题记列表（匹配 ${visibleRows.filter((r) => r.id !== draft?.id).length} / 共 ${data.quotes.length} 条）`
+            : `题记列表（共 ${data.quotes.length} 条）`
+        }
         extra={
           <Space>
+            <Input
+              allowClear
+              prefix={<SearchOutlined style={{ color: 'var(--jz-text-muted)' }} />}
+              placeholder="搜索正文 / 作者…"
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              style={{ width: 180 }}
+            />
             <Button icon={<ExportOutlined />} onClick={() => setExportOpen(true)}>
               导出
             </Button>
@@ -537,109 +619,217 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
           onDragEnd={onDragEnd}
         >
           <SortableContext
-            items={data.quotes.map((q) => q.id)}
+            items={visibleRows.map((q) => q.id)}
             strategy={verticalListSortingStrategy}
           >
             <Table<HeroQuote>
               rowKey="id"
               size="small"
               pagination={false}
-              dataSource={data.quotes}
+              dataSource={visibleRows}
               components={{ body: { row: DraggableRow } }}
-              locale={{ emptyText: '无题记，点击右上角「新增」或「批量导入」' }}
+              scroll={{ y: '56vh' }}
+              rowClassName={(r) => (r.id === editingId ? 'jz-hero-row-editing' : '')}
+              locale={{
+                emptyText: filterNorm
+                  ? '没有匹配的题记'
+                  : '无题记，点击右上角「新增」或「批量导入」',
+              }}
               columns={[
                 {
                   title: '',
                   dataIndex: 'sort',
                   width: 40,
-                  render: () => <DragHandle disabled={!canEdit} />,
+                  render: (_: unknown, r) => (
+                    <DragHandle disabled={!canEdit || !!filterNorm || r.id === draft?.id} />
+                  ),
                 },
                 {
                   title: '#',
                   dataIndex: 'idx',
                   width: 44,
-                  render: (_: unknown, _r, i: number) => <Text type="secondary">{i + 1}</Text>,
+                  render: (_: unknown, r) =>
+                    r.id === draft?.id ? (
+                      <Text type="secondary">新</Text>
+                    ) : (
+                      <Text type="secondary">
+                        {data.quotes.findIndex((q) => q.id === r.id) + 1}
+                      </Text>
+                    ),
                 },
                 {
-                  title: '题记正文',
+                  title: '题记',
                   dataIndex: 'text',
-                  render: (v: string, r) => (
-                    <Input
-                      value={v}
-                      placeholder="正文（最多 200 字）"
-                      disabled={!canEdit}
-                      onChange={(e) => onRowChange(r.id, 'text', e.target.value)}
-                      onBlur={() => onRowCommit()}
-                    />
-                  ),
-                },
-                {
-                  title: '朝代',
-                  dataIndex: 'dynasty',
-                  width: 110,
-                  render: (v: string, r) => (
-                    <AutoComplete
-                      value={v}
-                      placeholder="如：三国"
-                      disabled={!canEdit}
-                      options={DYNASTY_OPTIONS}
-                      filterOption={(input, option) =>
-                        !input || (option?.value ?? '').includes(input)
-                      }
-                      onChange={(val) => onRowChange(r.id, 'dynasty', val)}
-                      onBlur={() => onRowCommit()}
-                      style={{ width: '100%' }}
-                    />
-                  ),
-                },
-                {
-                  title: '作者',
-                  dataIndex: 'author',
-                  width: 130,
-                  render: (v: string, r) => (
-                    <Input
-                      value={v}
-                      placeholder="如：诸葛亮"
-                      disabled={!canEdit}
-                      onChange={(e) => onRowChange(r.id, 'author', e.target.value)}
-                      onBlur={() => onRowCommit()}
-                    />
-                  ),
-                },
-                {
-                  title: '篇名',
-                  dataIndex: 'source',
-                  width: 150,
-                  render: (v: string, r) => (
-                    <Input
-                      value={v}
-                      placeholder="如：诫子书"
-                      disabled={!canEdit}
-                      onChange={(e) => onRowChange(r.id, 'source', e.target.value)}
-                      onBlur={() => onRowCommit()}
-                    />
-                  ),
+                  render: (_: string, r) => {
+                    if (canEdit && editingId === r.id) {
+                      return (
+                        <div
+                          className="jz-hero-admin-edit"
+                          onBlur={(e) => {
+                            // Commit only when focus leaves the whole row —
+                            // tabbing 正文→朝代 must NOT fire a PATCH whose
+                            // response would clobber in-flight keystrokes.
+                            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                              commitRow(r.id);
+                            }
+                          }}
+                        >
+                          <Input
+                            value={r.text}
+                            autoFocus
+                            placeholder="正文（最多 200 字）"
+                            onChange={(e) => onRowChange(r.id, 'text', e.target.value)}
+                            onPressEnter={() => {
+                              commitRow(r.id);
+                              setEditingId(null);
+                            }}
+                          />
+                          <Space size={6} wrap style={{ marginTop: 6 }}>
+                            <AutoComplete
+                              value={r.dynasty}
+                              placeholder="朝代"
+                              options={DYNASTY_OPTIONS}
+                              filterOption={(input, option) =>
+                                !input || (option?.value ?? '').includes(input)
+                              }
+                              onChange={(val) => onRowChange(r.id, 'dynasty', val)}
+                              style={{ width: 110 }}
+                            />
+                            <Input
+                              value={r.author}
+                              placeholder="作者"
+                              onChange={(e) => onRowChange(r.id, 'author', e.target.value)}
+                              style={{ width: 130 }}
+                            />
+                            <Input
+                              value={r.source}
+                              placeholder="篇名"
+                              onChange={(e) => onRowChange(r.id, 'source', e.target.value)}
+                              style={{ width: 150 }}
+                            />
+                            <DatePicker
+                              value={r.created_at ? dayjs(r.created_at) : null}
+                              placeholder="录入日期"
+                              allowClear
+                              onChange={(d) =>
+                                onRowChange(r.id, 'created_at', d ? d.format('YYYY-MM-DD') : '')
+                              }
+                              style={{ width: 132 }}
+                            />
+                          </Space>
+                        </div>
+                      );
+                    }
+                    // Display mode — front-page serif + tri-color cite so
+                    // the list doubles as a per-row preview.
+                    const hasSplit = !!(r.dynasty || r.author || r.source);
+                    const legacy = !hasSplit ? (r.attribution || '').trim() : '';
+                    const created = (r.created_at || '').trim();
+                    const updated = (r.updated_at || '').trim();
+                    return (
+                      <div
+                        className="jz-hero-admin-row"
+                        onClick={canEdit ? () => setEditingId(r.id) : undefined}
+                      >
+                        <div className="jz-hero-admin-row-text">
+                          {r.text || <Text type="secondary">（未填写正文）</Text>}
+                        </div>
+                        {(hasSplit || legacy || created || updated) && (
+                          <div className="jz-hero-cite-inner jz-hero-admin-row-cite">
+                            {r.dynasty && (
+                              <span className="jz-hero-cite-dynasty">
+                                <span aria-hidden>〔</span>
+                                <span>{r.dynasty}</span>
+                                <span aria-hidden>〕</span>
+                              </span>
+                            )}
+                            {r.author && <span className="jz-hero-cite-author">{r.author}</span>}
+                            {r.source && (
+                              <span className="jz-hero-cite-source">
+                                <span aria-hidden>〈</span>
+                                <span>{r.source}</span>
+                                <span aria-hidden>〉</span>
+                              </span>
+                            )}
+                            {legacy && <span className="jz-hero-cite-author">{legacy}</span>}
+                            {(created || updated) && (
+                              <span className="jz-hero-admin-row-date">
+                                {created && `录于 ${created}`}
+                                {updated && updated !== created
+                                  ? `${created ? ' · ' : ''}改于 ${updated}`
+                                  : ''}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  },
                 },
                 {
                   title: '操作',
                   dataIndex: 'ops',
-                  width: 56,
+                  width: 84,
                   render: (_: unknown, r) => (
-                    <Popconfirm
-                      title="删除该题记？"
-                      okText="删除"
-                      cancelText="取消"
-                      onConfirm={() => onDelete(r.id)}
-                      disabled={!canEdit}
-                    >
-                      <Button
-                        size="small"
-                        type="text"
-                        danger
-                        icon={<DeleteOutlined />}
-                        disabled={!canEdit}
-                      />
-                    </Popconfirm>
+                    <Space size={0}>
+                      {editingId === r.id ? (
+                        <Tooltip title="完成">
+                          <Button
+                            size="small"
+                            type="text"
+                            icon={<CheckOutlined />}
+                            aria-label="完成"
+                            onClick={() => {
+                              // Empty draft on ✓ = the user changed their
+                              // mind — discard instead of stranding a blank
+                              // row (row blur has already committed filled
+                              // drafts before this click lands).
+                              if (draft && r.id === draft.id && !draft.text.trim()) {
+                                setDraft(null);
+                              }
+                              setEditingId(null);
+                            }}
+                          />
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="编辑">
+                          <Button
+                            size="small"
+                            type="text"
+                            icon={<EditOutlined />}
+                            aria-label="编辑"
+                            disabled={!canEdit}
+                            onClick={() => setEditingId(r.id)}
+                          />
+                        </Tooltip>
+                      )}
+                      {r.id === draft?.id ? (
+                        <Button
+                          size="small"
+                          type="text"
+                          danger
+                          icon={<DeleteOutlined />}
+                          onClick={() => onDelete(r.id)}
+                          aria-label="放弃新题记"
+                        />
+                      ) : (
+                        <Popconfirm
+                          title="删除该题记？"
+                          okText="删除"
+                          cancelText="取消"
+                          onConfirm={() => onDelete(r.id)}
+                          disabled={!canEdit}
+                        >
+                          <Button
+                            size="small"
+                            type="text"
+                            danger
+                            icon={<DeleteOutlined />}
+                            disabled={!canEdit}
+                          />
+                        </Popconfirm>
+                      )}
+                    </Space>
                   ),
                 },
               ]}
@@ -647,7 +837,8 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
           </SortableContext>
         </DndContext>
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          按住行首 ⠿ 拖动可调整顺序（「顺序」播放模式按此排列）。
+          点击行进入编辑，焦点移出或回车即保存；按住行首 ⠿
+          拖动可调整顺序（「顺序」播放模式按此排列，搜索过滤时暂不可拖动）。
         </Text>
       </Card>
 
@@ -673,6 +864,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             每行一条题记。分隔符优先级：<code>—</code> <code>–</code> <code>-</code> &gt; <code>by</code> &gt; <code>·</code> <code>•</code>。
             行首 <code>#</code> 视为注释。
             朝代可选，写在「作者」前用 <code>[xxx]</code> / <code>〔xxx〕</code> / <code>【xxx】</code> / <code>(xxx)</code> 包裹。
+            行尾可加 <code>@YYYY-MM-DD</code> 记录录入日期（缺省不记，之后可在列表中逐条补填）。
           </Text>
           <TextArea
             value={batchText}

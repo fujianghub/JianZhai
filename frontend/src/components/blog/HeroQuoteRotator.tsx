@@ -28,7 +28,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { getPublicHero, type HeroAnimation, type HeroPublic, type HeroQuote } from '@/api/hero';
-import { buildPlayOrder } from '@/utils/heroPlayback';
+import { buildPlayOrder, formatHeroDate } from '@/utils/heroPlayback';
 
 const FALLBACK: HeroPublic = {
   enabled: true,
@@ -210,6 +210,8 @@ export function HeroQuoteCard({
   // attribution as a single combined line (gold-rule treatment).
   const hasSplit = !!(quote.dynasty || quote.author || quote.source);
   const legacyAttribution = !hasSplit ? (quote.attribution || '').trim() : '';
+  // 录入 date — the mood timestamp. Blank (legacy quotes) renders nothing.
+  const dateLine = formatHeroDate(quote.created_at || '');
 
   return (
     <div
@@ -273,6 +275,14 @@ export function HeroQuoteCard({
           <span className="jz-hero-attr-rule" aria-hidden />
           <span className="jz-hero-cite-author">{legacyAttribution}</span>
           <span className="jz-hero-attr-rule" aria-hidden />
+        </div>
+      )}
+
+      {/* ── Layer 3: 录于 — when this quote entered the collection, i.e.
+          the mood timestamp. Quotes without a recorded date skip it. */}
+      {dateLine && (
+        <div className="jz-hero-date" aria-label="录入日期">
+          录于 {dateLine}
         </div>
       )}
     </div>

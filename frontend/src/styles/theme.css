@@ -3398,6 +3398,63 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-hero-row-dragging > td {
   background: color-mix(in srgb, var(--jz-surface) 92%, var(--jz-accent) 8%) !important;
 }
+
+/* ── 题记列表展示态（2026-08-10）────────────────────────────────────
+   List rows render as styled text — front-page serif for the 正文 plus
+   the tri-color cite pieces (.jz-hero-cite-*) — and switch to inputs
+   only while that row is being edited. Keeps the management list
+   visually consistent with the homepage hero and halves row height. */
+.jz-hero-admin-row {
+  cursor: pointer;
+  padding: 2px 0;
+  min-width: 0;
+}
+.jz-hero-admin-row-text {
+  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
+  font-size: 15px;
+  letter-spacing: 1.5px;
+  line-height: 1.7;
+  color: var(--jz-text);
+}
+/* Cite line — reuses the homepage piece colours (bronze / cinnabar /
+   ink italic) but denser tracking suited to a table row. Later in the
+   file than .jz-hero-cite-inner so these same-specificity overrides win. */
+.jz-hero-admin-row-cite {
+  margin-top: 2px;
+  font-size: 12px;
+  letter-spacing: 2px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.jz-hero-admin-edit {
+  padding: 2px 0;
+}
+/* Row in edit mode — a quiet accent wash so it reads as "open". Needs
+   !important to beat the AntD hover background, same as the drag lift. */
+.jz-hero-row-editing > td {
+  background: color-mix(in srgb, var(--jz-accent) 6%, transparent) !important;
+}
+/* 录于/改于 dates in the list meta line — quieter than the cite pieces. */
+.jz-hero-admin-row-date {
+  color: var(--jz-text-muted);
+  font-size: 11px;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+/* ── 题记录入日期（2026-08-10 心境时间戳）───────────────────────────
+   Layer 3 of the homepage quote card: 「录于 2026 · 8 · 10」 under the
+   cite row. Gold-washed muted ink, the quietest layer of the stack —
+   present only when the quote has a recorded date. */
+.jz-hero-date {
+  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-size: 11px;
+  letter-spacing: 3px;
+  color: color-mix(in srgb, var(--jz-text-muted) 78%, var(--jz-gold) 22%);
+  opacity: 0.85;
+  margin-top: 2px;
+}
 /* Paper-grain warmth for the preview frame — fine horizontal laid lines
    like 宣纸, behind the existing gold corner accents. */
 .jz-hero-preview-frame {

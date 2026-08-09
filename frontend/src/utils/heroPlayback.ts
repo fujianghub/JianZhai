@@ -33,12 +33,13 @@ export function buildPlayOrder(
 /**
  * Serialize quotes back into the batch-import line format:
  *
- *   正文 — 〔朝代〕作者 · 篇名
+ *   正文 — 〔朝代〕作者 · 篇名 @2026-08-10
  *
  * Pieces degrade gracefully — a quote with only an author renders as
- * ``正文 — 作者``; a bare quote renders as just its text. The output
- * round-trips through the backend ``_parse_batch_lines`` parser, which
- * makes it a handy backup / migration format.
+ * ``正文 — 作者``; a bare quote renders as just its text. The trailing
+ * ``@YYYY-MM-DD`` is the 录入 date and is only emitted when recorded, so
+ * backups round-trip the mood dates through the backend
+ * ``_parse_batch_lines`` parser (which strips the token first).
  */
 export function quotesToBatchText(quotes: HeroQuote[]): string {
   const lines = quotes
@@ -48,13 +49,25 @@ export function quotesToBatchText(quotes: HeroQuote[]): string {
       const dynasty = (q.dynasty || '').trim();
       const author = (q.author || '').trim();
       const source = (q.source || '').trim();
+      const created = (q.created_at || '').trim();
       let rest = '';
       if (dynasty) rest += `〔${dynasty}〕`;
       if (author) rest += author;
       // Only join with · when an author precedes — a dangling "〔宋〕 · 篇名"
       // would confuse the re-import parser.
       if (source) rest += author ? ` · ${source}` : source;
-      return rest ? `${text} — ${rest}` : text;
+      const line = rest ? `${text} — ${rest}` : text;
+      return created ? `${line} @${created}` : line;
     });
   return lines.join('\n');
+}
+
+/**
+ * ``2026-08-10`` → ``2026 · 8 · 10`` for the homepage 录于 line.
+ * Returns '' for blank/malformed input so callers can just skip rendering.
+ */
+export function formatHeroDate(iso: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec((iso || '').trim());
+  if (!m) return '';
+  return `${m[1]} · ${Number(m[2])} · ${Number(m[3])}`;
 }
