@@ -45,7 +45,10 @@ export function quotesToBatchText(quotes: HeroQuote[]): string {
   const lines = quotes
     .filter((q) => (q.text || '').trim())
     .map((q) => {
-      const text = q.text.trim();
+      // The batch format is one quote per physical line, so real line
+      // breaks inside 正文 are escaped as literal \n (the importer's
+      // _parse_batch_lines unescapes them).
+      const text = q.text.trim().replace(/\n/g, '\\n');
       const dynasty = (q.dynasty || '').trim();
       const author = (q.author || '').trim();
       const source = (q.source || '').trim();

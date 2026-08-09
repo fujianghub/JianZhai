@@ -170,7 +170,14 @@ def _validated_quotes(raw) -> list[dict] | str:
     for i, item in enumerate(raw):
         if not isinstance(item, dict):
             return f"第 {i + 1} 条格式错误"
-        text = str(item.get("text") or "").strip()
+        # Multiline 正文 is supported — normalize CR/CRLF so the stored
+        # text always uses bare \n (TextArea/curl/Windows clients differ).
+        text = (
+            str(item.get("text") or "")
+            .replace("\r\n", "\n")
+            .replace("\r", "\n")
+            .strip()
+        )
         if not text:
             # Silently skip blanks — handier for batch-import round-trips.
             continue
@@ -433,6 +440,9 @@ def _parse_batch_lines(text: str) -> Iterable[dict]:
             author_part, source_part = "", ""
 
         if text_part:
+            # Literal \n in the line format = a real line break in 正文
+            # (the export side escapes them the same way).
+            text_part = text_part.replace("\\n", "\n").strip()
             yield {
                 "id": uuid.uuid4().hex[:12],
                 "text": text_part[:MAX_TEXT],

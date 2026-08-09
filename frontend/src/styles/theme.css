@@ -980,17 +980,27 @@ a.jz-meta-full-edit-btn:focus-visible {
   margin-top: 24px;
 }
 .jz-hero-quote {
+  /* Column of quote lines — multiline quotes (正文含换行) stack; the
+     classic single-line quote is just a column of one. Per-line segment
+     flow lives on .jz-hero-quote-line. */
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  flex-wrap: wrap;
+  row-gap: 6px;
   font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
   font-weight: 700;
   font-size: clamp(1.4rem, 3.4vw, 2rem);  /* 缩小：原 1.6-2.4rem → 1.4-2rem */
   letter-spacing: 5px;
   color: var(--jz-text);
   line-height: 1.4;
+}
+.jz-hero-quote-line {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  flex-wrap: wrap;
 }
 .jz-hero-quote-sep {
   color: var(--jz-gold);
@@ -3361,6 +3371,9 @@ a.jz-meta-full-edit-btn:focus-visible {
 @media (max-width: 560px) {
   .jz-hero-quote {
     letter-spacing: 3px;
+    row-gap: 4px;
+  }
+  .jz-hero-quote-line {
     gap: 10px;
   }
   .jz-hero-cite-inner {
@@ -3415,6 +3428,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   letter-spacing: 1.5px;
   line-height: 1.7;
   color: var(--jz-text);
+  white-space: pre-line; /* 多行题记按存储的换行展示 */
 }
 /* Cite line — reuses the homepage piece colours (bronze / cinnabar /
    ink italic) but denser tracking suited to a table row. Later in the

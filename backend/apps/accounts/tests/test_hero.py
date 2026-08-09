@@ -612,3 +612,39 @@ def test_batch_append_preserves_existing_dates(staff_client):
     quotes = {q["text"]: q for q in r.json()["quotes"]}
     assert quotes["老句"]["created_at"] == "2024-03-15"
     assert quotes["新句"]["created_at"] == ""
+
+
+# ── 多行题记（正文换行）────────────────────────────────────────────────
+
+
+def test_patch_multiline_text_normalizes_crlf(staff_client):
+    r = staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "春眠不觉晓\r\n处处闻啼鸟\r夜来风雨声"}]},
+        format="json",
+    )
+    assert r.status_code == 200
+    assert r.json()["quotes"][0]["text"] == "春眠不觉晓\n处处闻啼鸟\n夜来风雨声"
+
+
+def test_public_hero_keeps_multiline_text(staff_client):
+    staff_client.patch(
+        "/api/v1/auth/hero/",
+        {"quotes": [{"text": "上句\n下句"}]},
+        format="json",
+    )
+    body = staff_client.get("/api/v1/public/hero/").json()
+    assert body["quotes"][0]["text"] == "上句\n下句"
+
+
+def test_batch_literal_backslash_n_becomes_line_break():
+    out = parse(r"春眠不觉晓\n处处闻啼鸟 — 孟浩然 · 春晓")
+    assert out[0]["text"] == "春眠不觉晓\n处处闻啼鸟"
+    assert out[0]["author"] == "孟浩然"
+    assert out[0]["source"] == "春晓"
+
+
+def test_batch_backslash_n_with_date_suffix():
+    out = parse(r"上句\n下句 — 作者 @2025-05-05")
+    assert out[0]["text"] == "上句\n下句"
+    assert out[0]["created_at"] == "2025-05-05"

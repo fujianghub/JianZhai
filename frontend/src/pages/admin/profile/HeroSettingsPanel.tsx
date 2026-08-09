@@ -133,6 +133,7 @@ const SAMPLE_BATCH = `# 行首 # 开头为注释；空行忽略
 #   3. 中圆点  ·  •（仅当行内无破折号时）
 # 朝代可选，写在「作者」前并用 [xxx] / 〔xxx〕 / 【xxx】 / (xxx) 包裹。
 # 行尾可加 @YYYY-MM-DD 记录录入日期（心境时间戳，首页展示；缺省不记）。
+# 正文内写 \n 表示换行（多行题记，导出会自动转义）。
 莫听穿林打叶声 — [宋]苏轼 · 定风波 @2026-08-10
 臣本布衣 — 〔三国〕诸葛亮 · 出师表
 人生如逆旅，我亦是行人 - 苏轼 · 临江仙
@@ -674,14 +675,20 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                             }
                           }}
                         >
-                          <Input
+                          <TextArea
                             value={r.text}
                             autoFocus
-                            placeholder="正文（最多 200 字）"
+                            placeholder="正文（最多 200 字，可换行）"
+                            autoSize={{ minRows: 1, maxRows: 5 }}
                             onChange={(e) => onRowChange(r.id, 'text', e.target.value)}
-                            onPressEnter={() => {
-                              commitRow(r.id);
-                              setEditingId(null);
+                            onKeyDown={(e) => {
+                              // Enter inserts a line break (多行题记)；
+                              // Ctrl/⌘+Enter commits and closes the row.
+                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                                e.preventDefault();
+                                commitRow(r.id);
+                                setEditingId(null);
+                              }
                             }}
                           />
                           <Space size={6} wrap style={{ marginTop: 6 }}>
@@ -837,7 +844,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
           </SortableContext>
         </DndContext>
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          点击行进入编辑，焦点移出或回车即保存；按住行首 ⠿
+          点击行进入编辑，焦点移出或 Ctrl/⌘+回车保存（正文内回车 = 换行）；按住行首 ⠿
           拖动可调整顺序（「顺序」播放模式按此排列，搜索过滤时暂不可拖动）。
         </Text>
       </Card>
@@ -864,7 +871,8 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             每行一条题记。分隔符优先级：<code>—</code> <code>–</code> <code>-</code> &gt; <code>by</code> &gt; <code>·</code> <code>•</code>。
             行首 <code>#</code> 视为注释。
             朝代可选，写在「作者」前用 <code>[xxx]</code> / <code>〔xxx〕</code> / <code>【xxx】</code> / <code>(xxx)</code> 包裹。
-            行尾可加 <code>@YYYY-MM-DD</code> 记录录入日期（缺省不记，之后可在列表中逐条补填）。
+            行尾可加 <code>@YYYY-MM-DD</code> 记录录入日期（缺省不记，之后可在列表中逐条补填）；
+            正文内 <code>\n</code> 表示换行。
           </Text>
           <TextArea
             value={batchText}

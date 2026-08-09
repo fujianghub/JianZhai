@@ -82,6 +82,15 @@ describe('quotesToBatchText', () => {
     expect(out).toBe('甲 — a\n乙 — b');
   });
 
+  it('escapes real line breaks as literal \\n', () => {
+    expect(quotesToBatchText([q({ text: '上句\n下句', author: '作者' })])).toBe(
+      '上句\\n下句 — 作者',
+    );
+    expect(
+      quotesToBatchText([q({ text: 'A\nB', created_at: '2026-08-10' })]),
+    ).toBe('A\\nB @2026-08-10');
+  });
+
   it('emits a trailing @date only when created_at is recorded', () => {
     expect(
       quotesToBatchText([q({ text: 'A', author: '苏轼', created_at: '2026-08-10' })]),

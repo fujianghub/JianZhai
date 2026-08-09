@@ -198,12 +198,22 @@ export function HeroQuoteCard({
   leaving?: boolean;
 }) {
   const animClass = `jz-hero-anim-${animation}`;
-  // Split text on " · " so each fragment renders as its own segment with
-  // a thin separator between — preserves the classic "年与时驰·意与日去·
-  // 遂成枯落" stacked layout. Plain quotes render in one segment.
-  const segments = quote.text.includes(' · ')
-    ? quote.text.split(' · ').map((s) => s.trim()).filter(Boolean)
-    : [quote.text];
+  // Two-level split: real newlines make stacked lines (诗句分行), then
+  // " · " within a line makes separator-joined segments — preserves the
+  // classic "年与时驰·意与日去·遂成枯落" layout. Plain quotes render as
+  // one line with one segment.
+  const lines = quote.text
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  const lineSegs = (lines.length ? lines : [quote.text]).map((ln) =>
+    ln.includes(' · ') ? ln.split(' · ').map((s) => s.trim()).filter(Boolean) : [ln],
+  );
+  // Typewriter delays run through the whole quote, so line N starts
+  // after every segment of the lines above it.
+  const segsBefore = lineSegs.map((_, li) =>
+    lineSegs.slice(0, li).reduce((n, l) => n + l.length, 0),
+  );
 
   // Back-compat: older payloads (pre-v0.9.4) only sent ``attribution``.
   // If all split fields are absent but attribution is present, render
@@ -222,17 +232,27 @@ export function HeroQuoteCard({
       <div className="jz-hero-quote-wrap">
         <span className="jz-hero-quote-mark jz-hero-quote-mark-left" aria-hidden>「</span>
         <div className="jz-hero-quote">
-          {segments.map((seg, i) => (
-            <span key={`${animationKey}-${i}`} className="jz-hero-quote-seg">
-              {animation === 'typewriter' ? <TypewriterText text={seg} delay={i * 0.4} /> : seg}
-              {i < segments.length - 1 && (
-                <span className="jz-hero-quote-sep" aria-hidden>·</span>
+          {lineSegs.map((segs, li) => (
+            <span key={`${animationKey}-l${li}`} className="jz-hero-quote-line">
+              {segs.map((seg, i) => (
+                <span key={`${animationKey}-${li}-${i}`} className="jz-hero-quote-seg">
+                  {animation === 'typewriter' ? (
+                    <TypewriterText text={seg} delay={(segsBefore[li] + i) * 0.4} />
+                  ) : (
+                    seg
+                  )}
+                  {i < segs.length - 1 && (
+                    <span className="jz-hero-quote-sep" aria-hidden>·</span>
+                  )}
+                </span>
+              ))}
+              {li === lineSegs.length - 1 && (
+                <span className="jz-hero-seal" aria-label="印章">
+                  <span className="jz-hero-seal-text">简斋</span>
+                </span>
               )}
             </span>
           ))}
-          <span className="jz-hero-seal" aria-label="印章">
-            <span className="jz-hero-seal-text">简斋</span>
-          </span>
         </div>
         <span className="jz-hero-quote-mark jz-hero-quote-mark-right" aria-hidden>」</span>
       </div>
