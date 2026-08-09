@@ -303,6 +303,13 @@ DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024 * 1024  # 2 GiB
 # server can rewrite ./images/x.png references, and such folders routinely exceed
 # 100 files.
 DATA_UPLOAD_MAX_NUMBER_FILES = 1000
+# importBatch sends one 'paths' text field PER FILE (relative-path rewrite for
+# ./images/x.png refs) plus knowledge_base/folder/heading_numbering/insert_toc.
+# Django's separate FIELDS limit (default 1000) counts every one of those text
+# parts, so without raising it the effective file cap is ~996 and the failure is
+# an opaque TooManyFieldsSent 400 with no per-file errors. Keep FIELDS >= FILES
+# + options headroom; change either side only in tandem with the other.
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 1100
 # In-memory buffer threshold ONLY — files larger than this stream to a temp
 # file on disk instead of being held in RAM. Deliberately kept small (NOT 1
 # GiB) so a big upload never balloons memory.

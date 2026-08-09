@@ -458,10 +458,13 @@ function KbBody({
    * - ``flat``: one stream of all docs, regardless of folder
    * Persisted under a KB-scoped key so each library remembers its own
    * preference. */
-  const groupKey = `jz-kb-view:${tree.slug}`;
-  /* v2: key bumped when the default flipped to ``list`` — the mount effect
-   * below auto-persists the density, so every past visitor had the old
-   * ``summary`` default stored and would never see the new one. */
+  /* v2: preferences are now persisted ONLY on explicit user toggles (see
+   * changeView/changeDensity below) — the old mount effect auto-wrote the
+   * current value, freezing the computed default (folders-if-any) for every
+   * first-time visitor and making later default changes unreachable. The view
+   * key is bumped so those frozen auto-writes are discarded (cost: past manual
+   * choices reset once, same deal as the density v2 bump). */
+  const groupKey = `jz-kb-view-v2:${tree.slug}`;
   const densityKey = `jz-kb-density-v2:${tree.slug}`;
   const sidebarKey = `jz-kb-side-w:${tree.slug}`;
 
@@ -501,21 +504,28 @@ function KbBody({
    * trapped by a Tippy popover or PDF canvas. */
   const [dragging, setDragging] = useState(false);
 
-  useEffect(() => {
+  /* 只在用户显式操作时写入偏好 —— 挂载自动回写会把「计算出的默认值」冻结成
+   * 「用户的选择」，之后任何默认值调整对回访者永久失效（密度默认值事故同源，
+   * 见 CLAUDE.md 陷阱区）。新偏好项一律沿用本模式。 */
+  const persistPref = (key: string, value: string) => {
     try {
-      localStorage.setItem(groupKey, view);
+      localStorage.setItem(key, value);
     } catch { /* ignore */ }
-  }, [groupKey, view]);
-  useEffect(() => {
-    try {
-      localStorage.setItem(densityKey, density);
-    } catch { /* ignore */ }
-  }, [densityKey, density]);
-  useEffect(() => {
-    try {
-      localStorage.setItem(sidebarKey, String(sidebarWidth));
-    } catch { /* ignore */ }
-  }, [sidebarKey, sidebarWidth]);
+  };
+  const changeView = (v: GroupView) => {
+    setView(v);
+    persistPref(groupKey, v);
+  };
+  const changeDensity = (d: Density) => {
+    setDensity(d);
+    persistPref(densityKey, d);
+  };
+  const changeSidebar = (w: number) => {
+    setSidebarWidth(w);
+    persistPref(sidebarKey, String(w));
+  };
+  /** 拖拽期间只更新 state，松手时一次性持久化（onMove 里写 localStorage 太吵）。 */
+  const dragWidthRef = useRef<number | null>(null);
 
   // Drag-resize the sidebar. We attach the move/up listeners to ``document``
   // so a fast drag past the divider doesn't lose the gesture.
@@ -528,9 +538,16 @@ function KbBody({
       if (!wrapper) return;
       const rect = wrapper.getBoundingClientRect();
       const next = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, e.clientX - rect.left));
+      dragWidthRef.current = next;
       setSidebarWidth(next);
     };
-    const onUp = () => setDragging(false);
+    const onUp = () => {
+      if (dragWidthRef.current != null) {
+        persistPref(sidebarKey, String(dragWidthRef.current));
+        dragWidthRef.current = null;
+      }
+      setDragging(false);
+    };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
     document.body.style.cursor = 'col-resize';
@@ -570,12 +587,12 @@ function KbBody({
             e.preventDefault();
             setDragging(true);
           }}
-          onDoubleClick={() => setSidebarWidth(SIDEBAR_DEFAULT)}
+          onDoubleClick={() => changeSidebar(SIDEBAR_DEFAULT)}
           onKeyDown={(e) => {
             if (e.key === 'ArrowLeft') {
-              setSidebarWidth((w) => Math.max(SIDEBAR_MIN, w - 16));
+              changeSidebar(Math.max(SIDEBAR_MIN, sidebarWidth - 16));
             } else if (e.key === 'ArrowRight') {
-              setSidebarWidth((w) => Math.min(SIDEBAR_MAX, w + 16));
+              changeSidebar(Math.min(SIDEBAR_MAX, sidebarWidth + 16));
             }
           }}
         />
@@ -632,7 +649,7 @@ function KbBody({
                 size="small"
                 type={view === 'folders' ? 'primary' : 'default'}
                 icon={<UnorderedListOutlined />}
-                onClick={() => setView('folders')}
+                onClick={() => changeView('folders')}
                 aria-label="按文件夹分组"
               />
             </Tooltip>
@@ -641,7 +658,7 @@ function KbBody({
                 size="small"
                 type={view === 'flat' ? 'primary' : 'default'}
                 icon={<AppstoreOutlined />}
-                onClick={() => setView('flat')}
+                onClick={() => changeView('flat')}
                 aria-label="平铺所有文章"
               />
             </Tooltip>
@@ -652,7 +669,7 @@ function KbBody({
                 size="small"
                 type={density === 'summary' ? 'primary' : 'text'}
                 icon={<ProfileOutlined />}
-                onClick={() => setDensity('summary')}
+                onClick={() => changeDensity('summary')}
               >
                 摘要
               </Button>
@@ -662,7 +679,7 @@ function KbBody({
                 size="small"
                 type={density === 'list' ? 'primary' : 'text'}
                 icon={<FileTextOutlined />}
-                onClick={() => setDensity('list')}
+                onClick={() => changeDensity('list')}
               >
                 列表
               </Button>

@@ -50,6 +50,7 @@ import {
   skippedSummary,
   UPLOAD_ACCEPT,
   type CollectedUploads,
+  type ImportResultDisplay,
 } from '@/utils/uploadBatch';
 import { importBatch, importZip, type BatchImportItem } from '@/api/attachments';
 import KBTreeNav, {
@@ -92,6 +93,13 @@ export default function KBWorkspace() {
   // 导入目标文件夹（null = KB 根目录）。所有上传入口共用：文件/文件夹选择器、
   // 拖拽、带图 MD、ZIP；树上文件夹行的「上传到此文件夹」按钮切换它后直接拉起选择器。
   const [importTargetId, setImportTargetId] = useState<number | null>(null);
+  /** 文件夹行「上传到此文件夹」的一次性目标覆盖 —— 不碰持久化的 importTargetId，
+   * 否则一次取消对话框后所有上传入口都被静默改道（见 handleUpload 消费点）。 */
+  const uploadOverrideRef = useRef<number | null>(null);
+  /** 「新建 ▾」下拉受控 open：菜单里嵌了 Select/Checkbox 表单控件，非受控时
+   * 点到菜单项 padding 会触发 AntD 默认 click-to-close 整个收起。只有 trigger
+   * 来源（按钮点击/外部点击）才切换，动作项在各自 onClick 里显式关闭。 */
+  const [createMenuOpen, setCreateMenuOpen] = useState(false);
   const [docForm] = Form.useForm<{
     title: string;
     folder?: number | null;
@@ -171,20 +179,20 @@ export default function KBWorkspace() {
     void refreshTree();
   }, [kbId, refreshTree]);
 
-  const folderOptions = tree
-    ? flattenFolders(tree).map((f) => ({ value: f.id, label: f.label }))
-    : [];
+  // 单一收口：分片上传期间 progress 高频 render + 每片 refreshTree 换引用，
+  // 未 memo 的全树遍历会在两个消费点重复执行。
+  const folders = useMemo(() => (tree ? flattenFolders(tree) : []), [tree]);
+  const folderOptions = useMemo(
+    () => folders.map((f) => ({ value: f.id, label: f.label })),
+    [folders]
+  );
 
   // 目标文件夹被删除/移出后自动回退根目录，避免上传时对着已不存在的 id 404。
   useEffect(() => {
-    if (
-      importTargetId !== null &&
-      tree &&
-      !flattenFolders(tree).some((f) => f.id === importTargetId)
-    ) {
+    if (importTargetId !== null && tree && !folders.some((f) => f.id === importTargetId)) {
       setImportTargetId(null);
     }
-  }, [tree, importTargetId]);
+  }, [tree, folders, importTargetId]);
 
   async function handleCreateDoc() {
     let values;
@@ -233,6 +241,10 @@ export default function KBWorkspace() {
    * 顺序上传 —— 每片服务端响应后立即刷新树，文档渐进出现。
    */
   async function handleUpload(collected: CollectedUploads) {
+    // 一次性覆盖优先于持久化目标，且无论走到哪个分支都立即消费掉（含全部
+    // 被预过滤的提前 return），避免残留改道下一次上传。
+    const target = uploadOverrideRef.current ?? importTargetId;
+    uploadOverrideRef.current = null;
     if (collected.skipped.length) message.warning(skippedSummary(collected.skipped));
     if (collected.items.length === 0) {
       if (!collected.skipped.length) message.info('没有可上传的文件');
@@ -244,7 +256,7 @@ export default function KBWorkspace() {
       const result = await runChunkedImport(
         collected.items,
         kbId,
-        importTargetId,
+        target,
         {
           onProgress: (loaded, total) => setBatchProgress({ loaded, total }),
           onChunkDone: async () => {
@@ -264,21 +276,29 @@ export default function KBWorkspace() {
   }
 
   /** 共用：跑一次导入请求并统一处理进度 / 提示 / 刷新。 */
-  async function runImport(
-    fn: () => Promise<{
-      created: unknown[];
-      errors: Array<{ name: string; detail: string }>;
-      folders_created: number;
-      skipped?: string[];
-    }>
-  ) {
+  async function runImport(fn: () => Promise<ImportResultDisplay>) {
     setImporting(true);
     setBatchProgress({ loaded: 0, total: 1 });
     try {
       const r = await fn();
       notifyImportResult(r);
     } catch (err) {
-      message.error(formatApiError(err, '导入失败'));
+      // 整体失败的 400（如 zip 全被过滤）响应体里仍带逐文件 skipped/errors
+      // 明细 —— 只弹 detail 会把它们静默丢掉。
+      const data = (err as {
+        response?: { data?: Partial<ImportResultDisplay> & { detail?: string } };
+      })?.response?.data;
+      if (data && (Array.isArray(data.errors) || Array.isArray(data.skipped))) {
+        notifyImportResult({
+          created: data.created ?? [],
+          errors: data.errors ?? [],
+          folders_created: data.folders_created ?? 0,
+          skipped: data.skipped,
+        });
+        if (data.detail) message.error(data.detail);
+      } else {
+        message.error(formatApiError(err, '导入失败'));
+      }
     } finally {
       setImporting(false);
       setBatchProgress(null);
@@ -554,19 +574,30 @@ export default function KBWorkspace() {
         actions={
         <Space wrap>
           <Dropdown
+            trigger={['click']}
+            open={createMenuOpen}
+            onOpenChange={(o, info) => {
+              if (info.source === 'trigger') setCreateMenuOpen(o);
+            }}
             menu={{
               items: [
                 {
                   key: 'doc',
                   icon: <FileAddOutlined />,
                   label: '新建文档',
-                  onClick: () => setNewDocModal(true),
+                  onClick: () => {
+                    setCreateMenuOpen(false);
+                    setNewDocModal(true);
+                  },
                 },
                 {
                   key: 'folder',
                   icon: <FolderAddOutlined />,
                   label: '新建文件夹',
-                  onClick: () => setNewFolderModal(true),
+                  onClick: () => {
+                    setCreateMenuOpen(false);
+                    setNewFolderModal(true);
+                  },
                 },
                 { type: 'divider' as const },
                 {
@@ -574,7 +605,7 @@ export default function KBWorkspace() {
                   label: (
                     <span
                       onClick={(e) => e.stopPropagation()}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}
+                      style={{ display: 'flex', alignItems: 'center', gap: 8, width: '100%' }}
                     >
                       <Text type="secondary" style={{ fontSize: 12 }}>上传到</Text>
                       <Select
@@ -584,8 +615,7 @@ export default function KBWorkspace() {
                         value={importTargetId ?? undefined}
                         onChange={(v) => setImportTargetId(v ?? null)}
                         options={folderOptions}
-                        style={{ minWidth: 200 }}
-                        getPopupContainer={(t) => t.parentElement as HTMLElement}
+                        style={{ minWidth: 200, flex: 1 }}
                       />
                     </span>
                   ),
@@ -594,26 +624,38 @@ export default function KBWorkspace() {
                   key: 'import-files',
                   icon: <CloudUploadOutlined />,
                   label: '上传文件（单个或多选）',
-                  onClick: () => batchInputRef.current?.click(),
+                  onClick: () => {
+                    setCreateMenuOpen(false);
+                    batchInputRef.current?.click();
+                  },
                 },
                 {
                   key: 'import-folder',
                   icon: <FolderAddOutlined />,
                   label: '上传文件夹（保留目录结构）',
-                  onClick: () => folderInputRef.current?.click(),
+                  onClick: () => {
+                    setCreateMenuOpen(false);
+                    folderInputRef.current?.click();
+                  },
                 },
                 { type: 'divider' as const },
                 {
                   key: 'import-md-bundle',
                   icon: <FileImageOutlined />,
                   label: '导入带图 Markdown（选文档 + 图片文件夹）',
-                  onClick: () => setBundleModalOpen(true),
+                  onClick: () => {
+                    setCreateMenuOpen(false);
+                    setBundleModalOpen(true);
+                  },
                 },
                 {
                   key: 'import-zip',
                   icon: <CloudUploadOutlined />,
                   label: '导入 ZIP 压缩包（含图片）',
-                  onClick: () => zipInputRef.current?.click(),
+                  onClick: () => {
+                    setCreateMenuOpen(false);
+                    zipInputRef.current?.click();
+                  },
                 },
                 {
                   key: 'import-hint',
@@ -950,7 +992,16 @@ export default function KBWorkspace() {
               batchMode
                 ? undefined
                 : (f) => {
-                    setImportTargetId(f.id);
+                    uploadOverrideRef.current = f.id;
+                    // 取消文件对话框不触发 change，靠 'cancel' 事件清掉覆盖，
+                    // 避免残留改道下一次其他入口的上传。
+                    batchInputRef.current?.addEventListener(
+                      'cancel',
+                      () => {
+                        uploadOverrideRef.current = null;
+                      },
+                      { once: true }
+                    );
                     batchInputRef.current?.click();
                   }
             }

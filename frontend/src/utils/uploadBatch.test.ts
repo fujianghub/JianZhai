@@ -3,20 +3,29 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/api/attachments', () => ({
   importBatch: vi.fn(),
 }));
+vi.mock('@/utils/notify', () => ({
+  message: { success: vi.fn(), warning: vi.fn(), info: vi.fn(), error: vi.fn() },
+  notification: { warning: vi.fn() },
+}));
 
 import { importBatch, type BatchImportResult } from '@/api/attachments';
+import { message, notification } from '@/utils/notify';
 import {
   checkUploadFile,
   collectDroppedItems,
   collectPickedFiles,
+  notifyImportResult,
   planUploadChunks,
   runChunkedImport,
   skippedSummary,
   UPLOAD_ACCEPT,
   UPLOAD_MAX_FILE_SIZE,
+  UPLOAD_MAX_FILES_PER_REQUEST,
 } from './uploadBatch';
 
 const importBatchMock = vi.mocked(importBatch);
+const notificationWarningMock = vi.mocked(notification.warning);
+const messageSuccessMock = vi.mocked(message.success);
 
 function makeFile(name: string, size = 10): File {
   const f = new File(['x'], name);
@@ -39,6 +48,8 @@ function okResult(names: string[]): BatchImportResult {
 
 beforeEach(() => {
   importBatchMock.mockReset();
+  notificationWarningMock.mockReset();
+  messageSuccessMock.mockReset();
 });
 
 describe('upload rules', () => {
@@ -149,6 +160,73 @@ describe('runChunkedImport', () => {
     expect(seen[seen.length - 1]).toBe(400);
     // 单调不回退
     for (let i = 1; i < seen.length; i++) expect(seen[i]).toBeGreaterThanOrEqual(seen[i - 1]);
+  });
+});
+
+describe('runChunkedImport 上限守卫与快速失败', () => {
+  it('「文档+图片」整组超过单请求文件数上限：不发请求、整组记错', async () => {
+    // 同顶层目录含 md + png → planUploadChunks 整组一个 chunk，无法拆分。
+    const items = [
+      { file: makeFile('doc.md'), relativePath: 'big/doc.md' },
+      ...Array.from({ length: UPLOAD_MAX_FILES_PER_REQUEST }, (_, i) => ({
+        file: makeFile(`${i}.png`),
+        relativePath: `big/images/${i}.png`,
+      })),
+    ];
+    const result = await runChunkedImport(items, 1, null, {}, 2);
+    expect(importBatchMock).not.toHaveBeenCalled();
+    expect(result.errors).toHaveLength(UPLOAD_MAX_FILES_PER_REQUEST + 1);
+    expect(result.errors[0].detail).toMatch('超过单次请求');
+    expect(result.errors[0].detail).toMatch('拆分');
+  });
+
+  it('404（目标文件夹已删）：本片 + 剩余全部记错并中止，不再发后续请求', async () => {
+    const items = ['a.md', 'b.md', 'c.md', 'd.md'].map((n) => ({
+      file: makeFile(n),
+      relativePath: '',
+    }));
+    importBatchMock.mockRejectedValueOnce({
+      response: { status: 404, data: { detail: '未找到。' } },
+    });
+    const result = await runChunkedImport(items, 1, 999, {}, 2);
+    // 第一片 404 后中止：只发了一次请求，4 个文件全部带明确原因
+    expect(importBatchMock).toHaveBeenCalledTimes(1);
+    expect(result.errors).toHaveLength(4);
+    for (const e of result.errors) expect(e.detail).toMatch('目标文件夹已被删除或移动');
+  });
+});
+
+describe('notifyImportResult', () => {
+  it('全部成功走轻量 message', () => {
+    notifyImportResult({ created: okResult(['a.md']).created, errors: [], folders_created: 0 });
+    expect(messageSuccessMock).toHaveBeenCalled();
+    expect(notificationWarningMock).not.toHaveBeenCalled();
+  });
+
+  it('有失败：不自动关闭（duration 0）', () => {
+    notifyImportResult({
+      created: [],
+      errors: [{ name: 'a.md', detail: 'x' }],
+      folders_created: 0,
+    });
+    expect(notificationWarningMock.mock.calls[0][0].duration).toBe(0);
+  });
+
+  it('跳过溢出（>5）：补控制台指引行且不自动关闭', () => {
+    notifyImportResult({
+      created: [],
+      errors: [],
+      folders_created: 0,
+      skipped: Array.from({ length: 8 }, (_, i) => `${i}.exe（不支持的类型）`),
+    });
+    const arg = notificationWarningMock.mock.calls[0][0];
+    expect(arg.duration).toBe(0);
+    expect(JSON.stringify(arg.description)).toMatch('浏览器控制台');
+  });
+
+  it('少量跳过（≤5）：8 秒自动关闭', () => {
+    notifyImportResult({ created: [], errors: [], folders_created: 0, skipped: ['a.exe'] });
+    expect(notificationWarningMock.mock.calls[0][0].duration).toBe(8);
   });
 });
 

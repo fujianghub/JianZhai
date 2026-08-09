@@ -314,3 +314,17 @@ def test_import_zip_rejects_non_zip(api_client, owner, kb):
         format="multipart",
     )
     assert resp.status_code == 415
+
+
+def test_upload_fields_limit_covers_per_file_paths():
+    """importBatch sends one 'paths' text field per file plus up to 4 option
+    fields, and Django's FIELDS limit counts them all — if it doesn't clear
+    FILES + options, batches near the file cap die with an opaque
+    TooManyFieldsSent 400 instead of the per-file errors list. Change either
+    setting only in tandem (see settings.py and frontend uploadBatch.ts)."""
+    from django.conf import settings
+
+    assert (
+        settings.DATA_UPLOAD_MAX_NUMBER_FIELDS
+        >= settings.DATA_UPLOAD_MAX_NUMBER_FILES + 10
+    )

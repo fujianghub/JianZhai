@@ -40,6 +40,14 @@ export const UPLOAD_ACCEPT = [...UPLOAD_ALLOWED_EXT].join(',');
 export const UPLOAD_CHUNK_SIZE = 8;
 
 /**
+ * 单次请求文件数上限，与后端 settings.DATA_UPLOAD_MAX_NUMBER_FILES 对齐；
+ * 改任一侧须对照另一侧（CLAUDE.md 陷阱区「导入整组发送 ↔ 文件数上限耦合」）。
+ * 「文本文档+图片」组必须整组一个请求（相对图路径改写前提），超限组无法拆分，
+ * 只能在发送前整组报错，避免把注定被拒收的多 GB 请求体传完才失败。
+ */
+export const UPLOAD_MAX_FILES_PER_REQUEST = 1000;
+
+/**
  * 文本文档扩展名：这些文件可能用 `![](./images/x.png)` 引用同文件夹内的本地图片，
  * 服务端导入时需把图片当作该文档的附件并改写相对路径。改写依赖「文档与其图片在
  * 同一个 import_batch 请求里」，因此含此类文档的文件夹要整组发送（见 planUploadChunks）。
@@ -263,8 +271,22 @@ export async function runChunkedImport(
   const totalBytes = items.reduce((s, it) => s + it.file.size, 0) || 1;
   let doneBytes = 0;
   const plan = planUploadChunks(items, chunkSize);
-  for (const chunk of plan) {
+  let aborted = false;
+  for (const [chunkIndex, chunk] of plan.entries()) {
     const chunkBytes = chunk.reduce((s, it) => s + it.file.size, 0);
+    // 「文档+图片」整组超过服务端单请求文件数上限：发出去必被整体拒收
+    // （TooManyFilesSent 400 无 errors 明细），前置拦截并给出可操作的原因。
+    if (chunk.length > UPLOAD_MAX_FILES_PER_REQUEST) {
+      const reason =
+        `所在文件夹文档+图片共 ${chunk.length} 个，超过单次请求 ` +
+        `${UPLOAD_MAX_FILES_PER_REQUEST} 上限（文档与其图片必须同请求才能改写相对路径），` +
+        '请拆分文件夹后重试';
+      total.errors.push(...chunk.map((it) => ({ name: it.file.name, detail: reason })));
+      doneBytes += chunkBytes;
+      callbacks.onProgress?.(doneBytes, totalBytes);
+      await callbacks.onChunkDone?.(total);
+      continue;
+    }
     try {
       const r = await importBatch(chunk, kbId, folderId, (loaded, reqTotal) => {
         // axios 报的是含 multipart 边界的请求字节，按比例折算到本片份额。
@@ -275,12 +297,22 @@ export async function runChunkedImport(
       total.errors.push(...r.errors);
       total.folders_created += r.folders_created;
     } catch (err) {
-      const data = (err as { response?: { data?: Partial<BatchImportResult> } })
-        ?.response?.data;
-      if (data && Array.isArray(data.errors)) {
-        total.created.push(...(data.created ?? []));
-        total.errors.push(...data.errors);
-        total.folders_created += data.folders_created ?? 0;
+      const resp = (err as {
+        response?: { status?: number; data?: Partial<BatchImportResult> };
+      })?.response;
+      if (resp?.status === 404) {
+        // 目标文件夹/KB 已被删除或移动（共享内容池下协作者可触发）：
+        // 剩余分片必然同样 404，标记本片 + 剩余全部文件后中止，不再烧带宽。
+        const detail = '目标文件夹已被删除或移动，请重新选择上传目标';
+        const rest = plan.slice(chunkIndex + 1).flat();
+        total.errors.push(
+          ...[...chunk, ...rest].map((it) => ({ name: it.file.name, detail }))
+        );
+        aborted = true;
+      } else if (resp?.data && Array.isArray(resp.data.errors)) {
+        total.created.push(...(resp.data.created ?? []));
+        total.errors.push(...resp.data.errors);
+        total.folders_created += resp.data.folders_created ?? 0;
       } else {
         const detail = err instanceof Error ? err.message : String(err);
         total.errors.push(...chunk.map((it) => ({ name: it.file.name, detail })));
@@ -289,6 +321,7 @@ export async function runChunkedImport(
     doneBytes += chunkBytes;
     callbacks.onProgress?.(doneBytes, totalBytes);
     await callbacks.onChunkDone?.(total);
+    if (aborted) break;
   }
   return total;
 }
@@ -303,16 +336,17 @@ export function skippedSummary(skipped: string[]): string {
 const RESULT_LIST_MAX = 5;
 
 /**
+ * 导入结果展示形状 = API 权威类型 + 客户端聚合的 skipped（预过滤原因，不进
+ * API 响应；ZipImportResult 的 skipped 由 extends 天然兼容）。勿再内联手抄。
+ */
+export type ImportResultDisplay = BatchImportResult & { skipped?: string[] };
+
+/**
  * 导入结果统一提示（KBWorkspace 与 KBPostsPage 共用）：
  * 全部成功 → 轻量 message；有失败/跳过 → notification 列出具体文件名 + 原因
- * （失败时不自动关闭，用户看完手动关），完整明细同时落 console。
+ * （失败或跳过溢出时不自动关闭，用户看完手动关），完整明细同时落 console。
  */
-export function notifyImportResult(r: {
-  created: unknown[];
-  errors: Array<{ name: string; detail: string }>;
-  folders_created: number;
-  skipped?: string[];
-}): void {
+export function notifyImportResult(r: ImportResultDisplay): void {
   const summary =
     `已导入 ${r.created.length} 个文件` +
     (r.folders_created ? ` · 创建 ${r.folders_created} 个文件夹` : '') +
@@ -329,7 +363,11 @@ export function notifyImportResult(r: {
   if (r.errors.length > RESULT_LIST_MAX) {
     lines.push(`…另有 ${r.errors.length - RESULT_LIST_MAX} 个失败（完整清单见浏览器控制台）`);
   }
-  if (r.skipped?.length) lines.push(skippedSummary(r.skipped));
+  const skippedOverflow = (r.skipped?.length ?? 0) > RESULT_LIST_MAX;
+  if (r.skipped?.length) {
+    lines.push(skippedSummary(r.skipped));
+    if (skippedOverflow) lines.push('（跳过完整清单见浏览器控制台）');
+  }
   if (r.errors.length) console.warn('import errors:', r.errors);
   if (r.skipped?.length) console.warn('import skipped:', r.skipped);
   notification.warning({
@@ -339,6 +377,7 @@ export function notifyImportResult(r: {
       { style: { whiteSpace: 'pre-line', wordBreak: 'break-all' } },
       lines.join('\n')
     ),
-    duration: r.errors.length ? 0 : 8,
+    // 有失败或跳过清单被折叠时不自动关闭 —— toast 消失后清单无法重建。
+    duration: r.errors.length || skippedOverflow ? 0 : 8,
   });
 }
