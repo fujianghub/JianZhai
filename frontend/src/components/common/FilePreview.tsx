@@ -212,7 +212,7 @@ function PlainTextPreview({ url }: { url: string }) {
         border: '1px solid var(--jz-border)',
         borderRadius: 6,
         background: 'var(--jz-surface-2)',
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+        fontFamily: 'var(--jz-font-mono)',
         whiteSpace: 'pre-wrap',
         wordBreak: 'break-word',
       }}

@@ -221,7 +221,7 @@ export default function FindReplacePanel({
             type={caseSensitive ? 'primary' : 'default'}
             onClick={() => setCaseSensitive((v) => !v)}
             aria-pressed={caseSensitive}
-            style={{ fontFamily: 'serif', fontWeight: 700 }}
+            style={{ fontFamily: 'var(--jz-font-serif)', fontWeight: 700 }}
           >
             Aa
           </Button>

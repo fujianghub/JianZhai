@@ -8,6 +8,8 @@
  *   the theme changes so subsequent renders pick up the new palette.
  */
 
+import { FONT_STACK_SERIF, resolveFontVar } from './fontStacks';
+
 type MermaidApi = {
   initialize: (opts: object) => void;
   parse?: (source: string) => Promise<unknown> | unknown;
@@ -187,8 +189,9 @@ const MERMAID_LAYOUT = {
      subgraph label. SVG text survives sanitisation and ``<br/>`` still
      produces line breaks via tspans. */
   htmlLabels: false,
-  fontFamily:
-    '"Noto Serif SC", "Songti SC", "PingFang SC", system-ui, -apple-system, sans-serif',
+  /* 解析成实值（非 var()）：mermaid 生成的 SVG 会被全屏/导出为独立 PNG，
+     离开 DOM 后 CSS 变量无法解析。 */
+  fontFamily: resolveFontVar('--jz-font-serif', FONT_STACK_SERIF),
   /* Tighten the per-diagram spacings — mermaid's defaults leave a lot of
      vertical air between nodes that makes flowcharts look stretched in a
      notes app. These values bring the gaps in line with what 语雀 / Notion

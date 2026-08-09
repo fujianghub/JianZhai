@@ -69,7 +69,7 @@ export default function LiveClock({ compact = false }: { compact?: boolean }) {
         display: 'inline-flex',
         alignItems: 'baseline',
         gap: 6,
-        fontFamily: "'Noto Serif SC', 'Songti SC', serif",
+        fontFamily: 'var(--jz-font-serif)',
         fontSize: compact ? 13 : 13.5,
         letterSpacing: 1,
       }}

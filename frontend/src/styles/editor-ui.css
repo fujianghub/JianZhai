@@ -649,7 +649,7 @@
   background: var(--jz-surface, #fafafa);
   border: 1px solid var(--jz-border);
   border-radius: 8px;
-  font-family: 'Noto Serif SC', Songti SC, serif;
+  font-family: var(--jz-font-serif);
   font-size: 14px;
   line-height: 1.85;
   white-space: pre-wrap;
@@ -939,7 +939,7 @@
   flex-shrink: 0;
   font-size: 11px;
   color: var(--jz-text-muted);
-  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--jz-font-mono);
   padding: 0 4px;
 }
 
@@ -983,7 +983,7 @@
   margin-top: 2px;
   padding: 2px 8px;
   font-size: 11px;
-  font-family: ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--jz-font-mono);
   color: var(--jz-text-muted);
   background: color-mix(in srgb, var(--jz-text) 6%, transparent);
   border-radius: 4px;
@@ -1141,7 +1141,7 @@
   min-height: 0 !important;
   height: 100% !important;
   resize: none !important;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 13px;
   line-height: 1.55;
   tab-size: 2;

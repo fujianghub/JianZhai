@@ -1039,7 +1039,7 @@ export default function PostDetail() {
               className={`markdown-preview jz-post-article${layout.longImageLimit ? '' : ' jz-imgcap-off'}`}
               style={{
                 lineHeight: 'var(--jz-reader-lh, 1.85)',
-                fontSize: 'calc(16.5px * var(--jz-reader-scale, 1))',
+                fontSize: 'calc(var(--jz-fs-read) * var(--jz-reader-scale, 1))',
               }}
               dangerouslySetInnerHTML={{ __html: rendered.html }}
             />

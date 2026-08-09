@@ -41,8 +41,10 @@ function Root() {
         token: {
           colorPrimary,
           borderRadius: 8,
-          fontFamily:
-            '-apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+          // 与 body 同源：博客=系统 sans，后台（html[data-scope='admin']）
+          // 覆盖为 MiSans。var() 原样进 antd css-in-js 输出，portal 到 body
+          // 的弹层挂在 html 下同样能解析。
+          fontFamily: 'var(--jz-font-ui)',
         },
         components: {
           Layout: {

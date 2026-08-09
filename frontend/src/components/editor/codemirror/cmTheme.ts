@@ -21,7 +21,7 @@ export const jzCmTheme = EditorView.theme({
     borderColor: 'color-mix(in srgb, var(--jz-accent) 55%, var(--jz-border))',
   },
   '.cm-scroller': {
-    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
+    fontFamily: 'var(--jz-font-mono)',
     lineHeight: '1.7',
     overflow: 'auto',
     borderRadius: '10px',

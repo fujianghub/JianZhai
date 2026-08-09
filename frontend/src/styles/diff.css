@@ -1,5 +1,5 @@
 .diff-view {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 13px;
   line-height: 1.55;
   background: color-mix(in srgb, var(--jz-surface-2) 60%, transparent);

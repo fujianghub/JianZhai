@@ -325,7 +325,7 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
    否则按 E 进编辑瞬间从宋体 16.5px×scale 跳回系统无衬线 16px。 */
 .jz-post-inline-editor .tiptap-shell .ProseMirror {
   font-family: var(--jz-article-font, inherit);
-  font-size: calc(16.5px * var(--jz-reader-scale, 1));
+  font-size: calc(var(--jz-fs-read) * var(--jz-reader-scale, 1));
   line-height: var(--jz-reader-lh, 1.85);
 }
 .jz-post-inline-html {

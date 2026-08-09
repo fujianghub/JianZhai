@@ -52,6 +52,7 @@ const HeroPage = lazy(() => import('@/pages/admin/HeroPage'));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const TrashPage = lazy(() => import('@/pages/admin/TrashPage'));
 const DocLinkResolver = lazy(() => import('@/pages/DocLinkResolver'));
+import './styles/fonts.css';
 import 'tippy.js/dist/tippy.css';
 import './styles/tokens.css';
 import './styles/theme.css';

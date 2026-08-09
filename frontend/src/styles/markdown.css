@@ -41,7 +41,7 @@
   color: #c1373b;
   background: color-mix(in srgb, #e5484d 7%, transparent);
   border-color: color-mix(in srgb, #e5484d 30%, transparent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 0.9em;
 }
 [data-theme='dark'] .markdown-preview .jz-math-error,
@@ -85,7 +85,7 @@
   padding: 0.12em 0.4em;
   border-radius: 4px;
   font-size: 0.9em;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   /* 跨行折行时每个片段保留完整的底/边/圆角 */
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -420,7 +420,7 @@
   border: 1px solid var(--jz-code-border);
   border-radius: 4px;
   padding: 1px 5px;
-  font-family: ui-monospace, monospace;
+  font-family: var(--jz-font-mono);
 }
 .jz-code-settings-submenu {
   position: relative;
@@ -492,7 +492,7 @@
   border-bottom: 1px solid var(--jz-code-border, #3e4451);
   color: var(--jz-code-toolbar-text, #9da5b4);
   font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   user-select: none;
 }
 .jz-code-toolbar-actions {
@@ -561,7 +561,7 @@
   letter-spacing: 0.4px;
 }
 .jz-code-fontsize {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 11px;
   color: var(--jz-code-toolbar-text, #9da5b4);
   min-width: 22px;
@@ -572,7 +572,7 @@
   background: transparent;
   border: 1px solid transparent;
   color: var(--jz-code-toolbar-text, #9da5b4);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 12px;
   line-height: 1;
   padding: 3px 8px;
@@ -604,8 +604,8 @@
   border-radius: 0;
   border: none;
   box-shadow: none;
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-fs-sm);
   /* Default at the tightest comfortable spacing — readers tend to want code
      as dense as possible. CodeBlockEnhancer / CodeBlockView override the
      inline ``style.lineHeight`` based on the user's slider preference. */
@@ -890,7 +890,7 @@
   background: color-mix(in srgb, var(--jz-code-text) 6%, transparent);
   color: var(--jz-code-text, #abb2bf);
   font-size: 12px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   cursor: pointer;
   user-select: none;
 }
@@ -1158,7 +1158,7 @@
   border: 1px solid var(--jz-border);
   border-radius: 6px;
   color: var(--jz-text-muted);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 12px;
   white-space: pre-wrap;
 }
@@ -1432,7 +1432,7 @@
   color: inherit;
   font: inherit;
   font-size: 13px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   padding: 6px 10px;
   border-radius: 6px;
   cursor: pointer;
@@ -1463,7 +1463,7 @@
   font-variant-numeric: tabular-nums;
   font-size: 12px;
   color: rgba(240, 240, 240, 0.85);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
 }
 .jz-diagram-fullscreen-sep {
   display: inline-block;
@@ -1569,7 +1569,7 @@
   letter-spacing: 1px;
   font-size: 0.95em;
   color: var(--c);
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   line-height: 1.45;
 }
 
@@ -1680,7 +1680,7 @@
 .markdown-preview th code,
 .tiptap-shell .ProseMirror td code,
 .tiptap-shell .ProseMirror th code {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 0.88em;
   padding: 0.1em 0.35em;
   border-radius: 4px;
@@ -1694,7 +1694,7 @@
 .markdown-preview th span[style*="color"],
 .tiptap-shell .ProseMirror td span[style*="color"],
 .tiptap-shell .ProseMirror th span[style*="color"] {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 0.92em;
 }
 .markdown-preview u,
@@ -1716,7 +1716,7 @@
   border-radius: 2px;
 }
 .markdown-preview kbd {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 0.85em;
   padding: 1px 6px;
   border: 1px solid var(--jz-border);
@@ -1866,7 +1866,7 @@
   color: var(--jz-text);
   font-weight: 600;
   letter-spacing: 0.5px;
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-serif);
   border-bottom: 2px solid color-mix(in srgb, var(--jz-gold) 55%, var(--jz-divider));
 }
 [data-theme='dark'] .markdown-preview thead th,
@@ -2000,7 +2000,7 @@
 .jz-callout-editor-label {
   font-weight: 600;
   letter-spacing: 1px;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
 }
 .jz-callout-editor-btn {
   display: inline-grid;
@@ -2098,7 +2098,7 @@
   color: var(--jz-text-muted);
   font-size: 13px;
   font-weight: 500;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--jz-font-sans);
   transition: background-color 100ms ease, color 100ms ease;
 }
 .jz-bubble-btn:hover {
@@ -2146,7 +2146,7 @@
 }
 .markdown-preview .jz-inline-toc-title {
   font-weight: 600;
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-serif);
   letter-spacing: 2px;
   color: var(--jz-text);
   border-bottom: 1px solid color-mix(in srgb, var(--jz-gold) 45%, var(--jz-divider));

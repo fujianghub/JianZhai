@@ -379,7 +379,7 @@ export function ModelsSection({
                     )}
                   </Space>
                   <Text type="secondary" style={{ fontSize: 12 }}>{m.hint}</Text>
-                  <Text type="secondary" style={{ fontSize: 11, fontFamily: 'ui-monospace, monospace' }}>
+                  <Text type="secondary" style={{ fontSize: 11, fontFamily: 'var(--jz-font-mono)' }}>
                     {m.id}
                   </Text>
                 </Space>
@@ -435,7 +435,7 @@ export function UsageSection({
       dataIndex: 'estimated_usd',
       align: 'right' as const,
       render: (v: number | undefined) => (
-        <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--jz-accent)' }}>
+        <span style={{ fontFamily: 'var(--jz-font-mono)', color: 'var(--jz-accent)' }}>
           ${(v ?? 0).toFixed(3)}
         </span>
       ),
@@ -464,7 +464,7 @@ export function UsageSection({
       title: 'Token (in/out)',
       key: 'tokens',
       render: (_: unknown, r: UsageResponse['recent'][number]) => (
-        <span style={{ fontSize: 12, fontFamily: 'ui-monospace, monospace' }}>
+        <span style={{ fontSize: 12, fontFamily: 'var(--jz-font-mono)' }}>
           {r.input_tokens} / {r.output_tokens}
         </span>
       ),
@@ -537,7 +537,7 @@ export function UsageSection({
                     align: 'right' as const,
                     width: 100,
                     render: (v: number) => (
-                      <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--jz-accent)' }}>
+                      <span style={{ fontFamily: 'var(--jz-font-mono)', color: 'var(--jz-accent)' }}>
                         ${v.toFixed(3)}
                       </span>
                     ),
@@ -562,7 +562,7 @@ export function UsageSection({
                     align: 'right' as const,
                     width: 100,
                     render: (v: number) => (
-                      <span style={{ fontFamily: 'ui-monospace, monospace', color: 'var(--jz-accent)' }}>
+                      <span style={{ fontFamily: 'var(--jz-font-mono)', color: 'var(--jz-accent)' }}>
                         ${v.toFixed(3)}
                       </span>
                     ),

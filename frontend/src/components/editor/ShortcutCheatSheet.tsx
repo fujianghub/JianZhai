@@ -84,7 +84,7 @@ export default function ShortcutCheatSheet({ open, onClose }: Props) {
                 }}
               >
                 <Text type="secondary" style={{ fontSize: 13 }}>{desc}</Text>
-                <Tag style={{ margin: 0, fontFamily: 'ui-monospace, monospace', flexShrink: 0 }}>
+                <Tag style={{ margin: 0, fontFamily: 'var(--jz-font-mono)', flexShrink: 0 }}>
                   {keys}
                 </Tag>
               </div>

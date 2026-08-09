@@ -32,8 +32,7 @@ export default function ArchitectureSVG() {
           display: 'block',
           width: '100%',
           minWidth: 1040,
-          fontFamily:
-            '"Noto Serif SC", "Songti SC", "PingFang SC", system-ui, -apple-system, sans-serif',
+          fontFamily: 'var(--jz-font-serif)',
         }}
       >
         <defs>

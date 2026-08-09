@@ -879,7 +879,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             onChange={(e) => setBatchText(e.target.value)}
             autoSize={{ minRows: 8, maxRows: 16 }}
             spellCheck={false}
-            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+            style={{ fontFamily: 'var(--jz-font-mono)' }}
           />
         </Space>
       </Modal>
@@ -912,7 +912,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             readOnly
             autoSize={{ minRows: 8, maxRows: 16 }}
             spellCheck={false}
-            style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
+            style={{ fontFamily: 'var(--jz-font-mono)' }}
           />
         </Space>
       </Modal>

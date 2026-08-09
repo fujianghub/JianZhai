@@ -33,6 +33,43 @@
   --jz-code-inline-bg: color-mix(in srgb, var(--jz-accent) 8%, transparent);
   --jz-code-inline-border: color-mix(in srgb, var(--jz-accent) 16%, transparent);
   --jz-gold: #ecac12;
+  /* ── 字体令牌（2026-08-10）──
+     唯一允许出现裸 font-family 栈的地方（@font-face 唯一入口 = fonts.css）；
+     JS 侧副本在 utils/fontStacks.ts，两边逐字一致由 fontStacks.test.ts 锁定。
+     新增/修改 font-family 一律引用 --jz-font-*，勿再写散栈。
+       serif    = 衬线正文/标题（博客主栈，自托管 Noto Serif SC 领衔）
+       sans     = 系统无衬线（body 底座；与 AntD token 同源）
+       mono     = 等宽（代码块/行内码/CM6/日期 pill 统一）
+       display  = 展示门面（题记/品牌/登录，霞鹜文楷 Screen；仅 400 字重，
+                  消费点须归一 font-weight 或接受伪加粗）
+       kai      = 楷体·手书预设（系统楷领衔保持老用户渲染不变）
+       serif-en = 西文衬线品牌（.jz-brand-en 专用）
+       decor    = 装饰（.jz-hero-couplet 楹联专用）
+       ui       = 界面字体（博客=sans；admin 作用域覆盖为 MiSans，见下） */
+  --jz-font-serif: 'Noto Serif SC', 'Songti SC', 'STSong', 'SimSun', 'Cormorant Garamond', Georgia, serif;
+  --jz-font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
+  --jz-font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, 'Liberation Mono', monospace;
+  --jz-font-display: 'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', 'Noto Serif SC', 'Songti SC', serif;
+  --jz-font-kai: 'Kaiti SC', 'STKaiti', 'KaiTi', 'LXGW WenKai Screen', 'Ma Shan Zheng', serif;
+  --jz-font-serif-en: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  --jz-font-decor: 'ZCOOL XiaoWei', 'LXGW WenKai Screen', 'Noto Serif SC', 'Songti SC', serif;
+  --jz-font-ui: var(--jz-font-sans);
+  /* ── 字号/行高令牌（2026-08-10，第一批只收敛高频处）──
+     阶梯对照现状收敛：11/12/13/14/16/16.5(阅读基准)/17px；
+     行高三档与 readerLayout.ts 的紧凑/标准/宽松数值同源（改一侧须同步）。
+     新增 font-size 优先引用 --jz-fs-*，存量散落值随后续批次渐进收编。 */
+  --jz-fs-2xs: 11px;
+  --jz-fs-xs: 12px;
+  --jz-fs-sm: 13px;
+  --jz-fs-md: 14px;
+  --jz-fs-lg: 16px;
+  --jz-fs-read: 16.5px;
+  --jz-fs-xl: 17px;
+  --jz-lh-tight: 1.4;
+  --jz-lh-ui: 1.6;
+  --jz-lh-read: 1.85;
+  --jz-lh-loose: 2.15;
   /* ── 动效令牌 ──
      此前只有一条注释约定（「颜色类 120ms / 位移类 200ms（弹簧曲线保留给位移）」，
      旧 theme.css:2426），数值散落逐处硬编码且弹簧曲线出现过三种书写。此处机器化：
@@ -61,6 +98,14 @@
   --jz-code-toolbar-text: #9da5b4;
   --jz-code-gutter-bg: #1e2227;
   --jz-code-line-number: #5c6370;
+}
+/* 后台形态 UI 字体：AdminLayout 挂载时在 <html> 上写 data-scope='admin'
+   （portal 到 body 的 AntD 弹层也能解析）。MiSans 用小米非标字重刻度
+   （330/380/520/630 = Regular/Medium/Semibold/Bold，见 fonts.css），
+   CSS 匹配后 400→380、500→380、600→520、700→630。 */
+:root[data-scope='admin'] {
+  --jz-font-ui: 'MiSans', -apple-system, BlinkMacSystemFont, 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
 }
 /* 真弹簧（underdamped spring 采样，过冲 ~10% + 一次轻微回摆后收敛）——
    cubic-bezier 只能模拟单次过冲，linear() 才能表达完整阻尼振荡。
@@ -111,15 +156,22 @@ body {
   /* Body font stack — antd's ConfigProvider also sets one, but pinning it
      here keeps non-antd surfaces (raw <div>, markdown body, etc.) on the
      same Chinese-aware fallback chain. */
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI',
-    'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
-    'Noto Sans CJK SC', 'Source Han Sans SC', sans-serif;
+  font-family: var(--jz-font-ui);
   background-image:
     radial-gradient(ellipse 70% 50% at 0% 0%, rgba(5, 150, 105, 0.19) 0%, transparent 60%),
     radial-gradient(ellipse 60% 50% at 100% 0%, rgba(59, 130, 246, 0.14) 0%, transparent 60%),
     radial-gradient(ellipse 80% 60% at 100% 100%, rgba(167, 139, 250, 0.14) 0%, transparent 60%);
   background-attachment: fixed;
+}
+/* 表单控件默认不继承字体（UA 样式表给 button/input 落 Arial/系统默认）——
+   统一拉回继承链。AntD 组件自带 font-family 不受影响；裸 <button>
+   （主题切换钮）曾长期渲染 Arial。 */
+button,
+input,
+optgroup,
+select,
+textarea {
+  font-family: inherit;
 }
 [data-theme='dark'] body {
   background-image:

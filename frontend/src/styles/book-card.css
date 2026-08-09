@@ -68,7 +68,7 @@
   background: transparent;
   border: none;
   color: var(--glass-text, var(--jz-text));
-  font-family: 'PingFang SC', 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-weight: 600;
   font-size: 17px;
   letter-spacing: 1px;
@@ -87,6 +87,7 @@
 }
 
 .jz-book-desc {
+  font-family: var(--jz-font-serif);
   font-size: 13.5px;
   line-height: 1.7;
   color: var(--glass-text-muted, var(--jz-text-muted));
@@ -101,12 +102,19 @@
 .jz-book-tags {
   margin-bottom: 12px;
   min-height: 24px;
+  font-family: var(--jz-font-serif);
+}
+/* AntD Tag 的 css-in-js 自带 font-family（.ant-tag，0,1,0），须以 (0,2,0) 压过 */
+.jz-book-tags .ant-tag {
+  font-family: var(--jz-font-serif);
 }
 
 .jz-book-meta {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  font-family: var(--jz-font-serif);
+  font-variant-numeric: tabular-nums;
   padding-top: 12px;
   border-top: 1px solid var(--glass-divider, var(--jz-divider));
   color: var(--glass-text-muted, var(--jz-text-muted));
@@ -158,7 +166,7 @@
 }
 .jz-kb-category-title {
   margin: 0;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-size: clamp(1.15rem, 2vw, 1.45rem);
   font-weight: 700;
   letter-spacing: 3px;
@@ -167,6 +175,7 @@
 .jz-kb-category-desc {
   display: block;
   margin-top: 6px;
+  font-family: var(--jz-font-serif);
   font-size: 13px;
 }
 .jz-kb-category-grid {

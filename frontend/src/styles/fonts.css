@@ -1,0 +1,50 @@
+/* ============================================================
+ * fonts.css — 全站唯一 @font-face 入口（自托管，无外部 CDN）
+ *
+ * 全部来自 npm 包（unicode-range 分片，浏览器按需拉分片），
+ * Vite 解析 bare specifier 并把 woff2 拷进 dist assets。
+ * 新增字体族只许改本文件；族名/字重与 tokens.css 的
+ * --jz-font-* 令牌及 utils/fontStacks.ts 常量保持同步。
+ *
+ * 注册族名与字重（安装包实测）：
+ *   'Noto Serif SC'        400/500/600/700（每字重 101 分片）
+ *   'JetBrains Mono'       400/500
+ *   'Cormorant Garamond'   500/600 + 500 italic
+ *   'ZCOOL XiaoWei'        400（92 分片，仅 .jz-hero-couplet）
+ *   'Ma Shan Zheng'        400（92 分片，仅楷体预设兜底）
+ *   'LXGW WenKai Screen'   400（GB 字符集版，97 分片；罕见字逐字
+ *                          回退下一档——display 场景为站方文案可控。
+ *                          全集版逃生舱：lxgwwenkaiscreen.css）
+ *   'MiSans'               330/380/520/630（小米非标刻度：
+ *                          Regular/Medium/Semibold/Bold；CSS 匹配后
+ *                          400→380、500→380、600→520、700→630，
+ *                          400/500 坍缩为同档是该刻度的固有特性）
+ * ============================================================ */
+
+/* 衬线正文/标题：Noto Serif SC（补上 CDN 时代缺失的 400） */
+@import '@fontsource/noto-serif-sc/400.css';
+@import '@fontsource/noto-serif-sc/500.css';
+@import '@fontsource/noto-serif-sc/600.css';
+@import '@fontsource/noto-serif-sc/700.css';
+
+/* 等宽：代码块/行内码/日期 pill */
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
+/* 西文衬线：.jz-brand-en 品牌字（与旧 CDN 请求档位对齐） */
+@import '@fontsource/cormorant-garamond/500.css';
+@import '@fontsource/cormorant-garamond/600.css';
+@import '@fontsource/cormorant-garamond/500-italic.css';
+
+/* 装饰族（各一处消费点） */
+@import '@fontsource/zcool-xiaowei/400.css';
+@import '@fontsource/ma-shan-zheng/400.css';
+
+/* 展示：霞鹜文楷 Screen（GB 集）——题记/品牌/登录 display 角色 */
+@import 'lxgw-wenkai-screen-webfont/lxgwwenkaigbscreen.css';
+
+/* 后台 UI：MiSans（仅 data-scope='admin' 作用域消费） */
+@import 'misans/lib/Normal/MiSans-Regular.min.css';
+@import 'misans/lib/Normal/MiSans-Medium.min.css';
+@import 'misans/lib/Normal/MiSans-Semibold.min.css';
+@import 'misans/lib/Normal/MiSans-Bold.min.css';

@@ -22,7 +22,7 @@
   border-radius: 5px;
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   color: var(--jz-on-accent, #0a1f1a);
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-serif);
   font-weight: 700;
   font-size: 18px;
   letter-spacing: 0;
@@ -38,8 +38,8 @@
   transform: rotate(-6deg) scale(1.05);
 }
 .jz-brand-cn {
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
-  font-weight: 700;
+  font-family: var(--jz-font-display);
+  font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
   font-size: 22px;
   letter-spacing: 5px;
   color: var(--jz-accent);          /* 朱砂题字 */
@@ -57,7 +57,7 @@
   top: -1px;
 }
 .jz-brand-en {
-  font-family: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
+  font-family: var(--jz-font-serif-en);
   font-style: italic;
   font-weight: 500;
   font-size: 22px;
@@ -80,7 +80,7 @@
   position: relative;
   display: inline-flex;
   align-items: center;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 2px;
@@ -129,7 +129,7 @@
 
 /* Monospace digits look cleaner for the live clock. */
 .jz-clock {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 12.5px;
   letter-spacing: 0.5px;
   color: var(--jz-text-muted);
@@ -372,10 +372,8 @@ a:hover { opacity: 0.85; }
    （宋体默认在分屏预览完全不生效）。 */
 .paper .markdown-preview,
 .paper.markdown-preview {
-  font-family: var(--jz-article-font,
-    Verdana, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
-    'Noto Sans CJK SC', sans-serif);
-  font-size: 16.5px;
+  font-family: var(--jz-article-font, var(--jz-font-serif));
+  font-size: var(--jz-fs-read);
 }
 .paper .markdown-preview p,
 .paper.markdown-preview p,
@@ -391,7 +389,7 @@ a:hover { opacity: 0.85; }
   gap: 10px;
   margin: 0 0 14px;
   padding-bottom: 6px;
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-serif);
   font-weight: 600;
   letter-spacing: 2px;
   color: var(--jz-text);
@@ -406,7 +404,7 @@ a:hover { opacity: 0.85; }
 }
 .jz-kb-folder-count {
   margin-left: auto;
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 12px;
   font-weight: 400;
   color: var(--jz-text-muted);
@@ -544,7 +542,7 @@ a:hover { opacity: 0.85; }
   max-width: 40%;
 }
 .jz-post-row-date {
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 12px;
   color: var(--jz-text-muted);
   flex-shrink: 0;
@@ -636,7 +634,6 @@ h4.jz-post-card-title.ant-typography {
   border-radius: 12px;
   font-size: 12px;
   line-height: 1;
-  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', sans-serif;
   font-weight: 500;
   letter-spacing: 0.4px;
   white-space: nowrap;
@@ -670,9 +667,10 @@ h4.jz-post-card-title.ant-typography {
   border: 1px solid color-mix(in srgb, var(--jz-fmt-c, var(--jz-accent)) 30%, transparent);
   color: var(--jz-fmt-c, var(--jz-accent));
   font-weight: 600;
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
+  font-family: var(--jz-font-mono);
   letter-spacing: 0.5px;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
+  font-variant-numeric: tabular-nums;
   padding: 0 8px;
   height: 22px;
 }
@@ -691,8 +689,9 @@ h4.jz-post-card-title.ant-typography {
   border: none;
   color: var(--jz-text-muted);
   padding: 0;
-  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, monospace;
-  font-size: 12px;
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-fs-xs);
+  font-variant-numeric: tabular-nums;
   letter-spacing: 0;
 }
 
@@ -988,8 +987,10 @@ a.jz-meta-full-edit-btn:focus-visible {
   align-items: center;
   justify-content: center;
   row-gap: 6px;
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
-  font-weight: 700;
+  /* 展示字体（文楷）仅 400 字重：伪加粗会糊笔画、且与衬线兜底字形的真 700
+     混排会出现同行粗细不一 —— display 消费点一律 400，层级靠字号/颜色。 */
+  font-family: var(--jz-font-display);
+  font-weight: 400;
   font-size: clamp(1.4rem, 3.4vw, 2rem);  /* 缩小：原 1.6-2.4rem → 1.4-2rem */
   letter-spacing: 5px;
   color: var(--jz-text);
@@ -1035,7 +1036,7 @@ a.jz-meta-full-edit-btn:focus-visible {
     0 2px 6px rgba(120, 30, 25, 0.35);
 }
 .jz-hero-seal-text {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-weight: 700;
   font-size: 0.42em;
   /* Stack the two characters vertically — traditional Chinese name chops
@@ -1051,7 +1052,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 12px;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-display);
   font-size: 12px;             /* 13 → 12 */
   letter-spacing: 4px;
   color: var(--jz-text-muted);
@@ -1074,13 +1075,16 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 
 /* ── "藏经阁" sub-title — 宋体匾额，跟随 --jz-accent ── */
-.jz-hero-cangjingge {
+/* .blog-content 变体抬特异性到 (0,2,0)：匾额是 <h2>，会被通用标题规则
+   `.blog-content h1,h2,h3`（0,1,1，文件序更靠后）压回宋体。 */
+.jz-hero-cangjingge,
+.blog-content .jz-hero-cangjingge {
   margin: 0;
   display: inline-flex;
   align-items: flex-end;
   gap: clamp(10px, 2.2vw, 24px);
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
-  font-weight: 600;
+  font-family: var(--jz-font-display);
+  font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
   font-size: clamp(1.6rem, 4vw, 2.4rem);
   letter-spacing: 0.12em;
   line-height: 1;
@@ -1106,7 +1110,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: inline-flex;
   align-items: baseline;
   gap: 14px;
-  font-family: 'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
+  font-family: var(--jz-font-decor);
   font-weight: 500;
   font-size: clamp(1.05rem, 1.6vw, 1.2rem);
   letter-spacing: 10px;
@@ -1431,7 +1435,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   justify-content: center;
   font-size: 24px;
   font-weight: 800;
-  font-family: 'PingFang SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   box-shadow:
     0 6px 18px var(--jz-accent-glow),
     0 0 0 1px rgba(255, 255, 255, 0.1) inset;
@@ -1442,8 +1446,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .jz-admin-brand-name {
   font-size: 22px;
-  font-weight: 600;
-  font-family: 'PingFang SC', 'Songti SC', 'SimSun', serif;
+  font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
+  font-family: var(--jz-font-display);
   color: var(--glass-text);
   letter-spacing: 3px;
 }
@@ -1493,11 +1497,22 @@ a.jz-meta-full-edit-btn:focus-visible {
   font-size: 16px;
   margin-right: 12px;
 }
+/* 图标统一定宽槽：图标彼此居中对齐、文字起点恒定左对齐。
+   曾是 width:auto!important（压 AntD 默认宽），反把 .jz-menu-icon-slot
+   自己的 40px 定宽一并压死——各图标固有宽 21–35px 不等，标签起点
+   跟着漂 14px。 */
 .jz-admin-glass .jz-admin-menu .ant-menu-item-icon {
-  width: auto !important;
-  min-width: 0 !important;
-  margin-inline-end: 10px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  margin-inline-end: 8px !important;
   line-height: 1 !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 槽内 anticon（如收藏 StarOutlined）勿再吃 1496 的 12px 右边距，否则槽内偏心 */
+.jz-admin-glass .jz-admin-menu .ant-menu-item .jz-menu-icon-slot .anticon {
+  margin-right: 0;
 }
 /* 2026-06-06 用户要求：侧栏图标裸放，删除玻璃底座（保留占位与居中；
    博客顶栏的底座不受影响）。状态只走图标颜色 + 整行高亮。 */
@@ -1581,7 +1596,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   border: 1px solid var(--glass-border);
   border-radius: 5px;
   background: rgba(0, 0, 0, 0.06);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
   font-size: 11px;
   color: var(--glass-text-muted);
 }
@@ -2071,7 +2086,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-usage-heatmap-usd strong {
   color: var(--jz-accent);
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-family: var(--jz-font-mono);
 }
 .jz-usage-heatmap-svg {
   display: block;
@@ -2129,10 +2144,10 @@ a.jz-meta-full-edit-btn:focus-visible {
   margin-bottom: 8px !important;
 }
 .jz-admin-glass .ant-statistic-content {
-  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont,
-               'Inter', ui-sans-serif, system-ui, sans-serif !important;
+  font-family: var(--jz-font-ui) !important;
   font-weight: 600 !important;
   font-size: 28px !important;
+  font-variant-numeric: tabular-nums;
   color: var(--glass-text);
   letter-spacing: -0.5px;
 }
@@ -2408,7 +2423,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   padding: 5px 12px 5px 6px;
   border-radius: var(--glass-radius-pill, 999px);
   color: var(--glass-text, var(--jz-text));
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-size: 14px;
   font-weight: 500;
   letter-spacing: 1.5px;
@@ -2517,6 +2532,10 @@ a.jz-meta-full-edit-btn:focus-visible {
   justify-content: flex-end;
   margin-bottom: 16px;
 }
+/* 首页工具钮随博客形态入衬线（AntD Button 自带 font-family，须后代选择器压过） */
+.jz-blog-home-toolbar .ant-btn {
+  font-family: var(--jz-font-serif);
+}
 
 /* 我的收藏 */
 .jz-favorites {
@@ -2565,7 +2584,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-radius: 8px;
 }
 .jz-favorites-title {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-size: 1.05rem;
   font-weight: 600;
   color: var(--jz-text);
@@ -2658,7 +2677,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   margin-bottom: 12px !important;
 }
 .jz-trash-table .jz-trash-title {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-weight: 600;
 }
 .jz-trash-table .ant-table-row:hover .jz-trash-title {
@@ -2717,7 +2736,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-related-posts-title {
   margin-bottom: 12px !important;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
 }
 .jz-related-posts-list {
   list-style: none;
@@ -2839,6 +2858,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 8px;
+  font-family: var(--jz-font-serif);
   letter-spacing: 1px;
 }
 .jz-blog-footer-rule {
@@ -2854,7 +2874,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: linear-gradient(to left, transparent, var(--jz-divider));
 }
 .jz-blog-footer-brand {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-weight: 600;
   color: var(--jz-text);
   letter-spacing: 2px;
@@ -2884,13 +2904,13 @@ a.jz-meta-full-edit-btn:focus-visible {
   min-height: 48px !important;
 }
 .blog-content .ant-card-head-title {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   font-weight: 600;
 }
 
 /* 标签 / 章节标题：用宋体 + 朱砂底纹气质 */
 .blog-content h1, .blog-content h2, .blog-content h3 {
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-serif);
 }
 
 /* Tag：朱砂调 + 圆角小 + hover 加深 */
@@ -3011,7 +3031,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 
 /* Statistic 数字：宋体大字号 */
 .blog-content .ant-statistic-content {
-  font-family: 'Noto Serif SC', 'Songti SC', serif !important;
+  font-family: var(--jz-font-serif) !important;
   font-weight: 600;
 }
 
@@ -3203,9 +3223,9 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-hero-quote-mark {
   position: absolute;
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-display);
   font-size: clamp(1.8rem, 4vw, 2.6rem);
-  font-weight: 700;
+  font-weight: 400; /* 文楷仅 400 */
   line-height: 1;
   color: var(--jz-gold);
   opacity: 0.42;
@@ -3266,7 +3286,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: inline-flex;
   align-items: baseline;
   gap: 10px;
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-display);
   font-size: 13px;
   letter-spacing: 3px;
   line-height: 1.6;
@@ -3388,7 +3408,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 
 /* ── /admin/hero 管理页质感 ── */
 .jz-hero-admin-card .ant-card-head-title {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-serif);
   letter-spacing: 2px;
   font-weight: 600;
 }
@@ -3423,7 +3443,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   min-width: 0;
 }
 .jz-hero-admin-row-text {
-  font-family: 'Noto Serif SC', 'Songti SC', 'STSong', 'KaiTi', serif;
+  font-family: var(--jz-font-display);
   font-size: 15px;
   letter-spacing: 1.5px;
   line-height: 1.7;
@@ -3462,7 +3482,7 @@ a.jz-meta-full-edit-btn:focus-visible {
    cite row. Gold-washed muted ink, the quietest layer of the stack —
    present only when the quote has a recorded date. */
 .jz-hero-date {
-  font-family: 'Noto Serif SC', 'Songti SC', serif;
+  font-family: var(--jz-font-display);
   font-size: 11px;
   letter-spacing: 3px;
   color: color-mix(in srgb, var(--jz-text-muted) 78%, var(--jz-gold) 22%);
@@ -4112,7 +4132,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: 'PingFang SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-serif);
   font-size: 32px;
   font-weight: 800;
   color: var(--jz-on-accent, #0a1f1a);
@@ -4129,9 +4149,9 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-login-title {
   margin: 0;
   font-size: 26px;
-  font-weight: 700;
+  font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
   letter-spacing: 2px;
-  font-family: 'PingFang SC', 'Songti SC', 'STSong', serif;
+  font-family: var(--jz-font-display);
   background: linear-gradient(120deg, var(--glass-text) 0%,
     color-mix(in srgb, var(--jz-accent) 70%, var(--glass-text)) 100%);
   -webkit-background-clip: text;
@@ -4259,6 +4279,10 @@ a.jz-meta-full-edit-btn:focus-visible {
     background 0.2s ease,
     color 0.2s ease,
     box-shadow 0.2s ease;
+}
+/* 博客顶栏语境随导航链接入衬线；后台经继承链落 MiSans（勿写死）。 */
+.jz-blog-glass .jz-theme-switch {
+  font-family: var(--jz-font-serif);
 }
 .jz-theme-switch:hover {
   border-color: color-mix(in srgb, var(--jz-accent) 55%, var(--jz-border));

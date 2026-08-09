@@ -61,6 +61,16 @@ export default function AdminLayout() {
     }
   }, [location.pathname]);
 
+  // 后台 UI 字体作用域：挂在 <html> 上（而非 .jz-admin-glass），AntD portal
+  // 到 body 的弹层（Modal/message/Dropdown）才能解析到 --jz-font-ui 的
+  // MiSans 覆盖（tokens.css `:root[data-scope='admin']`）。无属性 = 博客默认。
+  useEffect(() => {
+    document.documentElement.setAttribute('data-scope', 'admin');
+    return () => {
+      document.documentElement.removeAttribute('data-scope');
+    };
+  }, []);
+
   // 路由级 VT 的集中 ready 信号（与 BlogLayout 同款；TransitionLink 导航）
   useLayoutEffect(() => {
     signalRouteReady();

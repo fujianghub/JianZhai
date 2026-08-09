@@ -7,6 +7,14 @@
  * the user picks an English-only family.
  */
 
+import {
+  FONT_STACK_KAI,
+  FONT_STACK_MONO,
+  FONT_STACK_SANS,
+  FONT_STACK_SERIF,
+  FONT_STACK_WENKAI,
+} from './fontStacks';
+
 export interface ArticleFontPreset {
   key: string;
   label: string;
@@ -18,11 +26,11 @@ export const ARTICLE_FONT_PRESETS: ArticleFontPreset[] = [
   // Songti leads: the serif face matches the rice-paper/cinnabar identity,
   // and Verdana (no CJK glyphs) produced a mismatched Latin/苹方 hybrid as
   // the old default. First preset = default for visitors with no saved pick.
+  // Stacks are shared with the token layer via fontStacks.ts（自托管字体）.
   {
     key: 'songti',
     label: '宋体 · 古风（默认）',
-    stack:
-      '"Noto Serif SC", "Songti SC", "STSong", "SimSun", "Cormorant Garamond", Georgia, serif',
+    stack: FONT_STACK_SERIF,
   },
   {
     key: 'verdana',
@@ -33,18 +41,22 @@ export const ARTICLE_FONT_PRESETS: ArticleFontPreset[] = [
   {
     key: 'system',
     label: '系统无衬线',
-    stack:
-      '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif',
+    stack: FONT_STACK_SANS,
   },
   {
     key: 'kaiti',
     label: '楷体 · 手书',
-    stack: '"KaiTi", "STKaiti", "Kaiti SC", "Ma Shan Zheng", serif',
+    stack: FONT_STACK_KAI,
+  },
+  {
+    key: 'wenkai',
+    label: '文楷 · 屏显',
+    stack: FONT_STACK_WENKAI,
   },
   {
     key: 'mono',
     label: '等宽 · JetBrains Mono',
-    stack: '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace',
+    stack: FONT_STACK_MONO,
   },
   {
     key: 'georgia',

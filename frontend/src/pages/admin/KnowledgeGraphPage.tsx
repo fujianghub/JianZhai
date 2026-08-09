@@ -5,6 +5,7 @@ import { ReloadOutlined } from '@ant-design/icons';
 import ForceGraph2D from 'react-force-graph-2d';
 import { getKnowledgeGraph, type GraphNode, type GraphResponse } from '@/api/graph';
 import { formatApiError } from '@/api/client';
+import { FONT_STACK_SANS, resolveFontVar } from '@/utils/fontStacks';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -170,7 +171,7 @@ export default function KnowledgeGraphPage() {
                 ctx.fill();
                 // 标签：只在缩放到一定程度才显示，避免远看一堆糊字
                 if (scale > 1.4) {
-                  ctx.font = `${10 / scale + 4}px sans-serif`;
+                  ctx.font = `${10 / scale + 4}px ${resolveFontVar('--jz-font-sans', FONT_STACK_SANS)}`;
                   ctx.fillStyle =
                     getComputedStyle(document.documentElement)
                       .getPropertyValue('--jz-text')
