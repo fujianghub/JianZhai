@@ -3448,7 +3448,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-hero-row-editing > td {
   background: color-mix(in srgb, var(--jz-accent) 6%, transparent) !important;
 }
-/* 录于/改于 dates in the list meta line — quieter than the cite pieces. */
+/* 摘录于/改于 dates in the list meta line — quieter than the cite pieces. */
 .jz-hero-admin-row-date {
   color: var(--jz-text-muted);
   font-size: 11px;
@@ -3457,8 +3457,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   white-space: nowrap;
 }
 
-/* ── 题记录入日期（2026-08-10 心境时间戳）───────────────────────────
-   Layer 3 of the homepage quote card: 「录于 2026 · 8 · 10」 under the
+/* ── 题记摘录日期（2026-08-10 心境时间戳）───────────────────────────
+   Layer 3 of the homepage quote card: 「摘录于 2026 · 8 · 10」 under the
    cite row. Gold-washed muted ink, the quietest layer of the stack —
    present only when the quote has a recorded date. */
 .jz-hero-date {

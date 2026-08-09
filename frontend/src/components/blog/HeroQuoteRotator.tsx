@@ -220,7 +220,7 @@ export function HeroQuoteCard({
   // attribution as a single combined line (gold-rule treatment).
   const hasSplit = !!(quote.dynasty || quote.author || quote.source);
   const legacyAttribution = !hasSplit ? (quote.attribution || '').trim() : '';
-  // 录入 date — the mood timestamp. Blank (legacy quotes) renders nothing.
+  // 摘录 date — the mood timestamp. Blank (legacy quotes) renders nothing.
   const dateLine = formatHeroDate(quote.created_at || '');
 
   return (
@@ -298,11 +298,11 @@ export function HeroQuoteCard({
         </div>
       )}
 
-      {/* ── Layer 3: 录于 — when this quote entered the collection, i.e.
+      {/* ── Layer 3: 摘录于 — when this quote entered the collection, i.e.
           the mood timestamp. Quotes without a recorded date skip it. */}
       {dateLine && (
-        <div className="jz-hero-date" aria-label="录入日期">
-          录于 {dateLine}
+        <div className="jz-hero-date" aria-label="摘录日期">
+          摘录于 {dateLine}
         </div>
       )}
     </div>

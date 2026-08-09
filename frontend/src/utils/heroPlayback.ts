@@ -37,7 +37,7 @@ export function buildPlayOrder(
  *
  * Pieces degrade gracefully — a quote with only an author renders as
  * ``正文 — 作者``; a bare quote renders as just its text. The trailing
- * ``@YYYY-MM-DD`` is the 录入 date and is only emitted when recorded, so
+ * ``@YYYY-MM-DD`` is the 摘录 date and is only emitted when recorded, so
  * backups round-trip the mood dates through the backend
  * ``_parse_batch_lines`` parser (which strips the token first).
  */
@@ -66,7 +66,7 @@ export function quotesToBatchText(quotes: HeroQuote[]): string {
 }
 
 /**
- * ``2026-08-10`` → ``2026 · 8 · 10`` for the homepage 录于 line.
+ * ``2026-08-10`` → ``2026 · 8 · 10`` for the homepage 摘录于 line.
  * Returns '' for blank/malformed input so callers can just skip rendering.
  */
 export function formatHeroDate(iso: string): string {

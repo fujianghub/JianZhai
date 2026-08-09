@@ -125,14 +125,14 @@ const DYNASTY_OPTIONS: { value: string }[] = [
 ];
 
 const SAMPLE_BATCH = `# 行首 # 开头为注释；空行忽略
-# 格式：正文 — [朝代]作者 · 篇名 @录入日期
+# 格式：正文 — [朝代]作者 · 篇名 @摘录日期
 #
 # 分隔符（优先级 高 → 低）：
 #   1. 全角/半角破折号  —  –  -
 #   2. 单词 "by"
 #   3. 中圆点  ·  •（仅当行内无破折号时）
 # 朝代可选，写在「作者」前并用 [xxx] / 〔xxx〕 / 【xxx】 / (xxx) 包裹。
-# 行尾可加 @YYYY-MM-DD 记录录入日期（心境时间戳，首页展示；缺省不记）。
+# 行尾可加 @YYYY-MM-DD 记录摘录日期（心境时间戳，首页展示；缺省不记）。
 # 正文内写 \n 表示换行（多行题记，导出会自动转义）。
 莫听穿林打叶声 — [宋]苏轼 · 定风波 @2026-08-10
 臣本布衣 — 〔三国〕诸葛亮 · 出师表
@@ -716,7 +716,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                             />
                             <DatePicker
                               value={r.created_at ? dayjs(r.created_at) : null}
-                              placeholder="录入日期"
+                              placeholder="摘录日期"
                               allowClear
                               onChange={(d) =>
                                 onRowChange(r.id, 'created_at', d ? d.format('YYYY-MM-DD') : '')
@@ -761,7 +761,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                             {legacy && <span className="jz-hero-cite-author">{legacy}</span>}
                             {(created || updated) && (
                               <span className="jz-hero-admin-row-date">
-                                {created && `录于 ${created}`}
+                                {created && `摘录于 ${created}`}
                                 {updated && updated !== created
                                   ? `${created ? ' · ' : ''}改于 ${updated}`
                                   : ''}
@@ -871,7 +871,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             每行一条题记。分隔符优先级：<code>—</code> <code>–</code> <code>-</code> &gt; <code>by</code> &gt; <code>·</code> <code>•</code>。
             行首 <code>#</code> 视为注释。
             朝代可选，写在「作者」前用 <code>[xxx]</code> / <code>〔xxx〕</code> / <code>【xxx】</code> / <code>(xxx)</code> 包裹。
-            行尾可加 <code>@YYYY-MM-DD</code> 记录录入日期（缺省不记，之后可在列表中逐条补填）；
+            行尾可加 <code>@YYYY-MM-DD</code> 记录摘录日期（缺省不记，之后可在列表中逐条补填）；
             正文内 <code>\n</code> 表示换行。
           </Text>
           <TextArea
