@@ -1243,6 +1243,7 @@ export function rescueSpacePaddedDollarMath(src: string): string {
 export function applyYuqueCompatMode(src: string): string {
   let out = src;
   out = rescueSpacePaddedDollarMath(out);
+  out = convertBacktickedStyledCode(out);
   out = unwrapBacktickedEmphasis(out);
   out = normalizeYuqueImages(out);
   out = unwrapBacktickedHtml(out);
@@ -1250,6 +1251,7 @@ export function applyYuqueCompatMode(src: string): string {
   out = normalizeYuqueEmphasis(out);
   out = normalizeBoldWithInteriorParens(out);
   out = normalizeBoldWrappingInlineHtml(out);
+  out = normalizeItalicWrappingInlineHtml(out);
   return out;
 }
 
@@ -1259,13 +1261,21 @@ export function applyYuqueCompatMode(src: string): string {
  * NOT contain another ``<font>``) up to a fixed point. This is the only safe
  * way to handle nested ``<font>`` from Yuque exports — a greedy/non-greedy
  * outer match would either pair the wrong close or cut the inner span off.
+ *
+ * 反引号内的 ``<font>`` 不改写（{@link isInsideInlineCodeSpan} 守卫）：
+ * {@link convertBacktickedStyledCode} 兜不住的残余形态留在行内代码里会被
+ * code_inline 原样转义展示——改写成 span 只会把转义垃圾从 font 换成 span。
  */
 export function normalizeLegacyHtmlTags(src: string): string {
   // Innermost-font: no other `<font` inside the body.
   const INNER_FONT = /<font\b([^>]*)>((?:(?!<font\b)[\s\S])*?)<\/font>/gi;
   let out = src;
   for (let i = 0; i < 32; i++) {
-    const next = out.replace(INNER_FONT, replaceFontOnce);
+    const next = out.replace(
+      INNER_FONT,
+      (match, attrs: string, inner: string, offset: number, whole: string) =>
+        isInsideInlineCodeSpan(whole, offset) ? match : replaceFontOnce(match, attrs, inner),
+    );
     if (next === out) break;
     out = next;
   }
@@ -1423,6 +1433,50 @@ function unglueContainerFences(src: string): string {
 }
 
 /**
+ * 语雀把「彩色行内代码」的染色标签导出在反引号**内部**，例如
+ *
+ *   `<font style="color:rgb(77, 82, 89);">preference</font>`
+ *   `_<font style="color:…">static-path</font>_`             （斜体+颜色）
+ *   `**<font>distance ospf</font>**<font> {</font>…`          （整行命令多段混排）
+ *
+ * markdown-it 默认 code_inline 会转义内容——标签变成芯片里的字面文本；而
+ * {@link unwrapBacktickedEmphasis} / {@link unwrapBacktickedHtml} 又会把反引号
+ * 剥掉、代码语义整个丢失（「颜色块/表格不支持行内代码」两个 bug 的共同根因，
+ * 表格路径本身无辜：管道表格转 HTML 前反引号已在本兼容层被剥）。这里把整个
+ * 反引号段转换为原生 ``<code>`` 元素：font/span 包裹层**丢弃**（色值都是语雀
+ * 默认正文灰，行内代码有自己的六主题 ``--jz-code-inline-*`` 令牌，硬塞进芯片
+ * 会砸暗色可读性），``**``/``__`` → <strong>、``_``/``*`` → <em> 保留；残余的
+ * markdown 活性字符转 HTML 实体，防止 markdown-it 在 <code> 标签之间继续解析。
+ * 必须先于 {@link unwrapBacktickedEmphasis} 执行，否则 `` `**<font>…</font>**` ``
+ * 的反引号会先被那一步剥掉。仅当反引号内是「纯文本+表现层标签」时才转换——
+ * 展示 ``<div>`` 之类真实代码样例的反引号段不动。镜像后端
+ * ``markdown_preprocess.convert_backticked_styled_code``，改动须两端同步。
+ */
+const STYLED_CODE_DROP_TAG = /<\/?(?:font|span)\b[^<>`]*>/gi;
+const STYLED_CODE_KEEP_TAG = /<\/?(?:u|mark|kbd|sub|sup)\b[^<>`]*>|<br\s*\/?>/gi;
+
+export function convertBacktickedStyledCode(src: string): string {
+  if (!src.includes('`')) return src;
+  return src.replace(/`([^`\n]+)`/g, (match, body: string) => {
+    if (!/<(?:font|span)\b/i.test(body)) return match;
+    const residue = body.replace(STYLED_CODE_DROP_TAG, '').replace(STYLED_CODE_KEEP_TAG, '');
+    if (/[<>]/.test(residue)) return match;
+    let inner = body.replace(STYLED_CODE_DROP_TAG, '');
+    inner = inner.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+    inner = inner.replace(/__([^_]+?)__/g, '<strong>$1</strong>');
+    inner = inner.replace(/(?<!\\)\*([^*\\]+?)\*/g, '<em>$1</em>');
+    inner = inner.replace(/(?<!\\)_([^_\\]+?)_/g, '<em>$1</em>');
+    inner = inner
+      .replace(/\*/g, '&#42;')
+      .replace(/_/g, '&#95;')
+      .replace(/\[/g, '&#91;')
+      .replace(/\]/g, '&#93;')
+      .replace(/\$/g, '&#36;');
+    return `<code>${inner}</code>`;
+  });
+}
+
+/**
  * Yuque sometimes wraps pure emphasis markers in backticks, e.g.
  *
  *   `**ORM（Object-Relational Mapping，对象关系映射）**`
@@ -1452,6 +1506,11 @@ export function unwrapBacktickedEmphasis(src: string): string {
  * markdown-it then treats the whole thing as inline code and emits the
  * tags as literal text, defeating the colour/underline intent. We unwrap
  * the backticks so the inner HTML renders.
+ *
+ * NOTE: ``<font>``/``<span>`` bodies are now converted to real ``<code>``
+ * chips by the earlier {@link convertBacktickedStyledCode} step and no longer
+ * reach this fallback — it still handles the remaining presentational tags
+ * (``<u>``, ``<mark>``…) and exotic mixed bodies that step declines.
  *
  * We accept an OPTIONAL ``**`` (or ``__``) marker on each side of the tag
  * so the common Yuque pattern of *bold + colour highlight* round-trips
@@ -1672,6 +1731,29 @@ export function normalizeBoldWrappingInlineHtml(src: string): string {
   out = out.replace(reInnerAlt, '<strong>$1</strong>');
 
   return out;
+}
+
+/**
+ * {@link normalizeBoldWrappingInlineHtml} 的斜体孪生（当年只修了 ``**`` 漏了
+ * ``_``）。语雀把「斜体+颜色」导出为 ``_<font>…</font>_``，且相邻两段斜体直接
+ * 粘连：``_A__B_``——中间的 ``__`` 被 markdown-it 当成一个长度 2 的定界符串，
+ * 按 CommonMark 侧翼规则（前有 ``>`` 标点、后跟 CJK 字母）只能开不能闭，配对
+ * 全乱：句首 ``_`` 变字面、句尾 ``_`` 借走 ``__`` 中一个配出半截斜体（线上
+ * doc 1002 参数表实况）。直接转 ``<em>`` HTML 整体绕开侧翼规则；A 被消费掉
+ * ``__`` 的第一个 ``_`` 后，裸文本残段 ``_B_`` 脱离长串即可正常配对（实测
+ * 自愈）。仅匹配「``_`` + 纯标签链 + ``_``」——URL 下划线串 / snake_case /
+ * 裸 ``_中文_`` 后面都不是 ``<`` 永不命中，故不需要 URL 掩码；夹裸文本的
+ * 标签链（``_<span>A</span>text<span>B</span>_``）刻意不接（对 ``_`` 做
+ * bold 版那种 inner 宽匹配会误伤 snake_case）。颜色保留（``<em><span…>``，
+ * 普通彩色斜体文本沿用全站语雀颜色照留策略，与粗体孪生同构）。镜像后端
+ * ``markdown_preprocess.normalize_italic_wrapping_inline_html``，改动须两端同步。
+ */
+export function normalizeItalicWrappingInlineHtml(src: string): string {
+  const re = new RegExp(
+    `_((?:<(?:${YUQUE_INLINE_HTML_TAG})\\b[^>]*>[^<\\n]*</(?:${YUQUE_INLINE_HTML_TAG})>)+)_`,
+    'gi',
+  );
+  return src.replace(re, '<em>$1</em>');
 }
 
 // Slugify heading text into a URL-safe id. Keeps CJK characters intact so

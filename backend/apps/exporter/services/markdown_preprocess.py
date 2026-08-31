@@ -119,6 +119,47 @@ def unglue_container_fences(src: str) -> str:
     return re.sub(r"([^\n]):::(\s*\n|$)", _closer, out)
 
 
+# 语雀把「彩色行内代码」的染色标签导出在反引号内部（`<font …>preference</font>`、
+# `_<font …>static-path</font>_`、多段混排整行命令等）。旧管线要么剥反引号丢
+# 代码语义、要么让 code_inline 转义出字面标签。转换为原生 <code>：font/span
+# 包裹层丢弃（色值都是语雀默认正文灰，行内代码有自己的主题配色），**/__ →
+# <strong>、_/* → <em> 保留，残余 markdown 活性字符转 HTML 实体。必须先于
+# unwrap_backticked_emphasis 执行。镜像 frontend
+# ``markdown.ts convertBacktickedStyledCode``，改动须两端同步。
+_STYLED_CODE_SPAN = re.compile(r"`([^`\n]+)`")
+_STYLED_CODE_HAS_COLOR_TAG = re.compile(r"<(?:font|span)\b", re.I)
+_STYLED_CODE_DROP_TAG = re.compile(r"</?(?:font|span)\b[^<>`]*>", re.I)
+_STYLED_CODE_KEEP_TAG = re.compile(r"</?(?:u|mark|kbd|sub|sup)\b[^<>`]*>|<br\s*/?>", re.I)
+
+
+def convert_backticked_styled_code(src: str) -> str:
+    if "`" not in src:
+        return src
+
+    def _repl(m: re.Match) -> str:
+        body = m.group(1)
+        if not _STYLED_CODE_HAS_COLOR_TAG.search(body):
+            return m.group(0)
+        residue = _STYLED_CODE_KEEP_TAG.sub("", _STYLED_CODE_DROP_TAG.sub("", body))
+        if "<" in residue or ">" in residue:
+            return m.group(0)
+        inner = _STYLED_CODE_DROP_TAG.sub("", body)
+        inner = re.sub(r"\*\*([^*]+?)\*\*", r"<strong>\1</strong>", inner)
+        inner = re.sub(r"__([^_]+?)__", r"<strong>\1</strong>", inner)
+        inner = re.sub(r"(?<!\\)\*([^*\\]+?)\*", r"<em>\1</em>", inner)
+        inner = re.sub(r"(?<!\\)_([^_\\]+?)_", r"<em>\1</em>", inner)
+        inner = (
+            inner.replace("*", "&#42;")
+            .replace("_", "&#95;")
+            .replace("[", "&#91;")
+            .replace("]", "&#93;")
+            .replace("$", "&#36;")
+        )
+        return f"<code>{inner}</code>"
+
+    return _STYLED_CODE_SPAN.sub(_repl, src)
+
+
 def unwrap_backticked_emphasis(src: str) -> str:
     out = src
     out = re.sub(r"`(\*\*)([^`]+?)\1`", r"\1\2\1", out)
@@ -195,9 +236,17 @@ def _replace_font_once(match: re.Match) -> str:
 
 
 def normalize_legacy_html_tags(src: str) -> str:
+    # 反引号内的 <font> 不改写：convert_backticked_styled_code 兜不住的残余
+    # 形态留在行内代码里会被 code_inline 原样转义展示——改写成 span 只会把
+    # 转义垃圾从 font 换成 span。镜像 frontend normalizeLegacyHtmlTags。
+    def _guarded(m: re.Match) -> str:
+        if _inside_inline_code_span(m.string, m.start()):
+            return m.group(0)
+        return _replace_font_once(m)
+
     out = src
     for _ in range(32):
-        nxt = _INNER_FONT.sub(_replace_font_once, out)
+        nxt = _INNER_FONT.sub(_guarded, out)
         if nxt == out:
             break
         out = nxt
@@ -216,6 +265,23 @@ def normalize_bold_wrapping_inline_html(src: str) -> str:
         r"\*\*((?:<(?:font|span)\b[^>]*>.*?</(?:font|span)>)+)\*\*"
     )
     return re.sub(pattern, r"<strong>\1</strong>", src, flags=re.I | re.S)
+
+
+# normalize_bold_wrapping_inline_html 的斜体孪生。语雀把「斜体+颜色」导出为
+# ``_<font>…</font>_`` 且相邻斜体粘连成 ``_A__B_``——中间 ``__`` 按 CommonMark
+# 侧翼规则（前 ``>`` 标点、后 CJK 字母）只能开不能闭，配对全乱留字面 ``_``。
+# 直接转 <em> 绕开侧翼规则；A 消费掉 ``__`` 第一个 ``_`` 后裸残段 ``_B_`` 可
+# 正常配对。仅匹配「_ + 纯标签链 + _」，URL/snake_case/裸 ``_中文_`` 永不命中。
+# 镜像 frontend ``markdown.ts normalizeItalicWrappingInlineHtml``，两端同步。
+_ITALIC_WRAPPING_TAGS = re.compile(
+    r"_((?:<(?:font|span|u|mark|kbd|sub|sup)\b[^>]*>[^<\n]*"
+    r"</(?:font|span|u|mark|kbd|sub|sup)>)+)_",
+    re.I,
+)
+
+
+def normalize_italic_wrapping_inline_html(src: str) -> str:
+    return _ITALIC_WRAPPING_TAGS.sub(r"<em>\1</em>", src)
 
 
 # 语雀导出会把公式节点包成两侧带空格的行内美元 ``$ … $``——撞上四端一致的
@@ -253,12 +319,14 @@ def rescue_space_padded_dollar_math(src: str) -> str:
 
 def apply_yuque_compat_mode(src: str) -> str:
     out = rescue_space_padded_dollar_math(src)
+    out = convert_backticked_styled_code(out)
     out = unwrap_backticked_emphasis(out)
     out = normalize_yuque_images(out)
     out = unwrap_backticked_html(out)
     out = normalize_legacy_html_tags(out)
     out = normalize_yuque_emphasis(out)
     out = normalize_bold_wrapping_inline_html(out)
+    out = normalize_italic_wrapping_inline_html(out)
     return out
 
 

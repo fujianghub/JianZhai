@@ -197,6 +197,14 @@
 
 修复=`applyYuqueCompatMode` **首步** `rescueSpacePaddedDollarMath`（后端 `markdown_preprocess.rescue_space_padded_dollar_math` 镜像）。触发须同时满足三条件：**独立成行 + `$` 内侧留白 + 内容含 LaTeX 信号**（`\cmd` / `_{` / `^{`）→ 输出多行 `$$` 块，并还原 `\\`+字母 → `\`+字母（真换行 `\\` 后跟空白/`[`，不受影响）、剥掉包住整个公式体的裸 `[ … ]`（区间并集形态内部含 `[`/`]`，保留不动）。货币文本（`$ 5 到 10 $`）无信号永不触发，无留白 `$x$` 本就可渲染不动；**修复落在兼容层而非四端 tokenizer**——放宽边界规则需四端同步+货币回归，得不偿失。因 `preprocessMarkdown` 是渲染/加载时预处理，存量文档无需改数据即生效。
 
+### 语雀彩色行内代码 + 相邻斜体粘连（2026-09-01）
+
+真实样本=线上 doc 1002《Route Preference》。两类失效同批修复，均为渲染层预处理（`raw_content` 不动、存量即生效），前后端镜像（`markdown.ts` ↔ `markdown_preprocess.py`）。
+
+**① 彩色行内代码**（「颜色块/表格不支持行内代码」双 bug 共同根因）：语雀把染色标签导出在**反引号内部**——`` `<font style="color:…">preference</font>` ``、`` `_<font>static-path</font>_` ``（斜体叠加）、一对反引号内多段混排的整行命令。旧兼容层要么剥反引号只留颜色（`unwrapBacktickedHtml`/`unwrapBacktickedEmphasis`，代码芯片丢失），要么形态不匹配时 `normalizeLegacyHtmlTags` 无守卫改写反引号内标签 → markdown-it 默认 `code_inline` 转义出字面 `<span …>` 垃圾。**表格管线本身无辜**：管道表格转 HTML 用的 `tableMd` 对单元格内 `` `x` `` 本就能出 `<code>`，只是兼容层先跑已把反引号剥掉。修复=`convertBacktickedStyledCode`：整段反引号转原生 `<code>` 芯片，**保码丢色**（色值全是语雀默认正文灰，芯片有 `--jz-code-inline-*` 六主题令牌；用户拍板）、`**`/`__`→`<strong>`、`_`/`*`→`<em>` 保留、残余 markdown 活性字符（`*_[]$`）转 HTML 实体防 `<code>` 标签间续解析；仅当反引号内是「纯文本+表现层标签」才接手（展示 `<div>` 之类真实代码样例不动）；**必须排在 `unwrapBacktickedEmphasis` 之前**（否则 `` `**<font>…</font>**` `` 反引号先被那步剥掉）；`normalizeLegacyHtmlTags` 加 `isInsideInlineCodeSpan` 守卫。纯加粗 `` `**x**` ``（无染色标签）保持旧 unwrap 行为（用户拍板）。编辑器加载同走此预处理，保存时 Tiptap code mark 会把芯片内粗斜体降级为纯代码（接受为优雅降级）。
+
+**② 相邻斜体粘连（CJK 侧翼规则怪癖）**：语雀相邻两段斜体直接粘连 `_<font>A</font>__B_`——中间 `__` 被 markdown-it 当成**一个长度 2 的定界符串**，按 CommonMark 侧翼规则（前 `>` 标点、后 CJK 字母）**只能开不能闭** → 配对全乱：句首 `_` 变字面、句尾 `_` 借走 `__` 中一个配出半截斜体（doc 1002 全文 6 处字面 `_`）。修复=`normalizeItalicWrappingInlineHtml`——`normalizeBoldWrappingInlineHtml` 的 `_` 孪生（当年只修 `**` 漏了 `_`），`_(<font|span…>…</…>)+_` → `<em>…</em>` 直接转 HTML 整体绕开侧翼规则、**斜体保色**；A 消费掉 `__` 首个 `_` 后，裸残段 `_B_` 脱离长串可被正常配对（实测自愈）。正则要求 `_` 后紧跟标签结构，URL 下划线串/snake_case/裸 `_中文_` 永不命中（不需 URL 掩码）；夹裸文本的标签链刻意不接（对 `_` 做 bold 版的 inner 宽匹配会误伤 snake_case）。
+
 ### PPT 有道云式阅读器（`.pptx` → 逐页图 + 缩略图 + 讲者备注）
 
 **转换管线**（`editor/tasks.convert_pptx_to_slides`，Celery 异步，需 `libreoffice`(soffice) + `poppler-utils`(pdftoppm) 在 PATH）：

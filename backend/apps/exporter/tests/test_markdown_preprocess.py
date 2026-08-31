@@ -7,6 +7,8 @@ line, breaking the table and opening a runaway container.
 from __future__ import annotations
 
 from apps.exporter.services.markdown_preprocess import (
+    convert_backticked_styled_code,
+    normalize_italic_wrapping_inline_html,
     preprocess_markdown,
     unglue_container_fences,
 )
@@ -126,3 +128,112 @@ def test_rescue_ignores_valid_inline_and_fenced_code():
     assert "$E=mc^2$" in preprocess_markdown("$E=mc^2$")
     assert "$ \\alpha $" in preprocess_markdown("```\n$ \\alpha $\n```")
     assert "$ \\alpha $" in preprocess_markdown("价格 $ \\alpha $ 收尾还有字")
+
+
+# ── 彩色行内代码保码转换（2026-09-01，线上 doc 1002《Route Preference》）──
+# 语雀把彩色行内代码的 <font>/<span> 染色标签导出在反引号内部；旧管线剥反引号
+# 丢代码语义（颜色块/表格「不支持行内代码」）。镜像 frontend
+# convertBacktickedStyledCode：保 <code> 丢颜色，**/_ → strong/em。
+
+
+def test_backticked_font_becomes_code_chip_colour_dropped():
+    src = '`<font style="color:rgb(77, 82, 89);">preference</font>`'
+    out = preprocess_markdown(src)
+    assert out == "<code>preference</code>"
+
+
+def test_backticked_italic_font_keeps_em_inside_chip():
+    src = '`_<font style="color:rgb(88, 88, 91);">external dist1</font>_`'
+    assert preprocess_markdown(src) == "<code><em>external dist1</em></code>"
+
+
+def test_backticked_multi_run_command_line_one_chip():
+    src = (
+        '`**<font style="color:rgb(64, 64, 64);">distance ospf</font>**'
+        '<font style="color:rgb(64, 64, 64);"> {</font>'
+        '**<font style="color:rgb(64, 64, 64);">intra-area</font>**'
+        '<font style="color:rgb(64, 64, 64);"> </font>'
+        '_<font style="color:rgb(64, 64, 64);">distance-value</font>_'
+        '<font style="color:rgb(64, 64, 64);">}</font>`'
+    )
+    assert preprocess_markdown(src) == (
+        "<code><strong>distance ospf</strong> {<strong>intra-area</strong> "
+        "<em>distance-value</em>}</code>"
+    )
+
+
+def test_backticked_styled_code_in_table_row_survives():
+    src = (
+        "| 类型 | 值 | 说明 |\n"
+        "| --- | --- | --- |\n"
+        '| LDP | 9 | LDP `<font style="color:rgb(77, 82, 89);">preference</font>` 语句 |'
+    )
+    out = preprocess_markdown(src)
+    assert "| LDP | 9 | LDP <code>preference</code> 语句 |" in out
+
+
+def test_backticked_styled_code_neutralizes_markdown_active_chars():
+    src = '`<font style="color:red">show route [detail]</font>`'
+    assert preprocess_markdown(src) == "<code>show route &#91;detail&#93;</code>"
+
+
+def test_backticked_unknown_tags_left_alone():
+    # 反引号内含非表现层标签（真实代码样例）→ 保码转换不接手。
+    src = "`<font><div>x</div></font>`"
+    assert convert_backticked_styled_code(src) == src
+
+
+def test_pure_bold_backticks_keep_old_unwrap_path():
+    # 决策②：无染色标签的 `**x**` 仍走旧 unwrap（剥反引号留加粗），不转芯片。
+    out = preprocess_markdown("`**ORM**`")
+    assert "<code>" not in out
+    assert "**ORM**" in out
+
+
+def test_backticked_styled_code_not_converted_inside_fences():
+    src = '```\n`<font style="color:red">x</font>`\n```'
+    assert preprocess_markdown(src) == src
+
+
+def test_font_inside_remaining_inline_code_not_rewritten_to_span():
+    # normalize_legacy_html_tags 守卫：保码转换和 unwrap 都兜不住的残余形态
+    # （含未知标签 + 尾随文本）留在反引号内时不改写成 span——code_inline 会
+    # 原样转义展示，改写只会把转义垃圾从 font 换成 span。
+    src = "`<font><div>x</div></font> tail`"
+    out = preprocess_markdown(src)
+    assert out == src
+    assert "<span" not in out
+
+
+# ── 斜体孪生 normalize_italic_wrapping_inline_html（2026-09-01，doc 1002 参数表）──
+# 语雀相邻斜体粘连 `_A__B_`：中间 `__` 按侧翼规则只能开不能闭 → 字面 `_`。
+
+
+def test_italic_wrapping_tags_converted_to_em_glued_tail_self_heals():
+    cell = (
+        '_<font style="color:rgb(88, 88, 91);">（可选）为从其他路由域通过重分发'
+        "（redistribution）学习到的路由设置管理距离。取值范围 1 到 255。</font>"
+        "__默认值为 110。_"
+    )
+    out = preprocess_markdown(cell)
+    assert '<em><span style="color:rgb(88, 88, 91);">（可选）' in out
+    assert "</span></em>_默认值为 110。_" in out
+
+
+def test_italic_chain_glued_spans_each_get_own_em():
+    src = "_<span>甲</span>__<span>乙</span>_"
+    assert normalize_italic_wrapping_inline_html(src) == (
+        "<em><span>甲</span></em><em><span>乙</span></em>"
+    )
+
+
+def test_italic_twin_never_touches_urls_snake_case_bare_cjk():
+    url = "https://docs.example.com/a?TocPath=%25257C_____0"
+    assert normalize_italic_wrapping_inline_html(url) == url
+    assert normalize_italic_wrapping_inline_html("a_b_c") == "a_b_c"
+    assert normalize_italic_wrapping_inline_html("_中文_") == "_中文_"
+
+
+def test_italic_twin_not_inside_fences():
+    src = '```\n_<span style="color:red">x</span>_\n```'
+    assert preprocess_markdown(src) == src

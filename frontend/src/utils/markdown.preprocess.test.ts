@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  convertBacktickedStyledCode,
   convertGfmPipeTables,
+  normalizeItalicWrappingInlineHtml,
   recoverYuqueDiagramComments,
   mapOutsideFencedCodeBlocks,
   normalizeLegacyHtmlTags,
@@ -9,13 +11,15 @@ import {
 } from './markdown';
 
 describe('preprocessMarkdown', () => {
-  it('unwraps backticked font tags and normalizes to span', () => {
+  it('converts backticked font tags into a code chip (colour dropped)', () => {
+    // 2026-09-01：语义反转——语雀把彩色行内代码的染色标签导出在反引号内部，
+    // 旧行为剥反引号只留颜色，代码语义整个丢失（「颜色块不支持行内代码」）。
+    // 现在保代码丢颜色：芯片配色走 --jz-code-inline-* 六主题令牌。
     const src = '`<font style="color:rgb(245,158,11);">\'hello/\'</font>`';
     const out = preprocessMarkdown(src);
     expect(out).not.toContain('`');
     expect(out).not.toContain('<font');
-    expect(out).toContain('<span style="color:rgb(245,158,11);">');
-    expect(out).toContain("'hello/'");
+    expect(out).toContain("<code>'hello/'</code>");
   });
 
   it('merges bold spans split around font tags', () => {
@@ -160,6 +164,142 @@ describe('preprocessMarkdown', () => {
   });
 });
 
+/**
+ * 「颜色块/表格不支持行内代码」修复（2026-09-01，真实样本来自线上 doc 1002
+ * 《Route Preference》）。语雀把彩色行内代码的 <font>/<span> 染色标签导出在
+ * 反引号内部；旧管线要么剥反引号丢代码语义、要么让 code_inline 转义出字面
+ * 标签垃圾。表格路径本身无辜——管道表格转 HTML 前反引号已在兼容层被剥。
+ */
+describe('convertBacktickedStyledCode (colored inline code)', () => {
+  it('turns a backticked font tag into a code chip, colour dropped', () => {
+    const src = '`<font style="color:rgb(77, 82, 89);">preference</font>`';
+    expect(preprocessMarkdown(src)).toBe('<code>preference</code>');
+    const html = renderMarkdown(src);
+    expect(html).toContain('<code>preference</code>');
+    expect(html).not.toContain('rgb(77, 82, 89)');
+  });
+
+  it('keeps single-underscore italic inside the chip as <em>', () => {
+    // `_<font>…</font>_` 组合旧时两个 unwrap 都不匹配 → 芯片里显示字面
+    // <span style="…"> 转义垃圾。
+    const src = '`_<font style="color:rgb(88, 88, 91);">external dist1</font>_`';
+    expect(preprocessMarkdown(src)).toBe('<code><em>external dist1</em></code>');
+  });
+
+  it('converts a multi-run command line into one chip with strong/em', () => {
+    const src =
+      '`**<font style="color:rgb(64, 64, 64);">distance ospf</font>**<font style="color:rgb(64, 64, 64);"> {</font>**<font style="color:rgb(64, 64, 64);">intra-area</font>**<font style="color:rgb(64, 64, 64);"> </font>_<font style="color:rgb(64, 64, 64);">distance-value</font>_<font style="color:rgb(64, 64, 64);">}</font>`';
+    expect(preprocessMarkdown(src)).toBe(
+      '<code><strong>distance ospf</strong> {<strong>intra-area</strong> <em>distance-value</em>}</code>',
+    );
+  });
+
+  it('renders colored inline code inside a table cell as <td>…<code>', () => {
+    const src = [
+      '| 类型 | 值 | 说明 |',
+      '| --- | --- | --- |',
+      '| LDP | 9 | LDP `<font style="color:rgb(77, 82, 89);">preference</font>` 语句 |',
+    ].join('\n');
+    const html = renderMarkdown(src);
+    expect(html).toContain('<table');
+    expect(html).toContain('LDP <code>preference</code> 语句');
+    expect(html).not.toContain('&lt;font');
+    expect(html).not.toContain('&lt;span');
+  });
+
+  it('plain inline code in a table cell still renders as code (regression)', () => {
+    const html = renderMarkdown('| a |\n| --- |\n| `distance ospf` |');
+    expect(html).toContain('<code>distance ospf</code>');
+  });
+
+  it('leaves backticked bodies with non-presentational tags untouched', () => {
+    const src = '`<font><div>x</div></font>`';
+    expect(convertBacktickedStyledCode(src)).toBe(src);
+  });
+
+  it('does not touch pure-bold backticks (old unwrap path keeps handling them)', () => {
+    const src = '`**ORM**`';
+    expect(convertBacktickedStyledCode(src)).toBe(src);
+  });
+
+  it('neutralizes leftover markdown-active chars so <code> content stays literal', () => {
+    const src = '`<font style="color:red">show route [detail]</font>`';
+    const out = preprocessMarkdown(src);
+    expect(out).toBe('<code>show route &#91;detail&#93;</code>');
+    const html = renderMarkdown(src);
+    expect(html).toContain('[detail]');
+    expect(html).not.toContain('<a ');
+  });
+
+  it('does not fire inside fenced code blocks', () => {
+    const src = '```\n`<font style="color:red">x</font>`\n```';
+    expect(preprocessMarkdown(src)).toBe(src);
+  });
+});
+
+/**
+ * normalizeBoldWrappingInlineHtml 的斜体孪生（2026-09-01，真实样本=线上
+ * doc 1002 参数表）。语雀相邻斜体粘连 ``_A__B_``：中间 ``__`` 按 CommonMark
+ * 侧翼规则（前标点后 CJK 字母）只能开不能闭 → 配对全乱留字面 ``_``。
+ */
+describe('normalizeItalicWrappingInlineHtml (CJK glued italic + color)', () => {
+  const CELL =
+    '_<font style="color:rgb(88, 88, 91);">（可选）为从其他路由域通过重分发（redistribution）学习到的路由设置管理距离。取值范围 1 到 255。</font>__默认值为 110。_';
+
+  it('converts tag-wrapped italic to <em>; glued bare tail self-heals', () => {
+    const out = preprocessMarkdown(CELL);
+    expect(out).toContain('<em><span style="color:rgb(88, 88, 91);">（可选）');
+    expect(out).toContain('</span></em>_默认值为 110。_');
+    const html = renderMarkdown(CELL);
+    expect(html).toContain('（可选）');
+    expect(html).toContain('<em>默认值为 110。</em>');
+    expect(html).not.toContain('_');
+  });
+
+  it('renders the real 参数表 row: two ems in the cell, zero literal underscores', () => {
+    const src = ['| 参数 | 说明 |', '| :--- | :--- |', `| x | ${CELL} |`].join('\n');
+    const html = renderMarkdown(src);
+    expect(html).toContain('<table');
+    expect((html.match(/<em>/g) ?? []).length).toBeGreaterThanOrEqual(2);
+    expect(html).not.toContain('_');
+  });
+
+  it('works mid-sentence where flanking rules alone would fail', () => {
+    // 开 ``_`` 前是 CJK 字母、后是 ``<`` 标点 → 侧翼规则判非左翼，原生解析
+    // 整段退化字面下划线。
+    const src = '句中文字_<span style="color:red">强调</span>_接着继续';
+    const html = renderMarkdown(src);
+    expect(html).toContain('<em><span style="color:red">强调</span></em>');
+    expect(html).not.toContain('_');
+  });
+
+  it('keeps chained glued italic spans each in their own em', () => {
+    const src = '_<span>甲</span>__<span>乙</span>_';
+    expect(normalizeItalicWrappingInlineHtml(src)).toBe(
+      '<em><span>甲</span></em><em><span>乙</span></em>',
+    );
+  });
+
+  it('never touches URLs, snake_case, or bare CJK italics', () => {
+    const url = 'https://docs.example.com/a?TocPath=%25257C_____0';
+    expect(normalizeItalicWrappingInlineHtml(url)).toBe(url);
+    expect(normalizeItalicWrappingInlineHtml('a_b_c')).toBe('a_b_c');
+    expect(normalizeItalicWrappingInlineHtml('_中文_')).toBe('_中文_');
+  });
+
+  it('double-underscore bold wrapping tags still goes to strong (order snapshot)', () => {
+    // bold 孪生先跑（reWholeAlt 收 ``__<tag>…</tag>__``），斜体孪生不接手。
+    const out = preprocessMarkdown('__<span style="color:red">x</span>__');
+    expect(out).toContain('<strong><span style="color:red">x</span></strong>');
+    expect(out).not.toContain('<em>');
+  });
+
+  it('does not fire inside fenced code blocks', () => {
+    const src = '```\n_<span style="color:red">x</span>_\n```';
+    expect(preprocessMarkdown(src)).toBe(src);
+  });
+});
+
 describe('link-card / doc-card block placeholders', () => {
   it('converts a whole-line [[link-card:URL]] into a hydration shell', () => {
     const out = preprocessMarkdown('上文\n\n[[link-card:https://github.com/a?b=1&c=2]]\n\n下文');
@@ -256,11 +396,11 @@ describe('fence awareness', () => {
     expect(out).toBe(src);
   });
 
-  it('unwraps backticked <span> like <font>', () => {
+  it('converts backticked <span> to a code chip like <font>', () => {
     const src = '`<span style="color:red">x</span>`';
     const out = preprocessMarkdown(src);
     expect(out).not.toContain('`<span');
-    expect(out).toContain('<span style="color:red">x</span>');
+    expect(out).toContain('<code>x</code>');
   });
 
   it('does not merge emphasis inside code fences', () => {
