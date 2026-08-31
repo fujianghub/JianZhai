@@ -67,7 +67,7 @@ export default function FavoritesPage() {
     </div>
   ) : (
     <section className="jz-hero" aria-label="题记">
-      <div className="jz-hero-quote" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>
+      <div className="jz-hero-quote">
         <span>我 的 收 藏</span>
       </div>
       {items && items.length > 0 ? (

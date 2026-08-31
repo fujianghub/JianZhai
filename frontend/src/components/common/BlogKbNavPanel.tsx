@@ -231,7 +231,7 @@ export default function BlogKbNavPanel({
                 </Link>
                 {canManage && (
                   <div className="jz-kb-nav-sort" style={{ marginTop: 10 }}>
-                    <Text type="secondary" style={{ fontSize: 11, display: 'block', marginBottom: 4 }}>
+                    <Text type="secondary" style={{ fontSize: 'var(--jz-fs-2xs)', display: 'block', marginBottom: 4 }}>
                       文档排序
                     </Text>
                     <Select

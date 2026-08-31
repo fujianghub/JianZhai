@@ -1037,10 +1037,6 @@ export default function PostDetail() {
           ) : (
             <div
               className={`markdown-preview jz-post-article${layout.longImageLimit ? '' : ' jz-imgcap-off'}`}
-              style={{
-                lineHeight: 'var(--jz-reader-lh, 1.85)',
-                fontSize: 'calc(var(--jz-fs-read) * var(--jz-reader-scale, 1))',
-              }}
               dangerouslySetInnerHTML={{ __html: rendered.html }}
             />
           )}
@@ -1060,7 +1056,7 @@ export default function PostDetail() {
               are already inlined in the body, so we skip them to avoid duplication. */}
           {showOriginalAtBottom && post.primary_attachment && (
             <div style={{ marginTop: 32 }}>
-              <Text type="secondary" style={{ fontSize: 12 }}>原文件</Text>
+              <Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>原文件</Text>
               <div style={{ marginTop: 8 }}>
                 <PublicAttachmentPreview att={post.primary_attachment} />
               </div>

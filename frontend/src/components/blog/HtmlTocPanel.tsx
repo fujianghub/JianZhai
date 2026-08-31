@@ -128,7 +128,7 @@ export default function HtmlTocPanel({
       >
         <Text
           type="secondary"
-          style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}
+          style={{ fontSize: 'var(--jz-fs-2xs)', letterSpacing: 'var(--jz-ls-sm)', textTransform: 'uppercase' }}
         >
           目录
         </Text>
@@ -145,7 +145,7 @@ export default function HtmlTocPanel({
         )}
       </div>
       {!showDeep && headings.length >= LONG_TOC_HINT && (
-        <Text type="secondary" style={{ display: 'block', fontSize: 11, marginTop: 6 }}>
+        <Text type="secondary" style={{ display: 'block', fontSize: 'var(--jz-fs-2xs)', marginTop: 6 }}>
           目录较长，已折叠 h4–h6 标题
         </Text>
       )}
@@ -153,7 +153,7 @@ export default function HtmlTocPanel({
         <Button
           type="link"
           size="small"
-          style={{ padding: '4px 0 0', height: 'auto', fontSize: 12 }}
+          style={{ padding: '4px 0 0', height: 'auto', fontSize: 'var(--jz-fs-xs)' }}
           onClick={() => setShowDeep((v) => !v)}
         >
           {showDeep ? '收起 h4–h6' : `显示 h4–h6（${deepHeadings.length}）`}
@@ -175,7 +175,7 @@ export default function HtmlTocPanel({
               style={{
                 display: 'block',
                 padding: '4px 8px',
-                fontSize: 13,
+                fontSize: 'var(--jz-fs-sm)',
                 lineHeight: 1.45,
                 color:
                   activeId === h.id

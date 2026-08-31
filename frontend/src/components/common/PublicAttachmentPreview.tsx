@@ -149,7 +149,6 @@ function MarkdownInline({ url, dl }: { url: string; dl: React.ReactNode }) {
       <div
         className="markdown-preview jz-att-md"
         dangerouslySetInnerHTML={{ __html: html }}
-        style={{ lineHeight: 1.8, fontSize: 16 }}
       />
       <CodeBlockEnhancer selector=".jz-att-md" bindKey={html} />
       <ImageLightboxEnhancer selector=".jz-att-md" bindKey={html} />

@@ -60,7 +60,7 @@ export default function ArchivePage() {
   return (
     <div className="jz-archive">
       <section className="jz-hero" aria-label="题记">
-        <div className="jz-hero-quote" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>
+        <div className="jz-hero-quote">
           <span>编 年 纪 事</span>
         </div>
         <div className="jz-hero-attr">
@@ -76,7 +76,7 @@ export default function ArchivePage() {
             <header className="jz-archive-year-head">
               <span className="jz-archive-year-text">{yearCn(year)}年</span>
               <span className="jz-archive-year-rule" aria-hidden />
-              <Text type="secondary" style={{ fontSize: 12, letterSpacing: 1 }}>
+              <Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)', letterSpacing: 'var(--jz-ls-sm)' }}>
                 {monthBuckets.reduce((a, b) => a + b.count, 0)} 卷
               </Text>
             </header>

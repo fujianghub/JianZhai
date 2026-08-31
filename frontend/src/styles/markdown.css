@@ -1,6 +1,14 @@
+/* 正文排版单源收口（2026-09-01 字体统一批次）：所有 markdown 渲染面
+   （阅读页/评论/附件预览/文件预览/AI 面板）共享同一字体族/字号/行高。
+   --jz-article-font / --jz-reader-* 由 PostDetail 写在 <article> 上，
+   脱离阅读页时落令牌兜底；局部密度差异（AI 面板 14px 等）由更高
+   特异性规则覆盖。字号保持 calc(×--jz-reader-scale) 形式勿改 px。 */
 .markdown-preview {
   color: var(--jz-text);
   word-wrap: break-word;
+  font-family: var(--jz-article-font, var(--jz-font-serif));
+  font-size: calc(var(--jz-fs-read) * var(--jz-reader-scale, 1));
+  line-height: var(--jz-reader-lh, var(--jz-lh-read));
 }
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -19,7 +27,7 @@
   border-radius: 8px;
   overflow-x: auto;
   /* KaTeX inserts its own line-height; clear pre-line-height inherits. */
-  line-height: 1.4;
+  line-height: var(--jz-lh-tight);
 }
 .markdown-preview .jz-math-block .katex-display,
 .tiptap-shell .ProseMirror .jz-math-block .katex-display,
@@ -57,7 +65,7 @@
   margin-top: 1.4em;
   margin-bottom: 0.6em;
   font-weight: 600;
-  line-height: 1.35;
+  line-height: var(--jz-lh-tight);
 }
 .markdown-preview h1 { font-size: 1.9em; border-bottom: 1px solid var(--jz-divider); padding-bottom: 0.3em; color: var(--jz-text); }
 .markdown-preview h2 { font-size: 1.5em; border-bottom: 1px solid var(--jz-divider); padding-bottom: 0.25em; color: var(--jz-text); }
@@ -97,7 +105,7 @@
   border-radius: 6px;
   overflow: auto;
   font-size: 0.9em;
-  line-height: 1.5;
+  line-height: var(--jz-lh-ui);
   /* Long code samples should scroll rather than push the rest of the page
      off-screen. The auto overflow on x already handles wide lines; this
      bounds vertical height so a 500-line dump doesn't trash the reading
@@ -300,7 +308,7 @@
 .jz-code-collapse-placeholder {
   cursor: default;
   opacity: 0.7;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
 }
 
 .jz-code-title-area {
@@ -310,7 +318,7 @@
 }
 .jz-code-title-input.ant-input {
   color: var(--jz-code-text) !important;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   padding: 0 4px;
 }
 .jz-code-title-input::placeholder {
@@ -318,7 +326,7 @@
   opacity: 0.85;
 }
 .jz-code-title-text {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-code-text);
   white-space: nowrap;
   overflow: hidden;
@@ -326,7 +334,7 @@
 }
 
 .jz-code-theme-label {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-code-toolbar-text);
   padding: 0 6px;
   white-space: nowrap;
@@ -357,7 +365,7 @@
   background: var(--jz-code-toolbar-bg, #21252b);
   box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4);
   color: var(--jz-code-text, #abb2bf);
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
 }
 .jz-code-settings-item {
   display: flex;
@@ -369,8 +377,8 @@
   color: var(--jz-code-text, #abb2bf);
   text-align: left;
   cursor: pointer;
-  font-size: 13px;
-  line-height: 1.4;
+  font-size: var(--jz-fs-sm);
+  line-height: var(--jz-lh-tight);
 }
 .jz-code-settings-item:hover {
   background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
@@ -415,7 +423,7 @@
   justify-content: space-between;
 }
 .jz-code-settings-kbd {
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: var(--jz-code-toolbar-text);
   border: 1px solid var(--jz-code-border);
   border-radius: 4px;
@@ -430,7 +438,7 @@
 }
 .jz-code-settings-chevron {
   color: var(--jz-code-toolbar-text);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
 }
 .jz-code-settings-sub {
   display: none;
@@ -447,7 +455,7 @@
   color: var(--jz-code-text);
   border-radius: 4px;
   padding: 2px 8px;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   cursor: pointer;
 }
 .jz-code-settings-sub-item.is-active,
@@ -491,7 +499,7 @@
   background: var(--jz-code-toolbar-bg, #21252b);
   border-bottom: 1px solid var(--jz-code-border, #3e4451);
   color: var(--jz-code-toolbar-text, #9da5b4);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   font-family: var(--jz-font-mono);
   user-select: none;
 }
@@ -547,7 +555,7 @@
   min-width: auto;
   height: 28px;
   padding: 0 8px;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
 }
 .jz-code-lang {
   display: inline-flex;
@@ -558,11 +566,11 @@
   background: color-mix(in srgb, var(--jz-code-text) 8%, transparent);
   color: var(--jz-code-text, #abb2bf);
   font-weight: 500;
-  letter-spacing: 0.4px;
+  letter-spacing: var(--jz-ls-xs);
 }
 .jz-code-fontsize {
   font-family: var(--jz-font-mono);
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: var(--jz-code-toolbar-text, #9da5b4);
   min-width: 22px;
   text-align: center;
@@ -573,7 +581,7 @@
   border: 1px solid transparent;
   color: var(--jz-code-toolbar-text, #9da5b4);
   font-family: var(--jz-font-mono);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   line-height: 1;
   padding: 3px 8px;
   border-radius: 4px;
@@ -609,7 +617,7 @@
   /* Default at the tightest comfortable spacing — readers tend to want code
      as dense as possible. CodeBlockEnhancer / CodeBlockView override the
      inline ``style.lineHeight`` based on the user's slider preference. */
-  line-height: 1.6;
+  line-height: var(--jz-lh-ui);
   overflow-x: auto;
   white-space: pre;
   tab-size: 4;
@@ -889,7 +897,7 @@
   border-radius: 6px;
   background: color-mix(in srgb, var(--jz-code-text) 6%, transparent);
   color: var(--jz-code-text, #abb2bf);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   font-family: var(--jz-font-mono);
   cursor: pointer;
   user-select: none;
@@ -909,7 +917,7 @@
   text-align: left;
 }
 .jz-code-theme-trigger .anticon {
-  font-size: 10px;
+  font-size: var(--jz-fs-3xs);
   color: var(--jz-code-toolbar-text, #9da5b4);
 }
 .jz-code-theme-menu {
@@ -929,7 +937,7 @@
   border: none;
   background: transparent;
   color: var(--jz-code-text, #abb2bf);
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   text-align: left;
   cursor: pointer;
 }
@@ -939,7 +947,7 @@
 .jz-code-theme-item-check {
   width: 14px;
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: var(--jz-code-text, #abb2bf);
   opacity: 0;
 }
@@ -1112,7 +1120,7 @@
    line-height — mermaid sources are dense and the wide line spacing made the
    block tall when the user was just inspecting the diagram body. */
 .jz-code-block.jz-code-mermaid .jz-code-pre {
-  line-height: 1.4;
+  line-height: var(--jz-lh-tight);
   padding: 8px 0;
 }
 .jz-mermaid-loading {
@@ -1120,8 +1128,8 @@
   align-items: center;
   gap: 10px;
   color: var(--jz-text-muted);
-  font-size: 13px;
-  letter-spacing: 0.5px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-xs);
   /* line-height:0 on the parent strips the spinner box — restore it here. */
   line-height: 1;
 }
@@ -1144,8 +1152,8 @@
   border-left: 3px solid #e5484d;
   background: color-mix(in srgb, #e5484d 6%, transparent);
   color: #c1373b;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: var(--jz-fs-sm);
+  line-height: var(--jz-lh-ui);
   text-align: left;
   max-width: 100%;
   overflow: auto;
@@ -1159,7 +1167,7 @@
   border-radius: 6px;
   color: var(--jz-text-muted);
   font-family: var(--jz-font-mono);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   white-space: pre-wrap;
 }
 [data-theme='dark'] .jz-mermaid-error,
@@ -1279,7 +1287,7 @@
   background: transparent;
   border-radius: 7px;
   color: var(--jz-text-muted);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   line-height: 1;
   cursor: pointer;
   transition: background-color 130ms ease, color 130ms ease;
@@ -1317,7 +1325,7 @@
   justify-content: center;
 }
 .jz-diagram-block .jz-diagram-action-label {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   font-weight: 500;
   line-height: 1;
 }
@@ -1431,7 +1439,7 @@
   background: transparent;
   color: inherit;
   font: inherit;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   font-family: var(--jz-font-mono);
   padding: 6px 10px;
   border-radius: 6px;
@@ -1461,7 +1469,7 @@
   padding: 0 6px;
   text-align: center;
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: rgba(240, 240, 240, 0.85);
   font-family: var(--jz-font-mono);
 }
@@ -1486,7 +1494,7 @@
   .jz-diagram-fullscreen-toolbar button {
     padding: 4px 8px;
     height: 26px;
-    font-size: 12px;
+    font-size: var(--jz-fs-xs);
   }
 }
 
@@ -1527,7 +1535,7 @@
   background: color-mix(in srgb, var(--c) 7%, var(--jz-surface));
   color: var(--jz-text);
   font-size: 0.96em;
-  line-height: 1.75;
+  line-height: var(--jz-lh-read);
   overflow: hidden;
   /* Left-edge accent bar + 1px outer halo. */
   box-shadow:
@@ -1550,10 +1558,9 @@
   border-radius: 7px;
   background: var(--c);
   color: #fff;
-  font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
-    -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: var(--jz-font-emoji);
   font-weight: 700;
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   line-height: 1;
   flex-shrink: 0;
   box-shadow: 0 2px 6px -2px color-mix(in srgb, var(--c) 60%, transparent);
@@ -1566,11 +1573,11 @@
   margin: 0 0 8px;
   padding: 0;
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: var(--jz-ls-sm);
   font-size: 0.95em;
   color: var(--c);
   font-family: var(--jz-font-serif);
-  line-height: 1.45;
+  line-height: var(--jz-lh-tight);
 }
 
 .jz-callout-body {
@@ -1594,8 +1601,8 @@
   color: var(--c);
   font-size: 1.04em;
   font-weight: 600;
-  letter-spacing: 0.4px;
-  line-height: 1.55;
+  letter-spacing: var(--jz-ls-xs);
+  line-height: var(--jz-lh-ui);
 }
 .jz-callout > .jz-callout-body > p:nth-child(2) {
   margin-top: 0;
@@ -1843,7 +1850,7 @@
   border-bottom: 1px solid var(--jz-divider);
   padding: 8px 12px;
   vertical-align: top;
-  line-height: 1.6;
+  line-height: var(--jz-lh-ui);
 }
 .markdown-preview th:last-child,
 .markdown-preview td:last-child,
@@ -1865,7 +1872,7 @@
   );
   color: var(--jz-text);
   font-weight: 600;
-  letter-spacing: 0.5px;
+  letter-spacing: var(--jz-ls-xs);
   font-family: var(--jz-font-serif);
   border-bottom: 2px solid color-mix(in srgb, var(--jz-gold) 55%, var(--jz-divider));
 }
@@ -1968,8 +1975,8 @@
   transform: translateX(-50%);
   padding: 4px 14px;
   border-radius: 999px;
-  font-size: 12px;
-  line-height: 1.6;
+  font-size: var(--jz-fs-xs);
+  line-height: var(--jz-lh-ui);
   cursor: pointer;
   color: var(--jz-text);
   border: 1px solid var(--jz-border);
@@ -1990,7 +1997,7 @@
   gap: 4px;
   padding: 6px 14px;
   border-bottom: 1px dashed color-mix(in srgb, var(--c, var(--jz-divider)) 35%, var(--jz-divider));
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: color-mix(in srgb, var(--c, var(--jz-text-muted)) 70%, var(--jz-text));
   user-select: none;
   background: color-mix(in srgb, var(--c, var(--jz-surface)) 5%, var(--jz-surface));
@@ -1999,7 +2006,7 @@
 }
 .jz-callout-editor-label {
   font-weight: 600;
-  letter-spacing: 1px;
+  letter-spacing: var(--jz-ls-sm);
   font-family: var(--jz-font-serif);
 }
 .jz-callout-editor-btn {
@@ -2012,7 +2019,7 @@
   padding: 2px 6px;
   border-radius: 4px;
   line-height: 1;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   transition: background-color 120ms ease, color 120ms ease;
 }
 .jz-callout-editor-btn:hover {
@@ -2096,7 +2103,7 @@
   border-radius: 5px;
   cursor: pointer;
   color: var(--jz-text-muted);
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   font-weight: 500;
   font-family: var(--jz-font-sans);
   transition: background-color 100ms ease, color 100ms ease;
@@ -2147,7 +2154,7 @@
 .markdown-preview .jz-inline-toc-title {
   font-weight: 600;
   font-family: var(--jz-font-serif);
-  letter-spacing: 2px;
+  letter-spacing: var(--jz-ls-md);
   color: var(--jz-text);
   border-bottom: 1px solid color-mix(in srgb, var(--jz-gold) 45%, var(--jz-divider));
   padding-bottom: 6px;
@@ -2160,7 +2167,7 @@
 }
 .markdown-preview .jz-inline-toc li {
   margin: 3px 0;
-  line-height: 1.7;
+  line-height: var(--jz-lh-ui);
 }
 .markdown-preview .jz-inline-toc li a {
   color: var(--jz-text);

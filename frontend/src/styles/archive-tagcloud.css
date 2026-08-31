@@ -26,7 +26,7 @@
   font-family: var(--jz-font-serif);
   font-weight: 700;
   font-size: clamp(1.3rem, 2.4vw, 1.8rem);
-  letter-spacing: 4px;
+  letter-spacing: var(--jz-ls-xl);
   color: var(--jz-accent);
 }
 .jz-archive-year-rule {
@@ -87,21 +87,21 @@
 }
 .jz-archive-month-name {
   font-weight: 700;
-  font-size: 17px;
-  letter-spacing: 2px;
+  font-size: var(--jz-fs-xl);
+  letter-spacing: var(--jz-ls-md);
   color: var(--jz-text);
 }
 .jz-archive-month-alias {
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   color: var(--jz-text-muted);
   font-style: italic;
-  letter-spacing: 1px;
+  letter-spacing: var(--jz-ls-sm);
 }
 .jz-archive-month-count {
   margin-left: auto;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-text-muted);
-  letter-spacing: 1px;
+  letter-spacing: var(--jz-ls-sm);
 }
 
 /* ── Post list ── */
@@ -128,8 +128,8 @@
 }
 .jz-archive-date {
   font-family: var(--jz-font-serif);
-  font-size: 13px;
-  letter-spacing: 1px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-sm);
   color: var(--jz-gold);
   min-width: 64px;
   text-align: right;
@@ -137,8 +137,8 @@
 }
 .jz-archive-title {
   font-family: var(--jz-font-serif);
-  font-size: 15.5px;
-  line-height: 1.6;
+  font-size: var(--jz-fs-lg);
+  line-height: var(--jz-lh-ui);
   color: var(--jz-text);
   text-decoration: none;
   transition: color 160ms ease;
@@ -206,15 +206,15 @@
   max-width: 280px;
 }
 .jz-tagcloud--glass .jz-tagcloud-toolbar-meta {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
 }
 .jz-tagcloud-hint {
   margin: -12px 0 16px;
   text-align: center;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   color: var(--jz-text-muted, rgba(0, 0, 0, 0.45));
   font-family: var(--jz-font-serif);
-  letter-spacing: 0.5px;
+  letter-spacing: var(--jz-ls-xs);
 }
 .jz-tagcloud-inline-entries {
   margin-top: 24px;
@@ -245,7 +245,7 @@
   font-family: var(--jz-font-serif);
 }
 .jz-tagcloud-inline-meta {
-  font-size: 12px !important;
+  font-size: var(--jz-fs-xs) !important;
   font-weight: 400 !important;
 }
 .jz-tagcloud--glass .jz-tagcloud-drawer .ant-drawer-content {
@@ -312,7 +312,7 @@
   background: color-mix(in srgb, var(--jz-seal-c, var(--jz-accent)) 12%, var(--glass-surface, var(--jz-surface)));
   border: 1px solid color-mix(in srgb, var(--jz-seal-c, var(--jz-accent)) 40%, var(--glass-border, var(--jz-border)));
   border-radius: 10px;
-  letter-spacing: 1px;
+  letter-spacing: var(--jz-ls-sm);
   line-height: 1;
   text-shadow: none;
   box-shadow: var(--glass-shadow-soft, 0 2px 8px rgba(0, 0, 0, 0.06));
@@ -321,18 +321,18 @@
   cursor: pointer;
   user-select: none;
   padding: 8px 12px;
-  font-size: 15px;
+  font-size: var(--jz-fs-lg);
 }
 .jz-seal-stamp--sm {
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   padding: 6px 10px;
 }
 .jz-seal-stamp--md {
-  font-size: 16px;
+  font-size: var(--jz-fs-lg);
   padding: 9px 13px;
 }
 .jz-seal-stamp--lg {
-  font-size: 19px;
+  font-size: var(--jz-fs-3xl);
   padding: 11px 16px;
 }
 .jz-seal-stamp--active {
@@ -362,7 +362,7 @@
 }
 .jz-tagcloud-post-date {
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-text-muted);
   width: 80px;
   font-variant-numeric: tabular-nums;
@@ -392,14 +392,14 @@
   display: block;
   font-family: var(--jz-font-serif);
   font-weight: 600;
-  font-size: 15px;
+  font-size: var(--jz-fs-lg);
 }
 .jz-tagcloud-kb-desc {
   display: block;
   margin-top: 4px;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-text-muted);
-  line-height: 1.5;
+  line-height: var(--jz-lh-ui);
 }
 .jz-seal-count {
   font-family: var(--jz-font-mono);

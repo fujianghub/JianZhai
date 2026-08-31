@@ -55,10 +55,14 @@
   --jz-font-serif-en: 'Cormorant Garamond', 'EB Garamond', Georgia, serif;
   --jz-font-decor: 'ZCOOL XiaoWei', 'LXGW WenKai Screen', 'Noto Serif SC', 'Songti SC', serif;
   --jz-font-ui: var(--jz-font-sans);
+  /* emoji 图标盘（callout 图标等彩色 emoji 兜底）——第 9 枚，纯符号用途 */
+  --jz-font-emoji: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji',
+    -apple-system, BlinkMacSystemFont, sans-serif;
   /* ── 字号/行高令牌（2026-08-10，第一批只收敛高频处）──
      阶梯对照现状收敛：11/12/13/14/16/16.5(阅读基准)/17px；
      行高三档与 readerLayout.ts 的紧凑/标准/宽松数值同源（改一侧须同步）。
      新增 font-size 优先引用 --jz-fs-*，存量散落值随后续批次渐进收编。 */
+  --jz-fs-3xs: 10px;
   --jz-fs-2xs: 11px;
   --jz-fs-xs: 12px;
   --jz-fs-sm: 13px;
@@ -66,10 +70,24 @@
   --jz-fs-lg: 16px;
   --jz-fs-read: 16.5px;
   --jz-fs-xl: 17px;
+  /* 标题/展示档（2026-09-01 第二批收编新增）。26px+ 的一次性展示字号
+     （hero 印章等）与 clamp() 响应式标题刻意不进阶梯，保持就地声明。 */
+  --jz-fs-2xl: 18px;
+  --jz-fs-3xl: 20px;
+  --jz-fs-4xl: 22px;
+  --jz-fs-5xl: 24px;
   --jz-lh-tight: 1.4;
   --jz-lh-ui: 1.6;
   --jz-lh-read: 1.85;
   --jz-lh-loose: 2.15;
+  /* 字距阶梯（2026-09-01）——古风小标题拉字距收敛为六档；楹联 10px 与
+     负字距/em 值属一次性设计，保持就地声明。 */
+  --jz-ls-xs: 0.5px;
+  --jz-ls-sm: 1px;
+  --jz-ls-md: 2px;
+  --jz-ls-lg: 3px;
+  --jz-ls-xl: 4px;
+  --jz-ls-2xl: 5px;
   /* ── 动效令牌 ──
      此前只有一条注释约定（「颜色类 120ms / 位移类 200ms（弹簧曲线保留给位移）」，
      旧 theme.css:2426），数值散落逐处硬编码且弹簧曲线出现过三种书写。此处机器化：

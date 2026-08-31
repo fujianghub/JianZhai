@@ -65,6 +65,13 @@ canvas 之上的「近景」动效，全部尊重 `prefers-reduced-motion`：
 - **a11y 地基**：`.jz-sr-only` 工具类 + `.jz-skip-link`「跳到正文」（键盘 Tab 首站显形）在两 Layout 顶部，Content 挂 `id="jz-main"` + `tabIndex={-1}`。
 - **同名 keyframes 单源**：AI FAB 呼吸 `jz-ai-fab-pulse` 唯一定义在 editor-ui.css（tiptap.css 曾另有一份 3s 同名、因加载序恒被覆盖的死代码，2026-08-04 已删并留注释）——**跨文件重复定义 keyframes 是静默陷阱，后加载者赢**。
 
+### 排版令牌与正文基类收口（2026-09-01 字体统一批次）
+
+- **令牌阶梯（tokens.css）**：字号 `--jz-fs-3xs(10)/2xs(11)/xs(12)/sm(13)/md(14)/lg(16)/read(16.5)/xl(17)/2xl(18)/3xl(20)/4xl(22)/5xl(24px)`、行高 `--jz-lh-tight(1.4)/ui(1.6)/read(1.85)/loose(2.15)`、字距 `--jz-ls-xs(0.5)~2xl(5px)` 六档。博客侧 7 个 CSS 文件 + 9 个 TSX 约 210 处已全量收编，碎片值就近归档（11.5→12、13.5→13、15/15.5→16、1.05rem→17px、行高 1.3–1.75 归四档）。**新增字号/行高/字距禁写裸值**，三类刻意豁免留字面：26px+ 一次性展示字号（登录印章 32/标题 26、统计数字 28）、clamp() 响应式标题、图标字形度量（`fontSize:24` 图标砖、15px 主题切换图标、30px KB 图标）。
+- **`.markdown-preview` 基类 = 正文排版唯一收口**（markdown.css 顶部）：`font-family: var(--jz-article-font, var(--jz-font-serif))` + `font-size: calc(var(--jz-fs-read) * var(--jz-reader-scale,1))` + `line-height: var(--jz-reader-lh, var(--jz-lh-read))`。所有渲染面（阅读页/评论/附件预览/文件预览）同享；theme.css 旧 `.paper .markdown-preview` 双源规则已删。**阅读三件套变量通道（`--jz-article-font`/`--jz-reader-*`，PostDetail 写在 `<article>` 上）勿破坏**——基类里字号必须保持 calc 形式、字体第一顺位必须是 article-font 变量。两个局部覆盖有意保留：AI 面板 `.jz-ai-panel-body .jz-ai-md` 钉 `var(--jz-font-ui)`（工具 UI 非正文），评论面板（编辑器侧栏，**博客读者侧无评论展示组件**）留 `var(--jz-fs-md)` 侧栏密度。
+- **标题衬线**：`.blog-content h1-h6` 全档衬线（h4 文章卡片标题曾漏网致「页头宋体、卡片黑体」）；非 heading 的条目标题类（`.jz-post-row-title`/`.jz-related-posts-item-title`）显式声明衬线。hero 题记字号单源 theme.css（归档/标签云/收藏/回收站四页的内联 clamp 覆盖已删）。
+- **防回归**：`utils/typographyTokens.test.ts` 双守卫——readerLayout 行距三档 === tokens `--jz-lh-ui/read/loose`（两份手写副本，改须同步）；`styles/*.css` 禁裸 font-family（白名单 `var(--jz-font*)`/`var(--jz-article-font…)`/`inherit`，tokens.css/fonts.css 豁免）。emoji 栈为第 9 枚令牌 `--jz-font-emoji`；阅读器 Verdana/Georgia 预设栈也收进 `fontStacks.ts` 常量。
+
 ### 主题适配自查清单（新增组件/页面照此核对）
 
 非默认主题（尤其 starry/deepsea/春水/冬雪）「染绿」的根因永远是**写死的 accent 色绕过了 token**。规律：

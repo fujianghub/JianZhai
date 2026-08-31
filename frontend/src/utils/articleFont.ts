@@ -8,10 +8,12 @@
  */
 
 import {
+  FONT_STACK_GEORGIA_READER,
   FONT_STACK_KAI,
   FONT_STACK_MONO,
   FONT_STACK_SANS,
   FONT_STACK_SERIF,
+  FONT_STACK_VERDANA_READER,
   FONT_STACK_WENKAI,
 } from './fontStacks';
 
@@ -35,8 +37,7 @@ export const ARTICLE_FONT_PRESETS: ArticleFontPreset[] = [
   {
     key: 'verdana',
     label: 'Verdana',
-    stack:
-      'Verdana, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif',
+    stack: FONT_STACK_VERDANA_READER,
   },
   {
     key: 'system',
@@ -61,8 +62,7 @@ export const ARTICLE_FONT_PRESETS: ArticleFontPreset[] = [
   {
     key: 'georgia',
     label: 'Georgia · 西文衬线',
-    stack:
-      'Georgia, "Cormorant Garamond", "EB Garamond", "Noto Serif SC", "Songti SC", serif',
+    stack: FONT_STACK_GEORGIA_READER,
   },
 ];
 

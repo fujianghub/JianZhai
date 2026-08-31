@@ -516,6 +516,8 @@
    Caret（打字光标）跟在最后一个字符后面，用 inline-block 跟随末尾换行；
    流停后自动隐藏。 */
 .jz-ai-panel-body .jz-ai-md {
+  /* AI 面板是工具 UI 非正文：钉回 UI 字体，隔离 .markdown-preview 基类的衬线 */
+  font-family: var(--jz-font-ui);
   font-size: 14px;
   line-height: 1.7;
   color: var(--jz-text);

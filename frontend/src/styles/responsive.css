@@ -11,7 +11,7 @@
   }
   .jz-brand-cn,
   .jz-brand-en {
-    font-size: 18px !important;
+    font-size: var(--jz-fs-2xl) !important;
   }
   .jz-blog-glass {
     --jz-blog-content-pad-x: 16px;
@@ -55,7 +55,7 @@
     align-items: center;
     justify-content: center;
     margin-right: 8px;
-    font-size: 18px;
+    font-size: var(--jz-fs-2xl);
     color: var(--glass-text, var(--jz-text));
   }
 }
@@ -68,5 +68,5 @@
     bottom: 12px;
     max-width: none;
   }
-  .jz-export-capsule { font-size: 12px; }
+  .jz-export-capsule { font-size: var(--jz-fs-xs); }
 }

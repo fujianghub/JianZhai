@@ -280,7 +280,7 @@ export default function KBPostsPage() {
                   {t.name}
                 </Tag>
               ))}
-              <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+              <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
                 共 {tree.documents.length} 篇
               </Typography.Text>
             </Space>
@@ -315,7 +315,7 @@ export default function KBPostsPage() {
                     key: 'hint',
                     disabled: true,
                     label: (
-                      <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+                      <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
                         也可直接拖拽文件 / 多个文件夹到文章列表
                       </Typography.Text>
                     ),
@@ -417,7 +417,7 @@ export default function KBPostsPage() {
               <Radio value="html">HTML</Radio>
             </Radio.Group>
           </Form.Item>
-          <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
             创建后会自动跳转到编辑器，保存并发布后即可在博客前台看到。
           </Typography.Text>
         </Form>
@@ -639,7 +639,7 @@ function KbBody({
 
       <div style={{ paddingLeft: 18, minWidth: 0 }}>
         <div className="jz-kb-toolbar">
-          <Typography.Text type="secondary" style={{ fontSize: 13 }}>
+          <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-sm)' }}>
             共 {tree.documents.length} 篇文档
           </Typography.Text>
           <div style={{ flex: 1 }} />
@@ -852,7 +852,7 @@ function PostCard({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
         {p.excerpt || '（无摘要）'}
       </Paragraph>
       <Space size={8} wrap split={<span style={{ color: 'var(--jz-divider)' }}>·</span>}>
-        <Typography.Text type="secondary" style={{ fontSize: 12 }}>
+        <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
           {dayjs(p.published_at).format('YYYY-MM-DD HH:mm')}
         </Typography.Text>
         {p.tags.length > 0 && (

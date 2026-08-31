@@ -31,9 +31,19 @@ export const FONT_STACK_SERIF_EN = "'Cormorant Garamond', 'EB Garamond', Georgia
 export const FONT_STACK_DECOR =
   "'ZCOOL XiaoWei', 'LXGW WenKai Screen', 'Noto Serif SC', 'Songti SC', serif";
 
+export const FONT_STACK_EMOJI =
+  "'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', -apple-system, BlinkMacSystemFont, sans-serif";
+
 /** 文楷领衔的阅读预设栈（阅读器/编辑器「文楷」项专用，非 tokens 令牌）。 */
 export const FONT_STACK_WENKAI =
   "'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', serif";
+
+/** 阅读器 Verdana / Georgia 预设栈（仅 articleFont.ts 消费，非 tokens 令牌）。 */
+export const FONT_STACK_VERDANA_READER =
+  'Verdana, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
+
+export const FONT_STACK_GEORGIA_READER =
+  'Georgia, "Cormorant Garamond", "EB Garamond", "Noto Serif SC", "Songti SC", serif';
 
 /** tokens.css `--jz-font-*` ↔ JS 常量对照表（一致性测试的数据源）。 */
 export const FONT_TOKEN_MAP: Record<string, string> = {
@@ -44,6 +54,7 @@ export const FONT_TOKEN_MAP: Record<string, string> = {
   '--jz-font-kai': FONT_STACK_KAI,
   '--jz-font-serif-en': FONT_STACK_SERIF_EN,
   '--jz-font-decor': FONT_STACK_DECOR,
+  '--jz-font-emoji': FONT_STACK_EMOJI,
 };
 
 /**

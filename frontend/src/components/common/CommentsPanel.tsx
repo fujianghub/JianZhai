@@ -91,7 +91,8 @@ export default function CommentsPanel({ documentId, compact = false }: Props) {
                 </Space>
                 <div
                   className="markdown-preview"
-                  style={{ fontSize: 14, lineHeight: 1.6 }}
+                  /* 字体族/行高随 .markdown-preview 基类统一；窄侧栏保留 14px 密度 */
+                  style={{ fontSize: 'var(--jz-fs-md)' }}
                   dangerouslySetInnerHTML={{ __html: renderMarkdown(c.content) }}
                 />
               </div>

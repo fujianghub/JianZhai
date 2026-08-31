@@ -154,7 +154,7 @@ export default function TagCloudPage() {
       <AntTag color={resolveTagColor(activeTag)} style={{ marginInlineEnd: 0 }}>
         {activeTag.name}
       </AntTag>
-      <Text type="secondary" style={{ fontSize: 12, fontWeight: 400 }}>
+      <Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)', fontWeight: 400 }}>
         {activeTag.doc_count ?? 0} 篇
       </Text>
     </span>
@@ -163,7 +163,7 @@ export default function TagCloudPage() {
   return (
     <div className="jz-tagcloud jz-tagcloud--glass">
       <section className="jz-hero" aria-label="题记">
-        <div className="jz-hero-quote" style={{ fontSize: 'clamp(1.4rem, 3vw, 2rem)' }}>
+        <div className="jz-hero-quote">
           <span>百 名 印 谱</span>
         </div>
         <div className="jz-hero-attr">

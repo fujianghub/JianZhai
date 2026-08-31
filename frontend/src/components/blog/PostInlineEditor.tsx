@@ -140,7 +140,7 @@ export default function PostInlineEditor({
       <div className="jz-post-inline-toolbar">
         <Tooltip title="章节标题自动编号（1 / 1.1 / 1.1.1，仅显示不改源码；与完整编辑页同步）">
           <span>
-            <Typography.Text type="secondary" style={{ fontSize: 12, marginRight: 6 }}>
+            <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)', marginRight: 6 }}>
               编号
             </Typography.Text>
             <Switch

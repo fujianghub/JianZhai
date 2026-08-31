@@ -199,7 +199,7 @@ export default function PublicKbFolderTree({
               key={t.id}
               color={resolveTagColor(t)}
               className="jz-folder-tag"
-              style={{ marginInlineEnd: 0, fontSize: 10, lineHeight: '15px', padding: '0 5px' }}
+              style={{ marginInlineEnd: 0, fontSize: 'var(--jz-fs-3xs)', lineHeight: '15px', padding: '0 5px' }}
             >
               {t.name}
             </Tag>
@@ -207,7 +207,7 @@ export default function PublicKbFolderTree({
           {showCounts && (
             <span
               style={{
-                fontSize: 11,
+                fontSize: 'var(--jz-fs-2xs)',
                 color: 'var(--jz-text-muted)',
                 fontWeight: 400,
                 padding: '0 6px',

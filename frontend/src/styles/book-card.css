@@ -70,8 +70,8 @@
   color: var(--glass-text, var(--jz-text));
   font-family: var(--jz-font-serif);
   font-weight: 600;
-  font-size: 17px;
-  letter-spacing: 1px;
+  font-size: var(--jz-fs-xl);
+  letter-spacing: var(--jz-ls-sm);
   text-shadow: none;
   box-shadow: none;
   transform: none;
@@ -88,8 +88,8 @@
 
 .jz-book-desc {
   font-family: var(--jz-font-serif);
-  font-size: 13.5px;
-  line-height: 1.7;
+  font-size: var(--jz-fs-sm);
+  line-height: var(--jz-lh-ui);
   color: var(--glass-text-muted, var(--jz-text-muted));
   min-height: 40px;
   margin-bottom: 12px;
@@ -118,7 +118,7 @@
   padding-top: 12px;
   border-top: 1px solid var(--glass-divider, var(--jz-divider));
   color: var(--glass-text-muted, var(--jz-text-muted));
-  font-size: 12.5px;
+  font-size: var(--jz-fs-sm);
 }
 
 .jz-book-meta-action {
@@ -131,7 +131,7 @@
   background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
   color: var(--jz-accent);
   font-weight: 600;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   transition: all 0.22s ease;
 }
 
@@ -151,7 +151,7 @@
   margin-inline-end: 4px;
   margin-bottom: 4px;
   border-radius: 8px;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
 }
 
 /* Blog home: KB groups by category */
@@ -169,14 +169,14 @@
   font-family: var(--jz-font-serif);
   font-size: clamp(1.15rem, 2vw, 1.45rem);
   font-weight: 700;
-  letter-spacing: 3px;
+  letter-spacing: var(--jz-ls-lg);
   color: var(--jz-category-accent, var(--jz-accent));
 }
 .jz-kb-category-desc {
   display: block;
   margin-top: 6px;
   font-family: var(--jz-font-serif);
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
 }
 .jz-kb-category-grid {
   display: grid;

@@ -6,8 +6,9 @@
 .tiptap-shell .ProseMirror {
   outline: none;
   min-height: 320px;
-  line-height: 1.85;
-  font-size: 16px;
+  /* 与阅读端正文基准同源（曾 16px vs 16.5px 双源打架，2026-09-01 对齐） */
+  line-height: var(--jz-lh-read);
+  font-size: var(--jz-fs-read);
   color: var(--jz-text);
   /* Was 紧凑 (cramped): no vertical breathing room. */
   padding-block: 4px 24px;

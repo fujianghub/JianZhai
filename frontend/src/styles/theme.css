@@ -24,7 +24,7 @@
   color: var(--jz-on-accent, #0a1f1a);
   font-family: var(--jz-font-serif);
   font-weight: 700;
-  font-size: 18px;
+  font-size: var(--jz-fs-2xl);
   letter-spacing: 0;
   box-shadow:
     0 2px 6px color-mix(in srgb, var(--jz-accent) 35%, transparent),
@@ -40,8 +40,8 @@
 .jz-brand-cn {
   font-family: var(--jz-font-display);
   font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
-  font-size: 22px;
-  letter-spacing: 5px;
+  font-size: var(--jz-fs-4xl);
+  letter-spacing: var(--jz-ls-2xl);
   color: var(--jz-accent);          /* 朱砂题字 */
   text-shadow: 0 1px 0 rgba(255, 240, 200, 0.4);
 }
@@ -50,7 +50,7 @@
 [data-theme='deepsea'] .jz-brand-cn { text-shadow: none; }
 .jz-brand-sep {
   color: var(--jz-gold);
-  font-size: 18px;
+  font-size: var(--jz-fs-2xl);
   opacity: 0.7;
   margin: 0 -2px;
   position: relative;
@@ -60,8 +60,8 @@
   font-family: var(--jz-font-serif-en);
   font-style: italic;
   font-weight: 500;
-  font-size: 22px;
-  letter-spacing: 1px;
+  font-size: var(--jz-fs-4xl);
+  letter-spacing: var(--jz-ls-sm);
   color: var(--jz-text-muted);
   position: relative;
   top: 1px;
@@ -81,9 +81,9 @@
   display: inline-flex;
   align-items: center;
   font-family: var(--jz-font-serif);
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   font-weight: 500;
-  letter-spacing: 2px;
+  letter-spacing: var(--jz-ls-md);
   color: var(--jz-text);
   text-decoration: none;
   padding: 6px 14px;
@@ -130,8 +130,8 @@
 /* Monospace digits look cleaner for the live clock. */
 .jz-clock {
   font-family: var(--jz-font-mono);
-  font-size: 12.5px;
-  letter-spacing: 0.5px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-xs);
   color: var(--jz-text-muted);
   font-variant-numeric: tabular-nums;
 }
@@ -267,7 +267,7 @@ a:hover { opacity: 0.85; }
   position: absolute;
   inset: auto 0 4px 0;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: rgba(0, 0, 0, 0.7);
   text-shadow: 0 1px 2px rgba(255, 255, 255, 0.6);
 }
@@ -303,7 +303,7 @@ a:hover { opacity: 0.85; }
 }
 .jz-reader-control-btn .anticon,
 .paper-picker-btn .anticon {
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
 }
 
 /* Soft accent stripe along admin content frame */
@@ -362,19 +362,10 @@ a:hover { opacity: 0.85; }
 
 /* Tighter, more readable typography in blog body */
 .markdown-preview p { margin: 0.9em 0; }
-.markdown-preview { word-wrap: break-word; }
-/* Article body — defaults to a clean Verdana stack (easier to read on screen
-   for long-form CJK + ASCII mixed content). The reader can switch fonts via
-   the ``ReaderFontPicker`` which writes ``--jz-article-font`` on the article
-   element. Available presets and their stacks live in utils/articleFont.ts. */
-/* ``.paper.markdown-preview``（同元素双 class）：CM6 分屏预览把两个 class 放在
-   同一元素上，仅有后代选择器时预览既拿不到 16.5px 也拿不到 --jz-article-font
-   （宋体默认在分屏预览完全不生效）。 */
-.paper .markdown-preview,
-.paper.markdown-preview {
-  font-family: var(--jz-article-font, var(--jz-font-serif));
-  font-size: var(--jz-fs-read);
-}
+/* 正文字体/字号/行高已收口到 .markdown-preview 基类（markdown.css 顶部，
+   2026-09-01 字体统一批次）——.paper 语境不再单独声明；ReaderFontPicker
+   仍经 --jz-article-font 变量生效，评论/附件预览等脱离 .paper 的渲染面
+   同享一套排版。 */
 .paper .markdown-preview p,
 .paper.markdown-preview p,
 .paper .markdown-preview li,
@@ -391,7 +382,7 @@ a:hover { opacity: 0.85; }
   padding-bottom: 6px;
   font-family: var(--jz-font-serif);
   font-weight: 600;
-  letter-spacing: 2px;
+  letter-spacing: var(--jz-ls-md);
   color: var(--jz-text);
   border-bottom: 1px solid var(--jz-divider);
 }
@@ -405,7 +396,7 @@ a:hover { opacity: 0.85; }
 .jz-kb-folder-count {
   margin-left: auto;
   font-family: var(--jz-font-mono);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   font-weight: 400;
   color: var(--jz-text-muted);
   padding: 1px 8px;
@@ -528,6 +519,8 @@ a:hover { opacity: 0.85; }
 .jz-post-row-title {
   flex: 1;
   min-width: 0;
+  /* 条目标题统一衬线（非 heading 元素吃不到 .blog-content h1-h6 规则） */
+  font-family: var(--jz-font-serif);
   font-weight: 500;
   white-space: nowrap;
   overflow: hidden;
@@ -543,7 +536,7 @@ a:hover { opacity: 0.85; }
 }
 .jz-post-row-date {
   font-family: var(--jz-font-mono);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-text-muted);
   flex-shrink: 0;
 }
@@ -583,11 +576,11 @@ h4.jz-post-card-title.ant-typography {
   flex-wrap: wrap;
   gap: 8px;
   margin: 6px 0 14px;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   color: var(--jz-text-muted);
 }
 .jz-post-meta .jz-meta-icon {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   opacity: 0.7;
   transition: opacity 140ms ease, color 140ms ease, transform 140ms ease;
 }
@@ -632,10 +625,10 @@ h4.jz-post-card-title.ant-typography {
   height: 24px;
   padding: 0 10px;
   border-radius: 12px;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   line-height: 1;
   font-weight: 500;
-  letter-spacing: 0.4px;
+  letter-spacing: var(--jz-ls-xs);
   white-space: nowrap;
   transition: background-color 140ms ease, color 140ms ease, border-color 140ms ease;
 }
@@ -668,13 +661,13 @@ h4.jz-post-card-title.ant-typography {
   color: var(--jz-fmt-c, var(--jz-accent));
   font-weight: 600;
   font-family: var(--jz-font-mono);
-  letter-spacing: 0.5px;
+  letter-spacing: var(--jz-ls-xs);
   font-size: var(--jz-fs-2xs);
   font-variant-numeric: tabular-nums;
   padding: 0 8px;
   height: 22px;
 }
-.jz-format-pill-sm { font-size: 10px; padding: 0 6px; height: 18px; }
+.jz-format-pill-sm { font-size: var(--jz-fs-3xs); padding: 0 6px; height: 18px; }
 [data-theme='dark'] .jz-format-pill,
 [data-theme='starry'] .jz-format-pill,
 [data-theme='deepsea'] .jz-format-pill {
@@ -706,7 +699,7 @@ h4.jz-post-card-title.ant-typography {
   background: color-mix(in srgb, var(--jz-tag-c, var(--jz-accent)) 10%, var(--jz-surface));
   border: 1px solid color-mix(in srgb, var(--jz-tag-c, var(--jz-accent)) 28%, transparent);
   color: color-mix(in srgb, var(--jz-tag-c, var(--jz-text)) 80%, var(--jz-text));
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   padding: 0 8px;
   height: 22px;
 }
@@ -740,7 +733,7 @@ h4.jz-post-card-title.ant-typography {
 .ant-btn.jz-edit-btn.ant-btn-background-ghost {
   height: 28px !important;
   min-height: 28px !important;
-  font-size: 12px !important;
+  font-size: var(--jz-fs-xs) !important;
   font-weight: 500 !important;
   line-height: 1 !important;
   border-radius: 14px !important;
@@ -767,7 +760,7 @@ h4.jz-post-card-title.ant-typography {
 .ant-btn.jz-meta-done-btn {
   height: 28px !important;
   min-height: 28px !important;
-  font-size: 12px !important;
+  font-size: var(--jz-fs-xs) !important;
   font-weight: 500 !important;
   line-height: 1 !important;
   border-radius: 14px !important;
@@ -791,7 +784,7 @@ a.jz-meta-full-edit-btn {
   height: 28px;
   padding: 0 12px;
   border-radius: 14px;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   font-weight: 500;
   line-height: 1;
   text-decoration: none;
@@ -804,7 +797,7 @@ a.jz-meta-full-edit-btn {
 }
 a.jz-meta-full-edit-btn .anticon,
 a.jz-meta-full-edit-btn > svg {
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 70%, var(--jz-text-muted));
 }
 a.jz-meta-full-edit-btn:hover {
@@ -918,8 +911,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
-  letter-spacing: 1px;
+  font-size: var(--jz-fs-2xs);
+  letter-spacing: var(--jz-ls-sm);
   color: var(--glass-text-muted, var(--jz-text-muted));
 }
 .jz-post-nav-arrow {
@@ -934,7 +927,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-post-nav-title {
   font-weight: 500;
-  line-height: 1.4;
+  line-height: var(--jz-lh-tight);
   color: var(--glass-text, var(--jz-text));
   transition: color 140ms ease;
 }
@@ -992,9 +985,9 @@ a.jz-meta-full-edit-btn:focus-visible {
   font-family: var(--jz-font-display);
   font-weight: 400;
   font-size: clamp(1.4rem, 3.4vw, 2rem);  /* 缩小：原 1.6-2.4rem → 1.4-2rem */
-  letter-spacing: 5px;
+  letter-spacing: var(--jz-ls-2xl);
   color: var(--jz-text);
-  line-height: 1.4;
+  line-height: var(--jz-lh-tight);
 }
 .jz-hero-quote-line {
   display: inline-flex;
@@ -1042,7 +1035,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   /* Stack the two characters vertically — traditional Chinese name chops
      read top-to-bottom, right-to-left. */
   writing-mode: vertical-rl;
-  letter-spacing: 1px;
+  letter-spacing: var(--jz-ls-sm);
   line-height: 0.95;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.45);
 }
@@ -1053,8 +1046,9 @@ a.jz-meta-full-edit-btn:focus-visible {
   align-items: center;
   gap: 12px;
   font-family: var(--jz-font-display);
-  font-size: 12px;             /* 13 → 12 */
-  letter-spacing: 4px;
+  font-weight: 400; /* display（文楷 Screen）仅 400，显式钉住防继承漂移 */
+  font-size: var(--jz-fs-xs);             /* 13 → 12 */
+  letter-spacing: var(--jz-ls-xl);
   color: var(--jz-text-muted);
   opacity: 0.85;
 }
@@ -1111,7 +1105,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   align-items: baseline;
   gap: 14px;
   font-family: var(--jz-font-decor);
-  font-weight: 500;
+  font-weight: 400; /* decor（ZCOOL XiaoWei）仅 400，500 触发伪加粗糊笔画 */
   font-size: clamp(1.05rem, 1.6vw, 1.2rem);
   letter-spacing: 10px;
   color: var(--jz-text-muted);
@@ -1433,7 +1427,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: var(--jz-fs-5xl);
   font-weight: 800;
   font-family: var(--jz-font-serif);
   box-shadow:
@@ -1445,16 +1439,16 @@ a.jz-meta-full-edit-btn:focus-visible {
   transform: rotate(-6deg) scale(1.05);
 }
 .jz-admin-glass .jz-admin-brand-name {
-  font-size: 22px;
+  font-size: var(--jz-fs-4xl);
   font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
   font-family: var(--jz-font-display);
   color: var(--glass-text);
-  letter-spacing: 3px;
+  letter-spacing: var(--jz-ls-lg);
 }
 .jz-admin-glass .jz-admin-brand-sub {
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: var(--glass-text-muted);
-  letter-spacing: 5px;
+  letter-spacing: var(--jz-ls-2xl);
   margin-top: 4px;
 }
 
@@ -1463,7 +1457,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: transparent !important;
   padding: 8px 12px;
   border-inline-end: none !important;
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
 }
 .jz-admin-glass .jz-admin-menu.ant-menu .ant-menu-item {
   margin-block: 4px !important;
@@ -1494,7 +1488,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-right-color: transparent !important;
 }
 .jz-admin-glass .jz-admin-menu .ant-menu-item .anticon {
-  font-size: 16px;
+  font-size: var(--jz-fs-lg);
   margin-right: 12px;
 }
 /* 图标统一定宽槽：图标彼此居中对齐、文字起点恒定左对齐。
@@ -1597,7 +1591,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-radius: 5px;
   background: rgba(0, 0, 0, 0.06);
   font-family: var(--jz-font-mono);
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: var(--glass-text-muted);
 }
 [data-theme='dark']  .jz-admin-glass .jz-admin-search-kbd,
@@ -1697,8 +1691,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-page-header-title.ant-typography {
   margin: 0 !important;
-  font-size: 22px !important;
-  line-height: 1.3 !important;
+  font-size: var(--jz-fs-4xl) !important;
+  line-height: var(--jz-lh-tight) !important;
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -1727,7 +1721,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   border: 1px solid var(--glass-border);
   background: var(--glass-surface-strong);
   color: var(--glass-text);
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   font-weight: 500;
   line-height: 1;
   text-decoration: none !important;
@@ -1744,13 +1738,13 @@ a.jz-meta-full-edit-btn:focus-visible {
   outline: none;
 }
 .jz-admin-back-btn .anticon {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   opacity: 0.75;
 }
 .jz-admin-back-btn.is-compact {
   height: 28px;
   padding: 0 10px;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
 }
 @media (max-width: 768px) {
   .jz-admin-page-header-main { width: 100%; }
@@ -1849,9 +1843,9 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .ant-card-head-title {
   font-weight: 600 !important;
-  font-size: 15px !important;
+  font-size: var(--jz-fs-lg) !important;
   color: var(--glass-text) !important;
-  letter-spacing: 0.3px;
+  letter-spacing: var(--jz-ls-xs);
 }
 .jz-admin-glass .ant-card-body {
   padding: 24px !important;
@@ -1970,14 +1964,14 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-admin-glass .jz-feature-card-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   color: var(--glass-text);
-  line-height: 1.3;
+  line-height: var(--jz-lh-tight);
 }
 .jz-admin-glass .jz-feature-card-desc {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--glass-text-muted);
-  line-height: 1.55;
+  line-height: var(--jz-lh-ui);
   margin: 0;
 }
 
@@ -2075,13 +2069,13 @@ a.jz-meta-full-edit-btn:focus-visible {
   gap: 16px;
   flex-wrap: wrap;
   margin-bottom: 4px;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   color: var(--jz-text-muted);
 }
 .jz-usage-heatmap-stat strong {
   color: var(--jz-text);
   font-weight: 600;
-  font-size: 16px;
+  font-size: var(--jz-fs-lg);
   margin-right: 2px;
 }
 .jz-usage-heatmap-usd strong {
@@ -2137,9 +2131,9 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* ── Statistic 数字 ──────────────────────────────────────────────────── */
 .jz-admin-glass .ant-statistic-title {
   color: var(--glass-text-muted) !important;
-  font-size: 12px !important;
+  font-size: var(--jz-fs-xs) !important;
   font-weight: 500;
-  letter-spacing: 0.6px;
+  letter-spacing: var(--jz-ls-xs);
   text-transform: uppercase;
   margin-bottom: 8px !important;
 }
@@ -2199,8 +2193,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: rgba(0, 0, 0, 0.025) !important;
   color: var(--glass-text-muted) !important;
   font-weight: 600 !important;
-  font-size: 11px !important;
-  letter-spacing: 0.6px;
+  font-size: var(--jz-fs-2xs) !important;
+  letter-spacing: var(--jz-ls-xs);
   text-transform: uppercase;
   border-bottom: 1px solid var(--glass-border) !important;
 }
@@ -2227,7 +2221,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .ant-tag,
 .jz-blog-glass .ant-tag {
   border-radius: 8px !important;
-  font-size: 11px !important;
+  font-size: var(--jz-fs-2xs) !important;
   padding: 2px 10px !important;
   line-height: 18px !important;
   border: 1px solid var(--glass-border);
@@ -2424,9 +2418,9 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-radius: var(--glass-radius-pill, 999px);
   color: var(--glass-text, var(--jz-text));
   font-family: var(--jz-font-serif);
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   font-weight: 500;
-  letter-spacing: 1.5px;
+  letter-spacing: var(--jz-ls-md);
   text-decoration: none;
   background: transparent;
   transition: color 0.22s ease, background-color 0.22s ease, box-shadow 0.22s ease;
@@ -2585,7 +2579,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-favorites-title {
   font-family: var(--jz-font-serif);
-  font-size: 1.05rem;
+  font-size: var(--jz-fs-xl);
   font-weight: 600;
   color: var(--jz-text);
   display: block;
@@ -2602,7 +2596,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   flex-shrink: 0;
 }
 .jz-favorites-edit {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-text-muted);
   white-space: nowrap;
 }
@@ -2617,11 +2611,11 @@ a.jz-meta-full-edit-btn:focus-visible {
   margin-bottom: 6px;
 }
 .jz-favorites-kb {
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   font-weight: 500;
 }
 .jz-favorites-dates {
-  font-size: 12px !important;
+  font-size: var(--jz-fs-xs) !important;
 }
 .jz-admin-content .jz-favorites {
   max-width: 960px;
@@ -2650,14 +2644,14 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-trash-hint p {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: var(--jz-fs-sm);
+  line-height: var(--jz-lh-ui);
   color: var(--jz-text-muted);
 }
 .jz-trash-hint-icon {
   flex-shrink: 0;
   margin-top: 2px;
-  font-size: 18px;
+  font-size: var(--jz-fs-2xl);
   color: var(--jz-accent, #10b981);
 }
 .jz-trash-toolbar {
@@ -2761,11 +2755,12 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--jz-accent);
 }
 .jz-related-posts-item-title {
+  font-family: var(--jz-font-serif); /* 条目标题统一衬线，同 .jz-post-row-title */
   font-weight: 500;
 }
 .jz-related-posts-reason {
   margin: 0 !important;
-  font-size: 11px !important;
+  font-size: var(--jz-fs-2xs) !important;
 }
 
 /* 账户菜单（博客 / 后台顶栏） */
@@ -2802,7 +2797,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-bottom: 1px solid var(--jz-border);
 }
 .jz-user-menu-name {
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   font-weight: 600;
   color: var(--jz-text);
   max-width: 180px;
@@ -2826,7 +2821,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: transparent;
   color: var(--jz-text);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   text-decoration: none;
   cursor: pointer;
   transition: background 140ms ease, color 140ms ease;
@@ -2848,10 +2843,10 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-blog-glass .jz-blog-footer.ant-layout-footer {
   min-height: 0 !important;
   padding: 6px var(--jz-blog-content-pad-x, 24px) 8px !important;
-  line-height: 1.4;
+  line-height: var(--jz-lh-tight);
   text-align: center;
   color: var(--jz-text-muted);
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   background: transparent !important;
 }
 .jz-blog-footer-inner {
@@ -2859,7 +2854,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   align-items: center;
   gap: 8px;
   font-family: var(--jz-font-serif);
-  letter-spacing: 1px;
+  letter-spacing: var(--jz-ls-sm);
 }
 .jz-blog-footer-rule {
   display: inline-block;
@@ -2877,7 +2872,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   font-family: var(--jz-font-serif);
   font-weight: 600;
   color: var(--jz-text);
-  letter-spacing: 2px;
+  letter-spacing: var(--jz-ls-md);
 }
 .jz-blog-footer-dot {
   opacity: 0.5;
@@ -2908,15 +2903,18 @@ a.jz-meta-full-edit-btn:focus-visible {
   font-weight: 600;
 }
 
-/* 标签 / 章节标题：用宋体 + 朱砂底纹气质 */
-.blog-content h1, .blog-content h2, .blog-content h3 {
+/* 标签 / 章节标题：用宋体 + 朱砂底纹气质。
+   h4-h6 一并纳入（2026-09-01）：文章卡片标题是 AntD Title level=4 → <h4>，
+   曾落在 h1-h3 规则外继承 body 无衬线，与同页 hero/KB 卡的宋体标题打架。 */
+.blog-content h1, .blog-content h2, .blog-content h3,
+.blog-content h4, .blog-content h5, .blog-content h6 {
   font-family: var(--jz-font-serif);
 }
 
 /* Tag：朱砂调 + 圆角小 + hover 加深 */
 .blog-content .ant-tag {
   border-radius: 6px !important;
-  font-size: 11.5px !important;
+  font-size: var(--jz-fs-xs) !important;
   padding: 1px 9px !important;
   border: 1px solid color-mix(in srgb, var(--jz-border) 80%, transparent);
   background: color-mix(in srgb, var(--jz-surface-2) 50%, transparent) !important;
@@ -2978,8 +2976,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-radius: 6px;
   cursor: pointer;
   text-align: left;
-  font-size: 14px;
-  letter-spacing: 0.5px;
+  font-size: var(--jz-fs-md);
+  letter-spacing: var(--jz-ls-xs);
   transition: background-color 120ms ease, color 120ms ease;
 }
 .jz-font-picker-item:hover {
@@ -2993,7 +2991,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 
 /* 面包屑：更克制 */
 .blog-content .ant-breadcrumb {
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   color: var(--jz-text-muted);
   margin-bottom: 16px;
 }
@@ -3082,7 +3080,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--jz-icon-stroke, var(--jz-text-muted));
 }
 .jz-sidebar-tab svg {
-  font-size: 16px;
+  font-size: var(--jz-fs-lg);
   transition: transform 0.2s ease, color 0.2s ease;
 }
 .jz-sidebar-tab:hover {
@@ -3287,15 +3285,17 @@ a.jz-meta-full-edit-btn:focus-visible {
   align-items: baseline;
   gap: 10px;
   font-family: var(--jz-font-display);
-  font-size: 13px;
-  letter-spacing: 3px;
-  line-height: 1.6;
+  font-weight: 400; /* display 仅 400 */
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-lg);
+  line-height: var(--jz-lh-ui);
 }
 /* Dynasty — bronze with subtle inner box brackets. */
 .jz-hero-cite-dynasty {
   color: color-mix(in srgb, var(--jz-gold) 75%, var(--jz-text-muted) 25%);
-  font-weight: 600;
-  font-size: 12px;
+  /* 600 在仅 400 的文楷上是伪加粗（糊笔画），强调只靠青铜色（2026-09-01） */
+  font-weight: 400;
+  font-size: var(--jz-fs-xs);
 }
 .jz-hero-cite-dynasty > [aria-hidden] {
   color: var(--jz-gold);
@@ -3305,13 +3305,14 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* Author — cinnabar / accent emphasis. */
 .jz-hero-cite-author {
   color: color-mix(in srgb, var(--jz-accent) 88%, var(--jz-text) 12%);
-  font-weight: 600;
+  /* 同 dynasty：文楷伪加粗糊笔画，且与 400 斜体的 source 并排粗细不齐 */
+  font-weight: 400;
 }
 /* Source — ink italic with gold angle brackets. */
 .jz-hero-cite-source {
   color: color-mix(in srgb, var(--jz-text-muted) 90%, transparent);
   font-style: italic;
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   display: inline-flex;
   align-items: baseline;
   gap: 1px;
@@ -3390,14 +3391,14 @@ a.jz-meta-full-edit-btn:focus-visible {
    crowds small viewports — tighten it and let lines breathe. */
 @media (max-width: 560px) {
   .jz-hero-quote {
-    letter-spacing: 3px;
+    letter-spacing: var(--jz-ls-lg);
     row-gap: 4px;
   }
   .jz-hero-quote-line {
     gap: 10px;
   }
   .jz-hero-cite-inner {
-    letter-spacing: 2px;
+    letter-spacing: var(--jz-ls-md);
     flex-wrap: wrap;
     justify-content: center;
   }
@@ -3409,7 +3410,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* ── /admin/hero 管理页质感 ── */
 .jz-hero-admin-card .ant-card-head-title {
   font-family: var(--jz-font-serif);
-  letter-spacing: 2px;
+  letter-spacing: var(--jz-ls-md);
   font-weight: 600;
 }
 /* Drag handle — muted at rest, jade on hover, grabbing while held. */
@@ -3444,9 +3445,10 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-hero-admin-row-text {
   font-family: var(--jz-font-display);
-  font-size: 15px;
-  letter-spacing: 1.5px;
-  line-height: 1.7;
+  font-weight: 400; /* display 仅 400 */
+  font-size: var(--jz-fs-lg);
+  letter-spacing: var(--jz-ls-md);
+  line-height: var(--jz-lh-ui);
   color: var(--jz-text);
   white-space: pre-line; /* 多行题记按存储的换行展示 */
 }
@@ -3455,8 +3457,8 @@ a.jz-meta-full-edit-btn:focus-visible {
    file than .jz-hero-cite-inner so these same-specificity overrides win. */
 .jz-hero-admin-row-cite {
   margin-top: 2px;
-  font-size: 12px;
-  letter-spacing: 2px;
+  font-size: var(--jz-fs-xs);
+  letter-spacing: var(--jz-ls-md);
   gap: 8px;
   flex-wrap: wrap;
 }
@@ -3471,8 +3473,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* 摘录于/改于 dates in the list meta line — quieter than the cite pieces. */
 .jz-hero-admin-row-date {
   color: var(--jz-text-muted);
-  font-size: 11px;
-  letter-spacing: 1px;
+  font-size: var(--jz-fs-2xs);
+  letter-spacing: var(--jz-ls-sm);
   opacity: 0.85;
   white-space: nowrap;
 }
@@ -3483,8 +3485,9 @@ a.jz-meta-full-edit-btn:focus-visible {
    present only when the quote has a recorded date. */
 .jz-hero-date {
   font-family: var(--jz-font-display);
-  font-size: 11px;
-  letter-spacing: 3px;
+  font-weight: 400; /* display 仅 400 */
+  font-size: var(--jz-fs-2xs);
+  letter-spacing: var(--jz-ls-lg);
   color: color-mix(in srgb, var(--jz-text-muted) 78%, var(--jz-gold) 22%);
   opacity: 0.85;
   margin-top: 2px;
@@ -3831,7 +3834,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   display: inline-flex;
   align-items: center;
   vertical-align: -4px;
-  font-size: 24px; /* AntD 前缀图标（雷电/地球/代码/数据库）跟 Jz 系列同档放大 */
+  font-size: var(--jz-fs-5xl); /* AntD 前缀图标（雷电/地球/代码/数据库）跟 Jz 系列同档放大 */
 }
 .jz-admin-glass .jz-overview-page .jz-overview-stat:hover {
   border-color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 42%, transparent);
@@ -3847,7 +3850,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-admin-glass .jz-overview-page .jz-stack-head-icon {
   display: inline-flex;
   align-items: center;
-  font-size: 16px;
+  font-size: var(--jz-fs-lg);
   color: var(--jz-ico-c);
 }
 
@@ -3912,7 +3915,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* 数字排版：全局 28px/600 纯墨色在彩色图标旁太重——
    缩一档 + 往各卡专属色轻混（静止 30% → hover 48%），融入多彩体系而不抢眼 */
 .jz-admin-glass .jz-overview-stat .ant-statistic-content {
-  font-size: 24px !important;
+  font-size: var(--jz-fs-5xl) !important;
   color: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 30%, var(--glass-text));
   transition: color 0.2s ease;
 }
@@ -4150,7 +4153,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   margin: 0;
   font-size: 26px;
   font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
-  letter-spacing: 2px;
+  letter-spacing: var(--jz-ls-md);
   font-family: var(--jz-font-display);
   background: linear-gradient(120deg, var(--glass-text) 0%,
     color-mix(in srgb, var(--jz-accent) 70%, var(--glass-text)) 100%);
@@ -4160,8 +4163,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-login-sub {
   margin: 8px 0 18px;
-  font-size: 14px;
-  letter-spacing: 2px;
+  font-size: var(--jz-fs-md);
+  letter-spacing: var(--jz-ls-md);
   color: var(--glass-text-muted);
 }
 
@@ -4170,8 +4173,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-login-form .ant-form-item-label > label {
   color: var(--glass-text-muted);
-  font-size: 13px;
-  letter-spacing: 1px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-sm);
 }
 /* 去 label 一屏化：收紧每个字段间距 */
 .jz-login-form .ant-form-item {
@@ -4181,21 +4184,21 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-login-form .ant-input-affix-wrapper-lg,
 .jz-login-form .ant-btn-lg {
   min-height: 48px;
-  font-size: 16px;
+  font-size: var(--jz-fs-lg);
 }
 /* 前缀线条图标：默认淡灰，聚焦随边框变翡翠 */
 .jz-login-form .ant-input-prefix {
   color: var(--glass-text-muted);
   transition: color 0.2s ease;
   margin-inline-end: 8px;
-  font-size: 18px;
+  font-size: var(--jz-fs-2xl);
 }
 .jz-login-form .ant-input-affix-wrapper-focused .ant-input-prefix {
   color: var(--jz-accent);
 }
 .jz-login-form .ant-btn-primary {
   margin-top: 6px;
-  letter-spacing: 4px;
+  letter-spacing: var(--jz-ls-xl);
   font-weight: 600;
 }
 
@@ -4228,8 +4231,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 
 .jz-login-foot {
   margin-top: 14px;
-  font-size: 13px;
-  letter-spacing: 3px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-lg);
   color: var(--glass-text-muted);
   opacity: 0.7;
 }
@@ -4272,7 +4275,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: transparent;
   color: var(--jz-text-muted);
   cursor: pointer;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   line-height: 1;
   transition:
     border-color 0.2s ease,
@@ -4302,7 +4305,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   transform: rotate(-12deg) scale(1.08);
 }
 .jz-theme-switch__caret {
-  font-size: 10px;
+  font-size: var(--jz-fs-3xs);
   opacity: 0.5;
   transition: opacity 0.2s ease;
 }
@@ -4330,7 +4333,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   min-width: 70px;
 }
 .jz-theme-check {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--jz-accent);
 }
 
@@ -4724,7 +4727,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   backdrop-filter: blur(12px) saturate(150%);
   -webkit-backdrop-filter: blur(12px) saturate(150%);
   color: var(--jz-text);
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   animation: jz-fade-in var(--jz-dur-base) ease;
 }
 .jz-export-capsule.is-failed {
@@ -4751,7 +4754,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: transparent;
   color: var(--jz-text-muted);
   cursor: pointer;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   transition: background var(--jz-dur-fast) ease, color var(--jz-dur-fast) ease;
 }
 .jz-export-capsule-close:hover {
@@ -4822,7 +4825,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   color: var(--jz-text);
   border: 1px solid var(--jz-border);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   text-decoration: none;
   transition: top var(--jz-dur-fast) ease;
 }

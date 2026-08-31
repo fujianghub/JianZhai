@@ -47,7 +47,7 @@ function KBCard({ kb }: { kb: PublicKB }) {
       <div className="jz-book-tags">
         <Space size={6} wrap>
           {kb.tags.length === 0 ? (
-            <Text type="secondary" style={{ fontSize: 12 }}>
+            <Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
               无标签
             </Text>
           ) : (

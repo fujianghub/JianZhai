@@ -219,6 +219,7 @@ cd backend && python manage.py seed_architecture_kb
 | **语雀行内代码彩标 + 粘连斜体修复** | 修复颜色块/表格「不支持行内代码」：语雀把染色标签导出在反引号内部，兼容层剥反引号丢代码语义——新增 `convertBacktickedStyledCode` 整段转 `<code>` 芯片（保码丢色、粗斜体保留）；顺带根治相邻斜体粘连 `_A__B_` 的 CJK 侧翼规则怪癖（`normalizeItalicWrappingInlineHtml`，粗体孪生的 `_` 版）。前后端镜像，渲染层预处理存量即生效。2026-09-01，已部署（21319c8） |
 | **Mermaid note 列表崩溃修复** | stateDiagram note 内 markdown 列表≥2项+自动折行触发 mermaid 上游 `splitLineToFitWidth` 崩溃整图不渲染（11.17.2 仍未修；Typora 用 `htmlLabels:true` 不走此路径，简斋 false 为安全加固不可改）——渲染时 `neutralizeNoteListMarkers` 前后端镜像在列表标记后插 U+2060 word joiner 破坏列表识别，像素级无损、存量即生效。2026-09-01，待部署 |
 | **PDF 阅读器原地缩放修复** | 缩放不再跳转：比例锚定让正在看的内容点保持视口原位（可连点 +/- 微调）；根治 `scrollIntoView` 连窗口一起滚致工具条消失（inner 模式只滚容器）；阅读页工具条 sticky 避开吸顶顶栏不再被盖；页面容器 `overflow-anchor:none` 防浏览器滚动锚定干扰。2026-09-01，待部署 |
+| **博客字体样式统一批次** | 三个可感知断层根治：卡片/列表条目标题统一衬线（h4-h6 纳入规则）、markdown 渲染面五处五样收口到 `.markdown-preview` 基类单源（评论/附件预览与正文同排版，阅读三件套通道保留）、题记跨页字号回归单源；文楷/小魏伪加粗归 400；Tiptap 与阅读端字号基准对齐（16→16.5px）；`--jz-fs-*` 扩至十二档 + `--jz-ls-*` 字距六档，博客侧约 210 处硬编码字号/行高/字距全量令牌化（碎片值就近归档）；新增 typographyTokens 双守卫测试。前端 576 测试 + build + Playwright 14/14 全绿。2026-09-01，待部署 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）

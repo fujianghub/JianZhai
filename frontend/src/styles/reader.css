@@ -15,7 +15,7 @@
   max-height: calc(100vh - 88px);
   overflow-y: auto;
   padding: 14px 10px;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   scrollbar-width: thin;
   background: var(--glass-surface, color-mix(in srgb, var(--jz-surface) 70%, transparent));
   backdrop-filter: blur(14px);
@@ -95,9 +95,9 @@
   z-index: 1100;
   padding: 3px 9px;
   border-radius: 999px;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   font-variant-numeric: tabular-nums;
-  line-height: 1.4;
+  line-height: var(--jz-lh-tight);
   color: var(--glass-text-muted, var(--jz-text-muted));
   background: var(--glass-surface, color-mix(in srgb, var(--jz-surface) 82%, transparent));
   border: 1px solid var(--glass-border, var(--jz-border));
@@ -123,7 +123,7 @@
 .jz-reader-layout-pop .jz-rl-section { margin-bottom: 12px; }
 .jz-reader-layout-pop .jz-rl-section:last-of-type { margin-bottom: 0; }
 .jz-rl-label {
-  font-size: 12px;
+  font-size: var(--jz-fs-xs);
   color: var(--glass-text-muted, var(--jz-text-muted));
   margin-bottom: 6px;
 }
@@ -136,7 +136,7 @@
 .jz-rl-pct {
   flex: 1;
   text-align: center;
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--jz-text);
@@ -144,7 +144,7 @@
 /* Continuous font-scale slider sits under the +/- stepper; the 100% mark
    label needs a touch of bottom room so it doesn't collide with 行距. */
 .jz-rl-slider { margin: 6px 4px 4px; }
-.jz-rl-slider .ant-slider-mark { font-size: 11px; }
+.jz-rl-slider .ant-slider-mark { font-size: var(--jz-fs-2xs); }
 .jz-rl-reset { color: var(--glass-text-muted, var(--jz-text-muted)) !important; }
 .jz-rl-reset:hover { color: var(--jz-doc-accent, var(--jz-accent)) !important; }
 
@@ -237,7 +237,7 @@
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jz-tb-accent) 40%, transparent) !important;
 }
 .jz-reader-toolbar .jz-reader-control-btn .anticon {
-  font-size: 17px;
+  font-size: var(--jz-fs-xl);
 }
 
 /* Hairline separating the reading toolbar from the author-action cluster. */
@@ -324,9 +324,11 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 /* 编辑态吃阅读态的字体/字号/行高变量（外层 <article> inline style 提供）——
    否则按 E 进编辑瞬间从宋体 16.5px×scale 跳回系统无衬线 16px。 */
 .jz-post-inline-editor .tiptap-shell .ProseMirror {
-  font-family: var(--jz-article-font, inherit);
+  /* 兜底与阅读态（.markdown-preview 基类）一致落衬线，勿写 inherit——
+     变量未设时「读=宋体 / 编=无衬线」曾在按 E 进编辑瞬间跳字体。 */
+  font-family: var(--jz-article-font, var(--jz-font-serif));
   font-size: calc(var(--jz-fs-read) * var(--jz-reader-scale, 1));
-  line-height: var(--jz-reader-lh, 1.85);
+  line-height: var(--jz-reader-lh, var(--jz-lh-read));
 }
 .jz-post-inline-html {
   padding: 0;
@@ -393,8 +395,8 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 
 /* Blog KB nav — three levels: KB list → current KB → folder tree */
 .jz-kb-nav {
-  font-size: 13px;
-  line-height: 1.45;
+  font-size: var(--jz-fs-sm);
+  line-height: var(--jz-lh-tight);
 }
 .jz-kb-nav-top {
   display: flex;
@@ -414,7 +416,7 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 }
 .jz-kb-nav-section-title {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -458,7 +460,7 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 }
 .jz-kb-nav-kb-item-count {
   flex-shrink: 0;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: var(--glass-text-muted, var(--jz-text-muted));
 }
 .jz-kb-nav-kb-current {
@@ -477,16 +479,16 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 .jz-kb-nav-kb-current-name {
   display: block;
   font-weight: 600;
-  font-size: 14px;
-  line-height: 1.35;
+  font-size: var(--jz-fs-md);
+  line-height: var(--jz-lh-tight);
   margin-bottom: 2px;
 }
 .jz-kb-nav-kb-current-meta {
-  font-size: 11px !important;
+  font-size: var(--jz-fs-2xs) !important;
 }
 .jz-kb-nav-hint {
   margin: 0 0 6px;
-  font-size: 11px;
+  font-size: var(--jz-fs-2xs);
   color: var(--glass-text-muted, var(--jz-text-muted));
 }
 
@@ -544,7 +546,7 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   background: transparent;
   cursor: pointer;
   padding: 7px 6px 7px 16px;
-  font-size: 13px;
+  font-size: var(--jz-fs-sm);
   color: var(--jz-accent);
   font-weight: 500;
 }
@@ -553,7 +555,7 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   background: transparent;
   cursor: pointer;
   padding: 7px 12px 7px 6px;
-  font-size: 14px;
+  font-size: var(--jz-fs-md);
   line-height: 1;
   color: var(--jz-text-muted);
 }
@@ -573,8 +575,8 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08), 0 12px 32px rgba(0, 0, 0, 0.15);
   backdrop-filter: blur(14px) saturate(192%);
   color: var(--jz-text);
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: var(--jz-fs-md);
+  line-height: var(--jz-lh-ui);
 }
 .jz-footnote-tip p { margin: 0 0 4px; }
 .jz-footnote-tip p:last-child { margin-bottom: 0; }
