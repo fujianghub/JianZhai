@@ -52,3 +52,24 @@ def test_html_export_embeds_rendered_mermaid_svg(owner, kb):
     assert "<svg" in html
     # The real diagram replaced the source-panel fallback.
     assert "图表源码" not in html
+
+
+def test_state_note_with_numbered_list_renders():
+    """Regression: mermaid ≤11 lexes consecutive ``1. …`` note lines as one
+    list token with inner newlines; once the note wraps, splitLineToFitWidth
+    throws and the whole diagram was dropped (doc 1042/1043 「Juniper RPM」).
+    The word-joiner neutralisation must keep the diagram rendering, keyed by
+    the ORIGINAL source."""
+    src = (
+        "stateDiagram-v2\n"
+        "    A --> B\n"
+        "    note right of A\n"
+        "        1. activate event-options policy ping-success\n"
+        "        2. deactivate event-options policy ping-fail\n"
+        "    end note\n"
+    )
+    out = diagram_render.render_mermaid_svgs([src])
+    assert src in out
+    svg = out[src]
+    assert svg.lstrip().startswith("<svg")
+    assert "activate" in svg and "deactivate" in svg

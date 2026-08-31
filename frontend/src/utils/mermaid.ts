@@ -348,6 +348,43 @@ async function loadMermaid(): Promise<MermaidApi> {
   return mermaidPromise;
 }
 
+/* Mermaid ≤11 crashes on markdown lists inside multi-line state-diagram notes:
+ * consecutive `1. …` / `- …` lines are lexed as ONE list token whose text keeps
+ * its inner newlines, and as soon as the note is wide enough to need wrapping,
+ * `splitLineToFitWidth` throws "does not support newlines in the line" and the
+ * whole diagram fails (upstream bug; `markdownAutoWrap:false` does not help).
+ * We neutralise the list markers at render time by inserting a word joiner
+ * (U+2060, zero-width) between marker and delimiter — `1⁠.` is no longer a
+ * markdown list marker but renders pixel-identical. Escaping with `\.` is NOT
+ * an option: mermaid's markdown-to-lines pass drops the escaped delimiter.
+ * Only lines inside `note … end note` blocks are touched; the stored document
+ * content is never modified. Mirrored in backend diagram_render.py. */
+const NOTE_BLOCK_START = /^\s*note\s+(?:left|right)\s+of\s+[^:]+$/i;
+const NOTE_BLOCK_END = /^\s*end\s+note\s*$/i;
+const ORDERED_MARKER = /^(\s*)(\d+)([.)])(\s)/;
+const BULLET_MARKER = /^(\s*)([-*+])(\s)/;
+
+export function neutralizeNoteListMarkers(source: string): string {
+  if (!/\bnote\b/i.test(source)) return source;
+  let inNote = false;
+  return source
+    .split('\n')
+    .map((line) => {
+      if (inNote) {
+        if (NOTE_BLOCK_END.test(line)) {
+          inNote = false;
+          return line;
+        }
+        return line
+          .replace(ORDERED_MARKER, '$1$2⁠$3$4')
+          .replace(BULLET_MARKER, '$1$2⁠$3');
+      }
+      if (NOTE_BLOCK_START.test(line)) inNote = true;
+      return line;
+    })
+    .join('\n');
+}
+
 /** Serialise the (initialize → render) critical section. Mermaid keeps a SINGLE
  *  global config, so a per-diagram theme switch must re-initialise before that
  *  diagram renders. Without a lock, two concurrent renders with different themes
@@ -376,7 +413,8 @@ export const __test__ = {
  */
 export async function renderMermaid(source: string, graphicTheme = ''): Promise<string> {
   const api = await loadMermaid();
-  const run = renderChain.then(() => renderMermaidLocked(api, source, graphicTheme));
+  const prepared = neutralizeNoteListMarkers(source);
+  const run = renderChain.then(() => renderMermaidLocked(api, prepared, graphicTheme));
   // Keep the chain alive even if this render rejects, so one failed diagram
   // doesn't wedge every subsequent render.
   renderChain = run.then(

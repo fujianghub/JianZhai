@@ -173,3 +173,46 @@ def test_inline_html_mermaid_no_match_leaves_doc_untouched():
     out = diagram_render.inline_html_mermaid(HTML_MERMAID_DOC, {"other": "<svg/>"})
     assert "mermaid.min.js" in out
     assert "jz-mermaid-rendered" not in out
+
+
+# --- note list-marker neutralisation (splitLineToFitWidth crash guard) -------
+
+WJ = "⁠"
+
+
+def test_neutralize_note_list_markers_only_inside_note_blocks():
+    src = (
+        "stateDiagram-v2\n"
+        "    1. this line is NOT in a note\n"
+        "    note right of A\n"
+        "        1. activate policy\n"
+        "        2) deactivate policy\n"
+        "        - bullet item\n"
+        "        * star item\n"
+        "        + plus item\n"
+        "    end note\n"
+        "    A --> B : 3. after the note\n"
+    )
+    out = diagram_render.neutralize_note_list_markers(src)
+    lines = out.split("\n")
+    assert lines[1] == "    1. this line is NOT in a note"
+    assert lines[3] == f"        1{WJ}. activate policy"
+    assert lines[4] == f"        2{WJ}) deactivate policy"
+    assert lines[5] == f"        -{WJ} bullet item"
+    assert lines[6] == f"        *{WJ} star item"
+    assert lines[7] == f"        +{WJ} plus item"
+    assert lines[9] == "    A --> B : 3. after the note"
+
+
+def test_neutralize_note_list_markers_is_idempotent_and_skips_inline_notes():
+    inline = "stateDiagram-v2\n    note right of A : 1. inline text\n"
+    assert diagram_render.neutralize_note_list_markers(inline) == inline
+    block = "stateDiagram-v2\n    note left of B\n        1. x\n    end note\n"
+    once = diagram_render.neutralize_note_list_markers(block)
+    assert once.count(WJ) == 1
+    assert diagram_render.neutralize_note_list_markers(once) == once
+
+
+def test_neutralize_note_list_markers_leaves_other_diagrams_untouched():
+    src = "graph TD\nA-->B\nB-->C\n"
+    assert diagram_render.neutralize_note_list_markers(src) == src

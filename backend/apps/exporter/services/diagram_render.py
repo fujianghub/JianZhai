@@ -95,6 +95,43 @@ def _normalize_svg(svg: str) -> str:
     return _SVG_WIDTH_PCT.sub(r"\1", svg or "", count=1)
 
 
+# Mermaid ≤11 crashes on markdown lists inside multi-line state-diagram notes:
+# consecutive ``1. …`` / ``- …`` lines are lexed as ONE list token whose text
+# keeps its inner newlines, and as soon as the note is wide enough to need
+# wrapping, ``splitLineToFitWidth`` throws "does not support newlines in the
+# line" and the whole diagram fails (upstream bug; ``markdownAutoWrap:false``
+# does not help). We neutralise the list markers at render time by inserting a
+# word joiner (U+2060, zero-width) between marker and delimiter — ``1⁠.`` is no
+# longer a markdown list marker but renders pixel-identical. Escaping with
+# ``\.`` is NOT an option: mermaid's markdown-to-lines pass drops the escaped
+# delimiter. Only lines inside ``note … end note`` blocks are touched; the
+# ``svg_map`` stays keyed by the ORIGINAL source so callers match untouched.
+# Mirrored in frontend utils/mermaid.ts (neutralizeNoteListMarkers).
+_NOTE_BLOCK_START = re.compile(r"^\s*note\s+(?:left|right)\s+of\s+[^:]+$", re.I)
+_NOTE_BLOCK_END = re.compile(r"^\s*end\s+note\s*$", re.I)
+_NOTE_ORDERED_MARKER = re.compile(r"^(\s*)(\d+)([.)])(\s)")
+_NOTE_BULLET_MARKER = re.compile(r"^(\s*)([-*+])(\s)")
+_WORD_JOINER = "⁠"
+
+
+def neutralize_note_list_markers(source: str) -> str:
+    if not re.search(r"\bnote\b", source or "", re.I):
+        return source
+    out: list[str] = []
+    in_note = False
+    for line in source.split("\n"):
+        if in_note:
+            if _NOTE_BLOCK_END.match(line):
+                in_note = False
+            else:
+                line = _NOTE_ORDERED_MARKER.sub(rf"\1\2{_WORD_JOINER}\3\4", line)
+                line = _NOTE_BULLET_MARKER.sub(rf"\1\2{_WORD_JOINER}\3", line)
+        elif _NOTE_BLOCK_START.match(line):
+            in_note = True
+        out.append(line)
+    return "\n".join(out)
+
+
 def render_mermaid_svgs(sources: list[str]) -> dict[str, str]:
     """Render distinct Mermaid sources to SVG in one headless Chromium session.
 
@@ -127,7 +164,10 @@ def render_mermaid_svgs(sources: list[str]) -> dict[str, str]:
                 page.evaluate(f"() => {_API_EXPR}.initialize({json.dumps(_MERMAID_INIT)})")
                 for idx, src in enumerate(distinct):
                     try:
-                        svg = page.evaluate(_RENDER_JS, [src, f"jz-export-mmd-{idx}"])
+                        svg = page.evaluate(
+                            _RENDER_JS,
+                            [neutralize_note_list_markers(src), f"jz-export-mmd-{idx}"],
+                        )
                         if svg:
                             out[src] = _normalize_svg(svg)
                     except Exception as exc:  # one bad diagram shouldn't kill the rest

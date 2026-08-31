@@ -217,6 +217,7 @@ cd backend && python manage.py seed_architecture_kb
 | **题记多行支持** | 题记正文支持换行：后台 TextArea 编辑（Enter 换行 / Ctrl+Enter 保存）、首页分行堆叠展示（印章跟末行）、列表 pre-line、批量格式 `\n` 转义往返。2026-08-10，已部署 |
 | **字体系统全面升级** | 全站字体自托管（Google Fonts CDN 国内不可达致设计字体从未生效；`@fontsource/*`+文楷+MiSans npm 分片包，唯一入口 `fonts.css`）；八个 `--jz-font-*` 令牌收敛 ~120 处硬编码栈并修行内/块级码不一致等 5 bug；题记/品牌切霞鹜文楷 Screen、后台切 MiSans（`data-scope` 作用域）；阅读器新增「文楷 · 屏显」预设（默认仍宋体）；`--jz-fs-*`/`--jz-lh-*` 排版令牌首批。导出端 PDF 字体一致性为已知限制。2026-08-10，已部署（880509d） |
 | **语雀行内代码彩标 + 粘连斜体修复** | 修复颜色块/表格「不支持行内代码」：语雀把染色标签导出在反引号内部，兼容层剥反引号丢代码语义——新增 `convertBacktickedStyledCode` 整段转 `<code>` 芯片（保码丢色、粗斜体保留）；顺带根治相邻斜体粘连 `_A__B_` 的 CJK 侧翼规则怪癖（`normalizeItalicWrappingInlineHtml`，粗体孪生的 `_` 版）。前后端镜像，渲染层预处理存量即生效。2026-09-01，已部署（21319c8） |
+| **Mermaid note 列表崩溃修复** | stateDiagram note 内 markdown 列表≥2项+自动折行触发 mermaid 上游 `splitLineToFitWidth` 崩溃整图不渲染（11.17.2 仍未修；Typora 用 `htmlLabels:true` 不走此路径，简斋 false 为安全加固不可改）——渲染时 `neutralizeNoteListMarkers` 前后端镜像在列表标记后插 U+2060 word joiner 破坏列表识别，像素级无损、存量即生效。2026-09-01，待部署 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）

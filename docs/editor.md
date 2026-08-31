@@ -115,6 +115,8 @@
 
 > **净化坑**：DOMPurify 剥 `foreignObject` 致流程图无字、剥 `dy` 似删除线 → `htmlLabels: false` + allowlist 补全 + 实时跟随四主题（订阅重水合）。
 
+> **note 内列表崩溃坑**（2026-09-01，doc 1043《Juniper RPM》样本）：`htmlLabels:false` 的代价——`stateDiagram` 的 `note … end note` 块内连续 `1.`/`2.`（或 `-`/`*`/`+`/`1)`）列表行被 marked 词法成**单个 list token**、文本保留内部换行；note 宽到需要自动折行时 `splitLineToFitWidth` 对含 `\n` 的行直接 throw，**整图不渲染**。Mermaid 上游 bug（11.15.0–11.17.2 实测均炸），触发条件「≥2 列表项 + 折行」，短列表从不炸；`markdownAutoWrap:false` 无效；Typora 等用默认 `htmlLabels:true` 走浏览器 HTML 折行故正常，但简斋不可改回（见上条净化坑）。修=渲染时预处理 `neutralizeNoteListMarkers`（`utils/mermaid.ts`，`renderMermaid` 收口）/ `neutralize_note_list_markers`（`diagram_render.py` 镜像，`svg_map` 仍按原始源码做 key）：在列表标记与定界符之间插 **U+2060 word joiner**（`1⁠.`）破坏 markdown 列表识别，渲染像素级无损、天然幂等；仅动 `note left/right of X` 块体行，行内 `note … : text`、块外内容、其它图类型不碰。**勿改用 markdown 转义 `1\.`**——mermaid 的 markdown-to-lines 会把被转义的定界符整个丢掉（渲染成「1 activate」缺点号）。存储 `raw_content` 不动，存量文档即刻生效。
+
 ### 全屏 Modal
 
 `utils/diagramFullscreen.ts`（编辑器 + 博客端共用）：滚轮缩放（0.2x~8x，锚定鼠标）、拖拽平移、键盘（Esc/0/+/-）、复制 SVG、下载 SVG/PNG（Canvas 2x 白底）。
