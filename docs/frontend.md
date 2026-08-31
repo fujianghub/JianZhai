@@ -162,6 +162,7 @@ class HeroSettings(models.Model):
 - **整页连续滚动**（`scroll="page"`）：去掉旧的单页固定框 + 上/下页按钮，连续纵向渲染（`IntersectionObserver` 懒渲染 + 占位 slot），铺进文档流随整窗滚动，工具栏吸顶常驻、目录侧栏 sticky；首帧不自动跳转以免越过文章头。
 - **适宽 / 适页高**切换；`devicePixelRatio` 限幅防大图爆内存。
 - **在新标签打开**：工具栏与阅读页头部各有按钮，跳浏览器原生 PDF 阅读器；预览走同源代理（修 HTTPS dev 下 `Failed to fetch`）。
+- **原地缩放（2026-09-01）**：缩放/resize 用**比例锚定**——`prevScaleRef` 记旧 scale、滚动位置按新旧之比换算，正在看的内容点保持视口原位（可连点 +/- 微调）；全屏切换（滚动容器换元素、ratio 无意义）fallback 跳当前页顶。**全组件禁用 `scrollIntoView`**（会滚所有可滚祖先含 window，inner 模式把工具条推出视口），跳页/锚定统一走 `scrollPageIntoView`（inner 只滚容器 / flow 滚窗口并扣 sticky chrome 高度）。flow 工具条 sticky top = 运行时量 `.blog-header` 高度（顶栏 sticky `z-index:30 height:60px` 会盖住 `top:0` 的工具条；响应式窄屏顶栏变高，勿硬编码）。页面容器 `overflow-anchor:none`（缩放重绘几百个占位符+清画布时防浏览器滚动锚定把 scroll 拖走）。**测滚动行为勿用 Playwright `locator.click()`**——对 sticky 元素其 actionability 自动滚动走 CDP scrollIntoViewIfNeeded（JS hook 不可见、按元素流内位置滚窗口），一律 `page.evaluate` 里 DOM `el.click()`。
 
 ### PPT 阅读器（`PptxReader.tsx`，有道云式，2026-07-04 / 07-10）
 

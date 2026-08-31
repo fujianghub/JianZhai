@@ -249,12 +249,43 @@ export default function PdfCanvas({
     return { w: baseSize.w * cssScale, h: baseSize.h * cssScale };
   }, [baseSize, cssScale]);
 
-  const scrollToPage = (n: number, smooth = true) => {
+  /** Height of the blog's own sticky header (flow mode lives on the reading
+   * page, whose `.blog-header` is sticky top:0 z-index:30). The toolbar must
+   * stick BELOW it or it slides underneath and becomes unreachable. */
+  const stickyHeaderHeight = () => {
+    const el = document.querySelector('.blog-header');
+    return el instanceof HTMLElement ? el.offsetHeight : 0;
+  };
+
+  /** Total sticky chrome (site header + toolbar) overlaying pages in flow mode. */
+  const flowToolbarOffset = () => {
+    const tb = wrapRef.current?.firstElementChild as HTMLElement | null;
+    return stickyHeaderHeight() + (tb?.offsetHeight ?? 0) + 8;
+  };
+
+  /** Bring page `n`'s top into view WITHOUT scrollIntoView — that would also
+   * scroll every outer ancestor (the window included), which in 'inner' mode
+   * yanks the whole page down and pushes the toolbar out of sight. Inner /
+   * fullscreen scroll only the container; flow scrolls the window (its own
+   * scroller) minus the sticky toolbar. */
+  const scrollPageIntoView = (n: number, smooth = true) => {
     const wrap = pageRefs.current.get(n);
-    if (wrap) {
-      wrap.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
-      setPage(Math.min(Math.max(1, n), pageCount || n));
+    const container = containerRef.current;
+    if (!wrap || !container) return;
+    const behavior: ScrollBehavior = smooth ? 'smooth' : 'auto';
+    if (flow) {
+      const top = wrap.getBoundingClientRect().top + window.scrollY - flowToolbarOffset();
+      window.scrollTo({ top: Math.max(0, top), behavior });
+    } else {
+      const delta = wrap.getBoundingClientRect().top - container.getBoundingClientRect().top;
+      container.scrollTo({ top: container.scrollTop + delta - PAD, behavior });
     }
+  };
+
+  const scrollToPage = (n: number, smooth = true) => {
+    if (!pageRefs.current.get(n)) return;
+    scrollPageIntoView(n, smooth);
+    setPage(Math.min(Math.max(1, n), pageCount || n));
   };
 
   // Windowed lazy rendering + scroll-driven current-page tracking. Recreated
@@ -367,18 +398,48 @@ export default function PdfCanvas({
     };
   }, [doc, cssScale, pageCount, fullscreen, flow]);
 
-  // Keep the reader anchored to the current page across a zoom / resize repaint
-  // (cssScale only changes on those, never on plain scrolling).
+  // In-place zoom: keep the content point being read fixed across a zoom /
+  // resize repaint (cssScale only changes on those, never on plain scrolling)
+  // by scaling the scroll offset with the scale ratio. Never scrollIntoView
+  // here — it also scrolls the window in 'inner' mode (toolbar pushed out of
+  // view) and snapping to the page top loses the intra-page position anyway.
+  const prevScaleRef = useRef(0);
+  const prevContainerRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     if (cssScale <= 0) return;
+    const container = containerRef.current;
+    const prevScale = prevScaleRef.current;
+    const sameContainer = prevContainerRef.current === container;
+    prevScaleRef.current = cssScale;
+    prevContainerRef.current = container;
     // Don't anchor on the first settle — only on later zoom / resize repaints —
     // so flow mode doesn't yank the window down to the PDF on initial load.
     if (!scaleInitedRef.current) {
       scaleInitedRef.current = true;
       return;
     }
-    const wrap = pageRefs.current.get(pageRef.current);
-    if (wrap) wrap.scrollIntoView({ behavior: 'auto', block: 'start' });
+    if (!container) return;
+    if (!sameContainer || prevScale <= 0) {
+      // Fullscreen toggle swapped the scroll container: ratio math is
+      // meaningless there, so snap the current page into the (new) view.
+      scrollPageIntoView(pageRef.current, false);
+      return;
+    }
+    const ratio = cssScale / prevScale;
+    if (ratio === 1) return;
+    if (flow) {
+      // Anchor the content point sitting just below the sticky toolbar. The
+      // container's document position is scale-independent, so only the
+      // offset inside it scales.
+      const containerTop = container.getBoundingClientRect().top + window.scrollY;
+      const tbH = flowToolbarOffset();
+      const offset = window.scrollY + tbH - containerTop;
+      if (offset > 0) {
+        window.scrollTo({ top: containerTop + offset * ratio - tbH, behavior: 'auto' });
+      }
+    } else {
+      container.scrollTop = PAD + (container.scrollTop - PAD) * ratio;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cssScale]);
 
@@ -395,7 +456,9 @@ export default function PdfCanvas({
         flexWrap: 'wrap',
         gap: 8,
         // Stay reachable (page nav / zoom / fit / toc) while the page scrolls.
-        ...(flow ? { position: 'sticky', top: 0, zIndex: 5 } : null),
+        // top must clear the blog's sticky header (z-index 30) — at top:0 the
+        // toolbar slides underneath it and the zoom controls become invisible.
+        ...(flow ? { position: 'sticky', top: stickyHeaderHeight(), zIndex: 5 } : null),
       }}
     >
       <Space>
@@ -497,6 +560,12 @@ export default function PdfCanvas({
               // whole document scrolls like the Markdown reader.
               width: '100%',
               padding: `0 ${PAD}px`,
+              // A zoom repaint resizes every placeholder and clears/redraws the
+              // canvases; the browser's native scroll anchoring "compensates"
+              // through several layout passes and ends up dragging the scroll
+              // to 0. Opt the whole subtree out so only our ratio-anchoring
+              // effect moves the scroll.
+              overflowAnchor: 'none',
             }
           : {
               width: '100%',
@@ -505,6 +574,7 @@ export default function PdfCanvas({
               padding: PAD,
               background: 'var(--jz-surface-2)',
               borderRadius: 8,
+              overflowAnchor: 'none',
             }
       }
     >
