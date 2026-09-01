@@ -49,6 +49,7 @@ import FindReplacePanel from '@/components/editor/FindReplacePanel';
 import type { Editor as TiptapEditor } from '@tiptap/core';
 import PdfCanvas from '@/components/common/LazyPdfCanvas';
 import LazyPptxReader from '@/components/common/LazyPptxReader';
+import LazyEpubReader from '@/components/common/LazyEpubReader';
 import BacklinkPanel from '@/components/common/BacklinkPanel';
 import TagPicker from '@/components/common/TagPicker';
 import CommentsPanel from '@/components/common/CommentsPanel';
@@ -78,7 +79,7 @@ import {
   type EditorSurfaceHandle,
 } from '@/components/editor/surface/EditorSurface';
 
-type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf' | 'pptx';
+type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf' | 'pptx' | 'epub';
 type ContentSource = 'raw' | 'published';
 
 function editorModeStorageKey(docId: number, source: ContentSource): string {
@@ -88,7 +89,7 @@ function editorModeStorageKey(docId: number, source: ContentSource): string {
 function loadStoredEditorMode(docId: number, source: ContentSource): EditorMode | null {
   try {
     const v = localStorage.getItem(editorModeStorageKey(docId, source));
-    if (v === 'markdown' || v === 'rich' || v === 'html' || v === 'pdf' || v === 'pptx')
+    if (v === 'markdown' || v === 'rich' || v === 'html' || v === 'pdf' || v === 'pptx' || v === 'epub')
       return v;
   } catch {
     /* noop */
@@ -106,6 +107,8 @@ function defaultModeFor(
       return 'pdf';
     case 'pptx':
       return 'pptx';
+    case 'epub':
+      return 'epub';
     case 'html':
       return 'html';
     case 'docx':
@@ -202,7 +205,7 @@ export default function DocEditorPage({
   }, [contentSource]);
 
   const flushPendingEdits = useCallback(async () => {
-    if (mode !== 'pdf' && mode !== 'pptx' && editorSaveRef.current) {
+    if (mode !== 'pdf' && mode !== 'pptx' && mode !== 'epub' && editorSaveRef.current) {
       await editorSaveRef.current.saveNow();
     }
     if (saveInFlightRef.current) {
@@ -777,6 +780,7 @@ export default function DocEditorPage({
                 { label: 'HTML', value: 'html' },
                 { label: 'PDF', value: 'pdf' },
                 { label: 'PPT', value: 'pptx' },
+                { label: 'EPUB', value: 'epub' },
               ]}
             />
             <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
@@ -932,7 +936,7 @@ export default function DocEditorPage({
             onSaveReady={registerEditorSave}
           />
         </div>
-        {outlineOpen && mode !== 'pdf' && mode !== 'pptx' && (
+        {outlineOpen && mode !== 'pdf' && mode !== 'pptx' && mode !== 'epub' && (
           <aside className="jz-editor-sidebar jz-editor-sidebar-floating">
             <div className="jz-editor-sidebar-tabs">
               {([
@@ -1108,6 +1112,21 @@ function EditorSurface({
       );
     }
     return <PdfCanvas url={primaryUrl} height="min(78vh, 760px)" />;
+  }
+  if (mode === 'epub') {
+    if (!primaryUrl || doc.doc_format !== 'epub') {
+      return (
+        <MissingAttachment
+          format="EPUB"
+          accept=".epub,application/epub+zip"
+          uploading={uploadingPrimary}
+          onUpload={onUploadPrimary}
+          onSwitchToMarkdown={onSwitchToMarkdown}
+        />
+      );
+    }
+    // View-only book reader (same component the blog uses).
+    return <LazyEpubReader url={primaryUrl} height="min(78vh, 760px)" title={doc.title} />;
   }
   if (mode === 'pptx') {
     if (doc.doc_format !== 'pptx') {

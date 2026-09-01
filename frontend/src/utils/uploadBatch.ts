@@ -31,6 +31,7 @@ export const UPLOAD_MAX_FILE_SIZE = 2 * 1024 * 1024 * 1024; // 2 GiB
 export const UPLOAD_ALLOWED_EXT = new Set([
   '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
   '.pdf', '.doc', '.docx', '.ppt', '.pptx', '.html', '.htm', '.md', '.markdown', '.txt',
+  '.epub',
   '.zip', '.csv', '.json', '.xml',
 ]);
 

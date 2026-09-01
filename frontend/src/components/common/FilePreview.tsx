@@ -8,6 +8,7 @@ import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import LongImageEnhancer from '@/components/common/LongImageEnhancer';
 import { attachmentAbsoluteUrl, previewKind, type Attachment } from '@/api/attachments';
 import PdfCanvas from './LazyPdfCanvas';
+import EpubReader from './LazyEpubReader';
 import FullscreenableIframe from './FullscreenableIframe';
 
 const { Text } = Typography;
@@ -70,6 +71,9 @@ function PreviewBody({ attachment }: { attachment: Attachment }) {
 
   if (kind === 'pdf') {
     return <PdfCanvas url={url} height={frameHeight} />;
+  }
+  if (kind === 'epub') {
+    return <EpubReader url={url} height={frameHeight} title={attachment.original_filename.replace(/\.epub$/i, '')} />;
   }
 
   if (kind === 'image') {

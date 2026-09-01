@@ -62,7 +62,8 @@ DOC_FORMAT_ORDER = {
     "pdf": 2,
     "docx": 3,
     "pptx": 4,
-    "image": 5,
+    "epub": 5,
+    "image": 6,
 }
 
 
@@ -104,7 +105,7 @@ def _primary_attachment(doc: Document):
 def detect_doc_format(doc: Document) -> str:
     """Classify a document by its primary (first-uploaded) attachment.
 
-    Returns one of: ``pdf``, ``html``, ``docx``, ``pptx``, ``image``, ``markdown``.
+    Returns one of: ``pdf``, ``html``, ``docx``, ``pptx``, ``epub``, ``image``, ``markdown``.
     Falls back to ``markdown`` (the default body editor) when the document has
     no attachment or only inline-imported text. When there is no decisive
     attachment, ``raw_content`` / ``published_content`` that looks like HTML
@@ -136,6 +137,8 @@ def detect_doc_format(doc: Document) -> str:
             "application/vnd.openxmlformats-officedocument.presentationml.presentation",
         }:
             return "pptx"
+        if ext == ".epub" or mime == "application/epub+zip":
+            return "epub"
         if att.kind == "image" or mime.startswith("image/"):
             # A genuine image document has an image as its primary attachment and
             # no text body. But a *markdown* doc that merely carries bundled image

@@ -185,9 +185,10 @@ export function attachmentAbsoluteUrl(url: string): string {
 }
 
 /** Pick a previewer hint based on filename + mime. */
-export function previewKind(a: Pick<Attachment, 'original_filename' | 'mime_type'>): 'pdf' | 'docx' | 'pptx' | 'html' | 'md' | 'image' | 'text' | 'unknown' {
+export function previewKind(a: Pick<Attachment, 'original_filename' | 'mime_type'>): 'pdf' | 'docx' | 'pptx' | 'epub' | 'html' | 'md' | 'image' | 'text' | 'unknown' {
   const lower = a.original_filename.toLowerCase();
   if (lower.endsWith('.pdf') || a.mime_type === 'application/pdf') return 'pdf';
+  if (lower.endsWith('.epub') || a.mime_type === 'application/epub+zip') return 'epub';
   if (lower.endsWith('.docx')) return 'docx';
   if (
     lower.endsWith('.pptx') ||

@@ -10,6 +10,7 @@ import {
   type Attachment,
 } from '@/api/attachments';
 import PdfCanvas from './LazyPdfCanvas';
+import EpubReader from './LazyEpubReader';
 import FullscreenableIframe from './FullscreenableIframe';
 
 interface Props {
@@ -79,6 +80,9 @@ function Body({ att }: { att: Attachment }) {
 
   if (kind === 'pdf') {
     return <PdfCanvas url={url} height="min(calc(100vh - 240px), 1080px)" />;
+  }
+  if (kind === 'epub') {
+    return <EpubReader url={url} height="min(calc(100vh - 240px), 1080px)" title={att.original_filename.replace(/\.epub$/i, '')} />;
   }
   if (kind === 'image') {
     return (

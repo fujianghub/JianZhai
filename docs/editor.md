@@ -165,6 +165,15 @@
 - **图片保真**：`_handle_image` 把内嵌图（含 EMF/WMF 元文件，mammoth 光栅化为 png）收集为 `EmbeddedImage`；`materialize_docx_images(doc, images)` 落为文档附件并改写引用 → 最终以 **Markdown 阅读路径**渲染（表格/图片保真）。缺 mammoth 时正文留空并告警，不崩。
 - **字体颜色保真**（`_mark_run_colors`）：**mammoth 会丢弃 run 级直接颜色格式**（`w:rPr/w:color`——非命名样式，样式映射管不到），故字体色历来全部丢失。修复=转换前在 **docx XML 层**遍历 `w:r`，把带显式颜色（非 `auto`、非近黑）的 run 文本包上 `jzcolor<hex>b…jzcolore` 哨兵（纯 alnum，mammoth/markdownify 当普通文本原样带过），最终 md（含回注的原生表格 HTML）再用正则换回 `<span style="color:#hex">`；表格单元格内的彩字同样保真。DOMPurify 放行 `span/style/color`。**导出端（docx/pdf）彩色仍为已知限制**。
 
+### EPUB 电子书导入（原件阅读，2026-09-01 一期）
+
+`.epub` 进 `ALLOWED_DOC_EXT` 与 `ZIP_DOC_EXT`（EPUB 也是 zip 容器，坏文件同样 400），`_create_doc_from_upload` 走专用分支：**正文留空**（与 PDF/PPT 同为「文件即文章」的二进制文档，`detect_doc_format` 按首附件 `.epub`/`application/epub+zip` 返回 `epub`），附件 `mime_type` 钉为 `application/epub+zip`（浏览器多以 `application/octet-stream` 上传）。
+
+- **入库前净化**（`services/epub_sanitize.py`）：阅读器在同源 `blob:` iframe 渲染章节、iframe sandbox 挡不住脚本，所以文件本身必须干净——`validate_epub_container` 拒路径穿越（`..`/绝对路径/盘符）、条目数 > 20000、解压 > 1.5 GiB、单条目压缩比 > 200 且 > 1 MiB（压缩炸弹）、缺 `mimetype` 或非 `application/epub+zip`；`sanitize_epub` 对 `.xhtml/.html/.htm/.xml/.svg` 正则剥 `<script>`、`on*=` 属性、`javascript:` URL、`iframe/object/embed/applet`，整体丢 `.js` 条目并从 OPF 删对应 `<item>` 与 `properties="scripted"`。**干净文件字节原样存**（`out is blob`），只有动过才重写容器（`mimetype` 首位 STORED，其余保留原压缩方式）；重写会 `logger.warning`。
+- 一期不转 Markdown：转文档（一本书 = 文件夹 + 索引页 + 按章多篇、CSS 语义归一化层、Celery 异步进度）是二期，见 `docs/CHANGELOG.md` 对应批次的路线说明。
+- 前端白名单三处同步：`utils/uploadBatch.ts UPLOAD_ALLOWED_EXT`（`UPLOAD_ACCEPT` 自动跟随；`AttachmentPanel` 已改为引用它，消除历史上的硬编码副本）、`api/attachments.ts previewKind` 加 `epub`、`types DocFormat`/`DocFormatTag`/`PostInlineEditor.BINARY_INLINE`/`PostDetail.binaryFormats`/`DocEditorPage EditorMode` 各加 `epub`。阅读器见 [frontend.md §5 EPUB 阅读器](./frontend.md#epub-阅读器epubreadertsx--epubsidebartsxfoliate-js2026-09-01)。
+- 测试：`apps/editor/tests/test_epub_import.py`（12 项：净化幂等/重写/OPF 清理、穿越/炸弹/mimetype 拒收、API 建档与格式识别、脏文件落盘已净化、坏 zip 400）。
+
 ### 语雀 MD 远程图（`cdn.nlark.com` 防盗链 + 异步并行镜像）
 
 语雀导出的 `.md` 内嵌图是 `https://cdn.nlark.com/...` **远程 URL**（非 base64）。两个坑叠加致「图片解析不到」：

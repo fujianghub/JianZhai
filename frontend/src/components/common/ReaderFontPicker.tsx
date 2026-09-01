@@ -1,6 +1,6 @@
 import { Popover, Tooltip } from 'antd';
 import { FontColorsOutlined } from '@ant-design/icons';
-import { ARTICLE_FONT_PRESETS } from '@/utils/articleFont';
+import { useArticleFontPresets } from '@/utils/articleFont';
 
 interface Props {
   value: string;
@@ -10,6 +10,7 @@ interface Props {
 /** Small dropdown that lets the reader switch article-body font. Mirrors the
  *  paper-style picker; persists via the parent's onChange. */
 export default function ReaderFontPicker({ value, onChange }: Props) {
+  const presets = useArticleFontPresets();
   const content = (
     <div style={{ width: 220, padding: '4px 0' }}>
       <div
@@ -23,7 +24,7 @@ export default function ReaderFontPicker({ value, onChange }: Props) {
         正文字体
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        {ARTICLE_FONT_PRESETS.map((p) => {
+        {presets.map((p) => {
           const active = p.key === value;
           return (
             <button

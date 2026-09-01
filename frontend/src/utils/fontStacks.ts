@@ -39,8 +39,18 @@ export const FONT_STACK_WENKAI =
   "'LXGW WenKai Screen', 'Kaiti SC', 'STKaiti', 'KaiTi', serif";
 
 /** 阅读器 Verdana / Georgia 预设栈（仅 articleFont.ts 消费，非 tokens 令牌）。 */
+/** Verdana has no CJK glyphs: Chinese falls to the self-hosted 思源黑体 first so
+ *  the mixed-script look is identical on every device (system 苹方/雅黑 only after). */
 export const FONT_STACK_VERDANA_READER =
-  'Verdana, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
+  'Verdana, "Noto Sans SC Variable", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif';
+
+/** 思源黑体领衔的阅读预设栈（自托管可变字体 'Noto Sans SC Variable'）。 */
+export const FONT_STACK_NOTO_SANS_READER =
+  "'Noto Sans SC Variable', 'Noto Sans SC', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif";
+
+/** 站酷小薇领衔的阅读预设栈（秀丽宋，自托管）。 */
+export const FONT_STACK_XIAOWEI_READER =
+  "'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', 'STSong', serif";
 
 export const FONT_STACK_GEORGIA_READER =
   'Georgia, "Cormorant Garamond", "EB Garamond", "Noto Serif SC", "Songti SC", serif';

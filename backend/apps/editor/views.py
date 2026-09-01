@@ -36,6 +36,7 @@ ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
 ALLOWED_DOC_EXT = {
     ".pdf", ".doc", ".docx", ".ppt", ".pptx",
     ".html", ".htm", ".md", ".markdown", ".txt",
+    ".epub",
 }
 ALLOWED_OTHER_EXT = {".zip", ".csv", ".json", ".xml"}
 ALLOWED_EXT = ALLOWED_IMAGE_EXT | ALLOWED_DOC_EXT | ALLOWED_OTHER_EXT
@@ -52,7 +53,7 @@ TEXT_IMPORT_EXT = {".md", ".markdown", ".txt", ".html", ".htm"}
 # at the tail, so it's no longer a loadable zip — LibreOffice/mammoth then fail
 # deep in async conversion with a cryptic "转换失败". We reject such files up front
 # (see ``_is_valid_zip``) with a clear message so the user re-exports immediately.
-ZIP_DOC_EXT = {".docx", ".pptx"}
+ZIP_DOC_EXT = {".docx", ".pptx", ".epub"}
 
 
 def _is_valid_zip(f) -> bool:
@@ -230,7 +231,30 @@ def _create_doc_from_upload(
     title = Path(f.name).stem or "Untitled"
     raw_content = ""
     docx_images: list = []
-    if ext in TEXT_IMPORT_EXT:
+    if ext == ".epub":
+        # The reader renders chapters in same-origin blob: iframes where iframe
+        # sandbox can't block scripts, so the container must be clean before it
+        # is stored: strip <script>/on*/javascript: and reject traversal / bomb
+        # shapes. The body stays empty — an EPUB is a view-only binary like a
+        # PDF (phase 2 adds "import as document" conversion).
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from apps.editor.services.epub_sanitize import EpubValidationError, sanitize_epub
+
+        blob = f.read()
+        try:
+            cleaned, report = sanitize_epub(blob)
+        except EpubValidationError as e:
+            return Response({"detail": f"{e}：{f.name}"}, status=status.HTTP_400_BAD_REQUEST)
+        if report.changed:
+            logger.warning(
+                "epub upload %s: stripped scripting (%d entries scrubbed, %d dropped)",
+                f.name, len(report.scrubbed_entries), len(report.dropped_entries),
+            )
+            f = SimpleUploadedFile(f.name, cleaned, content_type="application/epub+zip")
+        else:
+            f.seek(0)
+    elif ext in TEXT_IMPORT_EXT:
         raw_content = _decode_text(f.read())
         f.seek(0)
     elif ext == ".docx":
@@ -263,6 +287,10 @@ def _create_doc_from_upload(
         published_at=now,
     )
     mime = f.content_type or mimetypes.guess_type(f.name)[0] or ""
+    if ext == ".epub":
+        # Browsers post EPUBs as application/octet-stream more often than not;
+        # pin the real type so previewKind / doc_format never depend on it.
+        mime = "application/epub+zip"
     att = Attachment.objects.create(
         document=doc,
         uploaded_by=request.user,

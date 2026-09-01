@@ -4,6 +4,12 @@ import { previewKind } from './attachments';
 const att = (original_filename: string, mime_type = '') => ({ original_filename, mime_type });
 
 describe('previewKind', () => {
+  it('detects epub by extension or mime', () => {
+    expect(previewKind(att('book.epub'))).toBe('epub');
+    expect(previewKind(att('BOOK.EPUB'))).toBe('epub');
+    expect(previewKind(att('x', 'application/epub+zip'))).toBe('epub');
+  });
+
   it('detects pptx by extension', () => {
     expect(previewKind(att('deck.pptx'))).toBe('pptx');
     expect(previewKind(att('DECK.PPTX'))).toBe('pptx');

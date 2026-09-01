@@ -19,7 +19,7 @@ interface Props {
   forceSyncRevision?: number;
 }
 
-const BINARY_INLINE = new Set<DocFormat>(['pdf', 'pptx', 'image']);
+const BINARY_INLINE = new Set<DocFormat>(['pdf', 'pptx', 'epub', 'image']);
 
 /** Whether the post body can be edited inline on the reader page. */
 export function canInlineEditBody(

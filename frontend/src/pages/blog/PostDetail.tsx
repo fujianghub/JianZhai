@@ -569,7 +569,7 @@ export default function PostDetail() {
   // Only genuinely body-less binaries (PDF / image / pptx) keep the "file is the
   // article" preview. A legacy empty-body DOCX still falls through via the
   // ``!published_content`` guard below.
-  const binaryFormats = new Set(['pdf', 'pptx', 'image']);
+  const binaryFormats = new Set(['pdf', 'pptx', 'epub', 'image']);
   const hasInlineFile =
     !!post.primary_attachment &&
     !isHtmlDoc &&

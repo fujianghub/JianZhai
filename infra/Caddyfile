@@ -85,7 +85,15 @@ fujiang.jianzhai.cn {
 
     # Security headers.
     header {
-        # SPA needs to load inline scripts from itself.
+        # Scripts only from this origin. The SPA build has no inline scripts
+        # (index.html is a single module tag); 'wasm-unsafe-eval' keeps
+        # pdf.js's WebAssembly decoders working. This is also the EPUB
+        # reader's real defence: chapters render in blob: iframes, which
+        # inherit this policy, and iframe sandbox cannot block their scripts
+        # (WebKit bug 218086) — the backend strips them at upload, CSP is
+        # the backstop. Verified against the built bundle with Playwright
+        # (EPUB / PDF / mermaid+KaTeX posts / home / admin, 2026-09-01).
+        Content-Security-Policy "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'self'"
         X-Content-Type-Options "nosniff"
         Referrer-Policy "strict-origin-when-cross-origin"
         # Permissions-Policy explicitly disables features we don't use.

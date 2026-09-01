@@ -32,7 +32,7 @@ export interface AudienceWriteFields {
   audience_user_ids: number[];
   audience_tag_ids: number[];
 }
-export type DocFormat = 'markdown' | 'html' | 'pdf' | 'docx' | 'pptx' | 'image';
+export type DocFormat = 'markdown' | 'html' | 'pdf' | 'docx' | 'pptx' | 'epub' | 'image';
 
 /** One rendered page of a PPT/PPTX presentation (server-side raster). */
 export interface Slide {

@@ -12,6 +12,7 @@ import { convertDocxToHtml } from '@/utils/docx';
 import { attachmentAbsoluteUrl, previewKind } from '@/api/attachments';
 import type { PublicAttachment } from '@/types';
 import PdfCanvas from './LazyPdfCanvas';
+import EpubReader from './LazyEpubReader';
 import FullscreenableIframe from './FullscreenableIframe';
 import CodeBlockEnhancer from './CodeBlockEnhancer';
 import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
@@ -49,6 +50,10 @@ export default function PublicAttachmentPreview({ att }: { att: PublicAttachment
   if (kind === 'pdf') {
     // Flow into the reading page so the whole page scrolls like a note.
     return <PdfCanvas url={url} scroll="page" />;
+  }
+  if (kind === 'epub') {
+    // A book: viewport-sized paginated/scrolled reader (foliate-js).
+    return <EpubReader url={url} scroll="page" title={att.original_filename.replace(/\.epub$/i, '')} />;
   }
   if (kind === 'image') {
     return (

@@ -38,6 +38,8 @@
 
 /* 装饰族（各一处消费点） */
 @import '@fontsource/zcool-xiaowei/400.css';
+/* 思源黑体（可变字重 100–900，阅读器「思源黑体」预设；分片按需加载） */
+@import '@fontsource-variable/noto-sans-sc/index.css';
 @import '@fontsource/ma-shan-zheng/400.css';
 
 /* 展示：霞鹜文楷 Screen（GB 集）——题记/品牌/登录 display 角色 */

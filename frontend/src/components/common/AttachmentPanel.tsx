@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Empty, List, Popconfirm, Space, Tag, Typography, Upload } from 'antd';
 import { message } from '@/utils/notify';
-import { DeleteOutlined, EyeOutlined, FileOutlined, FilePdfOutlined, FileTextOutlined, FileWordOutlined, PaperClipOutlined, PictureOutlined, UploadOutlined } from '@ant-design/icons';
+import { BookOutlined, DeleteOutlined, EyeOutlined, FileOutlined, FilePdfOutlined, FileTextOutlined, FileWordOutlined, PaperClipOutlined, PictureOutlined, UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as attApi from '@/api/attachments';
 import { previewKind, type Attachment } from '@/api/attachments';
 import FilePreview from './FilePreview';
+import { UPLOAD_ACCEPT } from '@/utils/uploadBatch';
 import { formatApiError } from '@/api/client';
 
 const { Title, Text } = Typography;
@@ -64,7 +65,7 @@ export default function AttachmentPanel({ documentId, compact = false }: Props) 
           beforeUpload={(file) => handleUpload(file as File)}
           showUploadList={false}
           multiple
-          accept=".pdf,.doc,.docx,.ppt,.pptx,.html,.htm,.md,.markdown,.txt,.jpg,.jpeg,.png,.gif,.webp,.svg,.zip,.csv,.json,.xml"
+          accept={UPLOAD_ACCEPT}
         >
           <Button icon={<UploadOutlined />} loading={uploading}>
             上传文件
@@ -127,6 +128,7 @@ function KindIcon({ attachment }: { attachment: Attachment }) {
   const style = { fontSize: 22, color: 'var(--jz-accent)' };
   if (k === 'pdf') return <FilePdfOutlined style={style} />;
   if (k === 'docx') return <FileWordOutlined style={style} />;
+  if (k === 'epub') return <BookOutlined style={style} />;
   if (k === 'image') return <PictureOutlined style={style} />;
   if (k === 'md' || k === 'text' || k === 'html') return <FileTextOutlined style={style} />;
   return <FileOutlined style={style} />;
