@@ -469,6 +469,27 @@ function anchorFromRange(range: Range, stage: HTMLElement | null): SelectionAnch
 /** Milliseconds the deep-link / note-jump flash outline stays visible. */
 const FLASH_MS = 1800;
 
+/** Extra gap between the text and an underline / squiggly (the overlayer
+ * draws on the rects' bottom edge, which hugs CJK descenders). */
+const UNDERLINE_GAP = 3;
+type DrawFn = (rects: DOMRect[] | DOMRectList, options?: Record<string, unknown>) => SVGElement;
+function offsetUnderline(fn: DrawFn, vertical: boolean): DrawFn {
+  return (rects, options) => {
+    const shifted = Array.from(rects as ArrayLike<DOMRect>).map(
+      (r) =>
+        ({
+          left: r.left,
+          top: r.top,
+          width: r.width,
+          height: r.height,
+          right: vertical ? r.right + UNDERLINE_GAP : r.right,
+          bottom: vertical ? r.bottom : r.bottom + UNDERLINE_GAP,
+        }) as DOMRect,
+    );
+    return fn(shifted, options);
+  };
+}
+
 export default function EpubReader({
   url,
   height = 'min(calc(100vh - 200px), 1100px)',
@@ -1183,7 +1204,9 @@ export default function EpubReader({
       const color = swatchHex(String(annotation.color ?? ''));
       if (annotation.style === 'underline' || annotation.style === 'squiggly') {
         const writingMode = doc?.body ? getComputedStyle(doc.body).writingMode : undefined;
-        draw(annotation.style === 'squiggly' ? Overlayer.squiggly : Overlayer.underline, { color, width: 2, writingMode });
+        const vertical = writingMode === 'vertical-rl' || writingMode === 'vertical-lr';
+        const base = annotation.style === 'squiggly' ? Overlayer.squiggly : Overlayer.underline;
+        draw(offsetUnderline(base, vertical), { color, width: 2, writingMode });
       } else draw(Overlayer.highlight, { color });
     };
     const onShowAnnotation = (e: Event) => {

@@ -1675,20 +1675,20 @@ html[data-jz-turn='flip'][data-jz-turn-dir='prev']::view-transition-new(jz-epub-
    HIGHLIGHT_SWATCHES (utils/epubNotes.ts) — keep in sync. */
 article.paper { position: relative; /* floating selection bar / note card anchor */ }
 ::highlight(jz-md-hl-yellow) { background-color: color-mix(in srgb, #ffd21f 40%, transparent); }
-::highlight(jz-md-un-yellow) { text-decoration: underline; text-decoration-color: #ffd21f; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-::highlight(jz-md-sq-yellow) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ffd21f; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-un-yellow) { text-decoration: underline; text-decoration-color: #ffd21f; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+::highlight(jz-md-sq-yellow) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ffd21f; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 ::highlight(jz-md-hl-green) { background-color: color-mix(in srgb, #4cd964 40%, transparent); }
-::highlight(jz-md-un-green) { text-decoration: underline; text-decoration-color: #4cd964; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-::highlight(jz-md-sq-green) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #4cd964; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-un-green) { text-decoration: underline; text-decoration-color: #4cd964; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+::highlight(jz-md-sq-green) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #4cd964; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 ::highlight(jz-md-hl-blue) { background-color: color-mix(in srgb, #4da3ff 40%, transparent); }
-::highlight(jz-md-un-blue) { text-decoration: underline; text-decoration-color: #4da3ff; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-::highlight(jz-md-sq-blue) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #4da3ff; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-un-blue) { text-decoration: underline; text-decoration-color: #4da3ff; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+::highlight(jz-md-sq-blue) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #4da3ff; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 ::highlight(jz-md-hl-pink) { background-color: color-mix(in srgb, #ff6b9a 40%, transparent); }
-::highlight(jz-md-un-pink) { text-decoration: underline; text-decoration-color: #ff6b9a; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-::highlight(jz-md-sq-pink) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ff6b9a; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-un-pink) { text-decoration: underline; text-decoration-color: #ff6b9a; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+::highlight(jz-md-sq-pink) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ff6b9a; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 ::highlight(jz-md-hl-purple) { background-color: color-mix(in srgb, #b07cff 40%, transparent); }
-::highlight(jz-md-un-purple) { text-decoration: underline; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 3px; }
-::highlight(jz-md-sq-purple) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-un-purple) { text-decoration: underline; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+::highlight(jz-md-sq-purple) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 ::highlight(jz-md-flash) { background-color: color-mix(in srgb, var(--jz-accent, #10b981) 32%, transparent); }
 
 /* Right-rail 目录/笔记 panel header + notes list density tweaks. */
