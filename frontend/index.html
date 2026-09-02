@@ -4,12 +4,18 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="description" content="简斋 / JianZhai — 个人知识库 + 公开博客，一份内容既是私人笔记也是发布的文章。" />
-    <meta name="theme-color" content="#059669" />
+    <!-- 与 tokens.css --jz-accent 对齐（light #02b377 / dark #2ee79c）；此前锁死 #059669 且无暗色变体 -->
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#02b377" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2ee79c" />
     <meta name="color-scheme" content="light dark" />
 
+    <!-- 品牌资产由 Test/scripts/gen_favicon.py 生成：「簡」已转 path 不依赖系统字体；
+         iOS 不支持 SVG 触屏图标故另出 180 PNG；ico 供老浏览器/RSS 阅读器 -->
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="mask-icon" href="/favicon.svg" color="#059669" />
-    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="mask-icon" href="/favicon.svg" color="#02b377" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
 
     <meta name="apple-mobile-web-app-title" content="简斋" />
@@ -20,6 +26,13 @@
     <meta property="og:title" content="简斋 / JianZhai" />
     <meta property="og:description" content="个人知识库 + 公开博客一体化系统。" />
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="简斋 / JianZhai" />
+    <meta property="og:locale" content="zh_CN" />
+    <meta property="og:image" content="/og-image.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:image" content="/og-image.png" />
     <link rel="sitemap" type="application/xml" title="Sitemap" href="/sitemap.xml" />
 
     <!-- 字体全部自托管（src/styles/fonts.css），不再依赖 Google Fonts CDN -->
