@@ -78,6 +78,7 @@ import {
   textareaSurface,
   type EditorSurfaceHandle,
 } from '@/components/editor/surface/EditorSurface';
+import { CloseIcon } from '@/components/common/actionIcons';
 
 type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf' | 'pptx' | 'epub';
 type ContentSource = 'raw' | 'published';
@@ -960,7 +961,7 @@ export default function DocEditorPage({
                   <span className="jz-sidebar-tab-label">{t.label}</span>
                 </button>
               ))}
-              <button type="button" className="jz-sidebar-close" onClick={() => setOutlineOpen(false)} aria-label="关闭面板">✕</button>
+              <button type="button" className="jz-sidebar-close" onClick={() => setOutlineOpen(false)} aria-label="关闭面板"><CloseIcon /></button>
             </div>
             <div className="jz-editor-sidebar-body">
               {sidebarTab === 'outline' && (

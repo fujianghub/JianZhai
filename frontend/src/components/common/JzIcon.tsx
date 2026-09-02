@@ -8,7 +8,7 @@
  *
  * 图形：24×24，stroke 1.5，每图标 ≤1 浅填色 + ≤1 点缀。
  */
-import type { CSSProperties, SVGProps } from 'react';
+import type { SVGProps } from 'react';
 import {
   JzAiIcon,
   JzArchitectureIcon,
@@ -38,8 +38,6 @@ export {
 
 type IconProps = SVGProps<SVGSVGElement> & {
   size?: number | string;
-  /** 覆盖 --jz-icon-spot（少用；一般跟主题走） */
-  tone?: string;
 };
 
 const baseProps = {
@@ -52,20 +50,16 @@ const baseProps = {
 
 const ICON_FILL = 'var(--jz-icon-fill)';
 const ICON_FILL_STRONG = 'var(--jz-icon-fill-strong)';
-const ICON_SPOT = 'var(--jz-icon-spot, var(--jz-icon-tone, var(--jz-accent)))';
+const ICON_SPOT = 'var(--jz-icon-spot)';
+/** SF 分层系次层透明填充（见下方「SF Symbols 分层渲染系列」注释） */
+const HIER_OPACITY = 0.28;
 
 function Wrap({
   size = '1em',
-  tone,
   children,
-  style,
   className,
   ...rest
 }: IconProps & { children: React.ReactNode }) {
-  const mergedStyle: CSSProperties = {
-    ...style,
-    ['--jz-icon-tone' as string]: tone,
-  };
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -74,7 +68,6 @@ function Wrap({
       height={size}
       aria-hidden="true"
       className={['jz-icon', className].filter(Boolean).join(' ')}
-      style={mergedStyle}
       {...baseProps}
       {...rest}
     >
@@ -82,13 +75,6 @@ function Wrap({
     </svg>
   );
 }
-
-/* ═══════════════ 后台菜单 ═══════════════ */
-
-
-
-
-
 
 /* ═══════════════ AI 助手操作菜单 ═══════════════ */
 
@@ -415,10 +401,6 @@ export function JzAiSparkIcon(p: IconProps) {
   );
 }
 
-/** 用户 */
-
-/** 架构总览 */
-
 /** 查看博客 */
 export function JzBlogIcon(p: IconProps) {
   return (
@@ -435,8 +417,6 @@ export function JzBlogIcon(p: IconProps) {
 
 /* ═══════════════ 博客导航 ═══════════════ */
 
-/** 归档 */
-
 /** 标签 */
 export function JzTagsIcon(p: IconProps) {
   return (
@@ -447,12 +427,6 @@ export function JzTagsIcon(p: IconProps) {
     </Wrap>
   );
 }
-
-/** RSS */
-
-/** 后台入口 */
-
-/** 个人空间（人形 + 册页） */
 
 /** 搜索 — 最初版风格：镜片浅染（主题变量）+ 描边 + 握柄 */
 export function JzSearchIcon(p: IconProps) {
@@ -482,8 +456,6 @@ export function JzArchiveIcon(p: IconProps) {
    次层 = currentColor 透明填充（HIER_OPACITY）。
    次层随槽位状态梯度（35%→70%→100%）自动同步明暗。
    准则：≤5 元素、剪影优先、最小特征 ≥2.5px、几何圆润留白大。 */
-const HIER_OPACITY = 0.28;
-
 
 /** RSS — 最初版风格：信号扇面浅染（主题变量）+ 双弧 + 主题色源点 */
 export function JzRssIcon(p: IconProps) {
@@ -501,25 +473,21 @@ export function JzRssIcon(p: IconProps) {
 export function JzUserIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      <circle cx="12" cy="8.3" r="3.5" fill="currentColor" fillOpacity={0.28} />
+      <circle cx="12" cy="8.3" r="3.5" fill="currentColor" fillOpacity={HIER_OPACITY} />
       <path
         d="M5 19.6a7 7 0 0 1 14 0z"
         fill="currentColor"
-        fillOpacity={0.28}
+        fillOpacity={HIER_OPACITY}
       />
     </Wrap>
   );
 }
 
-
-
-
-
 /** 单册书 — 文章所属知识库（meta 行小尺寸用）：书皮填充 + 粗书脊 */
 export function JzBookIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      <rect x="5" y="4.5" width="14" height="15" rx="1.6" fill="currentColor" fillOpacity={0.28} />
+      <rect x="5" y="4.5" width="14" height="15" rx="1.6" fill="currentColor" fillOpacity={HIER_OPACITY} />
       <path d="M8.6 4.5v15" strokeWidth={2} />
     </Wrap>
   );
@@ -529,7 +497,7 @@ export function JzBookIcon(p: IconProps) {
 export function JzClockIcon(p: IconProps) {
   return (
     <Wrap {...p}>
-      <circle cx="12" cy="12" r="8" fill="currentColor" fillOpacity={0.28} />
+      <circle cx="12" cy="12" r="8" fill="currentColor" fillOpacity={HIER_OPACITY} />
       <path d="M12 7.6V12l3 2.2" strokeWidth={2} />
     </Wrap>
   );
@@ -542,7 +510,7 @@ export function JzHomeIcon(p: IconProps) {
       <path
         d="M4.5 10.4 12 4.2l7.5 6.2v8.2a1.8 1.8 0 0 1-1.8 1.8H6.3a1.8 1.8 0 0 1-1.8-1.8z"
         fill="currentColor"
-        fillOpacity={0.28}
+        fillOpacity={HIER_OPACITY}
       />
       <path d="M9.8 20.2v-4.4a2.2 2.2 0 0 1 4.4 0v4.4" />
     </Wrap>
@@ -556,7 +524,7 @@ export function JzEditIcon(p: IconProps) {
       <path
         d="M14.2 5.8l4 4L8.6 19.4 4 20l.6-4.6z"
         fill="currentColor"
-        fillOpacity={0.28}
+        fillOpacity={HIER_OPACITY}
       />
       <path d="M12.4 7.6l4 4" />
     </Wrap>
@@ -571,7 +539,7 @@ export function JzComposeIcon(p: IconProps) {
       <path
         d="M17.6 4.7l1.7 1.7-7.2 7.2-2.3.6.6-2.3z"
         fill="currentColor"
-        fillOpacity={0.28}
+        fillOpacity={HIER_OPACITY}
       />
     </Wrap>
   );
@@ -585,7 +553,7 @@ export function JzFolderOpenIcon(p: IconProps) {
       <path
         d="M6.9 10.2h12.6a1.3 1.3 0 0 1 1.25 1.7l-1.8 5.4a2 2 0 0 1-1.9 1.4H5.9A1.9 1.9 0 0 1 4 16.8l1-5.1a1.9 1.9 0 0 1 1.9-1.5z"
         fill="currentColor"
-        fillOpacity={0.28}
+        fillOpacity={HIER_OPACITY}
       />
     </Wrap>
   );
@@ -599,7 +567,6 @@ export function JzMenuIcon(p: IconProps) {
     </Wrap>
   );
 }
-
 
 /* ═══════════════ AI 管理 Tab ═══════════════ */
 
@@ -694,63 +661,4 @@ export function JzAttachmentIcon(p: IconProps) {
       <circle cx="17" cy="7" r="0.9" fill={ICON_SPOT} stroke="none" />
     </Wrap>
   );
-}
-
-/** 四角向外 — 进入全屏 / 完整编辑 */
-export function JzFullscreenIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <path d="M9 4H5a1 1 0 0 0-1 1v4" />
-      <path d="M15 4h4a1 1 0 0 1 1 1v4" />
-      <path d="M20 15v4a1 1 0 0 1-1 1h-4" />
-      <path d="M4 15v4a1 1 0 0 0 1 1h4" />
-      <circle cx="12" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
-    </Wrap>
-  );
-}
-
-/** 四角向内 — 退出全屏 */
-export function JzCompressIcon(p: IconProps) {
-  return (
-    <Wrap {...p}>
-      <path d="M4 8h3a1 1 0 0 0 1-1V4" />
-      <path d="M20 8h-3a1 1 0 0 1-1-1V4" />
-      <path d="M16 20v-3a1 1 0 0 1 1-1h3" />
-      <path d="M8 20v-3a1 1 0 0 0-1-1H4" />
-      <circle cx="12" cy="12" r="0.9" fill={ICON_SPOT} stroke="none" />
-    </Wrap>
-  );
-}
-
-// JzQuoteIcon 已在上方定义（line ~264），无需重复。
-// 注册到 JZ_ICONS map 下方即可让侧栏菜单引用。
-
-/* ═══════════════ 通用导出 ═══════════════ */
-export const JZ_ICONS = {
-  kb: JzKbIcon,
-  graph: JzGraphIcon,
-  export: JzExportIcon,
-  ai: JzAiIcon,
-  architecture: JzArchitectureIcon,
-  blog: JzBlogIcon,
-  tags: JzTagsIcon,
-  search: JzSearchIcon,
-  overview: JzOverviewIcon,
-  model: JzModelIcon,
-  usage: JzUsageIcon,
-  settings: JzSettingsIcon,
-  outline: JzOutlineIcon,
-  backlink: JzBacklinkIcon,
-  comment: JzCommentIcon,
-  attachment: JzAttachmentIcon,
-  fullscreen: JzFullscreenIcon,
-  compress: JzCompressIcon,
-  quote: JzQuoteIcon,
-} as const;
-
-export type JzIconName = keyof typeof JZ_ICONS;
-
-export default function JzIcon({ name, ...rest }: { name: JzIconName } & IconProps) {
-  const Comp = JZ_ICONS[name];
-  return <Comp {...rest} />;
 }

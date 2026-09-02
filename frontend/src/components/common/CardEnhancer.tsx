@@ -13,6 +13,7 @@ import { useEffect } from 'react';
 import { getLinkPreview } from '@/api/linkPreview';
 import { resolvePublicById } from '@/api/linking';
 import { postReadHref } from '@/utils/docLinks';
+import { actionIconNode } from '@/utils/actionIconSvg';
 
 function hydrateLinkCard(el: HTMLElement): void {
   const url = el.dataset.url || '';
@@ -83,7 +84,7 @@ function hydrateDocCard(el: HTMLElement): void {
   resolvePublicById(id)
     .then((post) => {
       if (!anchor.isConnected || !post?.title) return;
-      anchor.textContent = `📄 ${post.title}`;
+      anchor.replaceChildren(actionIconNode('doc', { className: 'jz-doc-card-ico' }), document.createTextNode(` ${post.title}`));
       if (post.slug) anchor.href = postReadHref(post.slug);
     })
     .catch(() => {

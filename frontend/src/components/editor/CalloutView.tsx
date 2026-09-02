@@ -5,7 +5,7 @@ import {
   NodeViewWrapper,
   type NodeViewProps,
 } from '@tiptap/react';
-import { CALLOUT_TEMPLATES } from './callouts';
+import { CALLOUT_TEMPLATES, calloutSwatch } from './callouts';
 
 /**
  * NodeView for ``CalloutExtension``. Renders the same visual chrome
@@ -27,7 +27,7 @@ export default function CalloutView({ node, updateAttributes, deleteNode, editor
       data-kind={kind}
     >
       <div className="jz-callout-editor-toolbar" contentEditable={false}>
-        <span className="jz-callout-editor-label">{title}</span>
+        <span className="jz-callout-editor-label">{preset && calloutSwatch(preset)}{title}</span>
         <span style={{ flex: 1 }} />
         <Dropdown
           disabled={!editor.isEditable}
@@ -36,7 +36,7 @@ export default function CalloutView({ node, updateAttributes, deleteNode, editor
               key: c.slug,
               label: (
                 <span>
-                  <span style={{ display: 'inline-block', minWidth: 100 }}>{c.label}</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 100 }}>{calloutSwatch(c)}{c.label}</span>
                   <span style={{ fontSize: 12, opacity: 0.55, marginLeft: 8 }}>{c.hint}</span>
                 </span>
               ),

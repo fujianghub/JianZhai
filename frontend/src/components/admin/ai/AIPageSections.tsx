@@ -32,6 +32,7 @@ import {
 } from '@/api/ai';
 import { isModelConfigured, resolveAIModel, writeAIModel, readAIModelFromStorage } from '@/utils/aiModel';
 import UsageHeatmap from './UsageHeatmap';
+import { WarningIcon } from '@/components/common/actionIcons';
 
 const { Paragraph, Text } = Typography;
 
@@ -302,7 +303,7 @@ function CurrentModelCard({
         <Text type="secondary">{effective?.hint}</Text>
         {!effectiveConfigured && (
           <Text type="warning" style={{ fontSize: 12 }}>
-            ⚠ 此模型所属供应商未配置 API KEY,调用会失败。切到其他模型,或在后端 .env 设置对应 KEY 后重启。
+            <WarningIcon /> 此模型所属供应商未配置 API KEY,调用会失败。切到其他模型,或在后端 .env 设置对应 KEY 后重启。
           </Text>
         )}
         {personalOverride && (

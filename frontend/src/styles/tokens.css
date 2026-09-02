@@ -46,6 +46,8 @@
   --jz-icon-spot: var(--jz-accent);
   /* AI 面板识别色（刻意的页面识别色，非 accent；此前散落 #6366f1/#4f46e5） */
   --jz-ai-accent: #6366f1;
+  /* 插入/斜杠菜单瓷砖激活环混色比例（editor-ui.css 与 tiptap.css 共用，曾 28%/30% 不一） */
+  --jz-insert-ring: 30%;
   /* ── 字体令牌（2026-08-10）──
      唯一允许出现裸 font-family 栈的地方（@font-face 唯一入口 = fonts.css）；
      JS 侧副本在 utils/fontStacks.ts，两边逐字一致由 fontStacks.test.ts 锁定。

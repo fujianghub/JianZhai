@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Empty, List, Popconfirm, Space, Tag, Typography, Upload } from 'antd';
 import { message } from '@/utils/notify';
-import { BookOutlined, DeleteOutlined, EyeOutlined, FileOutlined, FilePdfOutlined, FileTextOutlined, FileWordOutlined, PaperClipOutlined, PictureOutlined, UploadOutlined } from '@ant-design/icons';
+import { DeleteOutlined, EyeOutlined, FileOutlined, FilePdfOutlined, FileTextOutlined, FileWordOutlined, PaperClipOutlined, PictureOutlined, ReadOutlined, UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as attApi from '@/api/attachments';
 import { previewKind, type Attachment } from '@/api/attachments';
@@ -128,7 +128,7 @@ function KindIcon({ attachment }: { attachment: Attachment }) {
   const style = { fontSize: 22, color: 'var(--jz-accent)' };
   if (k === 'pdf') return <FilePdfOutlined style={style} />;
   if (k === 'docx') return <FileWordOutlined style={style} />;
-  if (k === 'epub') return <BookOutlined style={style} />;
+  if (k === 'epub') return <ReadOutlined style={style} />;
   if (k === 'image') return <PictureOutlined style={style} />;
   if (k === 'md' || k === 'text' || k === 'html') return <FileTextOutlined style={style} />;
   return <FileOutlined style={style} />;

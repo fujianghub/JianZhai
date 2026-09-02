@@ -4,7 +4,6 @@ import {
   CheckOutlined,
   CloseOutlined,
   ColumnHeightOutlined,
-  ExpandOutlined,
   FormatPainterOutlined,
   RotateLeftOutlined,
   RotateRightOutlined,
@@ -15,6 +14,7 @@ import {
 import { NodeViewWrapper, type NodeViewProps } from '@tiptap/react';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
+import { CropIcon } from '@/components/common/actionIcons';
 
 const MIN_WIDTH = 60;
 const MAX_WIDTH = 1280;
@@ -556,7 +556,7 @@ export default function ImageNodeView({
                 <button type="button" className="jz-image-toolbar-btn"
                   onClick={(e) => { e.stopPropagation(); enterCropMode(); }}
                   aria-label="裁剪图片">
-                  <ExpandOutlined />
+                  <CropIcon />
                 </button>
               </Tooltip>
             </div>

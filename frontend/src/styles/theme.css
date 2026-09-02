@@ -3058,7 +3058,8 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 
 .jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-icon {
-  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-accent) 30%, transparent));
+  /* 光晕跟随 tone 专属色（此前恒 accent：选中紫色「AI 助手」泛翡翠光） */
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 30%, transparent));
 }
 
 .jz-blog-glass .jz-nav-link.active .jz-icon {
@@ -3681,6 +3682,29 @@ a.jz-meta-full-edit-btn:focus-visible {
   }
 }
 
+/* 裸 emoji 用作图标时挂此类，走 --jz-font-emoji 彩色栈（2026-09-02；
+   衬线/UI 栈里 emoji 会退化成黑白轮廓或豆腐块） */
+.jz-emoji {
+  font-family: var(--jz-font-emoji);
+  font-style: normal;
+}
+/* 文档卡片 / 全屏工具条内联 SVG 图标 */
+.jz-doc-card-ico {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+  display: inline-block;
+}
+.jz-diagram-fullscreen-toolbar .jz-diagram-action-svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+  flex: none;
+}
+.jz-diagram-fullscreen-toolbar .jz-fs-label {
+  margin-left: 4px;
+}
+
 /* Phosphor 等第三方 svg 图标在玻璃底座内精确居中
    （与 .jz-icon 同款 display:block，否则 inline 基线对齐会下沉） */
 .jz-admin-glass .jz-menu-icon-slot svg,
@@ -3725,7 +3749,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-ico-tone-ai        { --jz-ico-c: #7c3aed; }  /* 紫藤 */
 .jz-ico-tone-users     { --jz-ico-c: #0284c7; }  /* 湖蓝 */
 .jz-ico-tone-overview  { --jz-ico-c: #65a30d; }  /* 草绿（双叶幼苗） */
-.jz-ico-tone-hero      { --jz-ico-c: #b94a3b; }  /* 朱砂（呼应博客品牌） */
+.jz-ico-tone-hero      { --jz-ico-c: #a16207; }  /* 缃黄（题记落款印泥；原朱砂与 tags 撞色，2026-09-02 改） */
 .jz-ico-tone-profile   { --jz-ico-c: #0d9488; }  /* 松石 */
 [data-theme='dark'] .jz-ico-tone-dashboard, [data-theme='starry'] .jz-ico-tone-dashboard, [data-theme='deepsea'] .jz-ico-tone-dashboard { --jz-ico-c: #22d3ee; }
 [data-theme='dark'] .jz-ico-tone-kb,        [data-theme='starry'] .jz-ico-tone-kb,        [data-theme='deepsea'] .jz-ico-tone-kb        { --jz-ico-c: #34d399; }
@@ -3735,7 +3759,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-ico-tone-ai,        [data-theme='starry'] .jz-ico-tone-ai,        [data-theme='deepsea'] .jz-ico-tone-ai        { --jz-ico-c: #a78bfa; }
 [data-theme='dark'] .jz-ico-tone-users,     [data-theme='starry'] .jz-ico-tone-users,     [data-theme='deepsea'] .jz-ico-tone-users     { --jz-ico-c: #38bdf8; }
 [data-theme='dark'] .jz-ico-tone-overview,  [data-theme='starry'] .jz-ico-tone-overview,  [data-theme='deepsea'] .jz-ico-tone-overview  { --jz-ico-c: #a3e635; }
-[data-theme='dark'] .jz-ico-tone-hero,      [data-theme='starry'] .jz-ico-tone-hero,      [data-theme='deepsea'] .jz-ico-tone-hero      { --jz-ico-c: #de8273; }
+[data-theme='dark'] .jz-ico-tone-hero,      [data-theme='starry'] .jz-ico-tone-hero,      [data-theme='deepsea'] .jz-ico-tone-hero      { --jz-ico-c: #d9a441; }
 [data-theme='dark'] .jz-ico-tone-profile,   [data-theme='starry'] .jz-ico-tone-profile,   [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #2dd4bf; }
 
 /* 主题环境光校准：starry 的银河是紫粉雾（紫藤会融进去）、

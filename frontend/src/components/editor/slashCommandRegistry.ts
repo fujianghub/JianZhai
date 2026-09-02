@@ -26,6 +26,8 @@ import {
   JzUmlIcon,
   JzVideoIcon,
 } from '@/components/common/JzIcon';
+import { ICON_SIZE } from '@/components/common/iconSize';
+import { AlignCenterOutlined, AlignLeftOutlined, AlignRightOutlined, LinkOutlined } from '@ant-design/icons';
 
 /** Mermaid templates — shared by slash menu, CodeBlockView, and markdown insert. */
 export const MERMAID_TEMPLATES = {
@@ -176,7 +178,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
   ).map((key) => ({
     id: `mermaid-${key}`,
     category: '图表',
-    icon: createElement(JzMermaidIcon, { size: 18 }),
+    icon: createElement(JzMermaidIcon, { size: ICON_SIZE.lg }),
     title: `Mermaid · ${MERMAID_TYPE_LABELS[key]}`,
     description: key === 'flowchart' ? 'graph TD' : key,
     aliases: key === 'flowchart' ? ['mermaid', 'tb', 'lct'] : undefined,
@@ -196,7 +198,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'hyperlink',
       category: '基础',
-      icon: iconText('🔗'),
+      icon: createElement(LinkOutlined),
       title: '超链接',
       description: aliasDesc('lj', 'link') || 'Ctrl+K',
       aliases: ['lj', 'link', 'lianjie'],
@@ -222,7 +224,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'image',
       category: '媒体',
-      icon: createElement(JzImageIcon, { size: 18 }),
+      icon: createElement(JzImageIcon, { size: ICON_SIZE.lg }),
       title: '图片',
       description: '上传图片并插入',
       aliases: ['tp', 'tupian'],
@@ -240,7 +242,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'attachment',
       category: '媒体',
-      icon: createElement(JzAttachmentIcon, { size: 18 }),
+      icon: createElement(JzAttachmentIcon, { size: ICON_SIZE.lg }),
       title: '附件',
       description: '上传文件并插入链接',
       aliases: ['fj', 'fujian'],
@@ -258,7 +260,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'mention',
       category: '结构',
-      icon: createElement(JzAtIcon, { size: 18 }),
+      icon: createElement(JzAtIcon, { size: ICON_SIZE.lg }),
       title: '提及',
       description: '提及文档或内容',
       aliases: ['mention', 'at'],
@@ -275,7 +277,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'emoji-trigger',
       category: '段落',
-      icon: createElement(JzEmojiIcon, { size: 18 }),
+      icon: createElement(JzEmojiIcon, { size: ICON_SIZE.lg }),
       title: '表情',
       description: '输入 : 唤起表情选择',
       aliases: ['emoji', 'bq'],
@@ -367,7 +369,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'quote',
       category: '段落',
-      icon: createElement(JzQuoteIcon, { size: 18 }),
+      icon: createElement(JzQuoteIcon, { size: ICON_SIZE.lg }),
       title: '引用块',
       description: aliasDesc('yy') || '> 引用',
       aliases: ['yy', 'yinyong'],
@@ -381,7 +383,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'hr',
       category: '段落',
-      icon: createElement(JzHrIcon, { size: 18 }),
+      icon: createElement(JzHrIcon, { size: ICON_SIZE.lg }),
       title: '分割线',
       description: aliasDesc('fgx') || '---',
       aliases: ['fgx'],
@@ -395,7 +397,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'align-left',
       category: '对齐',
-      icon: iconText('⇤'),
+      icon: createElement(AlignLeftOutlined),
       title: '左对齐',
       description: 'Ctrl+Shift+L',
       keywords: ['align', 'left', '左', '对齐'],
@@ -406,7 +408,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'align-center',
       category: '对齐',
-      icon: iconText('⇔'),
+      icon: createElement(AlignCenterOutlined),
       title: '居中',
       description: 'Ctrl+Shift+E',
       keywords: ['align', 'center', '居中', '中', '对齐'],
@@ -417,7 +419,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'align-right',
       category: '对齐',
-      icon: iconText('⇥'),
+      icon: createElement(AlignRightOutlined),
       title: '右对齐',
       description: 'Ctrl+Shift+R',
       keywords: ['align', 'right', '右', '对齐'],
@@ -441,7 +443,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'table',
       category: '代码 / 表格',
-      icon: createElement(JzTableIcon, { size: 18 }),
+      icon: createElement(JzTableIcon, { size: ICON_SIZE.lg }),
       title: '表格 3×3',
       description: aliasDesc('bg') || '带表头',
       aliases: ['bg', 'table', 'biaoge'],
@@ -461,7 +463,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'mermaid-picker',
       category: '图表',
-      icon: createElement(JzMermaidIcon, { size: 18 }),
+      icon: createElement(JzMermaidIcon, { size: ICON_SIZE.lg }),
       title: 'Mermaid 图表',
       description: aliasDesc('wbht', 'mermaid') || '选类型后插入',
       aliases: ['wbht', 'mermaid', 'tb', 'liuchengtu'],
@@ -476,7 +478,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'plantuml-sequence',
       category: '图表',
-      icon: createElement(JzUmlIcon, { size: 18 }),
+      icon: createElement(JzUmlIcon, { size: ICON_SIZE.lg }),
       title: 'PlantUML · 时序图',
       description: aliasDesc('uml', 'puml') || '@startuml',
       aliases: ['uml', 'puml', 'plantuml'],
@@ -490,7 +492,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'plantuml-class',
       category: '图表',
-      icon: createElement(JzUmlIcon, { size: 18 }),
+      icon: createElement(JzUmlIcon, { size: ICON_SIZE.lg }),
       title: 'PlantUML · 类图',
       description: 'classDiagram',
       keywords: ['plantuml', 'class', '类图'],
@@ -500,7 +502,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'plantuml-usecase',
       category: '图表',
-      icon: createElement(JzUmlIcon, { size: 18 }),
+      icon: createElement(JzUmlIcon, { size: ICON_SIZE.lg }),
       title: 'PlantUML · 用例图',
       description: 'usecase',
       keywords: ['plantuml', 'usecase', '用例'],
@@ -510,7 +512,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'plantuml-component',
       category: '图表',
-      icon: createElement(JzUmlIcon, { size: 18 }),
+      icon: createElement(JzUmlIcon, { size: ICON_SIZE.lg }),
       title: 'PlantUML · 组件图',
       description: 'component / 架构',
       keywords: ['plantuml', 'component', '组件', '架构'],
@@ -520,7 +522,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'video',
       category: '媒体',
-      icon: createElement(JzVideoIcon, { size: 18 }),
+      icon: createElement(JzVideoIcon, { size: ICON_SIZE.lg }),
       title: '嵌入视频',
       description: aliasDesc('sp', 'video') || 'Bilibili · YouTube',
       aliases: ['sp', 'video', 'shipin'],
@@ -542,7 +544,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'callout-tips',
       category: '色块',
-      icon: createElement(JzCalloutIcon, { size: 18 }),
+      icon: createElement(JzCalloutIcon, { size: ICON_SIZE.lg }),
       title: '提示色块',
       description: aliasDesc('glk', 'gl') || ':::tips',
       aliases: ['glk', 'gl', 'gaoliang'],
@@ -557,7 +559,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'callout-info',
       category: '色块',
-      icon: createElement(JzCalloutIcon, { size: 18 }),
+      icon: createElement(JzCalloutIcon, { size: ICON_SIZE.lg }),
       title: '说明色块',
       description: aliasDesc('info', 'sm') || ':::info',
       aliases: ['info', 'sm', 'shuoming'],
@@ -568,7 +570,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'callout-warning',
       category: '色块',
-      icon: createElement(JzCalloutIcon, { size: 18 }),
+      icon: createElement(JzCalloutIcon, { size: ICON_SIZE.lg }),
       title: '警告色块',
       description: aliasDesc('warn', 'jg') || ':::warning',
       aliases: ['warn', 'jg', 'jinggao'],
@@ -579,7 +581,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'callout-danger',
       category: '色块',
-      icon: createElement(JzCalloutIcon, { size: 18 }),
+      icon: createElement(JzCalloutIcon, { size: ICON_SIZE.lg }),
       title: '危险色块',
       description: ':::danger',
       aliases: ['wx'],
@@ -590,7 +592,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'callout-success',
       category: '色块',
-      icon: createElement(JzCalloutIcon, { size: 18 }),
+      icon: createElement(JzCalloutIcon, { size: ICON_SIZE.lg }),
       title: '成功色块',
       description: ':::success',
       keywords: ['callout', 'success', '成功', '色块'],
@@ -600,7 +602,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'callout-color2',
       category: '色块',
-      icon: createElement(JzCalloutIcon, { size: 18 }),
+      icon: createElement(JzCalloutIcon, { size: ICON_SIZE.lg }),
       title: '类比讲解 (紫)',
       description: ':::color2',
       keywords: ['callout', '类比', '紫色', 'color2'],
@@ -610,7 +612,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'callout-color1',
       category: '色块',
-      icon: createElement(JzCalloutIcon, { size: 18 }),
+      icon: createElement(JzCalloutIcon, { size: ICON_SIZE.lg }),
       title: '专业术语 (蓝)',
       description: ':::color1',
       keywords: ['callout', '术语', '蓝色', 'color1'],
@@ -620,7 +622,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'math-block',
       category: '数学',
-      icon: createElement(JzMathIcon, { size: 18 }),
+      icon: createElement(JzMathIcon, { size: ICON_SIZE.lg }),
       title: '公式（块级）',
       description: aliasDesc('gs', 'gsk') || '$$ ... $$',
       aliases: ['gs', 'gsk', 'gongshi'],
@@ -670,7 +672,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'details',
       category: '结构',
-      icon: createElement(JzDetailsIcon, { size: 18 }),
+      icon: createElement(JzDetailsIcon, { size: ICON_SIZE.lg }),
       title: '折叠块',
       description: aliasDesc('zdk', 'zkb') || ':::details',
       aliases: ['zdk', 'zkb', 'details', 'zhedie'],
@@ -684,7 +686,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'columns-2',
       category: '结构',
-      icon: createElement(JzColumns2Icon, { size: 18 }),
+      icon: createElement(JzColumns2Icon, { size: ICON_SIZE.lg }),
       title: '双栏布局',
       description: aliasDesc('fl', 'sk') || '左右并排',
       aliases: ['fl', 'sk', 'fenlan'],
@@ -699,7 +701,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'columns-3',
       category: '结构',
-      icon: createElement(JzColumns3Icon, { size: 18 }),
+      icon: createElement(JzColumns3Icon, { size: ICON_SIZE.lg }),
       title: '三栏布局',
       description: aliasDesc('fl3') || '三栏并排',
       aliases: ['fl3'],
@@ -713,7 +715,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'tabs',
       category: '结构',
-      icon: createElement(JzTabsIcon, { size: 18 }),
+      icon: createElement(JzTabsIcon, { size: ICON_SIZE.lg }),
       title: '标签页',
       description: 'Tabs / 标签卡',
       keywords: ['tabs', '标签页', 'tab'],
@@ -724,7 +726,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'doc-card',
       category: '结构',
-      icon: createElement(JzDocCardIcon, { size: 18 }),
+      icon: createElement(JzDocCardIcon, { size: ICON_SIZE.lg }),
       title: '文档卡片',
       description: aliasDesc('yq', 'jz') || '嵌入其他文档预览',
       aliases: ['yq', 'jz'],
@@ -757,7 +759,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'link-card',
       category: '结构',
-      icon: createElement(JzLinkCardIcon, { size: 18 }),
+      icon: createElement(JzLinkCardIcon, { size: ICON_SIZE.lg }),
       title: '外部链接卡片',
       description: aliasDesc('lj') || '粘贴 URL 生成预览卡',
       aliases: ['lj'],
@@ -774,7 +776,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
     {
       id: 'ai',
       category: 'AI',
-      icon: createElement(JzAiSparkIcon, { size: 18 }),
+      icon: createElement(JzAiSparkIcon, { size: ICON_SIZE.lg }),
       title: 'AI 生成段落',
       description: aliasDesc('ai', 'aizs') || '描述你想写什么',
       aliases: ['ai', 'aizs'],

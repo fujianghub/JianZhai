@@ -12,6 +12,7 @@ import {
 import { applyPrefsInContainer, togglePreviewSettingsPanel } from '@/utils/codeBlockPreviewPanel';
 import { CODE_PREFS_CHANGE_EVENT } from '@/utils/codeBlockPrefs';
 import { openDiagramFullscreen as openDiagramFullscreenOverlay } from '@/utils/diagramFullscreen';
+import { actionIconSvg } from '@/utils/actionIconSvg';
 
 /**
  * Transient check / cross feedback shown inside a diagram action button after
@@ -20,14 +21,8 @@ import { openDiagramFullscreen as openDiagramFullscreenOverlay } from '@/utils/d
  * first click would wipe the icon. These are constant, trusted markup.
  */
 const DIAGRAM_FEEDBACK_SVG = {
-  check:
-    '<svg class="jz-diagram-action-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
-    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="m4.5 12.5 5 5 10-11"/></svg>',
-  cross:
-    '<svg class="jz-diagram-action-svg" viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
-    'stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M5.5 5.5 18.5 18.5"/><path d="M18.5 5.5 5.5 18.5"/></svg>',
+  check: actionIconSvg('check', { strokeWidth: 2 }),
+  cross: actionIconSvg('cross', { strokeWidth: 2 }),
 } as const;
 
 /**

@@ -43,6 +43,7 @@ import EpubNotesExportModal from '@/components/common/EpubNotesExportModal';
 import AIMenuList from '@/components/editor/ai/AIMenuList';
 import { JzAiAskIcon, JzAiSparkIcon } from '@/components/common/JzIcon';
 import type { AIOpDef } from '@/components/editor/ai/aiOps';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 /** What the side panel (notes tab) needs from the annotator. */
 export interface MdAnnotationsApi {
@@ -506,7 +507,7 @@ export default function MdAnnotator({
                 key: 'ask',
                 label: '自由提问',
                 hint: '基于选中内容问答',
-                icon: <JzAiAskIcon size={18} />,
+                icon: <JzAiAskIcon size={ICON_SIZE.lg} />,
                 onClick: () => {
                   onAI(selection.text, 'ask');
                   finishSelection();
@@ -517,7 +518,7 @@ export default function MdAnnotator({
         )}
       >
         <button type="button" className="jz-epub-selbtn" aria-label="AI 操作">
-          <JzAiSparkIcon size={15} />
+          <JzAiSparkIcon size={ICON_SIZE.md} />
         </button>
       </Dropdown>
     ) : null;

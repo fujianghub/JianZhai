@@ -97,6 +97,8 @@ import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import CardEnhancer from '@/components/common/CardEnhancer';
 import LongImageEnhancer from '@/components/common/LongImageEnhancer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
+import { ICON_SIZE } from '@/components/common/iconSize';
+import { CloseIcon } from '@/components/common/actionIcons';
 
 const { Title, Text } = Typography;
 
@@ -714,7 +716,7 @@ export default function PostDetail() {
         <Breadcrumb
           style={{ marginBottom: 12 }}
           items={[
-            { title: <TransitionLink to="/"><JzHomeIcon size={13} strokeWidth={2} style={{ verticalAlign: '-0.125em' }} /> 首页</TransitionLink> },
+            { title: <TransitionLink to="/"><JzHomeIcon size={ICON_SIZE.sm} strokeWidth={2} style={{ verticalAlign: '-0.125em' }} /> 首页</TransitionLink> },
             {
               title: (
                 <TransitionLink to={`/kb/${encodeURIComponent(post.knowledge_base.slug)}`}>
@@ -778,7 +780,7 @@ export default function PostDetail() {
                 aria-label={`知识库 ${post.knowledge_base.name}`}
                 title={`返回知识库 · ${post.knowledge_base.name}`}
               >
-                <JzBookIcon size={14} strokeWidth={2} className="jz-meta-icon" />
+                <JzBookIcon size={ICON_SIZE.sm} strokeWidth={2} className="jz-meta-icon" />
                 <span className="jz-meta-pill-text">{post.knowledge_base.name}</span>
               </TransitionLink>
               <span className="jz-meta-format" aria-label={`文档格式 ${post.doc_format}`}>
@@ -789,7 +791,7 @@ export default function PostDetail() {
 
               {/* Date — read-only, ghost style with clock icon. */}
               <span className="jz-meta-date" title="发布时间">
-                <JzClockIcon size={14} strokeWidth={2} className="jz-meta-icon" />
+                <JzClockIcon size={ICON_SIZE.sm} strokeWidth={2} className="jz-meta-icon" />
                 <time dateTime={post.published_at}>
                   {dayjs(post.published_at).format('YYYY-MM-DD HH:mm')}
                 </time>
@@ -813,7 +815,7 @@ export default function PostDetail() {
                 <>
                   <span className="jz-meta-sep" aria-hidden />
                   <span className="jz-meta-tags" aria-label="文章标签">
-                    <JzTagIcon size={14} strokeWidth={2} className="jz-meta-icon" />
+                    <JzTagIcon size={ICON_SIZE.sm} strokeWidth={2} className="jz-meta-icon" />
                     {post.tags.map((t) => (
                       <span
                         key={t.id}
@@ -901,7 +903,7 @@ export default function PostDetail() {
                       size="small"
                       type="primary"
                       ghost
-                      icon={<JzExportIcon size={14} strokeWidth={2} />}
+                      icon={<JzExportIcon size={ICON_SIZE.sm} strokeWidth={2} />}
                       href={htmlOriginalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -917,7 +919,7 @@ export default function PostDetail() {
                       size="small"
                       type="primary"
                       ghost
-                      icon={<JzExportIcon size={14} strokeWidth={2} />}
+                      icon={<JzExportIcon size={ICON_SIZE.sm} strokeWidth={2} />}
                       href={pdfOriginalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
@@ -939,7 +941,7 @@ export default function PostDetail() {
                           size="small"
                           type="primary"
                           ghost
-                          icon={<JzEditIcon size={14} strokeWidth={2} />}
+                          icon={<JzEditIcon size={ICON_SIZE.sm} strokeWidth={2} />}
                           className="jz-edit-btn jz-meta-edit-btn"
                           onClick={() => void enterEditMode()}
                         >
@@ -974,7 +976,7 @@ export default function PostDetail() {
                     >
                       <span className="jz-tooltip-trigger-wrap">
                         <TransitionLink to={editHref} className="jz-meta-full-edit-btn">
-                          <JzComposeIcon size={13} strokeWidth={2} aria-hidden />
+                          <JzComposeIcon size={ICON_SIZE.sm} strokeWidth={2} aria-hidden />
                           <span>完整编辑</span>
                         </TransitionLink>
                       </span>
@@ -1163,7 +1165,7 @@ export default function PostDetail() {
             type="default"
             shape="circle"
             size="large"
-            icon={<JzOutlineIcon size={20} />}
+            icon={<JzOutlineIcon size={ICON_SIZE.xl} />}
             aria-label="显示目录"
             onClick={() => (useTocDrawer ? setTocDrawerOpen(true) : setTocOpen(true))}
             className="jz-toc-fab"
@@ -1177,7 +1179,7 @@ export default function PostDetail() {
             type="default"
             shape="circle"
             size="large"
-            icon={<JzFolderOpenIcon size={20} />}
+            icon={<JzFolderOpenIcon size={ICON_SIZE.xl} />}
             aria-label="显示文档列表"
             onClick={() => (useKbDrawer ? setKbDrawerOpen(true) : setKbNavOpen(true))}
             className="jz-kbnav-fab"
@@ -1196,7 +1198,7 @@ export default function PostDetail() {
             aria-label="关闭续读提示"
             onClick={() => setResumeAt(null)}
           >
-            ×
+            <CloseIcon />
           </button>
         </div>
       )}

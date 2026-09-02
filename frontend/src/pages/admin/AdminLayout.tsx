@@ -27,10 +27,11 @@ import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
 import { AIModelBadge } from '@/components/common/AIModelBadge';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 const { Header, Sider, Content } = Layout;
 
-const MENU_ICON_SIZE = 23;
+const MENU_ICON_SIZE = ICON_SIZE.tile;
 
 function menuIcon(node: ReactNode, tone?: string) {
   return (
@@ -210,7 +211,7 @@ export default function AdminLayout() {
             {
               key: 'trash',
               icon: menuIcon(
-                <JzTrashIcon size={21} />, // viewBox 已裁至字形边界，21px 满框居中
+                <JzTrashIcon size={ICON_SIZE.tile - 3} />, // viewBox 已裁至字形边界，21px 满框居中
                 'trash',
               ),
               label: <TransitionLink to="/admin/trash">回收站</TransitionLink>,
@@ -218,7 +219,7 @@ export default function AdminLayout() {
             {
               key: 'ai',
               icon: menuIcon(
-                <JzAiIcon size={25} />,
+                <JzAiIcon size={ICON_SIZE.tile + 1} />,
                 'ai',
               ),
               label: <TransitionLink to="/admin/ai">AI 助手</TransitionLink>,
@@ -229,7 +230,7 @@ export default function AdminLayout() {
               ? [{
                   key: 'users',
                   icon: menuIcon(
-                    <JzUserGroupIcon size={31} />, // +30%，源稿叠 14 描边轻微加粗
+                    <JzUserGroupIcon size={ICON_SIZE.tile + 7} />, // +30%，源稿叠 14 描边轻微加粗
                 'users',
                   ),
                   label: <TransitionLink to="/admin/users">用户管理</TransitionLink>,
@@ -264,7 +265,7 @@ export default function AdminLayout() {
             {
               key: 'profile',
               icon: menuIcon(
-                <JzProfileIcon size={28} />, // +20%，源稿已叠描边加粗
+                <JzProfileIcon size={ICON_SIZE.tile + 4} />, // +20%，源稿已叠描边加粗
                 'profile',
               ),
               label: <TransitionLink to="/admin/profile">个人资料</TransitionLink>,
@@ -278,14 +279,14 @@ export default function AdminLayout() {
           <Button
             className="jz-admin-mobile-menu-btn"
             type="text"
-            icon={<JzMenuIcon size={18} />}
+            icon={<JzMenuIcon size={ICON_SIZE.lg} />}
             onClick={() => setSiderCollapsed((c) => !c)}
             aria-label={siderCollapsed ? '展开菜单' : '收起菜单'}
           />
           <Tooltip title="搜索 (⌘/Ctrl + K)">
             <Button
               shape="round"
-              icon={<JzSearchIcon size={18} />}
+              icon={<JzSearchIcon size={ICON_SIZE.lg} />}
               onClick={() => setSearchOpen(true)}
               className="jz-admin-search"
             >

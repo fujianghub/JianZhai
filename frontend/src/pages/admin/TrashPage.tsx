@@ -10,7 +10,8 @@ import {
 } from 'antd';
 import { message } from '@/utils/notify';
 import type { TablePaginationConfig } from 'antd/es/table';
-import { DeleteOutlined, UndoOutlined } from '@ant-design/icons';
+import { DeleteOutlined } from '@ant-design/icons';
+import { RestoreIcon } from '@/components/common/actionIcons';
 import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import {
@@ -162,7 +163,7 @@ export default function TrashPage() {
         </Text>
         <div className="jz-trash-toolbar-actions">
           <Button
-            icon={<UndoOutlined />}
+            icon={<RestoreIcon />}
             disabled={!hasSelection}
             loading={busyId === 'batch-restore-docs'}
             onClick={() =>
@@ -218,7 +219,7 @@ export default function TrashPage() {
         </Text>
         <div className="jz-trash-toolbar-actions">
           <Button
-            icon={<UndoOutlined />}
+            icon={<RestoreIcon />}
             disabled={!hasSelection}
             loading={busyId === 'batch-restore-kbs'}
             onClick={() =>

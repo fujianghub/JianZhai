@@ -33,6 +33,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { getSystemInfo, type SystemInfo } from '@/api/admin';
 import { formatApiError } from '@/api/client';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -138,97 +139,97 @@ const FEATURE_MODULES: FeatureModule[] = [
   {
     title: '知识库与目录',
     desc: 'KB 大类 / 文件夹嵌套、树拖拽排序、置顶收藏、软删除回收站、封面与主题色',
-    icon: <JzKbIcon size={24} />,
+    icon: <JzKbIcon size={ICON_SIZE.tile} />,
     tone: 'kb',
   },
   {
     title: '文档与编辑器',
     desc: 'Tiptap 3 富文本 · CodeMirror 6 Markdown · HTML 三编辑器；章节编号 + [TOC]；数学 / 分栏 / DocCard / Mermaid',
-    icon: <JzComposeIcon size={24} />,
+    icon: <JzComposeIcon size={ICON_SIZE.tile} />,
     tone: 'edit',
   },
   {
     title: '权限与可见性',
     desc: '四角色 RBAC 共享内容池；受众定向（朋友圈式）× ReadGrant 阅读白名单两道闸',
-    icon: <JzUserGroupIcon size={24} />,
+    icon: <JzUserGroupIcon size={ICON_SIZE.tile} />,
     tone: 'users',
   },
   {
     title: '登录安全',
     desc: '三因子：密码 + 邮箱匹配 + 服务端拼图滑块验证码；默认友邻可见（匿名跳登录）',
-    icon: <JzOverviewIcon size={24} />,
+    icon: <JzOverviewIcon size={ICON_SIZE.tile} />,
     tone: 'dashboard',
   },
   {
     title: '历史版本',
     desc: '快照 diff / 回滚；乐观并发 expected_version，冲突 409 + 本地草稿备份',
-    icon: <JzClockIcon size={24} />,
+    icon: <JzClockIcon size={ICON_SIZE.tile} />,
     tone: 'version',
   },
   {
     title: '双向链接',
     desc: '@提及解析、反向链接、doc 悬浮卡；语雀式三形态（链接 / 标题 / 卡片）',
-    icon: <JzBacklinkIcon size={24} />,
+    icon: <JzBacklinkIcon size={ICON_SIZE.tile} />,
     tone: 'link',
   },
   {
     title: '全文搜索',
     desc: '⌘K 全局搜索；jieba + tsvector GIN 索引',
-    icon: <JzSearchIcon size={24} />,
+    icon: <JzSearchIcon size={ICON_SIZE.tile} />,
     tone: 'search',
   },
   {
     title: '标签与评论',
     desc: '标签挂 KB / 文件夹 / 文档；Markdown 评论 + block_id 段落定位',
-    icon: <JzTagIcon size={24} />,
+    icon: <JzTagIcon size={ICON_SIZE.tile} />,
     tone: 'tags',
   },
   {
     title: '导入',
     desc: 'Word / PPT 保真导入（LibreOffice 管线）· 语雀 MD 兼容层 · 本地图片整组打包',
-    icon: <JzAttachmentIcon size={24} />,
+    icon: <JzAttachmentIcon size={ICON_SIZE.tile} />,
     tone: 'attach',
   },
   {
     title: '导出',
     desc: '5 格式（MD / HTML / PDF / DOCX / 整站）；三层目录体系 + KaTeX / Mermaid 离线渲染；Celery 异步',
-    icon: <JzExportIcon size={24} />,
+    icon: <JzExportIcon size={ICON_SIZE.tile} />,
     tone: 'exports',
   },
   {
     title: '博客前台',
     desc: '默认友邻可见（需登录）；6 主题 + 阅读排版定制 / 专注模式 / 位置记忆；RSS；?kb= slug 消歧',
-    icon: <JzBlogIcon size={24} />,
+    icon: <JzBlogIcon size={ICON_SIZE.tile} />,
     tone: 'hero',
   },
   {
     title: '附件与阅读器',
     desc: '上传 / 媒体库；PDF · PPT 内联阅读器；单文件 2GB',
-    icon: <JzFolderOpenIcon size={24} />,
+    icon: <JzFolderOpenIcon size={ICON_SIZE.tile} />,
     tone: 'attach',
   },
   {
     title: '知识图谱',
     desc: 'force-graph 可视化文档引用网络',
-    icon: <JzGraphIcon size={24} />,
+    icon: <JzGraphIcon size={ICON_SIZE.tile} />,
     tone: 'graph',
   },
   {
     title: 'AI 助手',
     desc: '多供应商（Claude + 通义千问）· 模板 · 多轮对话 · 日预算；/admin/ai 配置与用量',
-    icon: <JzAiIcon size={24} />,
+    icon: <JzAiIcon size={ICON_SIZE.tile} />,
     tone: 'ai',
   },
   {
     title: '题记',
     desc: '名句轮播（朝代 / 作者 / 篇名）· 随机播放 · dnd-kit 拖拽排序',
-    icon: <JzModelIcon size={24} />,
+    icon: <JzModelIcon size={ICON_SIZE.tile} />,
     tone: 'star',
   },
   {
     title: '视觉与动效',
     desc: '6 主题玻璃拟态 + 电影级主题过渡；动效令牌 + 路由转场 + 三档位；JzIcon · PWA',
-    icon: <JzArchitectureIcon size={24} />,
+    icon: <JzArchitectureIcon size={ICON_SIZE.tile} />,
     tone: 'overview',
   },
 ];
@@ -247,19 +248,19 @@ interface StatItem {
 const STATS: StatItem[] = [
   {
     title: '知识库',
-    icon: <JzKbIcon size={24} />,
+    icon: <JzKbIcon size={ICON_SIZE.tile} />,
     tone: 'kb',
     value: (c) => c.knowledge_bases,
   },
   {
     title: '文件夹',
-    icon: <JzFolderOpenIcon size={25} />,
+    icon: <JzFolderOpenIcon size={ICON_SIZE.tile} />,
     tone: 'exports',
     value: (c) => c.folders,
   },
   {
     title: '文档总数',
-    icon: <JzComposeIcon size={25} />,
+    icon: <JzComposeIcon size={ICON_SIZE.tile} />,
     tone: 'edit',
     value: (c) => c.documents_total,
     suffix: (c) => (
@@ -288,7 +289,7 @@ const STATS: StatItem[] = [
   },
   {
     title: '用户',
-    icon: <JzUserGroupIcon size={28} />,
+    icon: <JzUserGroupIcon size={ICON_SIZE.tile + 4} /> /* Kit 源稿叠描边留白，+4 光学补偿 */,
     tone: 'users',
     value: (c) => c.users_active,
     suffix: (c) => (
@@ -299,13 +300,13 @@ const STATS: StatItem[] = [
   },
   {
     title: '近 24h AI 调用',
-    icon: <JzAiIcon size={26} />,
+    icon: <JzAiIcon size={ICON_SIZE.tile + 2} /> /* Kit 源稿留白，+2 光学补偿 */,
     tone: 'ai',
     value: (c) => c.ai_calls_24h,
   },
   {
     title: '附件',
-    icon: <JzAttachmentIcon size={24} />,
+    icon: <JzAttachmentIcon size={ICON_SIZE.tile} />,
     tone: 'attach',
     value: (c) => c.attachments_total,
   },
@@ -432,7 +433,7 @@ export default function SystemOverviewPage() {
 
         <Card
           title={
-            <SectionTitle icon={<JzUsageIcon size={17} />} tone="dashboard">
+            <SectionTitle icon={<JzUsageIcon size={ICON_SIZE.lg} />} tone="dashboard">
               实时数据
             </SectionTitle>
           }
@@ -462,7 +463,7 @@ export default function SystemOverviewPage() {
 
         <Card
           title={
-            <SectionTitle icon={<JzOverviewIcon size={17} />} tone="kb">
+            <SectionTitle icon={<JzOverviewIcon size={ICON_SIZE.lg} />} tone="kb">
               功能模块
             </SectionTitle>
           }
@@ -486,7 +487,7 @@ export default function SystemOverviewPage() {
 
         <Card
           title={
-            <SectionTitle icon={<JzModelIcon size={17} />} tone="ai">
+            <SectionTitle icon={<JzModelIcon size={ICON_SIZE.lg} />} tone="ai">
               技术栈
             </SectionTitle>
           }
@@ -532,7 +533,7 @@ export default function SystemOverviewPage() {
 
         <Card
           title={
-            <SectionTitle icon={<JzClockIcon size={17} />} tone="version">
+            <SectionTitle icon={<JzClockIcon size={ICON_SIZE.lg} />} tone="version">
               自动保存请求时序
             </SectionTitle>
           }
@@ -554,7 +555,7 @@ function ArchitectureSection() {
   return (
     <Card
       title={
-        <SectionTitle icon={<JzArchitectureIcon size={17} />} tone="overview">
+        <SectionTitle icon={<JzArchitectureIcon size={ICON_SIZE.lg} />} tone="overview">
           系统架构图
         </SectionTitle>
       }

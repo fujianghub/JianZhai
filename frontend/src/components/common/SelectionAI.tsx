@@ -9,6 +9,8 @@ import AIAssistantPanel from '@/components/editor/ai/AIAssistantPanel';
 import type { AIOpDef } from '@/components/editor/ai/aiOps';
 import { AI_OPS } from '@/components/editor/ai/aiOps';
 import type { EditorSurfaceHandle } from '@/components/editor/surface/EditorSurface';
+import { ICON_SIZE } from '@/components/common/iconSize';
+import { CloseIcon } from '@/components/common/actionIcons';
 
 interface SelectionState {
   text: string;
@@ -250,7 +252,7 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider, hideTr
             }}
             aria-label="AI 操作"
           >
-            <JzAiSparkIcon size={16} style={{ color: '#fff' }} />
+            <JzAiSparkIcon size={ICON_SIZE.md} style={{ color: '#fff' }} />
           </button>
         </Dropdown>
       )}
@@ -261,7 +263,7 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider, hideTr
             <div className="jz-ai-panel-header">
               <span className="jz-ai-panel-title">自由提问</span>
               <button type="button" className="jz-ai-panel-close" aria-label="关闭" onClick={closePanel}>
-                ×
+                <CloseIcon />
               </button>
             </div>
             {lastSelectionRef.current && (

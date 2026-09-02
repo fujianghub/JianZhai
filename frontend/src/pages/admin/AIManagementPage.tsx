@@ -18,6 +18,7 @@ import {
 } from '@ant-design/icons';
 import {
   JzAiIcon,
+  JzAiSparkIcon,
   JzOverviewIcon,
   JzModelIcon,
   JzUsageIcon,
@@ -40,6 +41,7 @@ import {
   SettingsSection,
 } from '@/components/admin/ai/AIPageSections';
 import PromptsSection from '@/components/admin/ai/PromptsSection';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 const { Title, Paragraph } = Typography;
 
@@ -145,7 +147,7 @@ export default function AIManagementPage() {
         <Row gutter={[24, 16]} align="middle">
           <Col flex="auto">
             <Title level={3} style={{ marginTop: 0, marginBottom: 8 }}>
-              <JzAiIcon size={22} style={{ marginRight: 10, color: 'var(--jz-accent)' }} />
+              <JzAiIcon size={ICON_SIZE.nav} style={{ marginRight: 10, color: 'var(--jz-accent)' }} />
               AI 助手
             </Title>
             <Paragraph type="secondary" style={{ marginBottom: 8 }}>
@@ -185,7 +187,7 @@ export default function AIManagementPage() {
                   value: 'prompts',
                   label: (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                      ✨ 模板
+                      <JzAiSparkIcon /> 模板
                     </span>
                   ),
                 },

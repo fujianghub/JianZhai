@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button, Dropdown, Segmented, Tag, Tooltip, Typography } from 'antd';
 import {
-  BgColorsOutlined,
   BoldOutlined,
   CodeOutlined,
-  CommentOutlined,
   EyeOutlined,
   EyeInvisibleOutlined,
   ItalicOutlined,
@@ -56,7 +54,7 @@ import {
 import { getLineMap } from './codemirror/pure/lineMap';
 import { syncEditorToPreview, syncPreviewToEditor } from './codemirror/scrollSync';
 import type { EditorSurfaceHandle } from './surface/EditorSurface';
-import { CALLOUT_TEMPLATES, TEXT_COLOR_PRESETS } from './callouts';
+import { CALLOUT_TEMPLATES, TEXT_COLOR_PRESETS, calloutSwatch } from './callouts';
 import type { MentionSuggestion } from '@/api/linking';
 import { uploadFile } from '@/api/attachments';
 import { message } from '@/utils/notify';
@@ -71,6 +69,8 @@ import {
 } from './markdownSlashActions';
 import { trackRecentSlashCommand } from './slashCommandRegistry';
 import type { SlashCommandItem } from './slashCommandRegistry';
+import { CaretIcon, TextColorIcon } from '@/components/common/actionIcons';
+import { JzCalloutIcon } from '@/components/common/JzIcon';
 
 const { Text } = Typography;
 
@@ -952,7 +952,7 @@ export default function MarkdownEditor({
         >
           <Tooltip title="标题 / 引用">
             <Button aria-label="标题 / 引用" size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
-              H ▾
+              H <CaretIcon />
             </Button>
           </Tooltip>
         </Dropdown>
@@ -1046,7 +1046,7 @@ export default function MarkdownEditor({
           }}
         >
           <Tooltip title="文字颜色">
-            <Button aria-label="文字颜色" size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} disabled={readOnly} />
+            <Button aria-label="文字颜色" size="small" className="jz-toolbar-icon-btn" icon={<TextColorIcon />} disabled={readOnly} />
           </Tooltip>
         </Dropdown>
         <Dropdown.Button
@@ -1060,7 +1060,8 @@ export default function MarkdownEditor({
               key: t.slug,
               label: (
                 <span>
-                  <span style={{ display: 'inline-block', minWidth: 90 }}>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 90 }}>
+                    {calloutSwatch(t)}
                     {t.label}
                     {t.slug === lastCallout ? ' ✓' : ''}
                   </span>
@@ -1077,7 +1078,7 @@ export default function MarkdownEditor({
             title={`插入色块（上次：${CALLOUT_TEMPLATES.find((t) => t.slug === lastCallout)?.label ?? lastCallout}）`}
           >
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-              <CommentOutlined /> 色块
+              <JzCalloutIcon /> 色块
             </span>
           </Tooltip>
         </Dropdown.Button>
@@ -1097,7 +1098,7 @@ export default function MarkdownEditor({
         >
           <Tooltip title="表格操作（光标需在表格内；Tab 跳格 / 回车加行）">
             <Button aria-label="表格操作" size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
-              表格 ▾
+              表格 <CaretIcon />
             </Button>
           </Tooltip>
         </Dropdown>

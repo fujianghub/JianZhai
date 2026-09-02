@@ -18,7 +18,6 @@ import {
   ColumnHeightOutlined,
   ColumnWidthOutlined,
   DownloadOutlined,
-  ExportOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
   LeftOutlined,
@@ -32,6 +31,7 @@ import type { RenderTask } from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import PdfTocPanel from './PdfTocPanel';
 import { getPdfOutline, type PdfTocEntry } from '@/utils/pdfOutline';
+import { OpenInNewIcon } from '@/components/common/actionIcons';
 
 interface Props {
   url: string;
@@ -534,7 +534,7 @@ export default function PdfCanvas({
         <Tooltip title="在新标签页用浏览器打开（原生 PDF 阅读器）">
           <Button
             size="small"
-            icon={<ExportOutlined />}
+            icon={<OpenInNewIcon />}
             href={url}
             target="_blank"
             rel="noreferrer"

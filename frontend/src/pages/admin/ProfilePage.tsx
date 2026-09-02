@@ -9,6 +9,7 @@ import { message } from '@/utils/notify';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import UserAvatar from '@/components/common/UserAvatar';
 import { useAuthStore } from '@/stores/auth';
+import { ShieldIcon } from '@/components/common/actionIcons';
 
 const { Text } = Typography;
 
@@ -29,7 +30,7 @@ export default function ProfilePage() {
             <Space size={8} align="center">
               <Text strong style={{ fontSize: 18 }}>{user.username}</Text>
               {user.is_root && (
-                <Tag color="gold" style={{ marginRight: 0 }}>🛡 根管理员</Tag>
+                <Tag color="gold" icon={<ShieldIcon />} style={{ marginRight: 0 }}>根管理员</Tag>
               )}
               {user.is_superuser && !user.is_root && (
                 <Tag color="purple">超级管理员</Tag>

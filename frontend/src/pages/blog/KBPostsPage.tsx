@@ -21,7 +21,6 @@ import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 import {
   AppstoreOutlined,
-  BookOutlined,
   CloudUploadOutlined,
   FileAddOutlined,
   FileTextOutlined,
@@ -59,6 +58,8 @@ import {
   type NewDocContentKind,
 } from '@/utils/htmlTemplate';
 import { signalRouteReady } from '@/utils/routeTransition';
+import { CaretIcon } from '@/components/common/actionIcons';
+import { JzBookIcon } from '@/components/common/JzIcon';
 
 const { Title, Paragraph } = Typography;
 
@@ -226,7 +227,7 @@ export default function KBPostsPage() {
             <header style={kbHeaderStyle(seedAccent)}>
               <Space align="start" size="middle">
                 <div style={kbHeaderIconStyle(seedAccent)}>
-                  <BookOutlined />
+                  <JzBookIcon />
                 </div>
                 <div>
                   <Title
@@ -264,7 +265,7 @@ export default function KBPostsPage() {
       <header style={kbHeaderStyle(accent)}>
         <Space align="start" size="middle">
           <div style={kbHeaderIconStyle(accent)}>
-            <BookOutlined />
+            <JzBookIcon />
           </div>
           <div>
             <Title
@@ -333,7 +334,7 @@ export default function KBPostsPage() {
                   ? uploadProgress.loaded >= uploadProgress.total
                     ? '服务器处理中…'
                     : `上传中 ${Math.round((uploadProgress.loaded / uploadProgress.total) * 100)}%`
-                  : '上传 ▾'}
+                  : <>上传 <CaretIcon /></>}
               </Button>
             </Dropdown>
             <TransitionLink to={`/admin/kbs/${tree.id}`}>

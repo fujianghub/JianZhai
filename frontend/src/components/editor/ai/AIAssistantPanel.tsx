@@ -5,6 +5,7 @@ import type { AIErrorPayload } from '@/api/ai';
 import { JzAiIcon } from '@/components/common/JzIcon';
 import { renderMarkdown } from '@/utils/markdown';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 export interface AIAssistantPanelProps {
   open: boolean;
@@ -81,7 +82,7 @@ export default function AIAssistantPanel({
   const body = (
     <div className={'jz-ai-panel' + (embedded ? ' jz-ai-panel--embedded' : '')}>
       <div className="jz-ai-panel-header">
-        <JzAiIcon size={18} style={{ color: 'var(--jz-ai-accent)', flexShrink: 0 }} />
+        <JzAiIcon size={ICON_SIZE.lg} style={{ color: 'var(--jz-ai-accent)', flexShrink: 0 }} />
         <span className="jz-ai-panel-title">{title}</span>
         {modelLabel && <span className="jz-ai-panel-chip">{modelLabel}</span>}
         {estimate && (

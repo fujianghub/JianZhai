@@ -46,13 +46,12 @@ import { DocCardEmbed } from './DocCardEmbed';
 import { LinkCardEmbed } from './LinkCardEmbed';
 import { Footnote } from './Footnote';
 import { MathInline, MathBlock } from './MathNode';
-import { CALLOUT_TEMPLATES } from './callouts';
+import { CALLOUT_TEMPLATES, calloutSwatch } from './callouts';
 import { Button, Checkbox, Dropdown, Input, Modal, Popover, Space, Tag, Tooltip, Typography } from 'antd';
 import {
   AlignCenterOutlined,
   AlignLeftOutlined,
   AlignRightOutlined,
-  BgColorsOutlined,
   BoldOutlined,
   CheckSquareOutlined,
   CodeOutlined,
@@ -97,7 +96,6 @@ import MoreMarksDropdown from './toolbar/MoreMarksDropdown';
 import FontSizeDropdown from './toolbar/FontSizeDropdown';
 import HighlightColorDropdown from './toolbar/HighlightColorDropdown';
 import { applyHeadingBlock, type HeadingLevel } from './toolbar/headingBlock';
-import JzIcon from '@/components/common/JzIcon';
 
 const { Text } = Typography;
 
@@ -106,6 +104,8 @@ const lowlight = createLowlight(common);
 /** Text-colour palette is shared with MarkdownEditor via ``callouts.ts``.
  *  Prepend a "reset" option so the Tiptap user can clear the colour mark. */
 import { TEXT_COLOR_PRESETS as BASE_COLOR_PRESETS } from './callouts';
+import { CaretIcon, CloseIcon, CommentIcon, FullscreenExitIcon, FullscreenIcon, TextColorIcon } from '@/components/common/actionIcons';
+import { JzCalloutIcon, JzQuoteIcon } from '@/components/common/JzIcon';
 const TEXT_COLOR_PRESETS = [
   { label: '默认 / 取消', value: 'reset' },
   ...BASE_COLOR_PRESETS,
@@ -1192,7 +1192,7 @@ export default function RichTextEditor({
           }}
         >
           <Tooltip title="文字颜色">
-            <Button aria-label="文字颜色" size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} />
+            <Button aria-label="文字颜色" size="small" className="jz-toolbar-icon-btn" icon={<TextColorIcon />} />
           </Tooltip>
         </Dropdown>
         <HighlightColorDropdown editor={editor} />
@@ -1243,7 +1243,7 @@ export default function RichTextEditor({
           <Button
             size="small"
             className="jz-toolbar-icon-btn"
-            icon={<JzIcon name={fullscreen ? 'compress' : 'fullscreen'} />}
+            icon={fullscreen ? <FullscreenExitIcon /> : <FullscreenIcon />}
             aria-label={fullscreen ? '退出全屏' : '全屏'}
             onClick={() => setFullscreen((v) => !v)}
           />
@@ -1267,7 +1267,7 @@ export default function RichTextEditor({
                     })),
                   }}
                 >
-                  <Button size="small">选择字体 ▾</Button>
+                  <Button size="small">选择字体 <CaretIcon /></Button>
                 </Dropdown>
               </div>
               <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>对齐</div>
@@ -1312,7 +1312,7 @@ export default function RichTextEditor({
             </div>
           }
         >
-          <Button size="small" className="jz-toolbar-dropdown-btn">更多 ▾</Button>
+          <Button size="small" className="jz-toolbar-dropdown-btn">更多 <CaretIcon /></Button>
         </Popover>
         </div>
       </div>
@@ -1323,7 +1323,7 @@ export default function RichTextEditor({
             <div className="jz-ai-panel-header">
               <span className="jz-ai-panel-title">AI 生成段落</span>
               <button type="button" className="jz-ai-panel-close" aria-label="关闭" onClick={() => setAiPromptOpen(false)}>
-                ×
+                <CloseIcon />
               </button>
             </div>
             <div style={{ padding: 16 }}>
@@ -1388,7 +1388,7 @@ export default function RichTextEditor({
             className="jz-annotation-hover"
             style={{ left: annotationHover.x, top: annotationHover.y, transform: annotationHover.transform }}
           >
-            💬 {annotationHover.text}
+            <CommentIcon /> {annotationHover.text}
           </div>
         )}
         {/* Floating selection menu — appears when the user highlights inline
@@ -1480,7 +1480,7 @@ export default function RichTextEditor({
               }}
             >
               <button type="button" className="jz-bubble-btn" title="文字颜色" aria-label="文字颜色">
-                <BgColorsOutlined />
+                <TextColorIcon />
               </button>
             </Dropdown>
             <span className="jz-bubble-divider" aria-hidden />
@@ -1503,7 +1503,7 @@ export default function RichTextEditor({
               title="引用"
               aria-label="引用"
             >
-              ❝
+              <JzQuoteIcon />
             </button>
             <button
               type="button"
@@ -1519,13 +1519,18 @@ export default function RichTextEditor({
               menu={{
                 items: CALLOUT_TEMPLATES.map((c) => ({
                   key: c.slug,
-                  label: c.label,
+                  label: (
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+                      {calloutSwatch(c)}
+                      {c.label}
+                    </span>
+                  ),
                   onClick: () => editor.chain().focus().setCallout({ kind: c.slug }).run(),
                 })),
               }}
             >
               <button type="button" className="jz-bubble-btn" title="包裹为色块" aria-label="包裹为色块">
-                <CommentOutlined />
+                <JzCalloutIcon />
               </button>
             </Dropdown>
           </div>

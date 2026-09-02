@@ -15,10 +15,11 @@ import {
   JzUserIcon,
 } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 const { Header, Content, Footer } = Layout;
 
-const NAV_ICON_SIZE = 22;
+const NAV_ICON_SIZE = ICON_SIZE.nav;
 
 function BlogNavItem({
   to,
@@ -178,7 +179,7 @@ export default function BlogLayout() {
             />
           ) : (
             <Link to="/admin/login" className="jz-nav-link jz-nav-link--login">
-              <JzUserIcon size={16} className="jz-ico-toned jz-ico-tone-login" />
+              <JzUserIcon size={ICON_SIZE.md} className="jz-ico-toned jz-ico-tone-login" />
               <span className="jz-nav-link-label">登录</span>
             </Link>
           )}

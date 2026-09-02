@@ -1,3 +1,4 @@
+import { actionIconSvg } from './actionIconSvg';
 /**
  * Shared diagram fullscreen overlay — mouse-wheel zoom, drag-to-pan,
  * copy SVG, download SVG / PNG, keyboard shortcuts (Esc / 0 / + / -).
@@ -103,13 +104,15 @@ async function svgToPngBlob(xml: string, width: number, height: number, scale = 
 }
 
 function flashToolbarFeedback(btn: HTMLElement, text: string, isError = false): void {
-  const original = btn.textContent;
+  // 按钮里现在是 SVG 图标 + 文字标签，只替换标签文字，保住图标。
+  const label = btn.querySelector<HTMLElement>('.jz-fs-label') ?? btn;
+  const original = label.textContent;
   btn.classList.toggle('is-success', !isError);
   btn.classList.toggle('is-error', isError);
-  btn.textContent = text;
+  label.textContent = text;
   window.setTimeout(() => {
     btn.classList.remove('is-success', 'is-error');
-    btn.textContent = original;
+    label.textContent = original;
   }, 1200);
 }
 
@@ -139,16 +142,16 @@ function mountFullscreenOverlay(svg: SVGSVGElement, opts: DiagramFullscreenOptio
   const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
   const baseFilename = `${lang}-${ts}`;
   toolbar.innerHTML = `
-    <button type="button" data-fs-action="zoom-out" title="缩小（滚轮）" aria-label="缩小">−</button>
+    <button type="button" data-fs-action="zoom-out" title="缩小（滚轮）" aria-label="缩小">${actionIconSvg('zoom-out')}</button>
     <span class="jz-diagram-fullscreen-zoom" aria-live="polite">100%</span>
-    <button type="button" data-fs-action="zoom-in" title="放大（滚轮）" aria-label="放大">+</button>
-    <button type="button" data-fs-action="fit" title="适应窗口（数字键 0）" aria-label="适应窗口">⤢</button>
+    <button type="button" data-fs-action="zoom-in" title="放大（滚轮）" aria-label="放大">${actionIconSvg('zoom-in')}</button>
+    <button type="button" data-fs-action="fit" title="适应窗口（数字键 0）" aria-label="适应窗口">${actionIconSvg('fit')}</button>
     <span class="jz-diagram-fullscreen-sep" aria-hidden></span>
-    <button type="button" data-fs-action="copy-svg" title="复制 SVG（剪贴板）" aria-label="复制 SVG">⧉ SVG</button>
-    <button type="button" data-fs-action="download-svg" title="下载 SVG" aria-label="下载 SVG">⤓ SVG</button>
-    <button type="button" data-fs-action="download-png" title="下载 PNG（2x 高清）" aria-label="下载 PNG">⤓ PNG</button>
+    <button type="button" data-fs-action="copy-svg" title="复制 SVG（剪贴板）" aria-label="复制 SVG">${actionIconSvg('copy')}<span class="jz-fs-label">SVG</span></button>
+    <button type="button" data-fs-action="download-svg" title="下载 SVG" aria-label="下载 SVG">${actionIconSvg('download')}<span class="jz-fs-label">SVG</span></button>
+    <button type="button" data-fs-action="download-png" title="下载 PNG（2x 高清）" aria-label="下载 PNG">${actionIconSvg('download')}<span class="jz-fs-label">PNG</span></button>
     <span class="jz-diagram-fullscreen-sep" aria-hidden></span>
-    <button type="button" data-fs-action="close" title="关闭 (Esc)" aria-label="关闭">✕</button>
+    <button type="button" data-fs-action="close" title="关闭 (Esc)" aria-label="关闭">${actionIconSvg('close')}</button>
   `;
   overlay.appendChild(toolbar);
 

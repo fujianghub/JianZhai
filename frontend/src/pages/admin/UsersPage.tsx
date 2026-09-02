@@ -35,6 +35,7 @@ import ReadGrantControl, {
   selectionsToItems,
   type GrantSelection,
 } from '@/components/admin/ReadGrantControl';
+import { ShieldIcon } from '@/components/common/actionIcons';
 
 const { Text } = Typography;
 
@@ -253,7 +254,7 @@ export default function UsersPage() {
               render: (v: string, r) => (
                 <Space>
                   <Text strong>{v}</Text>
-                  {r.is_root && <Tag color="gold" style={{ marginRight: 0 }}>🛡 根</Tag>}
+                  {r.is_root && <Tag color="gold" icon={<ShieldIcon />} style={{ marginRight: 0 }}>根</Tag>}
                   {r.is_superuser && !r.is_root && <Tag color="purple">超级</Tag>}
                   {me?.id === r.id && <Tag color="blue">当前</Tag>}
                 </Space>

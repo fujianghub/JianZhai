@@ -65,6 +65,7 @@ import {
   NEW_HTML_DOCUMENT_TEMPLATE,
   type NewDocContentKind,
 } from '@/utils/htmlTemplate';
+import { CaretIcon } from '@/components/common/actionIcons';
 
 const { Text } = Typography;
 
@@ -703,7 +704,7 @@ export default function KBWorkspace() {
                 ? batchProgress.loaded >= batchProgress.total
                   ? '服务器处理中…'
                   : `上传中 ${Math.round((batchProgress.loaded / batchProgress.total) * 100)}%`
-                : '新建 ▾'}
+                : <>新建 <CaretIcon /></>}
             </Button>
           </Dropdown>
           <input
@@ -1019,7 +1020,7 @@ export default function KBWorkspace() {
           style={{ marginTop: 12 }}
           type="info"
           showIcon
-          message="点击右上「新建 ▾ → 上传文件」可以直接导入 PDF / HTML / DOCX / Markdown 作为一篇博客。"
+          message="点击右上「新建 → 上传文件」可以直接导入 PDF / HTML / DOCX / Markdown 作为一篇博客。"
         />
       )}
 

@@ -5,6 +5,7 @@ import { streamAI, getCapabilities, type AIOperation } from '@/api/ai';
 import { getResolvedAIModelId, resolveAIModel } from '@/utils/aiModel';
 import AIAssistantPanel from '@/components/editor/ai/AIAssistantPanel';
 import { AI_PRESETS_DOC } from '@/components/editor/ai/aiOps';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 interface Props {
   content: string;
@@ -95,12 +96,12 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
         onClick={() => setOpen(true)}
         aria-label="AI 助手"
         title={modelLabel ? `AI 助手 (${modelLabel})` : 'AI 助手'}
-        icon={<JzAiIcon size={18} />}
+        icon={<JzAiIcon size={ICON_SIZE.lg} />}
       />
       <Drawer
         title={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <JzAiIcon size={16} style={{ color: 'var(--jz-ai-accent)' }} />
+            <JzAiIcon size={ICON_SIZE.md} style={{ color: 'var(--jz-ai-accent)' }} />
             AI 助手
             {modelLabel && <span className="jz-ai-panel-chip">{modelLabel}</span>}
           </span>

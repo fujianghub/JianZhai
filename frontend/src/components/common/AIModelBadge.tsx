@@ -3,6 +3,7 @@ import { Tag, Tooltip } from 'antd';
 import { JzAiIcon } from '@/components/common/JzIcon';
 import { getCapabilities } from '@/api/ai';
 import { isModelConfigured, resolveAIModel } from '@/utils/aiModel';
+import { ICON_SIZE } from '@/components/common/iconSize';
 
 /**
  * Tiny status pill: "AI: Claude Opus 4.7". Lives in the AdminLayout header so
@@ -61,7 +62,7 @@ export function AIModelBadge() {
   if (!anyConfigured) {
     return (
       <Tooltip title="AI 助手未配置 — 在 backend/.env 设置 ANTHROPIC_API_KEY 或 DASHSCOPE_API_KEY">
-        <Tag icon={<JzAiIcon size={12} />} color="default">
+        <Tag icon={<JzAiIcon size={ICON_SIZE.xs} />} color="default">
           AI 未配置
         </Tag>
       </Tooltip>
@@ -70,7 +71,7 @@ export function AIModelBadge() {
   if (!enabled) {
     return (
       <Tooltip title="管理员已关闭 AI 功能">
-        <Tag icon={<JzAiIcon size={12} />} color="warning">
+        <Tag icon={<JzAiIcon size={ICON_SIZE.xs} />} color="warning">
           AI 已禁用
         </Tag>
       </Tooltip>
@@ -79,7 +80,7 @@ export function AIModelBadge() {
   if (modelOk === false) {
     return (
       <Tooltip title={`当前模型「${label}」所属供应商未配置 API KEY — 调用会失败,请切换到其他模型`}>
-        <Tag icon={<JzAiIcon size={12} />} color="warning" style={{ marginRight: 0 }}>
+        <Tag icon={<JzAiIcon size={ICON_SIZE.xs} />} color="warning" style={{ marginRight: 0 }}>
           {label || 'AI'} · 未配置
         </Tag>
       </Tooltip>
@@ -87,7 +88,7 @@ export function AIModelBadge() {
   }
   return (
     <Tooltip title="当前使用的 AI 模型(在 AI 助手页设置)">
-      <Tag icon={<JzAiIcon size={12} />} color="blue" style={{ marginRight: 0 }}>
+      <Tag icon={<JzAiIcon size={ICON_SIZE.xs} />} color="blue" style={{ marginRight: 0 }}>
         {label || 'AI'}
       </Tag>
     </Tooltip>

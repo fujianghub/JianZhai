@@ -10,6 +10,7 @@ import AIMenuList from './ai/AIMenuList';
 import AIAssistantPanel from './ai/AIAssistantPanel';
 import AIPromptInline from './ai/AIPromptInline';
 import AIDiffPreview from '@/components/common/AIDiffPreview';
+import { CloseIcon } from '@/components/common/actionIcons';
 
 interface Props {
   editor: Editor | null;
@@ -296,7 +297,7 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
             <div className="jz-ai-panel-header">
               <span className="jz-ai-panel-title">AI 生成段落</span>
               <button type="button" className="jz-ai-panel-close" aria-label="关闭" onClick={() => setPromptOpen(false)}>
-                ×
+                <CloseIcon />
               </button>
             </div>
             <div style={{ padding: 16 }}>

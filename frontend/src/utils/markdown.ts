@@ -1,3 +1,4 @@
+import { actionIconSvg } from './actionIconSvg';
 import MarkdownIt from 'markdown-it';
 import mdContainer from 'markdown-it-container';
 // @ts-expect-error — these packages ship no type defs but their default export
@@ -454,7 +455,7 @@ function renderYuqueToolbar(opts: {
 }): string {
   return (
     `<div class="jz-code-toolbar" contenteditable="false">` +
-    `<span class="jz-code-collapse-placeholder" aria-hidden="true">▾</span>` +
+    `<span class="jz-code-collapse-placeholder" aria-hidden="true">${actionIconSvg('caret', { size: 14 })}</span>` +
     `<span class="jz-code-title-area"><span class="jz-code-title-text">${escape(opts.titleText)}</span></span>` +
     `<span class="jz-code-toolbar-spacer"></span>` +
     `<span class="jz-code-lang">${escape(opts.label)}</span>` +
@@ -463,8 +464,8 @@ function renderYuqueToolbar(opts: {
     `<span class="jz-code-toolbar-divider" aria-hidden="true"></span>` +
     `<div class="jz-code-toolbar-actions">` +
     (opts.extraActions ?? '') +
-    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="copy" title="复制" aria-label="复制">⧉</button>` +
-    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="more" title="更多" aria-label="更多">⋯</button>` +
+    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="copy" title="复制" aria-label="复制">${actionIconSvg('copy')}</button>` +
+    `<button type="button" class="jz-code-btn jz-code-btn-icon" data-action="more" title="更多" aria-label="更多">${actionIconSvg('more')}</button>` +
     `</div>` +
     `</div>`
   );
@@ -476,31 +477,8 @@ function readRenderPrefs() {
     : { theme: 'one-dark-pro' as const, wrap: false, lineNumbers: true, fontSize: 13, lineHeight: 1.6 };
 }
 
-/**
- * Inline SVG icons for the diagram (mermaid / plantuml) floating action row.
- * 24×24 viewBox, 1.8px round stroke, ``currentColor`` — matches the JzIcon
- * house style and replaces the earlier crude unicode glyphs (``</>`` / ``⧉`` /
- * ``⤓`` / ``⤢``) that rendered inconsistently across fonts and platforms.
- * Only allowlisted SVG attributes are emitted so DOMPurify keeps them intact.
- */
-const DIAGRAM_ACTION_ICON_PATHS = {
-  source: '<path d="m8.5 8-4 4 4 4"/><path d="m15.5 8 4 4-4 4"/>',
-  copy:
-    '<rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2.5"/>' +
-    '<path d="M15.5 8.5V6A2.5 2.5 0 0 0 13 3.5H6A2.5 2.5 0 0 0 3.5 6v7A2.5 2.5 0 0 0 6 15.5h2.5"/>',
-  download: '<path d="M12 3.5v11"/><path d="m7.5 10 4.5 4.5 4.5-4.5"/><path d="M4.5 20.5h15"/>',
-  fullscreen:
-    '<path d="M9 3.5H4.5V8"/><path d="M15 3.5h4.5V8"/>' +
-    '<path d="M9 20.5H4.5V16"/><path d="M15 20.5h4.5V16"/>',
-} as const;
-
-function diagramActionSvg(name: keyof typeof DIAGRAM_ACTION_ICON_PATHS): string {
-  return (
-    `<svg class="jz-diagram-action-svg" viewBox="0 0 24 24" width="16" height="16" ` +
-    `fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ` +
-    `stroke-linejoin="round">${DIAGRAM_ACTION_ICON_PATHS[name]}</svg>`
-  );
-}
+/** 动作图标 SVG 工厂已抽到 utils/actionIconSvg（代码块工具条 / 图表动作行 / 全屏工具条共用）。 */
+const diagramActionSvg = actionIconSvg;
 
 /**
  * Wrap highlighted code in a Yuque-style chrome:
@@ -1173,7 +1151,7 @@ export function convertBlockPlaceholders(src: string): string {
         const id = card[1]!;
         return (
           `<div data-jz-doc-card="" data-doc-id="${id}" class="jz-doc-card">` +
-          `<a class="doc-link" data-doc-id="${id}" href="/d/${id}">📄 文档卡片 #${id}</a>` +
+          `<a class="doc-link" data-doc-id="${id}" href="/d/${id}">${actionIconSvg('doc', { className: 'jz-doc-card-ico' })} 文档卡片 #${id}</a>` +
           `</div>`
         );
       }

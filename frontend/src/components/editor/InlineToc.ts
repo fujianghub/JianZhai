@@ -46,14 +46,14 @@ export const InlineToc = Node.create({
 
   renderHTML({ HTMLAttributes, node }) {
     const scope = node.attrs.scope === 'section' ? 'section' : '';
-    const label = scope === 'section' ? '📑 本节目录占位' : '📑 目录占位';
+    const label = scope === 'section' ? '本节目录占位' : '目录占位';
     return [
       'div',
       mergeAttributes(HTMLAttributes, {
         'data-jz-toc': scope,
         class: 'jz-inline-toc-placeholder',
       }),
-      ['span', { class: 'jz-inline-toc-label' }, label],
+      ['span', { class: 'jz-inline-toc-label' }, ['span', { class: 'jz-emoji', 'aria-hidden': 'true' }, '📑'], ` ${label}`],
       ['span', { class: 'jz-inline-toc-hint' }, '（渲染时根据标题自动生成）'],
     ];
   },

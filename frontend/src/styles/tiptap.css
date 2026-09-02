@@ -286,7 +286,7 @@
   color: var(--jz-text);
 }
 .slash-menu-item.is-active .slash-menu-item-icon {
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--jz-insert-tone, var(--jz-accent)) 30%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--jz-insert-tone, var(--jz-accent)) var(--jz-insert-ring, 30%), transparent);
 }
 .slash-menu-item-body {
   display: flex;

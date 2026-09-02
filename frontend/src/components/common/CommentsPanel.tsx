@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Button, Empty, Input, List, Popconfirm, Space, Spin, Tag, Typography } from 'antd';
 import { message } from '@/utils/notify';
-import { DeleteOutlined, MessageOutlined } from '@ant-design/icons';
+import { DeleteOutlined } from '@ant-design/icons';
+import { CommentIcon } from '@/components/common/actionIcons';
 import dayjs from 'dayjs';
 import * as commentsApi from '@/api/comments';
 import type { Comment } from '@/api/comments';
@@ -51,7 +52,7 @@ export default function CommentsPanel({ documentId, compact = false }: Props) {
     <div style={compact ? { padding: '8px 0' } : { borderTop: '1px solid var(--jz-border, #f0f0f0)', paddingTop: 16, marginTop: 24 }}>
       {!compact && (
         <Title level={5} style={{ marginBottom: 8 }}>
-          <MessageOutlined /> 笔记批注{' '}
+          <CommentIcon /> 笔记批注{' '}
           <Text type="secondary">({comments?.length ?? 0})</Text>
         </Title>
       )}

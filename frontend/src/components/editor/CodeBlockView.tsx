@@ -5,7 +5,6 @@ import {
   CaretRightOutlined,
   CheckOutlined,
   CopyOutlined,
-  ExpandOutlined,
   FileImageOutlined,
   MinusOutlined,
   MoreOutlined,
@@ -56,6 +55,7 @@ import {
 import CodeBlockMoreMenu from './CodeBlockMoreMenu';
 import CodeBlockThemeSelect from './CodeBlockThemeSelect';
 import { openDiagramFullscreenFromHtml } from '@/utils/diagramFullscreen';
+import { FullscreenIcon } from '@/components/common/actionIcons';
 
 export default function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const lang = normalizeLanguage((node.attrs.language as string | null) ?? '');
@@ -407,7 +407,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 className="jz-diagram-icon-btn"
                 aria-label="全屏查看图表"
                 disabled={!previewHtml}
-                icon={<ExpandOutlined />}
+                icon={<FullscreenIcon />}
                 onClick={() =>
                   openDiagramFullscreenFromHtml(previewHtml, {
                     lang: isMermaid ? 'mermaid' : 'plantuml',

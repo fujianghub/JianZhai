@@ -104,7 +104,9 @@ describe('CardEnhancer', () => {
     renderEnhancer('v1');
     await flush();
     const a = el.querySelector('a')!;
-    expect(a.textContent).toBe('📄 我的文章');
+    // 2026-09-02：📄 emoji 换成内联 SVG 文档图标（utils/actionIconSvg），文字保留
+    expect(a.textContent?.trim()).toBe('我的文章');
+    expect(a.querySelector('svg.jz-doc-card-ico')).not.toBeNull();
     expect(a.getAttribute('href')).toBe('/posts/my-post');
   });
 
