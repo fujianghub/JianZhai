@@ -3667,6 +3667,34 @@ a.jz-meta-full-edit-btn:focus-visible {
   }
 }
 
+/* ── 键帽 <Kbd>（2026-09-02 单套；此前工具栏菜单 / 后台搜索 / 代码块设置 / 正文
+   四套互不相关）。正文 .markdown-preview kbd 是用户内容，保留独立选择器但数值对齐。 */
+.jz-kbd {
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-fs-2xs);
+  line-height: 1.4;
+  padding: 1px 6px;
+  border: 1px solid var(--jz-border);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--jz-surface-2);
+  color: var(--jz-text-muted);
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.jz-kbd-sep {
+  margin: 0 2px;
+  opacity: 0.6;
+}
+[data-theme='dark'] .jz-kbd,
+[data-theme='starry'] .jz-kbd,
+[data-theme='deepsea'] .jz-kbd {
+  background: rgba(0, 0, 0, 0.3);
+}
+
 /* 裸 emoji 用作图标时挂此类，走 --jz-font-emoji 彩色栈（2026-09-02；
    衬线/UI 栈里 emoji 会退化成黑白轮廓或豆腐块） */
 .jz-emoji {

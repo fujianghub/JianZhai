@@ -1,11 +1,14 @@
-/** Platform-aware shortcut label for toolbar menus. */
+/**
+ * 兼容薄壳——键位显示已收口到 `src/shortcuts/format.ts`（平台探测 + 格式化）。
+ * 旧消费者（HeadingBlockDropdown / MoreMarksDropdown）零改动；新代码直接用
+ * `formatShortcut(id)` / `withShortcut(label, id)` / `<Kbd id=…>`。
+ */
+import { detectPlatform, formatChordText } from '@/shortcuts/format';
+
 export function modKey(): string {
-  if (typeof navigator !== 'undefined' && /Mac|iPhone|iPad/i.test(navigator.platform)) {
-    return '⌘';
-  }
-  return 'Ctrl';
+  return detectPlatform() === 'mac' ? '⌘' : 'Ctrl';
 }
 
 export function altModShortcut(digit: string): string {
-  return `Alt+${modKey()}+${digit}`;
+  return formatChordText(`Alt+Mod+${digit}`);
 }
