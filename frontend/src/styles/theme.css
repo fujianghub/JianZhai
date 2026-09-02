@@ -1570,19 +1570,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-color: color-mix(in srgb, var(--jz-accent) 35%, transparent) !important;
   color: var(--glass-text) !important;
 }
-.jz-admin-glass .jz-admin-search-kbd {
-  padding: 2px 7px;
-  border: 1px solid var(--glass-border);
-  border-radius: 5px;
-  background: rgba(0, 0, 0, 0.06);
-  font-family: var(--jz-font-mono);
-  font-size: var(--jz-fs-2xs);
-  color: var(--glass-text-muted);
-}
-[data-theme='dark']  .jz-admin-glass .jz-admin-search-kbd,
-[data-theme='starry'] .jz-admin-glass .jz-admin-search-kbd,
-[data-theme='deepsea'] .jz-admin-glass .jz-admin-search-kbd {
-  background: rgba(0, 0, 0, 0.3);
+.jz-admin-glass .jz-admin-search .jz-kbd {
+  margin-left: 8px;
 }
 
 /* ── 主内容区：宽松 ─────────────────────────────────────────────────── */
@@ -3693,6 +3682,48 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='starry'] .jz-kbd,
 [data-theme='deepsea'] .jz-kbd {
   background: rgba(0, 0, 0, 0.3);
+}
+/* 速查表（ShortcutCheatSheet） */
+.jz-cheatsheet-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 16px 28px;
+  max-height: 60vh;
+  overflow: auto;
+  padding-right: 4px;
+}
+.jz-cheatsheet-group { break-inside: avoid; }
+.jz-cheatsheet-title {
+  display: block;
+  margin-bottom: 6px;
+  font-size: var(--jz-fs-xs);
+  letter-spacing: var(--jz-ls-xs);
+  color: var(--jz-text-muted);
+}
+.jz-cheatsheet-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0;
+  font-size: var(--jz-fs-sm);
+  border-bottom: 1px dashed var(--jz-divider);
+}
+.jz-cheatsheet-row:last-child { border-bottom: 0; }
+.jz-cheatsheet-label { min-width: 0; }
+.jz-cheatsheet-conflict {
+  display: block;
+  font-size: var(--jz-fs-2xs);
+}
+.jz-cheatsheet-trigger {
+  font-family: var(--jz-font-mono);
+  font-size: var(--jz-fs-2xs);
+  color: var(--jz-text-muted);
+  background: var(--jz-surface-2);
+  border: 1px solid var(--jz-border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  white-space: nowrap;
 }
 
 /* 裸 emoji 用作图标时挂此类，走 --jz-font-emoji 彩色栈（2026-09-02；

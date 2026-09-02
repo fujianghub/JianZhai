@@ -7,6 +7,7 @@ import {
   cellContentRange,
   emptyRow,
 } from '../pure/tableFormat';
+import { CM_KEYS } from '@/shortcuts/registry';
 
 /**
  * 表格辅助（语雀对齐）：
@@ -145,7 +146,7 @@ function handleEnter(view: EditorView): boolean {
 }
 
 export const tableAssistKeymap = keymap.of([
-  { key: 'Tab', run: (v) => !v.composing && moveCell(v, 1) },
-  { key: 'Shift-Tab', run: (v) => !v.composing && moveCell(v, -1) },
-  { key: 'Enter', run: handleEnter },
+  { key: CM_KEYS['editor.markdown.table-next'], run: (v) => !v.composing && moveCell(v, 1) },
+  { key: CM_KEYS['editor.markdown.table-prev'], run: (v) => !v.composing && moveCell(v, -1) },
+  { key: CM_KEYS['editor.markdown.table-row'], run: handleEnter },
 ]);

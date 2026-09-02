@@ -108,6 +108,8 @@ import { CaretIcon, CloseIcon, CommentIcon, FullscreenExitIcon, FullscreenIcon, 
 import { JzCalloutIcon, JzQuoteIcon } from '@/components/common/JzIcon';
 import SaveStatusPill from './SaveStatusPill';
 import type { SaveStatus } from './saveStatus';
+import { ariaKeyshortcuts, getChord, matchesChord, openCheatSheet, useShortcut, withShortcut } from '@/shortcuts';
+import Kbd from '@/components/common/Kbd';
 const TEXT_COLOR_PRESETS = [
   { label: '默认 / 取消', value: 'reset' },
   ...BASE_COLOR_PRESETS,
@@ -445,7 +447,7 @@ export default function RichTextEditor({
         const ed = editorInstanceRef.current;
         if (!ed) return false;
         const mod = event.metaKey || event.ctrlKey;
-        if (mod && !event.shiftKey && (event.key === 'e' || event.key === 'E')) {
+        if (matchesChord(event, getChord('editor.rich.code'))) {
           event.preventDefault();
           ed.chain().focus().toggleCode().run();
           return true;
@@ -630,17 +632,7 @@ export default function RichTextEditor({
     }
   }, [editor, onAutoSave, value, status]);
 
-  useEffect(() => {
-    if (!onAutoSave) return;
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-        void saveNow();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [saveNow, onAutoSave]);
+  useShortcut('editor.save', () => void saveNow(), { enabled: !!onAutoSave });
 
   useEffect(() => {
     onSaveReady?.({ saveNow });
@@ -684,16 +676,7 @@ export default function RichTextEditor({
     setLinkPopoverOpen(false);
   }
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
-        e.preventDefault();
-        openLinkPopover();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [openLinkPopover]);
+  useShortcut('editor.rich.link', () => openLinkPopover());
 
   // ── 图片上传按钮 ──────────────────────────────────────────────────
   async function handleImageFile(file: File) {
@@ -909,15 +892,11 @@ export default function RichTextEditor({
     }
     // 让外层 CSS 隐藏 AdminLayout 的 sider / header
     document.body.classList.add('jz-fullscreen-active');
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setFullscreen(false);
-    };
-    document.addEventListener('keydown', onKey);
     return () => {
-      document.removeEventListener('keydown', onKey);
       document.body.classList.remove('jz-fullscreen-active');
     };
   }, [fullscreen]);
+  useShortcut('editor.rich.fullscreen-exit', () => setFullscreen(false), { enabled: fullscreen, target: typeof document !== 'undefined' ? document : null });
 
   const count = useMemo(() => wordCount(value), [value]);
   /** Live markdown for toolbar dirty-state (save button). Serializing the whole
@@ -1027,8 +1006,8 @@ export default function RichTextEditor({
               图片上传中…
             </Tag>
           )}
-          <Tooltip title="立即保存 (Ctrl/⌘+S)">
-            <Button aria-label="立即保存"
+          <Tooltip title={withShortcut('立即保存', 'editor.save')}>
+            <Button aria-label="立即保存" aria-keyshortcuts={ariaKeyshortcuts('editor.save')}
               size="small"
               className="jz-toolbar-save-btn"
               type="primary"
@@ -1093,10 +1072,10 @@ export default function RichTextEditor({
 
         <span className="jz-toolbar-group">
         <Space.Compact>
-          <Tooltip title="撤销 (Ctrl+Z)">
+          <Tooltip title={withShortcut('撤销', 'editor.rich.undo')}>
             <Button aria-label="撤销" size="small" className="jz-toolbar-icon-btn" icon={<UndoOutlined />} onClick={() => editor.chain().focus().undo().run()} />
           </Tooltip>
-          <Tooltip title="重做 (Ctrl+Shift+Z)">
+          <Tooltip title={withShortcut('重做', 'editor.rich.redo')}>
             <Button aria-label="重做" size="small" className="jz-toolbar-icon-btn" icon={<RedoOutlined />} onClick={() => editor.chain().focus().redo().run()} />
           </Tooltip>
           <Tooltip
@@ -1145,9 +1124,9 @@ export default function RichTextEditor({
 
         <span className="jz-toolbar-group">
         <Space.Compact>
-          <ToolbarBtn editor={editor} mark="bold" icon={<BoldOutlined />} title="加粗 (Ctrl+B)" active={ui?.bold ?? false} />
-          <ToolbarBtn editor={editor} mark="italic" icon={<ItalicOutlined />} title="斜体 (Ctrl+I)" active={ui?.italic ?? false} />
-          <ToolbarBtn editor={editor} mark="underline" icon={<UnderlineOutlined />} title="下划线 (Ctrl+U)" active={ui?.underline ?? false} />
+          <ToolbarBtn editor={editor} mark="bold" icon={<BoldOutlined />} title={withShortcut('加粗', 'editor.rich.bold')} active={ui?.bold ?? false} />
+          <ToolbarBtn editor={editor} mark="italic" icon={<ItalicOutlined />} title={withShortcut('斜体', 'editor.rich.italic')} active={ui?.italic ?? false} />
+          <ToolbarBtn editor={editor} mark="underline" icon={<UnderlineOutlined />} title={withShortcut('下划线', 'editor.rich.underline')} active={ui?.underline ?? false} />
           <ToolbarBtn editor={editor} mark="strike" icon={<StrikethroughOutlined />} title="删除线" active={ui?.strike ?? false} />
         </Space.Compact>
         </span>
@@ -1262,7 +1241,7 @@ export default function RichTextEditor({
               </div>
               <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>对齐</div>
               <Space.Compact style={{ marginBottom: 12 }}>
-                <Tooltip title="左对齐 (Ctrl+Shift+L)">
+                <Tooltip title={withShortcut('左对齐', 'editor.rich.align-left')}>
                   <Button aria-label="左对齐"
                     size="small"
                     type={ui?.alignLeft ? 'primary' : 'default'}
@@ -1270,7 +1249,7 @@ export default function RichTextEditor({
                     onClick={() => editor.chain().focus().setTextAlign('left').run()}
                   />
                 </Tooltip>
-                <Tooltip title="居中 (Ctrl+Shift+E)">
+                <Tooltip title={withShortcut('居中', 'editor.rich.align-center')}>
                   <Button aria-label="居中"
                     size="small"
                     type={ui?.alignCenter ? 'primary' : 'default'}
@@ -1278,7 +1257,7 @@ export default function RichTextEditor({
                     onClick={() => editor.chain().focus().setTextAlign('center').run()}
                   />
                 </Tooltip>
-                <Tooltip title="右对齐 (Ctrl+Shift+R)">
+                <Tooltip title={withShortcut('右对齐', 'editor.rich.align-right')}>
                   <Button aria-label="右对齐"
                     size="small"
                     type={ui?.alignRight ? 'primary' : 'default'}
@@ -1297,7 +1276,9 @@ export default function RichTextEditor({
                 </Tooltip>
               </Space.Compact>
               <div style={{ borderTop: '1px solid var(--jz-border)', paddingTop: 8 }}>
-                <MarkdownShortcutsHelp />
+                <Button size="small" type="link" style={{ padding: 0 }} onClick={() => openCheatSheet(['global', 'admin', 'editor', 'editor.rich'])}>
+                  键盘快捷键与快捷输入 <Kbd id="global.cheatsheet" />
+                </Button>
               </div>
             </div>
           }
@@ -1402,7 +1383,7 @@ export default function RichTextEditor({
               type="button"
               className={'jz-bubble-btn' + (ui?.bold ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleBold().run()}
-              title="加粗 (Ctrl+B)"
+              title={withShortcut('加粗', 'editor.rich.bold')}
               aria-label="加粗"
             >
               <BoldOutlined />
@@ -1411,7 +1392,7 @@ export default function RichTextEditor({
               type="button"
               className={'jz-bubble-btn' + (ui?.italic ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleItalic().run()}
-              title="斜体 (Ctrl+I)"
+              title={withShortcut('斜体', 'editor.rich.italic')}
               aria-label="斜体"
             >
               <ItalicOutlined />
@@ -1429,7 +1410,7 @@ export default function RichTextEditor({
               type="button"
               className={'jz-bubble-btn' + (ui?.underline ? ' is-active' : '')}
               onClick={() => editor.chain().focus().toggleUnderline().run()}
-              title="下划线 (Ctrl+U)"
+              title={withShortcut('下划线', 'editor.rich.underline')}
               aria-label="下划线"
             >
               <UnderlineOutlined />
@@ -1678,118 +1659,3 @@ function ToolbarBtn({
   );
 }
 
-/**
- * Markdown 快捷输入速查表。
- *
- * 这些规则全部来自 Tiptap StarterKit / TaskList / 自定义扩展的 InputRules，输入
- * 触发字符（通常是空格或回车）后即时变形。表里列的是仍在 v3.23 走通的快捷输入。
- */
-function MarkdownShortcutsHelp() {
-  const groups: Array<{ title: string; rows: Array<[string, string]> }> = [
-    {
-      title: '段落 / 标题',
-      rows: [
-        ['# 空格', '一级标题'],
-        ['## 空格', '二级标题'],
-        ['### 空格', '三级标题'],
-        ['#### 空格', '四级标题'],
-        ['##### 空格', '五级标题'],
-        ['###### 空格', '六级标题'],
-        ['Alt+Ctrl+0', '正文'],
-        ['Alt+Ctrl+1 … 6', '标题1–6'],
-        ['> 空格', '引用块'],
-        ['--- 回车', '分割线'],
-      ],
-    },
-    {
-      title: '行内格式',
-      rows: [
-        ['**粗体**', '粗体'],
-        ['*斜体* 或 _斜体_', '斜体'],
-        ['~~删除线~~', '删除线'],
-        ['`行内代码`', '行内代码'],
-        ['==高亮==', '字体背景色'],
-      ],
-    },
-    {
-      title: '列表 / 任务',
-      rows: [
-        ['- 空格 或 * 空格', '无序列表'],
-        ['1. 空格', '有序列表'],
-        ['[ ] 空格', '任务列表'],
-      ],
-    },
-    {
-      title: '代码块 / 表格',
-      rows: [
-        ['``` 回车', '代码块（可指定语言）'],
-        ['``` mermaid', 'Mermaid 图表'],
-      ],
-    },
-    {
-      title: '块级菜单',
-      rows: [
-        ['/', '唤起 slash 菜单（dmk、yy、glk、mermaid 等拼音）'],
-        ['Ctrl/⌘ + /', '任意位置唤起 slash 菜单'],
-        ['@', '引用其他文档'],
-        ['Ctrl/⌘ + S', '立即保存'],
-        ['Ctrl/⌘ + E', '行内代码'],
-        ['Ctrl/⌘ + K', '插入 / 编辑链接'],
-        ['Ctrl + Shift + P', 'Mermaid 块：切换 图表/源码/分栏'],
-        ['Ctrl + Shift + L/E/R', '左/中/右 对齐'],
-      ],
-    },
-  ];
-
-  return (
-    <div style={{ maxWidth: 420, fontSize: 12 }}>
-      <Typography.Title level={5} style={{ marginTop: 0, marginBottom: 8 }}>
-        快捷输入
-      </Typography.Title>
-      {groups.map((g) => (
-        <div key={g.title} style={{ marginBottom: 10 }}>
-          <div
-            style={{
-              fontWeight: 600,
-              color: 'var(--jz-text-muted)',
-              fontSize: 11,
-              letterSpacing: 0.5,
-              textTransform: 'uppercase',
-              marginBottom: 4,
-            }}
-          >
-            {g.title}
-          </div>
-          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-            <tbody>
-              {g.rows.map(([key, desc]) => (
-                <tr key={key}>
-                  <td
-                    style={{
-                      padding: '2px 8px 2px 0',
-                      whiteSpace: 'nowrap',
-                      color: 'var(--jz-text)',
-                    }}
-                  >
-                    <code
-                      style={{
-                        background: 'var(--jz-surface-2)',
-                        border: '1px solid var(--jz-border)',
-                        padding: '1px 6px',
-                        borderRadius: 3,
-                        fontSize: 11,
-                      }}
-                    >
-                      {key}
-                    </code>
-                  </td>
-                  <td style={{ color: 'var(--jz-text-muted)' }}>{desc}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-    </div>
-  );
-}

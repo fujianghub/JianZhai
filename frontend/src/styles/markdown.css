@@ -422,14 +422,6 @@
 .jz-code-settings-kbd-row {
   justify-content: space-between;
 }
-.jz-code-settings-kbd {
-  font-size: var(--jz-fs-2xs);
-  color: var(--jz-code-toolbar-text);
-  border: 1px solid var(--jz-code-border);
-  border-radius: 4px;
-  padding: 1px 5px;
-  font-family: var(--jz-font-mono);
-}
 .jz-code-settings-submenu {
   position: relative;
 }

@@ -83,6 +83,7 @@ import { formatApiError } from '@/api/client';
 import { message } from '@/utils/notify';
 import { quotesToBatchText } from '@/utils/heroPlayback';
 import { HeroQuoteCard } from '@/components/blog/HeroQuoteRotator';
+import { formatShortcut, getChord, matchesChord } from '@/shortcuts';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -684,7 +685,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                             onKeyDown={(e) => {
                               // Enter inserts a line break (多行题记)；
                               // Ctrl/⌘+Enter commits and closes the row.
-                              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                              if (matchesChord(e.nativeEvent, getChord('admin.hero.save'))) {
                                 e.preventDefault();
                                 commitRow(r.id);
                                 setEditingId(null);
@@ -844,7 +845,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
           </SortableContext>
         </DndContext>
         <Text type="secondary" style={{ fontSize: 12, display: 'block', marginTop: 8 }}>
-          点击行进入编辑，焦点移出或 Ctrl/⌘+回车保存（正文内回车 = 换行）；按住行首 ⠿
+          点击行进入编辑，焦点移出或 {formatShortcut('admin.hero.save')} 保存（正文内回车 = 换行）；按住行首 ⠿
           拖动可调整顺序（「顺序」播放模式按此排列，搜索过滤时暂不可拖动）。
         </Text>
       </Card>

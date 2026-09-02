@@ -1,5 +1,6 @@
 import { keymap, type EditorView } from '@codemirror/view';
 import { enterListAction, indentListLine, dedentListLine } from '../pure/listRules';
+import { CM_KEYS } from '@/shortcuts/registry';
 
 /** 回车续列表 / 空项退出。IME 组合期间放行给 CM 默认处理。 */
 function handleEnter(view: EditorView): boolean {
@@ -74,7 +75,7 @@ function handleShiftTab(view: EditorView): boolean {
 }
 
 export const listKeymap = keymap.of([
-  { key: 'Enter', run: handleEnter },
-  { key: 'Tab', run: handleTab },
-  { key: 'Shift-Tab', run: handleShiftTab },
+  { key: CM_KEYS['editor.markdown.list-continue'], run: handleEnter },
+  { key: CM_KEYS['editor.markdown.list-indent'], run: handleTab },
+  { key: CM_KEYS['editor.markdown.list-outdent'], run: handleShiftTab },
 ]);

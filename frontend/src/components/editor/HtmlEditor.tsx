@@ -8,6 +8,7 @@ import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 import { draftBackupKey } from '@/utils/localDraftBackup';
 import SaveStatusPill from './SaveStatusPill';
 import type { SaveStatus } from './saveStatus';
+import { ariaKeyshortcuts, useShortcut, withShortcut } from '@/shortcuts';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -212,17 +213,7 @@ export default function HtmlEditor({
     }
   }, [onAutoSave, value, status]);
 
-  useEffect(() => {
-    if (readOnly || !onAutoSave) return;
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-        void saveNow();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [saveNow, readOnly, onAutoSave]);
+  useShortcut('editor.save', () => void saveNow(), { enabled: !readOnly && !!onAutoSave });
 
   useEffect(() => {
     onSaveReady?.({ saveNow });
@@ -433,8 +424,8 @@ export default function HtmlEditor({
               重试
             </Button>
           )}
-          <Tooltip title="立即保存 (Ctrl/⌘+S)">
-            <Button aria-label="立即保存"
+          <Tooltip title={withShortcut('立即保存', 'editor.save')}>
+            <Button aria-label="立即保存" aria-keyshortcuts={ariaKeyshortcuts('editor.save')}
               size="small"
               className="jz-toolbar-save-btn"
               type="primary"

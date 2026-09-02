@@ -8,6 +8,7 @@ import {
   type CodeBlockPrefs,
   type IndentMode,
 } from '@/utils/codeBlockPrefs';
+import Kbd from '@/components/common/Kbd';
 
 export interface CodeBlockMoreMenuProps {
   prefs: CodeBlockPrefs;
@@ -123,7 +124,7 @@ export default function CodeBlockMoreMenu({
 
       <button type="button" className="jz-code-settings-item jz-code-settings-kbd-row" onClick={onAutoIndent}>
         <span>自动缩进</span>
-        <kbd className="jz-code-settings-kbd">Ctrl+Shift+F</kbd>
+        <Kbd id="code-block.auto-indent" />
       </button>
 
       {isDiagram && onTogglePreview && (

@@ -17,6 +17,7 @@ import {
 import { useAuthStore } from '@/stores/auth';
 import { ICON_SIZE } from '@/components/common/iconSize';
 import BrandSeal from '@/components/common/BrandSeal';
+import { ariaKeyshortcuts, useShortcut, withShortcut } from '@/shortcuts';
 
 const { Header, Content, Footer } = Layout;
 
@@ -87,16 +88,7 @@ export default function BlogLayout() {
   // *after* the return would be skipped on that render, changing the
   // hook count between renders and crashing with React error #300
   // ("Rendered fewer hooks than expected").
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  useShortcut('blog.search', () => setSearchOpen(true));
 
   // v0.9.8 "friends-only" mode: the deployment was started with
   // SITE_REQUIRE_LOGIN=true. Anonymous visitors to any blog route get
@@ -159,7 +151,7 @@ export default function BlogLayout() {
             icon={<JzRssIcon size={NAV_ICON_SIZE} />}
             external
           />
-          <Tooltip title="搜索 (Ctrl+K)">
+          <Tooltip title={withShortcut('搜索', 'blog.search')}>
             <Button
               type="text"
               className="jz-nav-search-btn"
@@ -169,7 +161,8 @@ export default function BlogLayout() {
                 </span>
               }
               onClick={() => setSearchOpen(true)}
-              aria-label="搜索 (Ctrl+K)"
+              aria-label="搜索"
+              aria-keyshortcuts={ariaKeyshortcuts('blog.search')}
             />
           </Tooltip>
           {authUser ? (

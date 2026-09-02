@@ -29,6 +29,8 @@ import { AIModelBadge } from '@/components/common/AIModelBadge';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import { ICON_SIZE } from '@/components/common/iconSize';
 import BrandSeal from '@/components/common/BrandSeal';
+import { ariaKeyshortcuts, useShortcut, withShortcut } from '@/shortcuts';
+import Kbd from '@/components/common/Kbd';
 
 const { Header, Sider, Content } = Layout;
 
@@ -78,36 +80,11 @@ export default function AdminLayout() {
     signalRouteReady();
   }, [location.pathname]);
 
-  useEffect(() => {
-    function handler(e: KeyboardEvent) {
-      if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
-      const k = e.key.toLowerCase();
-      // ⌘/Ctrl+Shift+Space — quick capture. Was Shift+N, but Chrome / Edge /
-      // Firefox all reserve ⌘/Ctrl+Shift+N for "new incognito window" and swallow
-      // it before the page sees it. Use `code` — with Shift held `key` is still
-      // ' ' but `code` is unambiguous.
-      if (e.shiftKey && e.code === 'Space') {
-        e.preventDefault();
-        setCaptureOpen(true);
-        return;
-      }
-      if (e.shiftKey) return;
-      // ⌘K / Ctrl+K — global full-text search
-      if (k === 'k') {
-        e.preventDefault();
-        setSearchOpen(true);
-      }
-      // ⌘P / Ctrl+P — quick switcher (jump to doc by title). Overrides the
-      // browser print dialog inside /admin — admin pages don't need it; users
-      // who want to print can still File → Print from the menu.
-      if (k === 'p') {
-        e.preventDefault();
-        setSwitcherOpen(true);
-      }
-    }
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
+  // 键位见 shortcuts/registry（admin.*）：速记曾绑 Shift+N，被浏览器无痕窗口截胡；
+  // 快速跳转 Mod+P 刻意覆盖浏览器打印（注册表 conflict 字段会在速查表标注）。
+  useShortcut('admin.quick-capture', () => setCaptureOpen(true));
+  useShortcut('admin.search', () => setSearchOpen(true));
+  useShortcut('admin.quick-switcher', () => setSwitcherOpen(true));
 
   const selectedKey = useMemo(() => {
     if (location.pathname.startsWith('/admin/trash')) return 'trash';
@@ -284,15 +261,16 @@ export default function AdminLayout() {
             onClick={() => setSiderCollapsed((c) => !c)}
             aria-label={siderCollapsed ? '展开菜单' : '收起菜单'}
           />
-          <Tooltip title="搜索 (⌘/Ctrl + K)">
+          <Tooltip title={withShortcut('搜索', 'admin.search')}>
             <Button
               shape="round"
               icon={<JzSearchIcon size={ICON_SIZE.lg} />}
               onClick={() => setSearchOpen(true)}
               className="jz-admin-search"
+              aria-keyshortcuts={ariaKeyshortcuts('admin.search')}
             >
               搜索文档…
-              <kbd className="jz-admin-search-kbd">⌘K</kbd>
+              <Kbd id="admin.search" />
             </Button>
           </Tooltip>
           <div className="jz-admin-header-nav">

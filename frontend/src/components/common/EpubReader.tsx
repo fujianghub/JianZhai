@@ -174,6 +174,7 @@ import {
   type HastNode,
   type PublisherFontRule,
 } from '@/utils/epubReader';
+import { isTypingTarget, useActiveScopes, withShortcut } from '@/shortcuts';
 
 const { Text } = Typography;
 
@@ -242,11 +243,6 @@ function languageMapText(x: unknown): string {
 function contributorsText(x: unknown): string {
   if (Array.isArray(x)) return x.map(languageMapText).filter(Boolean).join('、');
   return languageMapText(x);
-}
-
-function isTypingTarget(t: EventTarget | null): boolean {
-  if (!(t instanceof HTMLElement)) return false;
-  return t.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(t.tagName);
 }
 
 /** Publisher ``font-family`` declarations from the chapter's own sheets (ours skipped). */
@@ -499,6 +495,7 @@ export default function EpubReader({
   initialCfi = null,
   kbSlug = null,
 }: Props) {
+  useActiveScopes(['reader.epub']);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -1966,7 +1963,7 @@ export default function EpubReader({
         </div>
       )}
       <div className="jz-epub-tb-group">
-        <Tooltip {...tip('上一章 (Shift+←)')}>
+        <Tooltip {...tip(withShortcut('上一章', 'reader.epub.prev-chapter'))}>
           <Button
             size="small"
             icon={<StepBackwardOutlined />}
@@ -1974,13 +1971,13 @@ export default function EpubReader({
             aria-label="上一章"
           />
         </Tooltip>
-        <Tooltip {...tip('上一页 (←)')}>
+        <Tooltip {...tip(withShortcut('上一页', 'reader.epub.prev'))}>
           <Button size="small" icon={<LeftOutlined />} onClick={turnPrev} aria-label="上一页" />
         </Tooltip>
-        <Tooltip {...tip('下一页 (→)')}>
+        <Tooltip {...tip(withShortcut('下一页', 'reader.epub.next'))}>
           <Button size="small" icon={<RightOutlined />} onClick={turnNext} aria-label="下一页" />
         </Tooltip>
-        <Tooltip {...tip('下一章 (Shift+→)')}>
+        <Tooltip {...tip(withShortcut('下一章', 'reader.epub.next-chapter'))}>
           <Button
             size="small"
             icon={<StepForwardOutlined />}

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { actionIconSvg } from '@/utils/actionIconSvg';
+import { makeZoomKeyHandler } from '@/utils/zoomKeymap';
 
 /**
  * Double-click any <img> inside the container matched by `selector` → fullscreen
@@ -170,19 +171,8 @@ function mountImageLightbox(src: string, alt: string): () => void {
     if (e.target === overlay) close();
   });
 
-  function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') close();
-    else if (e.key === '0') {
-      e.preventDefault();
-      fit();
-    } else if (e.key === '+' || e.key === '=') {
-      e.preventDefault();
-      zoomBy(1.25);
-    } else if (e.key === '-' || e.key === '_') {
-      e.preventDefault();
-      zoomBy(1 / 1.25);
-    }
-  }
+  // 键位见注册表 lightbox.*（与图表全屏共用 makeZoomKeyHandler）
+  const onKey = makeZoomKeyHandler({ onClose: () => close(), onFit: fit, onZoom: zoomBy });
 
   let closed = false;
   function close() {

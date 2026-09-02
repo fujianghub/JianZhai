@@ -11,6 +11,7 @@ import {
   FontColorsOutlined,
 } from '@ant-design/icons';
 import { TEXT_COLOR_PRESETS } from '../callouts';
+import { withShortcut } from '@/shortcuts';
 
 export type FloatCommand =
   | 'bold'
@@ -30,12 +31,12 @@ interface Props {
 }
 
 const ITEMS: Array<{ cmd: FloatCommand; icon: React.ReactNode; title: string }> = [
-  { cmd: 'bold', icon: <BoldOutlined />, title: '加粗 (Ctrl+B)' },
-  { cmd: 'italic', icon: <ItalicOutlined />, title: '斜体 (Ctrl+I)' },
-  { cmd: 'strike', icon: <StrikethroughOutlined />, title: '删除线 (Ctrl+Shift+X)' },
-  { cmd: 'code', icon: <CodeOutlined />, title: '行内代码 (Ctrl+E)' },
-  { cmd: 'underline', icon: <UnderlineOutlined />, title: '下划线 (Ctrl+U)' },
-  { cmd: 'link', icon: <LinkOutlined />, title: '链接 (Ctrl+K)' },
+  { cmd: 'bold', icon: <BoldOutlined />, title: withShortcut('加粗', 'editor.markdown.bold') },
+  { cmd: 'italic', icon: <ItalicOutlined />, title: withShortcut('斜体', 'editor.markdown.italic') },
+  { cmd: 'strike', icon: <StrikethroughOutlined />, title: withShortcut('删除线', 'editor.markdown.strike') },
+  { cmd: 'code', icon: <CodeOutlined />, title: withShortcut('行内代码', 'editor.markdown.code') },
+  { cmd: 'underline', icon: <UnderlineOutlined />, title: withShortcut('下划线', 'editor.markdown.underline') },
+  { cmd: 'link', icon: <LinkOutlined />, title: withShortcut('链接', 'editor.markdown.link') },
   { cmd: 'clear', icon: <ClearOutlined />, title: '清除格式' },
 ];
 

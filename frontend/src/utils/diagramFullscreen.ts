@@ -1,4 +1,5 @@
 import { actionIconSvg } from './actionIconSvg';
+import { makeZoomKeyHandler } from './zoomKeymap';
 /**
  * Shared diagram fullscreen overlay — mouse-wheel zoom, drag-to-pan,
  * copy SVG, download SVG / PNG, keyboard shortcuts (Esc / 0 / + / -).
@@ -290,27 +291,18 @@ function mountFullscreenOverlay(svg: SVGSVGElement, opts: DiagramFullscreenOptio
     document.removeEventListener('keydown', onKey);
     document.body.style.overflow = '';
   }
-  function onKey(e: KeyboardEvent) {
-    if (e.key === 'Escape') close();
-    else if (e.key === '0') {
-      e.preventDefault();
-      fit();
-    } else if (e.key === '+' || e.key === '=') {
-      e.preventDefault();
-      const next = clampScale(scale * 1.25);
+  // 键位见注册表 lightbox.*（与图片灯箱共用 makeZoomKeyHandler）
+  const onKey = makeZoomKeyHandler({
+    onClose: close,
+    onFit: fit,
+    onZoom: (factor) => {
+      const next = clampScale(scale * factor);
       if (next !== scale) {
         scale = next;
         apply();
       }
-    } else if (e.key === '-' || e.key === '_') {
-      e.preventDefault();
-      const next = clampScale(scale / 1.25);
-      if (next !== scale) {
-        scale = next;
-        apply();
-      }
-    }
-  }
+    },
+  });
   // Backdrop click closes; stage click (even on empty SVG whitespace) does
   // NOT — otherwise initiating a pan from a blank area feels jumpy.
   overlay.addEventListener('click', (e) => {

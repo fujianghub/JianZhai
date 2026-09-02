@@ -24,7 +24,6 @@ import LivePreviewPane from './LivePreviewPane';
 import CodeMirrorMarkdown from './codemirror/CodeMirrorMarkdown';
 import FloatingFormatToolbar, { type FloatCommand } from './codemirror/FloatingFormatToolbar';
 import MathEditorModal from './MathEditorModal';
-import ShortcutCheatSheet from './ShortcutCheatSheet';
 import { listKeymap } from './codemirror/extensions/listKeymap';
 import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
 import { tableAssistKeymap } from './codemirror/extensions/tableAssist';
@@ -73,6 +72,7 @@ import { CaretIcon, TextColorIcon } from '@/components/common/actionIcons';
 import { JzCalloutIcon } from '@/components/common/JzIcon';
 import SaveStatusPill from './SaveStatusPill';
 import type { SaveStatus } from './saveStatus';
+import { ariaKeyshortcuts, getChord, matchesChord, openCheatSheet, useShortcut, withShortcut } from '@/shortcuts';
 
 const { Text } = Typography;
 
@@ -150,7 +150,6 @@ export default function MarkdownEditor({
     displayMode: boolean;
     range: { from: number; to: number };
   }>({ open: false, displayMode: true, range: { from: 0, to: 0 } });
-  const [cheatOpen, setCheatOpen] = useState(false);
   /** Live Preview（就地渲染）开关 + 实例级 Compartment（挂载时装配进 CM）。 */
   const [lpOn, setLpOn] = useState<boolean>(loadLivePreviewOn);
   const lpCompartmentRef = useRef(new Compartment());
@@ -313,17 +312,7 @@ export default function MarkdownEditor({
 
   // Ctrl/⌘+S — manual save. Bound to the document so it fires even when the
   // editor isn't focused (e.g. the user clicked into the preview pane).
-  useEffect(() => {
-    if (readOnly || !onAutoSave) return;
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 's' || e.key === 'S')) {
-        e.preventDefault();
-        void saveNow();
-      }
-    };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [saveNow, readOnly, onAutoSave]);
+  useShortcut('editor.save', () => void saveNow(), { enabled: !readOnly && !!onAutoSave });
 
   useEffect(() => {
     onSaveReady?.({ saveNow });
@@ -521,14 +510,10 @@ export default function MarkdownEditor({
         window.setTimeout(() => setMentionOpen(true), 0);
         return false;
       }
-      // Ctrl/⌘+U — wrap selection with <u>…</u>.
-      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && (e.key === 'u' || e.key === 'U')) {
+      // Mod+U — wrap selection with <u>…</u>（键位见注册表 editor.markdown.underline）。
+      // Mod+/ 速查已上收到 App 级 GlobalShortcuts（capture 阶段，先于 CM6 defaultKeymap 的 Mod-/ toggleComment）。
+      if (matchesChord(e, getChord('editor.markdown.underline'))) {
         surfaceRef.current?.wrapSelection('<u>', '</u>');
-        return true;
-      }
-      // Ctrl/⌘+/ — 快捷键速查
-      if ((e.metaKey || e.ctrlKey) && e.key === '/') {
-        setCheatOpen(true);
         return true;
       }
       return false;
@@ -907,8 +892,8 @@ export default function MarkdownEditor({
         <div className="jz-editor-toolbar-meta">
           <SaveStatusPill status={status} />
           <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
-          <Tooltip title="立即保存 (Ctrl/⌘+S)">
-            <Button aria-label="立即保存"
+          <Tooltip title={withShortcut('立即保存', 'editor.save')}>
+            <Button aria-label="立即保存" aria-keyshortcuts={ariaKeyshortcuts('editor.save')}
               size="small"
               className="jz-toolbar-save-btn"
               type="primary"
@@ -947,7 +932,7 @@ export default function MarkdownEditor({
             </Button>
           </Tooltip>
         </Dropdown>
-        <Tooltip title="加粗 (Ctrl+B)">
+        <Tooltip title={withShortcut('加粗', 'editor.markdown.bold')}>
           <Button aria-label="加粗"
             size="small"
             className="jz-toolbar-icon-btn"
@@ -956,7 +941,7 @@ export default function MarkdownEditor({
             onClick={() => runFormat('bold')}
           />
         </Tooltip>
-        <Tooltip title="斜体 (Ctrl+I)">
+        <Tooltip title={withShortcut('斜体', 'editor.markdown.italic')}>
           <Button aria-label="斜体"
             size="small"
             className="jz-toolbar-icon-btn"
@@ -965,7 +950,7 @@ export default function MarkdownEditor({
             onClick={() => runFormat('italic')}
           />
         </Tooltip>
-        <Tooltip title="删除线 (Ctrl+Shift+X)">
+        <Tooltip title={withShortcut('删除线', 'editor.markdown.strike')}>
           <Button aria-label="删除线"
             size="small"
             className="jz-toolbar-icon-btn"
@@ -974,7 +959,7 @@ export default function MarkdownEditor({
             onClick={() => runFormat('strike')}
           />
         </Tooltip>
-        <Tooltip title="行内代码 (Ctrl+E)">
+        <Tooltip title={withShortcut('行内代码', 'editor.markdown.code')}>
           <Button aria-label="行内代码"
             size="small"
             className="jz-toolbar-icon-btn"
@@ -983,7 +968,7 @@ export default function MarkdownEditor({
             onClick={() => runFormat('code')}
           />
         </Tooltip>
-        <Tooltip title="下划线 (Ctrl+U)">
+        <Tooltip title={withShortcut('下划线', 'editor.markdown.underline')}>
           <Button aria-label="下划线"
             size="small"
             className="jz-toolbar-icon-btn"
@@ -1114,12 +1099,12 @@ export default function MarkdownEditor({
             onClick={toggleLivePreview}
           />
         </Tooltip>
-        <Tooltip title="键盘快捷键 (Ctrl+/)">
+        <Tooltip title={withShortcut('键盘快捷键', 'global.cheatsheet')}>
           <Button aria-label="键盘快捷键"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<QuestionCircleOutlined />}
-            onClick={() => setCheatOpen(true)}
+            onClick={() => openCheatSheet(['global', 'admin', 'editor', 'editor.markdown'])}
           />
         </Tooltip>
         </div>
@@ -1185,7 +1170,6 @@ export default function MarkdownEditor({
         onCancel={() => setMathModal((m) => ({ ...m, open: false }))}
         onSubmit={handleMathSubmit}
       />
-      <ShortcutCheatSheet open={cheatOpen} onClose={() => setCheatOpen(false)} />
     </div>
   );
 }

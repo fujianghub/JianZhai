@@ -8,24 +8,11 @@ import { join, relative, resolve } from 'node:path';
  * `formatShortcut(id)` / `withShortcut(label, id)` / `<Kbd id=…>`，否则 Mac 用户
  * 看到 Ctrl、Windows 用户看到 ⌘（体检时约 28 处记法混乱）。
  *
- * ALLOWLIST 登记的是 B4 阶段尚未迁移的存量文件（B5 逐文件清空）；新文件不得进入。
+ * ALLOWLIST 曾登记 B4 阶段 12 个存量文件，B5 已全部迁移清空；新违规直接红。
  */
 const srcDir = resolve(__dirname, '..');
 
-const ALLOWLIST = new Set<string>([
-  'components/editor/CodeBlockMoreMenu.tsx',
-  'components/editor/HtmlEditor.tsx',
-  'components/editor/MarkdownEditor.tsx',
-  'components/editor/RichTextEditor.tsx',
-  'components/editor/ShortcutCheatSheet.tsx',
-  'components/editor/codemirror/FloatingFormatToolbar.tsx',
-  'components/editor/slashCommandRegistry.ts',
-  'pages/admin/AdminLayout.tsx',
-  'pages/admin/SystemOverviewPage.tsx',
-  'pages/blog/BlogLayout.tsx',
-  'pages/blog/PostDetail.tsx',
-  'utils/codeBlockPreviewPanel.ts',
-]);
+const ALLOWLIST = new Set<string>([]);
 
 /** 允许出现 <kbd> 的地方：Kbd 组件本身 */
 const KBD_ALLOWED = new Set<string>(['components/common/Kbd.tsx']);

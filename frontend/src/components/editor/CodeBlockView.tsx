@@ -56,6 +56,7 @@ import CodeBlockMoreMenu from './CodeBlockMoreMenu';
 import CodeBlockThemeSelect from './CodeBlockThemeSelect';
 import { openDiagramFullscreenFromHtml } from '@/utils/diagramFullscreen';
 import { FullscreenIcon } from '@/components/common/actionIcons';
+import { getChord, matchesChord } from '@/shortcuts';
 
 export default function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const lang = normalizeLanguage((node.attrs.language as string | null) ?? '');
@@ -250,11 +251,12 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
       if (typeof pos !== 'number') return;
       const { from } = editor.state.selection;
       if (from <= pos || from >= pos + node.nodeSize) return;
-      if (e.ctrlKey && e.shiftKey && (e.key === 'f' || e.key === 'F')) {
+      // 键位见注册表 code-block.*（此前只认 ctrlKey，Mac ⌘ 无效）
+      if (matchesChord(e, getChord('code-block.auto-indent'))) {
         e.preventDefault();
         handleAutoIndent();
       }
-      if (e.ctrlKey && e.shiftKey && (e.key === 'p' || e.key === 'P') && isDiagram) {
+      if (isDiagram && matchesChord(e, getChord('code-block.diagram-mode'))) {
         e.preventDefault();
         cycleViewMode();
       }

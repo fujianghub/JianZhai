@@ -34,6 +34,7 @@ import { useAuthStore } from '@/stores/auth';
 import { getSystemInfo, type SystemInfo } from '@/api/admin';
 import { formatApiError } from '@/api/client';
 import { ICON_SIZE } from '@/components/common/iconSize';
+import { formatShortcut } from '@/shortcuts/format';
 
 const { Title, Paragraph, Text } = Typography;
 
@@ -174,7 +175,7 @@ const FEATURE_MODULES: FeatureModule[] = [
   },
   {
     title: '全文搜索',
-    desc: '⌘K 全局搜索；jieba + tsvector GIN 索引',
+    desc: `${formatShortcut('admin.search')} 全局搜索；jieba + tsvector GIN 索引`,
     icon: <JzSearchIcon size={ICON_SIZE.tile} />,
     tone: 'search',
   },

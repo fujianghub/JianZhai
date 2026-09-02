@@ -9,6 +9,7 @@ import {
 import type { Editor } from '@tiptap/core';
 import { findReplaceKey, getFindState } from './findReplace';
 import type { EditorSurfaceHandle } from './surface/EditorSurface';
+import { getChord, matchesChord, withShortcut } from '@/shortcuts';
 
 interface Props {
   open: boolean;
@@ -136,13 +137,13 @@ export default function FindReplacePanel({
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (matchesChord(e, getChord('find.close'))) {
         e.preventDefault();
         onClose();
-      } else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      } else if (matchesChord(e, getChord('find.prev'))) {
         e.preventDefault();
         handleFindPrev();
-      } else if (e.key === 'Enter') {
+      } else if (matchesChord(e, getChord('find.next'))) {
         if ((e.target as HTMLElement).tagName === 'INPUT') {
           e.preventDefault();
           handleFindNext();
@@ -231,7 +232,7 @@ export default function FindReplacePanel({
         <span style={{ minWidth: 56, fontSize: 12, color: 'var(--jz-text-muted)' }}>
           {counter}
         </span>
-        <Tooltip title="上一个 (Ctrl+Enter)">
+        <Tooltip title={withShortcut('上一个', 'find.prev')}>
           <Button aria-label="上一个"
             size="small"
             icon={<ArrowUpOutlined />}
@@ -257,7 +258,7 @@ export default function FindReplacePanel({
             onClick={() => setShowReplace((v) => !v)}
           />
         </Tooltip>
-        <Tooltip title="关闭 (Esc)">
+        <Tooltip title={withShortcut('关闭', 'find.close')}>
           <Button aria-label="关闭" size="small" icon={<CloseOutlined />} onClick={onClose} />
         </Tooltip>
       </Space>

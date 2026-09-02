@@ -11,6 +11,7 @@ import { SquigglyIcon } from './EpubSelectionBar';
 import { HIGHLIGHT_SWATCHES } from '@/utils/epubNotes';
 import type { Highlight, HighlightColor, HighlightStyle } from '@/api/reading';
 import type { SelectionAnchor } from './EpubSelectionBar';
+import { formatShortcut, getChord, matchesChord } from '@/shortcuts';
 
 const { Text } = Typography;
 
@@ -131,12 +132,12 @@ export default function EpubHighlightCard({
         onChange={(e) => setNote(e.target.value)}
         onBlur={() => void save()}
         onKeyDown={(e) => {
-          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+          if (matchesChord(e.nativeEvent, getChord('reader.epub.note-save'))) {
             e.preventDefault();
             void save();
           }
         }}
-        placeholder="写点笔记…（Ctrl/⌘+Enter 保存）"
+        placeholder={`写点笔记…（${formatShortcut('reader.epub.note-save')} 保存）`}
         autoSize={{ minRows: 2, maxRows: 6 }}
         maxLength={10000}
       />

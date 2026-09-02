@@ -69,6 +69,7 @@ import './styles/starry.css';
 import './styles/deepsea.css';
 import './styles/responsive.css';
 import './styles/print.css';
+import GlobalShortcuts from '@/components/common/GlobalShortcuts';
 
 export default function App() {
   return (
@@ -77,6 +78,8 @@ export default function App() {
       <PointerSpotlight />
       {/* 导出实况胶囊：挂在路由外，任务进行中跨页面常驻（stores/exportWatch） */}
       <ExportCapsule />
+      {/* 快捷键速查宿主：Mod+/ 与 ?（输入区外）按当前作用域打开（shortcuts/registry） */}
+      <GlobalShortcuts />
       <ErrorBoundary context="root">
       <Suspense fallback={<RouteFallback />}>
       <Routes>

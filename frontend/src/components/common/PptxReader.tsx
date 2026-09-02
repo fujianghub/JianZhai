@@ -24,6 +24,7 @@ import {
 } from '@ant-design/icons';
 import { fetchPostSlides } from '@/api/blog';
 import type { Slide, SlideStatus } from '@/types';
+import { useActiveScopes } from '@/shortcuts';
 
 interface Props {
   slides: Slide[];
@@ -53,6 +54,7 @@ export default function PptxReader({
   error,
   pollInterval = POLL_MS,
 }: Props) {
+  useActiveScopes(['reader.pptx']);
   const [slides, setSlides] = useState<Slide[]>(initial);
   const [active, setActive] = useState(0);
   const [zoom, setZoom] = useState(1);

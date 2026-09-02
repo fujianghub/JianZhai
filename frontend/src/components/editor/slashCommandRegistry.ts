@@ -28,6 +28,7 @@ import {
 } from '@/components/common/JzIcon';
 import { ICON_SIZE } from '@/components/common/iconSize';
 import { AlignCenterOutlined, AlignLeftOutlined, AlignRightOutlined, LinkOutlined } from '@ant-design/icons';
+import { formatShortcut } from '@/shortcuts/format';
 
 /** Mermaid templates — shared by slash menu, CodeBlockView, and markdown insert. */
 export const MERMAID_TEMPLATES = {
@@ -200,7 +201,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
       category: '基础',
       icon: createElement(LinkOutlined),
       title: '超链接',
-      description: aliasDesc('lj', 'link') || 'Ctrl+K',
+      description: aliasDesc('lj', 'link') || formatShortcut('editor.rich.link'),
       aliases: ['lj', 'link', 'lianjie'],
       keywords: ['link', 'url', 'href', '链接', '超链接'],
       menuSection: '基础',
@@ -399,7 +400,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
       category: '对齐',
       icon: createElement(AlignLeftOutlined),
       title: '左对齐',
-      description: 'Ctrl+Shift+L',
+      description: formatShortcut('editor.rich.align-left'),
       keywords: ['align', 'left', '左', '对齐'],
       richTextOnly: true,
       command: ({ editor, range }) =>
@@ -410,7 +411,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
       category: '对齐',
       icon: createElement(AlignCenterOutlined),
       title: '居中',
-      description: 'Ctrl+Shift+E',
+      description: formatShortcut('editor.rich.align-center'),
       keywords: ['align', 'center', '居中', '中', '对齐'],
       richTextOnly: true,
       command: ({ editor, range }) =>
@@ -421,7 +422,7 @@ export function buildSlashCommands(): SlashCommandItem[] {
       category: '对齐',
       icon: createElement(AlignRightOutlined),
       title: '右对齐',
-      description: 'Ctrl+Shift+R',
+      description: formatShortcut('editor.rich.align-right'),
       keywords: ['align', 'right', '右', '对齐'],
       richTextOnly: true,
       command: ({ editor, range }) =>

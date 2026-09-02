@@ -99,6 +99,7 @@ import LongImageEnhancer from '@/components/common/LongImageEnhancer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ICON_SIZE } from '@/components/common/iconSize';
 import { CloseIcon } from '@/components/common/actionIcons';
+import { formatShortcut, useActiveScopes, useShortcut, withShortcut } from '@/shortcuts';
 
 const { Title, Text } = Typography;
 
@@ -312,14 +313,7 @@ export default function PostDetail() {
     return () => document.body.classList.remove('jz-reader-focus');
   }, [focusMode]);
 
-  useEffect(() => {
-    if (!focusMode) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === 'Escape') setFocusMode(false);
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [focusMode]);
+  useShortcut('post.exit-focus', () => setFocusMode(false), { enabled: focusMode });
 
   // ── Reading-position memory ──────────────────────────────────────────
   // Progress is saved per-slug (localStorage) as the reader scrolls; on a
@@ -415,37 +409,11 @@ export default function PostDetail() {
     return () => document.body.classList.remove('jz-post-inline-edit');
   }, [pageMode]);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const target = e.target as HTMLElement | null;
-      const inField =
-        !!target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable);
-
-      if (pageMode === 'edit' && e.key === 'Escape') {
-        e.preventDefault();
-        void exitEditMode();
-        return;
-      }
-
-      if (pageMode !== 'read' || !canEdit) return;
-
-      const isE = e.key === 'e' || e.key === 'E';
-      if (isE && !e.metaKey && !e.ctrlKey && !e.altKey && !inField) {
-        e.preventDefault();
-        void enterEditMode();
-        return;
-      }
-      if ((e.metaKey || e.ctrlKey) && isE) {
-        e.preventDefault();
-        void enterEditMode();
-      }
-    }
-    window.addEventListener('keydown', onKey, true);
-    return () => window.removeEventListener('keydown', onKey, true);
-  }, [pageMode, canEdit, enterEditMode, exitEditMode]);
+  // 键位见注册表 post.*：E（输入区外）/ Mod+E 进入编辑，Esc（capture）保存退出
+  useShortcut('post.exit-edit', () => void exitEditMode(), { enabled: pageMode === 'edit', capture: true });
+  useShortcut('post.edit', () => void enterEditMode(), { enabled: pageMode === 'read' && canEdit, capture: true });
+  useShortcut('post.edit-alt', () => void enterEditMode(), { enabled: pageMode === 'read' && canEdit, capture: true });
+  useActiveScopes(pageMode === 'edit' ? ['post', 'editor', 'editor.rich'] : ['post']);
   /** TOC visibility — persisted per browser, defaults to shown. */
   // Narrow-screen / focus-mode overlay drawers. Deliberately NOT persisted:
   // a drawer auto-opening on page load from a stale localStorage flag would
@@ -874,7 +842,7 @@ export default function PostDetail() {
                     <Tooltip
                       title={
                         focusMode
-                          ? '退出专注阅读 (Esc)'
+                          ? withShortcut('退出专注阅读', 'post.exit-focus')
                           : '专注阅读：隐藏导航栏与侧栏，沉浸读正文'
                       }
                     >
@@ -935,7 +903,7 @@ export default function PostDetail() {
                       <Tooltip
                         placement="bottom"
                         mouseEnterDelay={0.3}
-                        title="在当前页原地编辑正文，无需跳转；快捷键 E 或 Ctrl+E"
+                        title={`在当前页原地编辑正文，无需跳转；快捷键 ${formatShortcut('post.edit')} 或 ${formatShortcut('post.edit-alt')}`}
                       >
                         <Button
                           size="small"
@@ -956,7 +924,7 @@ export default function PostDetail() {
                         <Tooltip
                           placement="bottom"
                           mouseEnterDelay={0.3}
-                          title="保存修改并返回阅读模式；快捷键 Esc"
+                          title={`保存修改并返回阅读模式；快捷键 ${formatShortcut('post.exit-edit')}`}
                         >
                           <Button
                             size="small"
@@ -1240,7 +1208,7 @@ export default function PostDetail() {
       </Drawer>
 
       {focusMode && (
-        <Tooltip title="退出专注阅读 (Esc)" placement="left">
+        <Tooltip title={withShortcut('退出专注阅读', 'post.exit-focus')} placement="left">
           <Button
             type="default"
             shape="circle"

@@ -10,6 +10,7 @@ import {
   applyPrefsToBlockElement,
   type CodeBlockPrefs,
 } from './codeBlockPrefs';
+import { kbdHtml } from '@/shortcuts/format';
 
 let openPanel: HTMLElement | null = null;
 let openAnchor: HTMLElement | null = null;
@@ -80,7 +81,7 @@ function buildPanelHtml(prefs: CodeBlockPrefs): string {
     `<div class="jz-code-settings-divider"></div>` +
     switchRow('wrap', '自动换行', prefs.wrap) +
     switchRow('line-numbers', '行号', prefs.lineNumbers) +
-    `<button type="button" class="jz-code-settings-item jz-code-settings-kbd-row" data-action="auto-indent"><span>自动缩进</span><kbd class="jz-code-settings-kbd">Ctrl+Shift+F</kbd></button>` +
+    `<button type="button" class="jz-code-settings-item jz-code-settings-kbd-row" data-action="auto-indent"><span>自动缩进</span>${kbdHtml('code-block.auto-indent')}</button>` +
     `<div class="jz-code-settings-divider"></div>` +
     `<button type="button" class="jz-code-settings-item" data-action="sync-style">同步样式到全文</button>` +
     `<button type="button" class="jz-code-settings-item" data-action="sync-hide-titles">${prefs.hideAllTitleBars ? '显示全文代码块标题栏' : '隐藏全文代码块标题栏'}</button>`

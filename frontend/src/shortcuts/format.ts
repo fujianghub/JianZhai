@@ -108,3 +108,13 @@ export function ariaKeyshortcuts(idOrChord: string): string {
   if (!c.mod) return rest;
   return `Meta+${rest} Control+${rest}`;
 }
+
+/** innerHTML 面的键帽（代码块设置面板等无 React 处）；文本经转义。 */
+export function kbdHtml(id: string, platform: Platform = detectPlatform()): string {
+  const parts = formatChord(getChord(id), platform);
+  const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+  const inner = parts
+    .map((p, i) => `<span class="jz-kbd-key">${platform !== 'mac' && i > 0 ? '<span class="jz-kbd-sep" aria-hidden="true">+</span>' : ''}${esc(p)}</span>`)
+    .join('');
+  return `<kbd class="jz-kbd" aria-keyshortcuts="${ariaKeyshortcuts(id)}">${inner}</kbd>`;
+}

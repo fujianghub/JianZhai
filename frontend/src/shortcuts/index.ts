@@ -19,6 +19,8 @@ export {
   formatShortcut,
   withShortcut,
   ariaKeyshortcuts,
+  kbdHtml,
   type Platform,
 } from './format';
 export { useShortcut, type UseShortcutOptions, type ShortcutHandler } from './useShortcut';
+export { useCheatSheetStore, openCheatSheet, useActiveScopes } from './cheatSheetStore';

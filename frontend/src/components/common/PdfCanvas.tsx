@@ -32,6 +32,7 @@ import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import PdfTocPanel from './PdfTocPanel';
 import { getPdfOutline, type PdfTocEntry } from '@/utils/pdfOutline';
 import { OpenInNewIcon } from '@/components/common/actionIcons';
+import { useActiveScopes } from '@/shortcuts';
 
 interface Props {
   url: string;
@@ -61,6 +62,7 @@ export default function PdfCanvas({
   height = 'min(calc(100vh - 200px), 1100px)',
   scroll = 'inner',
 }: Props) {
+  useActiveScopes(['reader.pdf']);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [doc, setDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);

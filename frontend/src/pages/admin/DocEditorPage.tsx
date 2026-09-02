@@ -79,6 +79,7 @@ import {
   type EditorSurfaceHandle,
 } from '@/components/editor/surface/EditorSurface';
 import { CloseIcon } from '@/components/common/actionIcons';
+import { formatShortcut, useActiveScopes, useShortcut, withShortcut } from '@/shortcuts';
 
 type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf' | 'pptx' | 'epub';
 type ContentSource = 'raw' | 'published';
@@ -234,43 +235,23 @@ export default function DocEditorPage({
     [htmlTextarea],
   );
 
-  // Ctrl/⌘+F → 唤起查找面板；F9 → 切换专注写作模式
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && (e.key === 'f' || e.key === 'F')) {
-        if (mode === 'rich' || mode === 'markdown' || mode === 'html') {
-          e.preventDefault();
-          setFindOpen(true);
-        }
-      }
-      if (e.key === 'F9') {
-        const active = document.activeElement;
-        const inTitleField =
-          active instanceof HTMLInputElement &&
-          active.classList.contains('jz-doc-title-input');
-        if (!inTitleField) {
-          e.preventDefault();
-          setFocusMode((v) => !v);
-        }
-      }
-    }
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [mode]);
+  // 键位见 shortcuts/registry（editor.*）
+  const textMode = mode === 'rich' || mode === 'markdown' || mode === 'html';
+  useShortcut('editor.find', () => setFindOpen(true), { enabled: textMode });
+  useShortcut('editor.focus', () => {
+    const active = document.activeElement;
+    const inTitleField = active instanceof HTMLInputElement && active.classList.contains('jz-doc-title-input');
+    if (inTitleField) return false;
+    setFocusMode((v) => !v);
+  });
+  useActiveScopes(textMode ? ['editor', `editor.${mode}` as const] : []);
 
   useEffect(() => {
     docRef.current = doc;
   }, [doc]);
 
-  // Escape 退出专注模式（避免干扰编辑器内的 Escape 处理，只在 focusMode 时挂载）
-  useEffect(() => {
-    if (!focusMode) return;
-    function onEsc(e: KeyboardEvent) {
-      if (e.key === 'Escape') setFocusMode(false);
-    }
-    window.addEventListener('keydown', onEsc, true);
-    return () => window.removeEventListener('keydown', onEsc, true);
-  }, [focusMode]);
+  // Escape 退出专注模式（capture 抢在编辑器之前；只在 focusMode 时生效）
+  useShortcut('editor.focus-exit', () => setFocusMode(false), { enabled: focusMode, capture: true });
 
   useEffect(() => {
     const seq = ++kbLoadSeqRef.current;
@@ -666,7 +647,7 @@ export default function DocEditorPage({
               onClick={() => setOutlineOpen((v) => !v)}
             />
           </Tooltip>
-          <Tooltip title="退出专注写作模式 (Esc / F9)">
+          <Tooltip title={`退出专注写作模式 (${formatShortcut('editor.focus-exit')} / ${formatShortcut('editor.focus')})`}>
             <Button aria-label="退出专注写作模式" icon={<CompressOutlined />} onClick={() => setFocusMode(false)}>
               退出专注
             </Button>
@@ -798,7 +779,7 @@ export default function DocEditorPage({
                 onClick={() => setOutlineOpen((v) => !v)}
               />
             </Tooltip>
-            <Tooltip title="专注写作模式 (F9)">
+            <Tooltip title={withShortcut('专注写作模式', 'editor.focus')}>
               <Button aria-label="专注写作模式" size="small" type="text" icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
             </Tooltip>
           </span>
