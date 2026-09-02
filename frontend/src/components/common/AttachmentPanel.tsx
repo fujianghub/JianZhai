@@ -95,7 +95,7 @@ export default function AttachmentPanel({ documentId, compact = false }: Props) 
                   title="删除该附件？"
                   onConfirm={() => handleDelete(a.id)}
                 >
-                  <Button size="small" type="text" icon={<DeleteOutlined />} />
+                  <Button size="small" type="text" icon={<DeleteOutlined />} aria-label="删除附件" title="删除附件" />
                 </Popconfirm>,
               ]}
             >

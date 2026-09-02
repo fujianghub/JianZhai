@@ -3,7 +3,8 @@
  * "存为文档" (creates a Markdown document in a chosen KB) for authors.
  */
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Input, Modal, Select, Space, Typography, message } from 'antd';
+import { Button, Input, Modal, Select, Space, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { CopyOutlined, DownloadOutlined, FileAddOutlined } from '@ant-design/icons';
 import { listKBs } from '@/api/kbs';
 import { createDocument } from '@/api/docs';

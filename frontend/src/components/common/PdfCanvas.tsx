@@ -476,6 +476,8 @@ export default function PdfCanvas({
         <Button
           size="small"
           icon={<LeftOutlined />}
+          aria-label="上一页"
+          title="上一页"
           disabled={page <= 1}
           onClick={() => scrollToPage(page - 1)}
         />
@@ -485,6 +487,8 @@ export default function PdfCanvas({
         <Button
           size="small"
           icon={<RightOutlined />}
+          aria-label="下一页"
+          title="下一页"
           disabled={page >= pageCount}
           onClick={() => scrollToPage(page + 1)}
         />

@@ -449,6 +449,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
             <Button
               size="small"
               type="text"
+              aria-label="复制代码"
               className="jz-code-toolbar-icon"
               icon={copied === 'ok' ? <CheckOutlined /> : <CopyOutlined />}
               onClick={handleCopy}

@@ -10,8 +10,8 @@ import {
   Tag,
   Tooltip,
   Typography,
-  message,
 } from 'antd';
+import { message } from '@/utils/notify';
 import {
   CheckCircleOutlined,
   WarningOutlined,
@@ -73,7 +73,9 @@ export default function AIManagementPage() {
     apiClient
       .get<UsageResponse>(`/ai/usage/?days=${days}`)
       .then(({ data }) => !cancelled && setUsage(data))
-      .catch((e) => !cancelled && message.warning('用量加载失败：' + formatApiError(e)));
+      .catch((e) => {
+        if (!cancelled) message.warning('用量加载失败：' + formatApiError(e));
+      });
     return () => {
       cancelled = true;
     };

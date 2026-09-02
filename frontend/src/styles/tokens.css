@@ -33,6 +33,19 @@
   --jz-code-inline-bg: color-mix(in srgb, var(--jz-accent) 8%, transparent);
   --jz-code-inline-border: color-mix(in srgb, var(--jz-accent) 16%, transparent);
   --jz-gold: #ecac12;
+  /* ── JzIcon 图标令牌（2026-09-02 提升到 :root）──
+     此前只定义在 .jz-glass 作用域：portal 到 <body> 的斜杠菜单 / emoji 建议 /
+     表格浮层拿不到，`fill="var(--jz-icon-fill)"` 计算为 none，插入图标只剩
+     线稿 + 一个彩点。这里给全站兜底；theme.css 的 glass 块仍可细化
+     （--jz-icon-stroke 在 glass 内改用 --glass-text-muted）。accent 覆盖挂在
+     html[data-theme]，color-mix 派生值随主题自动重算。 */
+  --jz-icon-stroke: var(--jz-text-muted);
+  --jz-icon-stroke-active: var(--jz-accent);
+  --jz-icon-fill: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  --jz-icon-fill-strong: color-mix(in srgb, var(--jz-accent) 22%, transparent);
+  --jz-icon-spot: var(--jz-accent);
+  /* AI 面板识别色（刻意的页面识别色，非 accent；此前散落 #6366f1/#4f46e5） */
+  --jz-ai-accent: #6366f1;
   /* ── 字体令牌（2026-08-10）──
      唯一允许出现裸 font-family 栈的地方（@font-face 唯一入口 = fonts.css）；
      JS 侧副本在 utils/fontStacks.ts，两边逐字一致由 fontStacks.test.ts 锁定。
@@ -155,6 +168,7 @@
   --jz-cell-surface: #12141a;
   --jz-cell-surface-2: #16181e;
   --jz-gold: #f0c45a;
+  --jz-ai-accent: #a5b4fc;
 }
 
 /* ── Reset ── 浏览器默认 8px body margin 会在四周留白；强制铺满 */
@@ -216,6 +230,7 @@ textarea {
   --jz-cell-surface: #0e1530;
   --jz-cell-surface-2: #0a1024;
   --jz-gold: #c4b5fd;
+  --jz-ai-accent: #a5b4fc;
 }
 [data-theme='starry'] body {
   background-image:
@@ -242,6 +257,7 @@ textarea {
   --jz-cell-surface: #062a48;
   --jz-cell-surface-2: #04223a;
   --jz-gold: #5eead4;
+  --jz-ai-accent: #a5b4fc;
 }
 [data-theme='deepsea'] body {
   background-image:

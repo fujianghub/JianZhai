@@ -54,8 +54,8 @@ import {
   Spin,
   Tooltip,
   Typography,
-  message,
 } from 'antd';
+import { message } from '@/utils/notify';
 import {
   BookFilled,
   BookOutlined,

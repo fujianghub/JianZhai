@@ -364,17 +364,11 @@
   border-radius: 6px;
   border: 1px solid var(--jz-border);
   background: var(--jz-surface-raised, #fafafa);
-  color: #4f46e5;
+  color: var(--jz-ai-accent);
 }
 
 .jz-ai-menu-item-icon .jz-icon {
   color: currentColor;
-}
-
-[data-theme='dark'] .jz-ai-menu-item-icon,
-[data-theme='starry'] .jz-ai-menu-item-icon,
-[data-theme='deepsea'] .jz-ai-menu-item-icon {
-  color: #a5b4fc;
 }
 
 .jz-ai-menu-item-body {

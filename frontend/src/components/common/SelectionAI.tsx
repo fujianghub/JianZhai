@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useRef, useState } from 'react';
-import { Dropdown, Input, message } from 'antd';
+import { Dropdown, Input } from 'antd';
+import { message } from '@/utils/notify';
 import { JzAiAskIcon, JzAiSparkIcon } from '@/components/common/JzIcon';
 import { streamAI, type AIOperation } from '@/api/ai';
 import { getResolvedAIModelId } from '@/utils/aiModel';
@@ -259,7 +260,7 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider, hideTr
           <div className="jz-ai-panel" onClick={(e) => e.stopPropagation()}>
             <div className="jz-ai-panel-header">
               <span className="jz-ai-panel-title">自由提问</span>
-              <button type="button" className="jz-ai-panel-close" onClick={closePanel}>
+              <button type="button" className="jz-ai-panel-close" aria-label="关闭" onClick={closePanel}>
                 ×
               </button>
             </div>

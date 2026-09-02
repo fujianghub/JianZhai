@@ -100,7 +100,7 @@ export function DocAIPanel({ content, title, modelOverride }: Props) {
       <Drawer
         title={
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <JzAiIcon size={16} style={{ color: '#6366f1' }} />
+            <JzAiIcon size={16} style={{ color: 'var(--jz-ai-accent)' }} />
             AI 助手
             {modelLabel && <span className="jz-ai-panel-chip">{modelLabel}</span>}
           </span>

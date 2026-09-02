@@ -216,7 +216,7 @@ export default function FindReplacePanel({
           style={{ flex: 1 }}
         />
         <Tooltip title="区分大小写">
-          <Button
+          <Button aria-label="区分大小写"
             size="small"
             type={caseSensitive ? 'primary' : 'default'}
             onClick={() => setCaseSensitive((v) => !v)}
@@ -232,7 +232,7 @@ export default function FindReplacePanel({
           {counter}
         </span>
         <Tooltip title="上一个 (Ctrl+Enter)">
-          <Button
+          <Button aria-label="上一个"
             size="small"
             icon={<ArrowUpOutlined />}
             disabled={total === 0}
@@ -240,7 +240,7 @@ export default function FindReplacePanel({
           />
         </Tooltip>
         <Tooltip title="下一个 (Enter)">
-          <Button
+          <Button aria-label="下一个"
             size="small"
             icon={<ArrowDownOutlined />}
             disabled={total === 0}
@@ -250,13 +250,15 @@ export default function FindReplacePanel({
         <Tooltip title={showReplace ? '收起替换' : '展开替换'}>
           <Button
             size="small"
+            aria-label="替换"
+            aria-pressed={showReplace}
             icon={<RetweetOutlined />}
             type={showReplace ? 'primary' : 'default'}
             onClick={() => setShowReplace((v) => !v)}
           />
         </Tooltip>
         <Tooltip title="关闭 (Esc)">
-          <Button size="small" icon={<CloseOutlined />} onClick={onClose} />
+          <Button aria-label="关闭" size="small" icon={<CloseOutlined />} onClick={onClose} />
         </Tooltip>
       </Space>
       {showReplace && (

@@ -80,10 +80,11 @@ export default function AdminLayout() {
     function handler(e: KeyboardEvent) {
       if (!(e.metaKey || e.ctrlKey) || e.altKey) return;
       const k = e.key.toLowerCase();
-      // ⌘+Shift+N — quick capture (must check first; the n key would also
-      // bubble up to the ⌘+N "new window" but the shift discriminator
-      // separates them).
-      if (e.shiftKey && k === 'n') {
+      // ⌘/Ctrl+Shift+Space — quick capture. Was Shift+N, but Chrome / Edge /
+      // Firefox all reserve ⌘/Ctrl+Shift+N for "new incognito window" and swallow
+      // it before the page sees it. Use `code` — with Shift held `key` is still
+      // ' ' but `code` is unambiguous.
+      if (e.shiftKey && e.code === 'Space') {
         e.preventDefault();
         setCaptureOpen(true);
         return;

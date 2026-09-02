@@ -14,7 +14,8 @@
  * decision 2026-09-02: keep, never auto-delete).
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Dropdown, message } from 'antd';
+import { Dropdown } from 'antd';
+import { message } from '@/utils/notify';
 import { createComment } from '@/api/comments';
 import {
   createHighlight,

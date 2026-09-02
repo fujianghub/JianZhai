@@ -78,7 +78,7 @@ export default function CommentsPanel({ documentId, compact = false }: Props) {
             <List.Item
               actions={[
                 <Popconfirm key="del" title="删除该评论？" onConfirm={() => handleDelete(c.id)}>
-                  <Button size="small" type="text" icon={<DeleteOutlined />} />
+                  <Button size="small" type="text" icon={<DeleteOutlined />} aria-label="删除评论" title="删除评论" />
                 </Popconfirm>,
               ]}
             >

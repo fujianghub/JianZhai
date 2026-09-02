@@ -483,13 +483,13 @@ export default function ImageNodeView({
           <>
             <div className="jz-image-toolbar jz-image-toolbar-expanded" contentEditable={false}>
               <Tooltip title="逆时针旋转 90°">
-                <button type="button" className="jz-image-toolbar-btn"
+                <button type="button" className="jz-image-toolbar-btn" aria-label="逆时针旋转 90°"
                   onClick={(e) => { e.stopPropagation(); rotate(-90); }}>
                   <RotateLeftOutlined />
                 </button>
               </Tooltip>
               <Tooltip title="顺时针旋转 90°">
-                <button type="button" className="jz-image-toolbar-btn"
+                <button type="button" className="jz-image-toolbar-btn" aria-label="顺时针旋转 90°"
                   onClick={(e) => { e.stopPropagation(); rotate(90); }}>
                   <RotateRightOutlined />
                 </button>
@@ -534,19 +534,19 @@ export default function ImageNodeView({
 
               <span className="jz-image-toolbar-divider" />
               <Tooltip title="左对齐">
-                <button type="button" className={'jz-image-toolbar-btn' + (align === 'left' ? ' is-active' : '')}
+                <button type="button" className={'jz-image-toolbar-btn' + (align === 'left' ? ' is-active' : '')} aria-label="左对齐" aria-pressed={align === 'left'}
                   onClick={(e) => { e.stopPropagation(); setAlign('left'); }}>
                   <AlignLeftOutlined />
                 </button>
               </Tooltip>
               <Tooltip title="居中">
-                <button type="button" className={'jz-image-toolbar-btn' + (align === 'center' ? ' is-active' : '')}
+                <button type="button" className={'jz-image-toolbar-btn' + (align === 'center' ? ' is-active' : '')} aria-label="居中" aria-pressed={align === 'center'}
                   onClick={(e) => { e.stopPropagation(); setAlign('center'); }}>
                   <AlignCenterOutlined />
                 </button>
               </Tooltip>
               <Tooltip title="右对齐">
-                <button type="button" className={'jz-image-toolbar-btn' + (align === 'right' ? ' is-active' : '')}
+                <button type="button" className={'jz-image-toolbar-btn' + (align === 'right' ? ' is-active' : '')} aria-label="右对齐" aria-pressed={align === 'right'}
                   onClick={(e) => { e.stopPropagation(); setAlign('right'); }}>
                   <AlignRightOutlined />
                 </button>

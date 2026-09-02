@@ -330,7 +330,7 @@ function AvatarTab({ onChanged }: { onChanged: () => void }) {
               setFileList([]);
             }}
           >
-            <button type="button" style={{ border: 0, background: 'none' }}>
+            <button type="button" style={{ border: 0, background: 'none' }} aria-label="选择头像图片">
               <UploadOutlined />
               <div style={{ marginTop: 8 }}>选择图片</div>
             </button>

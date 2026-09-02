@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Popover, Select, Tag as AntTag, Tooltip, message } from 'antd';
+import { Popover, Select, Tag as AntTag, Tooltip } from 'antd';
+import { message } from '@/utils/notify';
 import { BgColorsOutlined } from '@ant-design/icons';
 import * as tagsApi from '@/api/tags';
 import type { Tag } from '@/api/tags';

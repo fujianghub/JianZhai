@@ -15,7 +15,7 @@ interface Props {
   onClose: () => void;
 }
 
-/** Friction-free "速记" modal triggered by Cmd/Ctrl+Shift+N from AdminLayout.
+/** Friction-free "速记" modal triggered by Cmd/Ctrl+Shift+Space from AdminLayout.
  *  Enter submits, Shift+Enter inserts a newline, Esc closes. KB choice is
  *  remembered in localStorage so subsequent captures land in one keystroke. */
 export default function QuickCaptureModal({ open, onClose }: Props) {

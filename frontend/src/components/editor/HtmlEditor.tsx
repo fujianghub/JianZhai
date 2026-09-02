@@ -402,7 +402,7 @@ export default function HtmlEditor({
         {legacyAttachmentUrl && (
           <div className="jz-html-toolbar-legacy">
             <Tooltip title="按 UTF-8 重新读取原 HTML">
-              <Button
+              <Button aria-label="按 UTF-8 重新读取原 HTML"
                 size="small"
                 icon={<ReloadOutlined />}
                 disabled={hydrating}
@@ -412,7 +412,7 @@ export default function HtmlEditor({
               </Button>
             </Tooltip>
             <Tooltip title="按 GBK 重新读取原 HTML（中文老文件常见）">
-              <Button
+              <Button aria-label="按 GBK 重新读取原 HTML"
                 size="small"
                 icon={<ReloadOutlined />}
                 disabled={hydrating}
@@ -444,7 +444,7 @@ export default function HtmlEditor({
             </Button>
           )}
           <Tooltip title="立即保存 (Ctrl/⌘+S)">
-            <Button
+            <Button aria-label="立即保存"
               size="small"
               className="jz-toolbar-save-btn"
               type="primary"

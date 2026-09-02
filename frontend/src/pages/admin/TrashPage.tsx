@@ -7,8 +7,8 @@ import {
   Table,
   Tabs,
   Typography,
-  message,
 } from 'antd';
+import { message } from '@/utils/notify';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { DeleteOutlined, UndoOutlined } from '@ant-design/icons';
 import { Link } from 'react-router-dom';
@@ -78,7 +78,9 @@ export default function TrashPage() {
         setDocs(data.documents.results);
         setDocCount(data.documents.count);
       })
-      .catch((err) => message.error(formatApiError(err, '加载回收站失败')))
+      .catch((err) => {
+        message.error(formatApiError(err, '加载回收站失败'));
+      })
       .finally(() => setLoading(false));
   }, [kbPage, docPage]);
 

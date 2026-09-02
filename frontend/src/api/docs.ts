@@ -121,7 +121,7 @@ export interface QuickCaptureResponse {
 }
 
 /** Create a small scratch doc in the chosen inbox KB — friction-free path
- *  for the global Cmd/Ctrl+Shift+N capture modal. */
+ *  for the global Cmd/Ctrl+Shift+Space capture modal. */
 export async function quickCapture(knowledgeBaseId: number, text: string): Promise<QuickCaptureResponse> {
   await ensureCsrf();
   const { data } = await apiClient.post<QuickCaptureResponse>('/documents/quick-capture/', {

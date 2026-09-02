@@ -20,8 +20,8 @@ import {
   Table,
   Tag,
   Typography,
-  message,
 } from 'antd';
+import { message } from '@/utils/notify';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import {
   type AIPromptTemplate,

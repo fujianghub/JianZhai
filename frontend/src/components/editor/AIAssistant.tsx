@@ -1,5 +1,6 @@
 import { createElement, useCallback, useEffect, useRef, useState } from 'react';
-import { Dropdown, Tooltip, message } from 'antd';
+import { Dropdown, Tooltip } from 'antd';
+import { message } from '@/utils/notify';
 import { JzAiSparkIcon } from '@/components/common/JzIcon';
 import type { Editor } from '@tiptap/core';
 import { describeAIError, getCapabilities, runAI, streamAI, type AIErrorPayload } from '@/api/ai';
@@ -294,7 +295,7 @@ export function AIAssistantMenu({ editor, fallbackContent }: Props) {
           <div className="jz-ai-panel" style={{ width: 'min(400px, 100%)' }} onClick={(e) => e.stopPropagation()}>
             <div className="jz-ai-panel-header">
               <span className="jz-ai-panel-title">AI 生成段落</span>
-              <button type="button" className="jz-ai-panel-close" onClick={() => setPromptOpen(false)}>
+              <button type="button" className="jz-ai-panel-close" aria-label="关闭" onClick={() => setPromptOpen(false)}>
                 ×
               </button>
             </div>

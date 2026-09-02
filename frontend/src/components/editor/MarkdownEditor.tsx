@@ -917,7 +917,7 @@ export default function MarkdownEditor({
           </Tag>
           <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
           <Tooltip title="立即保存 (Ctrl/⌘+S)">
-            <Button
+            <Button aria-label="立即保存"
               size="small"
               className="jz-toolbar-save-btn"
               type="primary"
@@ -951,13 +951,13 @@ export default function MarkdownEditor({
           }}
         >
           <Tooltip title="标题 / 引用">
-            <Button size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
+            <Button aria-label="标题 / 引用" size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
               H ▾
             </Button>
           </Tooltip>
         </Dropdown>
         <Tooltip title="加粗 (Ctrl+B)">
-          <Button
+          <Button aria-label="加粗"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<BoldOutlined />}
@@ -966,7 +966,7 @@ export default function MarkdownEditor({
           />
         </Tooltip>
         <Tooltip title="斜体 (Ctrl+I)">
-          <Button
+          <Button aria-label="斜体"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<ItalicOutlined />}
@@ -975,7 +975,7 @@ export default function MarkdownEditor({
           />
         </Tooltip>
         <Tooltip title="删除线 (Ctrl+Shift+X)">
-          <Button
+          <Button aria-label="删除线"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<StrikethroughOutlined />}
@@ -984,7 +984,7 @@ export default function MarkdownEditor({
           />
         </Tooltip>
         <Tooltip title="行内代码 (Ctrl+E)">
-          <Button
+          <Button aria-label="行内代码"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<CodeOutlined />}
@@ -993,7 +993,7 @@ export default function MarkdownEditor({
           />
         </Tooltip>
         <Tooltip title="下划线 (Ctrl+U)">
-          <Button
+          <Button aria-label="下划线"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<UnderlineOutlined />}
@@ -1003,7 +1003,7 @@ export default function MarkdownEditor({
         </Tooltip>
         <span className="jz-editor-toolbar-divider" aria-hidden />
         <Tooltip title="无序列表">
-          <Button
+          <Button aria-label="无序列表"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<UnorderedListOutlined />}
@@ -1012,7 +1012,7 @@ export default function MarkdownEditor({
           />
         </Tooltip>
         <Tooltip title="有序列表">
-          <Button
+          <Button aria-label="有序列表"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<OrderedListOutlined />}
@@ -1046,7 +1046,7 @@ export default function MarkdownEditor({
           }}
         >
           <Tooltip title="文字颜色">
-            <Button size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} disabled={readOnly} />
+            <Button aria-label="文字颜色" size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} disabled={readOnly} />
           </Tooltip>
         </Dropdown>
         <Dropdown.Button
@@ -1096,7 +1096,7 @@ export default function MarkdownEditor({
           }}
         >
           <Tooltip title="表格操作（光标需在表格内；Tab 跳格 / 回车加行）">
-            <Button size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
+            <Button aria-label="表格操作" size="small" className="jz-toolbar-dropdown-btn" disabled={readOnly}>
               表格 ▾
             </Button>
           </Tooltip>
@@ -1117,11 +1117,13 @@ export default function MarkdownEditor({
             size="small"
             className={`jz-toolbar-icon-btn${lpOn ? ' is-active' : ''}`}
             icon={lpOn ? <EyeOutlined /> : <EyeInvisibleOutlined />}
+            aria-label="就地渲染"
+            aria-pressed={lpOn}
             onClick={toggleLivePreview}
           />
         </Tooltip>
         <Tooltip title="键盘快捷键 (Ctrl+/)">
-          <Button
+          <Button aria-label="键盘快捷键"
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<QuestionCircleOutlined />}

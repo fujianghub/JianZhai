@@ -658,14 +658,15 @@ export default function DocEditorPage({
           </Tag>
           <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
             <Button
+              aria-label="大纲"
+              aria-pressed={outlineOpen}
               icon={<UnorderedListOutlined />}
               type={outlineOpen ? 'primary' : 'text'}
               onClick={() => setOutlineOpen((v) => !v)}
-              aria-pressed={outlineOpen}
             />
           </Tooltip>
           <Tooltip title="退出专注写作模式 (Esc / F9)">
-            <Button icon={<CompressOutlined />} onClick={() => setFocusMode(false)}>
+            <Button aria-label="退出专注写作模式" icon={<CompressOutlined />} onClick={() => setFocusMode(false)}>
               退出专注
             </Button>
           </Tooltip>
@@ -728,6 +729,7 @@ export default function DocEditorPage({
               <Text type="secondary" style={{ fontSize: 12 }}>公开</Text>
               <Switch
                 size="small"
+                aria-label="公开可见"
                 checked={doc.visibility === 'public'}
                 onChange={(checked) => handleVisibilityChange(checked ? 'public' : 'private')}
               />
@@ -749,6 +751,7 @@ export default function DocEditorPage({
                 <Text type="secondary" style={{ fontSize: 12 }}>编号</Text>
                 <Switch
                   size="small"
+                  aria-label="章节编号"
                   checked={doc.heading_numbering}
                   onChange={(checked) => void handleHeadingNumberingChange(checked)}
                 />
@@ -786,15 +789,16 @@ export default function DocEditorPage({
             <Tooltip title={outlineOpen ? '隐藏大纲' : '显示大纲'}>
               <Button
                 size="small"
+                aria-label="大纲"
+                aria-pressed={outlineOpen}
                 icon={<UnorderedListOutlined />}
                 type={outlineOpen ? 'primary' : 'text'}
                 className="jz-toolbar-btn"
                 onClick={() => setOutlineOpen((v) => !v)}
-                aria-pressed={outlineOpen}
               />
             </Tooltip>
             <Tooltip title="专注写作模式 (F9)">
-              <Button size="small" type="text" icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
+              <Button aria-label="专注写作模式" size="small" type="text" icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
             </Tooltip>
           </span>
           {doc.status === 'published' ? (

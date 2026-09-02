@@ -582,7 +582,7 @@ h4.jz-post-card-title.ant-typography {
 .jz-post-meta .jz-meta-icon {
   font-size: var(--jz-fs-xs);
   opacity: 0.7;
-  transition: opacity 140ms ease, color 140ms ease, transform 140ms ease;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard), transform var(--jz-dur-fast) var(--jz-ease-standard);
 }
 /* Pill hover lights its icon up — tiny pop, colour follows the pill text. */
 .jz-meta-pill-kb:hover .jz-meta-icon,
@@ -1517,7 +1517,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   width: 40px;
   height: 40px;
   color: var(--jz-icon-stroke);
-  transition: transform 200ms ease, color 120ms ease;
+  transition: transform var(--jz-dur-base) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard);
 }
 .jz-admin-glass .jz-menu-icon-slot .jz-icon {
   display: block;
@@ -3054,7 +3054,7 @@ a.jz-meta-full-edit-btn:focus-visible {
    ════════════════════════════════════════════════════════════════════════ */
 
 .jz-glass .jz-icon {
-  transition: transform 0.22s ease, filter 0.22s ease;
+  transition: transform var(--jz-dur-base) var(--jz-ease-standard), filter var(--jz-dur-base) var(--jz-ease-standard);
 }
 
 .jz-admin-glass .jz-admin-menu .ant-menu-item-selected .jz-icon {
@@ -3081,7 +3081,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 .jz-sidebar-tab svg {
   font-size: var(--jz-fs-lg);
-  transition: transform 0.2s ease, color 0.2s ease;
+  transition: transform var(--jz-dur-base) var(--jz-ease-standard), color var(--jz-dur-base) var(--jz-ease-standard);
 }
 .jz-sidebar-tab:hover {
   color: var(--jz-icon-stroke-active, var(--jz-accent));
@@ -3671,6 +3671,14 @@ a.jz-meta-full-edit-btn:focus-visible {
     transform: none !important;
     filter: none !important;
   }
+  /* 图标 hover/选中缩放（与 [data-motion='min'] 伴生规则同步，2026-09-02） */
+  .jz-glass .jz-icon,
+  .jz-admin-glass .jz-menu-icon-slot,
+  .jz-sidebar-tab svg,
+  .jz-post-meta .jz-meta-icon {
+    transition: none;
+    transform: none !important;
+  }
 }
 
 /* Phosphor 等第三方 svg 图标在玻璃底座内精确居中
@@ -3824,7 +3832,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   box-shadow: 0 6px 20px color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 13%, transparent);
 }
 .jz-admin-glass .jz-overview-page .jz-feature-card-icon .jz-icon {
-  transition: transform 0.22s ease;
+  transition: transform var(--jz-dur-base) var(--jz-ease-standard);
 }
 .jz-admin-glass .jz-overview-page .jz-feature-card:hover .jz-feature-card-icon .jz-icon {
   transform: scale(1.1);
@@ -4697,6 +4705,19 @@ a.jz-meta-full-edit-btn:focus-visible {
 :root[data-motion='min'] .jz-blog-glass .jz-nav-link-icon::after { animation: none !important; }
 :root[data-motion='min'] .jz-admin-glass .jz-menu-icon-slot svg,
 :root[data-motion='min'] .jz-blog-glass .jz-nav-link-icon svg { transition: none; }
+/* 图标 hover/选中缩放与滤镜（2026-09-02 补漏：此前只关了两处 svg 的 transition，
+   .jz-icon 通用过渡 / 菜单槽 scale / 侧栏 Tab scale / 功能卡 scale / meta 图标 scale 仍在动） */
+:root[data-motion='min'] .jz-glass .jz-icon,
+:root[data-motion='min'] .jz-admin-glass .jz-menu-icon-slot,
+:root[data-motion='min'] .jz-sidebar-tab svg,
+:root[data-motion='min'] .jz-post-meta .jz-meta-icon { transition: none; }
+:root[data-motion='min'] .jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot,
+:root[data-motion='min'] .jz-sidebar-tab:hover svg,
+:root[data-motion='min'] .jz-sidebar-tab.is-active svg,
+:root[data-motion='min'] .jz-admin-glass .jz-overview-page .jz-feature-card:hover .jz-feature-card-icon .jz-icon,
+:root[data-motion='min'] .jz-meta-pill-kb:hover .jz-meta-icon,
+:root[data-motion='min'] .jz-post-meta .jz-meta-tags:hover .jz-meta-icon,
+:root[data-motion='min'] .jz-post-meta .jz-meta-date:hover .jz-meta-icon { transform: none; }
 :root[data-motion='min'][data-theme='light'] .jz-admin-glass.ant-layout,
 :root[data-motion='min'][data-theme='light'] .jz-blog-glass.ant-layout,
 :root[data-motion='min'][data-theme='dark'] .jz-admin-glass.ant-layout,

@@ -1,7 +1,8 @@
 /**
  * JianZhai 自制图标库 — 主题双色（柔和线稿 + accent 浅填色）。
  *
- * 颜色全部由 CSS 变量驱动（定义于 .jz-glass）：
+ * 颜色全部由 CSS 变量驱动（tokens.css :root 兜底定义，.jz-glass 作用域细化；
+ * 必须落 :root——portal 到 <body> 的弹层拿不到 glass 作用域令牌）：
  *   --jz-icon-fill / --jz-icon-fill-strong / --jz-icon-spot
  * 描边用 currentColor，由父级槽位控制默认/hover/选中色。
  *

@@ -81,7 +81,7 @@ export default function AIAssistantPanel({
   const body = (
     <div className={'jz-ai-panel' + (embedded ? ' jz-ai-panel--embedded' : '')}>
       <div className="jz-ai-panel-header">
-        <JzAiIcon size={18} style={{ color: '#6366f1', flexShrink: 0 }} />
+        <JzAiIcon size={18} style={{ color: 'var(--jz-ai-accent)', flexShrink: 0 }} />
         <span className="jz-ai-panel-title">{title}</span>
         {modelLabel && <span className="jz-ai-panel-chip">{modelLabel}</span>}
         {estimate && (

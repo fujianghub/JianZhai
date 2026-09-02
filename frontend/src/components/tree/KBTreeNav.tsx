@@ -192,7 +192,7 @@ function docNode(
               size="small"
               icon={
                 d.is_favorited ? (
-                  <StarFilled style={{ color: '#faad14' }} />
+                  <StarFilled style={{ color: 'var(--jz-gold)' }} />
                 ) : (
                   <StarOutlined />
                 )

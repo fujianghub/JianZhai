@@ -26,6 +26,7 @@ export default function MoreMarksDropdown({ editor }: Props) {
     <div className="jz-more-marks-bar" role="toolbar" aria-label="更多样式">
       <Tooltip title={`行内代码 (${mod}+E)`}>
         <Button
+          aria-label="行内代码"
           size="small"
           type={marks.code ? 'primary' : 'default'}
           className="jz-more-marks-btn"
@@ -38,6 +39,7 @@ export default function MoreMarksDropdown({ editor }: Props) {
       </Tooltip>
       <Tooltip title={`上标 (${mod}+.)`}>
         <Button
+          aria-label="上标"
           size="small"
           type={marks.superscript ? 'primary' : 'default'}
           className="jz-more-marks-btn"
@@ -51,6 +53,7 @@ export default function MoreMarksDropdown({ editor }: Props) {
       </Tooltip>
       <Tooltip title={`下标 (${mod}+,)`}>
         <Button
+          aria-label="下标"
           size="small"
           type={marks.subscript ? 'primary' : 'default'}
           className="jz-more-marks-btn"
@@ -75,7 +78,7 @@ export default function MoreMarksDropdown({ editor }: Props) {
       content={panel}
     >
       <Tooltip title="更多样式（上标 / 下标 / 行内代码）">
-        <Button size="small" className="jz-toolbar-dropdown-btn">
+        <Button aria-label="更多样式" size="small" className="jz-toolbar-dropdown-btn">
           <FontSizeOutlined />
           <DownOutlined style={{ fontSize: 10, marginLeft: 4 }} />
         </Button>

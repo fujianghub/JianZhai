@@ -302,22 +302,22 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
         >
           <div className="jz-table-tb-group">
             <Tooltip title="选中整表">
-              <button className="jz-table-tb-btn" onClick={run(() => editor.commands.selectTableAll(tablePos))}>
+              <button className="jz-table-tb-btn" aria-label="选中整表" onClick={run(() => editor.commands.selectTableAll(tablePos))}>
                 <BorderOuterOutlined />
               </button>
             </Tooltip>
             <Tooltip title="合并单元格">
-              <button className="jz-table-tb-btn" onClick={run(() => editor.chain().focus().mergeCells().run())}>
+              <button className="jz-table-tb-btn" aria-label="合并单元格" onClick={run(() => editor.chain().focus().mergeCells().run())}>
                 <MergeCellsOutlined />
               </button>
             </Tooltip>
             <Tooltip title="拆分单元格">
-              <button className="jz-table-tb-btn" onClick={run(() => editor.chain().focus().splitCell().run())}>
+              <button className="jz-table-tb-btn" aria-label="拆分单元格" onClick={run(() => editor.chain().focus().splitCell().run())}>
                 <SplitCellsOutlined />
               </button>
             </Tooltip>
             <Tooltip title="切换表头行">
-              <button className="jz-table-tb-btn" onClick={run(() => editor.chain().focus().toggleHeaderRow().run())}>
+              <button className="jz-table-tb-btn" aria-label="切换表头行" onClick={run(() => editor.chain().focus().toggleHeaderRow().run())}>
                 <TableOutlined />
               </button>
             </Tooltip>
@@ -325,10 +325,10 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
           <span className="jz-table-tb-divider" />
           <div className="jz-table-tb-group">
             <Dropdown trigger={['click']} getPopupContainer={() => document.body} overlayStyle={{ zIndex: 12000 }} menu={colorMenu('bgColor', CELL_BG_PRESETS)}>
-              <Tooltip title="单元格底色"><button className="jz-table-tb-btn"><BgColorsOutlined /></button></Tooltip>
+              <Tooltip title="单元格底色"><button className="jz-table-tb-btn" aria-label="单元格底色"><BgColorsOutlined /></button></Tooltip>
             </Dropdown>
             <Dropdown trigger={['click']} getPopupContainer={() => document.body} overlayStyle={{ zIndex: 12000 }} menu={colorMenu('textColor', TEXT_COLOR_PRESETS)}>
-              <Tooltip title="文字颜色"><button className="jz-table-tb-btn"><FontColorsOutlined /></button></Tooltip>
+              <Tooltip title="文字颜色"><button className="jz-table-tb-btn" aria-label="文字颜色"><FontColorsOutlined /></button></Tooltip>
             </Dropdown>
             <Dropdown
               trigger={['click']}
@@ -350,7 +350,7 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
                 </div>
               )}
             >
-              <Tooltip title="行/列间距（密度）"><button className="jz-table-tb-btn"><ColumnHeightOutlined /></button></Tooltip>
+              <Tooltip title="行/列间距（密度）"><button className="jz-table-tb-btn" aria-label="行列间距"><ColumnHeightOutlined /></button></Tooltip>
             </Dropdown>
             <Dropdown
               trigger={['click']}
@@ -364,7 +364,7 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
                 })),
               }}
             >
-              <Tooltip title="最多显示行数"><button className="jz-table-tb-btn jz-table-tb-text">行数▾</button></Tooltip>
+              <Tooltip title="最多显示行数"><button className="jz-table-tb-btn jz-table-tb-text" aria-label="最多显示行数">行数<span aria-hidden>▾</span></button></Tooltip>
             </Dropdown>
           </div>
           <span className="jz-table-tb-divider" />
@@ -376,7 +376,7 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
               <button className="jz-table-tb-btn is-danger" onClick={run(() => editor.chain().focus().deleteColumn().run())}>删列</button>
             </Tooltip>
             <Tooltip title="删除整个表格">
-              <button className="jz-table-tb-btn is-danger" onClick={run(() => editor.chain().focus().deleteTable().run())}><DeleteOutlined /></button>
+              <button className="jz-table-tb-btn is-danger" aria-label="删除整个表格" onClick={run(() => editor.chain().focus().deleteTable().run())}><DeleteOutlined /></button>
             </Tooltip>
           </div>
         </div>

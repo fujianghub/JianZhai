@@ -142,11 +142,11 @@ function mountFullscreenOverlay(svg: SVGSVGElement, opts: DiagramFullscreenOptio
     <button type="button" data-fs-action="zoom-out" title="缩小（滚轮）" aria-label="缩小">−</button>
     <span class="jz-diagram-fullscreen-zoom" aria-live="polite">100%</span>
     <button type="button" data-fs-action="zoom-in" title="放大（滚轮）" aria-label="放大">+</button>
-    <button type="button" data-fs-action="fit" title="适应窗口（数字键 0）">⤢</button>
+    <button type="button" data-fs-action="fit" title="适应窗口（数字键 0）" aria-label="适应窗口">⤢</button>
     <span class="jz-diagram-fullscreen-sep" aria-hidden></span>
-    <button type="button" data-fs-action="copy-svg" title="复制 SVG（剪贴板）">⧉ SVG</button>
-    <button type="button" data-fs-action="download-svg" title="下载 SVG">⤓ SVG</button>
-    <button type="button" data-fs-action="download-png" title="下载 PNG（2x 高清）">⤓ PNG</button>
+    <button type="button" data-fs-action="copy-svg" title="复制 SVG（剪贴板）" aria-label="复制 SVG">⧉ SVG</button>
+    <button type="button" data-fs-action="download-svg" title="下载 SVG" aria-label="下载 SVG">⤓ SVG</button>
+    <button type="button" data-fs-action="download-png" title="下载 PNG（2x 高清）" aria-label="下载 PNG">⤓ PNG</button>
     <span class="jz-diagram-fullscreen-sep" aria-hidden></span>
     <button type="button" data-fs-action="close" title="关闭 (Esc)" aria-label="关闭">✕</button>
   `;

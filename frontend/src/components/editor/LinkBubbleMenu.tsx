@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { BubbleMenu } from '@tiptap/react/menus';
 import { useEditorState } from '@tiptap/react';
 import { getMarkRange, type Editor } from '@tiptap/core';
-import { message } from 'antd';
+import { message } from '@/utils/notify';
 import {
   DisconnectOutlined,
   EditOutlined,

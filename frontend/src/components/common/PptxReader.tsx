@@ -203,11 +203,11 @@ export default function PptxReader({
       }}
     >
       <Space>
-        <Button size="small" icon={<LeftOutlined />} disabled={active <= 0} onClick={() => go(active - 1)} />
+        <Button size="small" icon={<LeftOutlined />} aria-label="上一页" title="上一页 (←)" disabled={active <= 0} onClick={() => go(active - 1)} />
         <Typography.Text style={{ minWidth: 60, textAlign: 'center', display: 'inline-block' }}>
           {active + 1} / {total}
         </Typography.Text>
-        <Button size="small" icon={<RightOutlined />} disabled={active >= total - 1} onClick={() => go(active + 1)} />
+        <Button size="small" icon={<RightOutlined />} aria-label="下一页" title="下一页 (→)" disabled={active >= total - 1} onClick={() => go(active + 1)} />
       </Space>
       <Space>
         <Tooltip title="缩小">

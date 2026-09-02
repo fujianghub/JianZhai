@@ -15,8 +15,8 @@ import {
   Tag,
   Tooltip,
   Typography,
-  message,
 } from 'antd';
+import { message } from '@/utils/notify';
 import {
   ApiOutlined,
   ClockCircleOutlined,

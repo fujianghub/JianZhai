@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Empty, Popconfirm, Spin, Tag, Typography, message } from 'antd';
+import { Button, Empty, Popconfirm, Spin, Tag, Typography } from 'antd';
+import { message } from '@/utils/notify';
 import { useLocation, useNavigate } from 'react-router-dom';
 import TransitionLink from '@/components/common/TransitionLink';
 import { StarFilled } from '@ant-design/icons';
@@ -187,7 +188,7 @@ export default function FavoritesPage() {
                 >
                   <Button
                     type="text"
-                    icon={<StarFilled style={{ color: 'var(--jz-gold, #d4a017)' }} />}
+                    icon={<StarFilled style={{ color: 'var(--jz-gold)' }} />}
                     loading={removingId === doc.id}
                     onClick={(e) => e.stopPropagation()}
                     aria-label={`取消收藏 ${doc.title}`}

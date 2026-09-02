@@ -450,11 +450,6 @@ export default function RichTextEditor({
           ed.chain().focus().toggleCode().run();
           return true;
         }
-        if (mod && !event.shiftKey && event.key === '/') {
-          event.preventDefault();
-          ed.chain().focus().insertContent('/').run();
-          return true;
-        }
         const alt = event.altKey;
         if (alt && mod) {
           const digit = event.key;
@@ -1043,7 +1038,7 @@ export default function RichTextEditor({
             </Tag>
           )}
           <Tooltip title="立即保存 (Ctrl/⌘+S)">
-            <Button
+            <Button aria-label="立即保存"
               size="small"
               className="jz-toolbar-save-btn"
               type="primary"
@@ -1109,10 +1104,10 @@ export default function RichTextEditor({
         <span className="jz-toolbar-group">
         <Space.Compact>
           <Tooltip title="撤销 (Ctrl+Z)">
-            <Button size="small" className="jz-toolbar-icon-btn" icon={<UndoOutlined />} onClick={() => editor.chain().focus().undo().run()} />
+            <Button aria-label="撤销" size="small" className="jz-toolbar-icon-btn" icon={<UndoOutlined />} onClick={() => editor.chain().focus().undo().run()} />
           </Tooltip>
           <Tooltip title="重做 (Ctrl+Shift+Z)">
-            <Button size="small" className="jz-toolbar-icon-btn" icon={<RedoOutlined />} onClick={() => editor.chain().focus().redo().run()} />
+            <Button aria-label="重做" size="small" className="jz-toolbar-icon-btn" icon={<RedoOutlined />} onClick={() => editor.chain().focus().redo().run()} />
           </Tooltip>
           <Tooltip
             title={
@@ -1124,6 +1119,7 @@ export default function RichTextEditor({
             }
           >
             <Button
+              aria-label="格式刷"
               size="small"
               className="jz-toolbar-icon-btn"
               type={painterArmed ? 'primary' : 'default'}
@@ -1138,7 +1134,7 @@ export default function RichTextEditor({
             />
           </Tooltip>
           <Tooltip title="清除格式">
-            <Button
+            <Button aria-label="清除格式"
               size="small"
               className="jz-toolbar-icon-btn"
               icon={<ClearOutlined />}
@@ -1196,7 +1192,7 @@ export default function RichTextEditor({
           }}
         >
           <Tooltip title="文字颜色">
-            <Button size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} />
+            <Button aria-label="文字颜色" size="small" className="jz-toolbar-icon-btn" icon={<BgColorsOutlined />} />
           </Tooltip>
         </Dropdown>
         <HighlightColorDropdown editor={editor} />
@@ -1248,6 +1244,7 @@ export default function RichTextEditor({
             size="small"
             className="jz-toolbar-icon-btn"
             icon={<JzIcon name={fullscreen ? 'compress' : 'fullscreen'} />}
+            aria-label={fullscreen ? '退出全屏' : '全屏'}
             onClick={() => setFullscreen((v) => !v)}
           />
         </Tooltip>
@@ -1276,7 +1273,7 @@ export default function RichTextEditor({
               <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>对齐</div>
               <Space.Compact style={{ marginBottom: 12 }}>
                 <Tooltip title="左对齐 (Ctrl+Shift+L)">
-                  <Button
+                  <Button aria-label="左对齐"
                     size="small"
                     type={ui?.alignLeft ? 'primary' : 'default'}
                     icon={<AlignLeftOutlined />}
@@ -1284,7 +1281,7 @@ export default function RichTextEditor({
                   />
                 </Tooltip>
                 <Tooltip title="居中 (Ctrl+Shift+E)">
-                  <Button
+                  <Button aria-label="居中"
                     size="small"
                     type={ui?.alignCenter ? 'primary' : 'default'}
                     icon={<AlignCenterOutlined />}
@@ -1292,7 +1289,7 @@ export default function RichTextEditor({
                   />
                 </Tooltip>
                 <Tooltip title="右对齐 (Ctrl+Shift+R)">
-                  <Button
+                  <Button aria-label="右对齐"
                     size="small"
                     type={ui?.alignRight ? 'primary' : 'default'}
                     icon={<AlignRightOutlined />}
@@ -1303,10 +1300,10 @@ export default function RichTextEditor({
               <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>缩进</div>
               <Space.Compact style={{ marginBottom: 12 }}>
                 <Tooltip title="减少缩进 (Shift+Tab)">
-                  <Button size="small" onClick={() => editor.commands.outdent()}>← 减少</Button>
+                  <Button aria-label="减少缩进" size="small" onClick={() => editor.commands.outdent()}>← 减少</Button>
                 </Tooltip>
                 <Tooltip title="增加缩进 (Tab)">
-                  <Button size="small" onClick={() => editor.commands.indent()}>增加 →</Button>
+                  <Button aria-label="增加缩进" size="small" onClick={() => editor.commands.indent()}>增加 →</Button>
                 </Tooltip>
               </Space.Compact>
               <div style={{ borderTop: '1px solid var(--jz-border)', paddingTop: 8 }}>
@@ -1325,7 +1322,7 @@ export default function RichTextEditor({
           <div className="jz-ai-panel" style={{ width: 'min(400px, 100%)' }} onClick={(e) => e.stopPropagation()}>
             <div className="jz-ai-panel-header">
               <span className="jz-ai-panel-title">AI 生成段落</span>
-              <button type="button" className="jz-ai-panel-close" onClick={() => setAiPromptOpen(false)}>
+              <button type="button" className="jz-ai-panel-close" aria-label="关闭" onClick={() => setAiPromptOpen(false)}>
                 ×
               </button>
             </div>
@@ -1482,7 +1479,7 @@ export default function RichTextEditor({
                 })),
               }}
             >
-              <button type="button" className="jz-bubble-btn" title="文字颜色">
+              <button type="button" className="jz-bubble-btn" title="文字颜色" aria-label="文字颜色">
                 <BgColorsOutlined />
               </button>
             </Dropdown>
@@ -1527,7 +1524,7 @@ export default function RichTextEditor({
                 })),
               }}
             >
-              <button type="button" className="jz-bubble-btn" title="包裹为色块">
+              <button type="button" className="jz-bubble-btn" title="包裹为色块" aria-label="包裹为色块">
                 <CommentOutlined />
               </button>
             </Dropdown>
@@ -1676,6 +1673,8 @@ function ToolbarBtn({
     <Tooltip title={title}>
       <Button
         size="small"
+        aria-label={typeof title === 'string' ? title.replace(/\s*[（(][^)）]*[)）]\s*$/, '') : undefined}
+        aria-pressed={active}
         className={'jz-toolbar-icon-btn' + (active ? ' is-active' : '')}
         icon={icon}
         onClick={onClick}

@@ -58,7 +58,7 @@ export default function HighlightColorDropdown({ editor }: Props) {
       content={panel}
     >
       <Tooltip title="字体背景色">
-        <Button
+        <Button aria-label="字体背景色"
           size="small"
           type={highlightActive ? 'primary' : 'default'}
           icon={<HighlightOutlined />}
