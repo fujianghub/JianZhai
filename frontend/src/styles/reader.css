@@ -1407,19 +1407,18 @@ html[data-jz-turn='flip'][data-jz-turn-dir='prev']::view-transition-new(jz-epub-
   z-index: 5;
   transition: transform var(--jz-dur-base, 240ms) var(--jz-ease-standard, ease), opacity var(--jz-dur-base, 240ms) var(--jz-ease-standard, ease);
 }
+/* The toolbar only floats over the book's running-head band (44px margin);
+   it must never change the body's box. Reserving/removing padding while it
+   slides made the stage resize every frame of the transition, and foliate's
+   ResizeObserver re-laid the chapter out and re-anchored the view each time
+   (the "page jumps up on its own in full-screen" bug). */
 .jz-epub-reader.is-fullscreen .jz-epub-body {
-  padding-top: 42px;
+  padding-top: 0;
 }
 .jz-epub-reader.is-fullscreen.is-chrome-hidden .jz-epub-toolbar {
   transform: translateY(-100%);
   opacity: 0;
   pointer-events: none;
-}
-.jz-epub-reader.is-fullscreen.is-chrome-hidden .jz-epub-body {
-  padding-top: 0;
-}
-.jz-epub-reader.is-fullscreen .jz-epub-body {
-  transition: padding-top var(--jz-dur-base, 240ms) var(--jz-ease-standard, ease);
 }
 
 /* Settings extras */

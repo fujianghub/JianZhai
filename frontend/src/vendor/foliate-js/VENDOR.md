@@ -33,6 +33,27 @@ Not included: `reader.html/js`, `ui/`, `dict.js`, `opds.js`, `uri-template.js`,
   "Cannot destructure property 'style' of 'el'" from the observer callback.
   Harmless (the pending `load` re-renders) but it surfaces as an uncaught page
   error, so it is skipped. Re-apply when updating.
+- `paginator.js` → `#afterScroll` / `#scrollTo` / new `#fractionAnchor`
+  (2026-09-02, "EPUB jumps on its own" fix). Two upstream quirks that only
+  show up when the stage or chapter changes size (full-screen chrome toggle,
+  sidebar resize, focus mode, late image loads, `fonts.ready`):
+  1. `getVisibleRange` finds no node when the viewport holds no text (cover,
+     a figure taller than the viewport) and returns a collapsed range at
+     `body` start; `#afterScroll` stored that as the anchor, so the next
+     relayout scrolled back to the chapter start. Patched: in scrolled flow
+     the anchor becomes `{ element, delta }` (`#elementAnchor` — innermost
+     element under the viewport top + pixel offset into it, resolved by
+     `#scrollToAnchor`; survives the chapter growing above or below like the
+     browser's own scroll anchoring), in paginated flow a fraction
+     (`#fractionAnchor`).
+  2. `#afterScroll` armed `#justAnchored` after every programmatic anchoring,
+     but `#scrollTo` returns early (no `scroll` event) when the offset is
+     unchanged, so the flag stayed set and swallowed the user's *next* scroll
+     (anchor left stale → the following relayout jumped back). `#afterScroll`
+     now takes `willScroll` and the early-return path passes `false`.
+  Re-apply both when updating; the app-side half of the fix is
+  `styles/reader.css` (full-screen toolbar is a pure overlay, never changes
+  `.jz-epub-body` padding).
 - `pdf.js` is replaced by the stub above. TypeScript
 declarations live in `src/types/foliate-js.d.ts` (hand-written for the parts
 简斋 uses); the React wrapper is `src/components/common/EpubReader.tsx`.

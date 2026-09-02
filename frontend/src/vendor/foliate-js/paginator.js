@@ -897,7 +897,9 @@ export class Paginator extends HTMLElement {
         const { scrollProp, size } = this
         if (element[scrollProp] === offset) {
             this.#scrollBounds = [offset, this.atStart ? 0 : size, this.atEnd ? 0 : size]
-            this.#afterScroll(reason)
+            // 简斋 patch: nothing moved, so no `scroll` event will follow —
+            // don't arm `#justAnchored` or it swallows the user's next scroll.
+            this.#afterScroll(reason, false)
             return
         }
         // FIXME: vertical-rl only, not -lr
@@ -924,6 +926,13 @@ export class Paginator extends HTMLElement {
     }
     async #scrollToAnchor(anchor, reason = 'anchor') {
         this.#anchor = anchor
+        // 简斋 patch: element + pixel delta anchor (see #elementAnchor)
+        if (anchor?.element) {
+            if (!this.scrolled) return this.#scrollToAnchor(anchor.element, reason)
+            const { left } = this.#getRectMapper()(anchor.element.getBoundingClientRect())
+            await this.#scrollTo(Math.max(0, left + anchor.delta), reason)
+            return
+        }
         const rects = uncollapse(anchor)?.getClientRects?.()
         // if anchor is an element or a range
         if (rects) {
@@ -946,6 +955,33 @@ export class Paginator extends HTMLElement {
         const newPage = Math.round(anchor * (textPages - 1))
         await this.#scrollToPage(newPage + 1, reason)
     }
+    // 简斋 patch: current position as the fraction `#scrollToAnchor` understands
+    #fractionAnchor() {
+        if (this.scrolled) return this.viewSize ? this.start / this.viewSize : 0
+        const textPages = this.pages - 2
+        return textPages > 1 ? (this.page - 1) / (textPages - 1) : 0
+    }
+    // 简斋 patch (scrolled flow): the innermost element under the top of the
+    // viewport plus the pixel offset into it — survives the chapter growing
+    // above or below (late images) like the browser's own scroll anchoring.
+    #elementAnchor() {
+        const doc = this.#view?.document
+        if (!doc?.body) return null
+        const mapRect = this.#getRectMapper()
+        const line = this.start + this.#margin
+        const contains = el => {
+            const { left, right } = mapRect(el.getBoundingClientRect())
+            return right > left && left <= line && right >= line
+        }
+        let el = doc.body
+        for (;;) {
+            const next = Array.from(el.children).find(contains)
+            if (!next) break
+            el = next
+        }
+        if (el === doc.body) return null
+        return { element: el, delta: this.start - mapRect(el.getBoundingClientRect()).left }
+    }
     #getVisibleRange() {
         if (this.scrolled) return getVisibleRange(this.#view.document,
             this.start + this.#margin, this.end - this.#margin, this.#getRectMapper())
@@ -953,13 +989,23 @@ export class Paginator extends HTMLElement {
         return getVisibleRange(this.#view.document,
             this.start - size, this.end - size, this.#getRectMapper())
     }
-    #afterScroll(reason) {
+    #afterScroll(reason, willScroll = true) {
         const range = this.#getVisibleRange()
         this.#lastVisibleRange = range
         // don't set new anchor if relocation was to scroll to anchor
-        if (reason !== 'selection' && reason !== 'navigation' && reason !== 'anchor')
-            this.#anchor = range
-        else this.#justAnchored = true
+        if (reason !== 'selection' && reason !== 'navigation' && reason !== 'anchor') {
+            // 简斋 patch: a view with no text in it (cover, a full-page figure)
+            // yields a collapsed range at the body start; anchoring to that
+            // snaps back to the chapter start on every relayout. Keep the
+            // position as a fraction instead (a native anchor type).
+            const degenerate = range.collapsed
+                && range.startContainer === this.#view?.document?.body
+            this.#anchor = degenerate
+                ? (this.scrolled ? this.#elementAnchor() : null) ?? this.#fractionAnchor()
+                : range
+        }
+        // 简斋 patch: only arm when a `scroll` event is actually coming
+        else if (willScroll) this.#justAnchored = true
 
         const index = this.#index
         const detail = { reason, range, index }
