@@ -90,17 +90,35 @@ canvas 之上的「近景」动效，全部尊重 `prefers-reduced-motion`：
 
 ---
 
-## 3. 图标体系（2026-06-06 定稿，100% 自制，hugeicons 已卸载）
+## 3. 图标体系（2026-06-06 定稿视觉语言；2026-09-02 收编体系）
 
-三个区域三种视觉语言：
+三个区域三种视觉语言（视觉定稿不动，收编只做体系与一致性）：
 
 | 区域 | 实现 | 语言 |
 |------|------|------|
-| **个人空间侧栏** | `JzIconKit.tsx`（15 枚，用户设计稿 SVG） | 0.72 淡染填充、无底座裸放（40px 占位 + 悬停微放大）；同明度多彩 tone（`jz-ico-tone-*` 十色「简斋雅色」+ 暗主题提亮 + starry/deepsea 环境光校准）；尺寸逐枚微调；含「收藏」入口（缃金星形） |
-| **博客顶栏** | `JzIcon.tsx` 最初版 v0.9 浅染族 | 归档/标签/搜索/RSS 走 `--jz-icon-fill/spot` 主题变量 + 翡翠 hover；圆角方块底座 + 光泽扫过 |
-| **主题切换四枚** | AntD Sun/Moon/Star + 手写 WaveIcon | 初始风格（设计稿版已否决回退） |
+| **个人空间侧栏** | `JzIconKit.tsx` §1 填充族（10 枚，用户设计稿 SVG） | 0.72 淡染填充、无底座裸放（40px 占位 + 悬停微放大）；同明度多彩 tone（`jz-ico-tone-*` 十色 + 暗主题提亮 + starry/deepsea 校准；`hero` 改缃黄 `#a16207` 与 `tags` 区分，菜单选中光晕跟随 `--jz-ico-c`）；尺寸 = `ICON_SIZE.tile ± n` 光学补偿就地注释 |
+| **博客顶栏** | `JzIcon.tsx` 最初版 v0.9 浅染族 | 归档/标签/搜索/RSS 走 `--jz-icon-fill/spot` + 翡翠 hover；圆角方块底座 + 光泽扫过；尺寸 `ICON_SIZE.nav` |
+| **主题切换六枚** | AntD Sun/Moon/Star + `JzIconKit.tsx` §2 描边族三枚（春水/冬雪/水波，16 网格 strokeWidth 1 ≡ 24 网格 1.5） | 初始风格；设计稿版四枚主题图标已删 |
+| **动作类（关闭/复制/更多/全屏/裁剪/恢复/导出/新标签/文字颜色/批注…）** | AntD，经 **`common/actionIcons.ts` 语义别名**引用 | 单一定义处；`ExportIcon`=导出 / `OpenInNewIcon`=新标签、`TextColorIcon`=文字色 / `HighlightColorIcon`=底色、`CommentIcon`=批注 / 「包裹为色块」用 `JzCalloutIcon`、`RestoreIcon`=恢复·回滚 / `UndoIcon`=撤销、`BookOutlined` 只留 EPUB 书签（KB 面包屑 `JzBookIcon`、EPUB 附件 `ReadOutlined`） |
+| **innerHTML 面**（阅读页代码块工具条 / 图表动作行 / 图表·图片全屏 / 文档卡片） | `utils/actionIconSvg.ts` | 24×24 / 1.8 / currentColor，只输出 DOMPurify 放行属性（测试锁定）；曾是 `▾ ⧉ ⋯ ⤢ ⤓ ✕ 📄` 字形 |
 
-`JzIcon.tsx` 共 **50 枚**：24×24 / 1.5px stroke / `currentColor` / linecap round；印泥色彩点 + `--jz-icon-accent-active` hover/选中染色发光。
+`JzIcon.tsx` 共 **48 枚**：24×24 / 1.5px stroke / `currentColor` / linecap round；`--jz-icon-fill/-fill-strong/-spot` 三枚填色令牌**在 tokens.css `:root` 兜底、`.jz-glass` 细化**（portal 弹层坑，`iconTokens.test`）。`tone` prop / `JZ_ICONS` 注册表 / 默认导出已删。
+
+- **尺寸阶梯** `common/iconSize.ts`：`ICON_SIZE = { xs:12, sm:14, md:16, lg:18, xl:20, nav:22, tile:24, hero:28 }`，`iconSize.test` 锁单调。
+- **插入/斜杠菜单瓷砖 tone**：`toolbar/insertIconTone.ts`（全部 id 显式登记，`insertIconTone.test` 遍历斜杠命令），CSS 折叠为 `[class*='jz-insert-icon--']` 一条基规则 + 十行 `--jz-insert-tone`，激活环 `--jz-insert-ring`。
+- **色块菜单色点** `callouts.ts` 每预设带 `color/icon`（镜像 markdown.css `.jz-callout-<slug>` 的 `--c/--c-icon`），`calloutSwatch()` 渲染 `.jz-callout-swatch`，菜单与正文同色同字形。裸 emoji 当图标挂 `.jz-emoji`（`--jz-font-emoji`）。
+- **状态胶囊** `editor/SaveStatusPill`（`saveStatus.ts` 五态 union + 文案表；spin / 实心勾 / 实心叉 / 时钟 / 空心勾，`role=status`），三编辑器共用。
+- **品牌方印** `common/BrandSeal`（`.jz-seal` 一组规则：xs 28/r5/700 顶栏、md 42/r12/800 后台、lg 56/r14/800 登录；悬停由 `.jz-seal-host` 触发）。
+- **可访问性**：纯图标按钮一律 `aria-label`（约 60 处补齐，`Test/scripts/icon_token_probe.py` 第二段扫描零缺名）；图标 hover/scale 的 `[data-motion='min']` 与 reduced-motion 伴生规则已补。
+
+### 3.1 快捷键体系（2026-09-02）
+
+- **注册表** `src/shortcuts/registry.ts`：`ShortcutDef { id, chord, scope, group, label, owner, when?, allowInTyping?, conflict?, file?, hidden? }`，15 个 scope（global / admin / blog / post / editor / editor.rich / editor.markdown / editor.html / code-block / find / menu / reader.epub·pdf·pptx / lightbox），`editor.*` 继承 `editor`；`INPUT_RULES` 输入规则单列；`CM_KEYS` 供 CM6 keymap。chord 语法 `Mod+Shift+X` / `Alt+Mod+1` / `Shift+ArrowLeft` / `Mod+Shift+code:Space`（物理键）。
+- **绑定** `useShortcut(id, handler, {enabled, capture, target})`（IME / defaultPrevented / allowInTyping 三守卫，handler 返回 `false` 放行）或 `matchesChord(e, getChord(id))`；CM6 `keymap.of([{ key: CM_KEYS['editor.markdown.bold'] … }])`。
+- **显示** `format.ts`：`detectPlatform()`（userAgentData → platform → userAgent，可 `setPlatformOverride`）、`formatShortcut(id)`（mac Apple HIG `⌥⇧⌘` 无分隔如 `⇧⌘X`、win `Ctrl+Shift+X`）、`withShortcut('加粗', id)` → `加粗 (⌘B)`、`ariaKeyshortcuts(id)` → `Meta+B Control+B`、`kbdHtml(id)`（innerHTML 面）；组件 `<Kbd id|chord>` 单套 `.jz-kbd`。
+- **速查表** `common/ShortcutCheatSheet` + `shortcuts/cheatSheetStore`（`useActiveScopes([...])` 页面登记作用域）+ App 级 `GlobalShortcuts`（`Mod+/` capture、`?` 输入区外）；按 scope 分组、`when` 上下文、`conflict` 小字、筛选、编辑器作用域多「快捷输入」页。
+- **测试**：`keys.test`（匹配矩阵）、`registry.test`（id 唯一 / 同 scope 不撞键 / cm6 条目键串在源文件）、`format.test`（两平台全表快照）、`useShortcut.dom.test`、`kbdDiscipline.test`（目录级禁裸 `Ctrl+X`/`⌘`/`<kbd>`）；冒烟 `Test/scripts/shortcuts_smoke.py` 21 项。
+- **决策**：`Mod+/` 两编辑模式统一为速查（富文本「插入 /」已删）；速记 `Mod+Shift+Space`（`Shift+N` 被浏览器无痕窗口截胡）；`Mod+P` 快速跳转保留并标注冲突；P3 未做：PDF 翻页键、CM 列表 Tab 逃生、列宽 ±16px 两份实现合并。
 
 ---
 
@@ -245,10 +263,12 @@ EPUB 划线的同款体验移植到 `/posts/:slug` 的 Markdown 读路径（HTML
 
 ---
 
-## 6. favicon + PWA
+## 6. favicon + PWA + OG（2026-09-02 重做）
 
-- `public/favicon.svg` — 朱砂印章（径向渐变印泥 + 颗粒滤镜 + 四角磨痕 + 双线印框 + 压痕「簡」）
-- `public/manifest.webmanifest` + apple-touch-icon + theme-color
+- 全部由 `Test/scripts/gen_favicon.py` 生成（gitignore；依赖 backend venv `fonttools brotli Pillow` + 主机 `rsvg-convert`），改图改脚本重跑：
+  - `favicon.svg` 翡翠方印（`#02b377→#19d191` 对齐 `--jz-accent`）+「簡」**字形 path**（Noto Serif SC 700，从 @fontsource 第 47 分片提取；此前 `<text>` 依赖系统字体，无中文字体环境豆腐块），无 `feDropShadow`（librsvg 2.50 不支持且 16px 下糊）
+  - `favicon-32.png` / `favicon.ico`(16·32·48) / `apple-touch-icon.png`(180 实底，iOS 不支持 SVG) / `icon-192.png` / `icon-512.png` / `maskable-512.png`（全出血 + 字形收进 80% 安全圆）/ `og-image.png`(1200×630)
+- `manifest.webmanifest` icons 拆 `any` 与 `maskable`；`index.html` `theme-color` 两条 `prefers-color-scheme` media（`#02b377` / `#2ee79c`），补 `og:site_name/og:locale/og:image` 与 `twitter:card`
 - `html / body / #root` 全局 reset margin/padding 铺满整屏
 
 ---
