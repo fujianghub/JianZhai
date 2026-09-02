@@ -106,6 +106,8 @@ const lowlight = createLowlight(common);
 import { TEXT_COLOR_PRESETS as BASE_COLOR_PRESETS } from './callouts';
 import { CaretIcon, CloseIcon, CommentIcon, FullscreenExitIcon, FullscreenIcon, TextColorIcon } from '@/components/common/actionIcons';
 import { JzCalloutIcon, JzQuoteIcon } from '@/components/common/JzIcon';
+import SaveStatusPill from './SaveStatusPill';
+import type { SaveStatus } from './saveStatus';
 const TEXT_COLOR_PRESETS = [
   { label: '默认 / 取消', value: 'reset' },
   ...BASE_COLOR_PRESETS,
@@ -173,8 +175,6 @@ interface Props {
   forceSyncRevision?: number;
   onSaveReady?: (handle: import('./editorSaveLifecycle').EditorSaveHandle | null) => void;
 }
-
-type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 
 export default function RichTextEditor({
   value,
@@ -947,14 +947,6 @@ export default function RichTextEditor({
     setLiveMd(value);
   }, [value]);
 
-  const statusLabel: Record<SaveStatus, { text: string; color?: string }> = {
-    idle: { text: '已同步' },
-    pending: { text: '待保存…', color: 'orange' },
-    saving: { text: '保存中…', color: 'blue' },
-    saved: { text: '已保存', color: 'green' },
-    error: { text: '保存失败', color: 'red' },
-  };
-
   // Tiptap v3 的 useEditor 不随 transaction 重渲 —— 工具栏 / 气泡菜单在
   // render 里直接 editor.isActive() 只能拿到陈旧快照（光标移动后高亮不
   // 更新）。所有激活态统一经 useEditorState 订阅（与 LinkBubbleMenu 同构）。
@@ -1028,9 +1020,7 @@ export default function RichTextEditor({
       )}
       <div className="jz-editor-toolbar" role="toolbar" aria-label="编辑器工具栏">
         <div className="jz-editor-toolbar-meta">
-          <Tag color={statusLabel[status].color} style={{ margin: 0 }}>
-            {statusLabel[status].text}
-          </Tag>
+          <SaveStatusPill status={status} />
           <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
           {uploading && (
             <Tag color="blue" style={{ margin: 0 }}>

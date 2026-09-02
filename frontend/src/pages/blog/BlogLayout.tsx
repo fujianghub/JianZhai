@@ -16,6 +16,7 @@ import {
 } from '@/components/common/JzIcon';
 import { useAuthStore } from '@/stores/auth';
 import { ICON_SIZE } from '@/components/common/iconSize';
+import BrandSeal from '@/components/common/BrandSeal';
 
 const { Header, Content, Footer } = Layout;
 
@@ -135,7 +136,8 @@ export default function BlogLayout() {
           justifyContent: 'space-between',
         }}
       >
-        <Link to="/" className="jz-brand" aria-label="简斋 / JianZhai">
+        <Link to="/" className="jz-brand jz-seal-host" aria-label="简斋 / JianZhai">
+          <BrandSeal size="xs" />
           <span className="jz-brand-cn">简斋</span>
           <span className="jz-brand-sep" aria-hidden>·</span>
           <span className="jz-brand-en">JianZhai</span>

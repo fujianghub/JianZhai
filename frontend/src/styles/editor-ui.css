@@ -40,6 +40,45 @@
   min-height: var(--jz-toolbar-height);
 }
 
+/* 保存状态胶囊（SaveStatusPill，三编辑器共用，2026-09-02） */
+.jz-save-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px 0 7px;
+  border-radius: 999px;
+  font-size: var(--jz-fs-2xs);
+  font-family: var(--jz-font-ui);
+  line-height: 1;
+  white-space: nowrap;
+  color: var(--jz-save-tone, var(--jz-text-muted));
+  background: color-mix(in srgb, var(--jz-save-tone, var(--jz-text-muted)) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--jz-save-tone, var(--jz-text-muted)) 24%, transparent);
+  transition: color var(--jz-dur-fast) var(--jz-ease-standard), background-color var(--jz-dur-fast) var(--jz-ease-standard), border-color var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-save-pill-ico {
+  display: inline-flex;
+  font-size: var(--jz-fs-xs);
+}
+.jz-save-pill.tone-amber { --jz-save-tone: #d97706; }
+.jz-save-pill.tone-blue { --jz-save-tone: #2563eb; }
+.jz-save-pill.tone-green { --jz-save-tone: #10b981; }
+.jz-save-pill.tone-red { --jz-save-tone: #ef4444; }
+[data-theme='dark'] .jz-save-pill.tone-amber,
+[data-theme='starry'] .jz-save-pill.tone-amber,
+[data-theme='deepsea'] .jz-save-pill.tone-amber { --jz-save-tone: #fbbf24; }
+[data-theme='dark'] .jz-save-pill.tone-blue,
+[data-theme='starry'] .jz-save-pill.tone-blue,
+[data-theme='deepsea'] .jz-save-pill.tone-blue { --jz-save-tone: #60a5fa; }
+[data-theme='dark'] .jz-save-pill.tone-green,
+[data-theme='starry'] .jz-save-pill.tone-green,
+[data-theme='deepsea'] .jz-save-pill.tone-green { --jz-save-tone: #34d399; }
+[data-theme='dark'] .jz-save-pill.tone-red,
+[data-theme='starry'] .jz-save-pill.tone-red,
+[data-theme='deepsea'] .jz-save-pill.tone-red { --jz-save-tone: #f87171; }
+:root[data-motion='min'] .jz-save-pill { transition: none; }
+
 .jz-editor-toolbar-meta {
   display: inline-flex;
   align-items: center;

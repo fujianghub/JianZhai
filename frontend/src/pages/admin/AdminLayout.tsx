@@ -28,6 +28,7 @@ import LiveClock from '@/components/common/LiveClock';
 import { AIModelBadge } from '@/components/common/AIModelBadge';
 import UserAccountMenu from '@/components/common/UserAccountMenu';
 import { ICON_SIZE } from '@/components/common/iconSize';
+import BrandSeal from '@/components/common/BrandSeal';
 
 const { Header, Sider, Content } = Layout;
 
@@ -144,12 +145,12 @@ export default function AdminLayout() {
             generous and the aria label descriptive. */}
         <TransitionLink
           to="/"
-          className="jz-admin-brand"
+          className="jz-admin-brand jz-seal-host"
           style={{ color: 'inherit', textDecoration: 'none' }}
           aria-label="返回博客首页（藏经阁）"
           title="返回博客首页"
         >
-          <div className="jz-admin-brand-seal" aria-hidden>簡</div>
+          <BrandSeal size="md" />
           <div className="jz-admin-brand-text">
             <div className="jz-admin-brand-name">简斋</div>
             <div className="jz-admin-brand-sub">个人空间</div>

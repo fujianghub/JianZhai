@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth';
 import { formatApiError } from '@/api/client';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import SliderCaptcha from '@/components/auth/SliderCaptcha';
+import BrandSeal from '@/components/common/BrandSeal';
 
 export default function LoginPage() {
   const login = useAuthStore((s) => s.login);
@@ -47,8 +48,8 @@ export default function LoginPage() {
         <ThemeSwitcher />
       </div>
 
-      <div className="jz-login-card jz-fade-in">
-        <div className="jz-login-seal" aria-hidden>簡</div>
+      <div className="jz-login-card jz-fade-in jz-seal-host">
+        <BrandSeal size="lg" className="jz-login-seal" />
         <h1 className="jz-login-title">简斋 · JianZhai</h1>
         <p className="jz-login-sub">个 人 知 识 库 · 个 人 博 客</p>
 

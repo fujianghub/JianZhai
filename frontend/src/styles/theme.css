@@ -11,31 +11,36 @@
   position: relative;
   transition: transform 0.25s ease;
 }
-.jz-brand::before {
-  /* 微缩印章 ── 朱砂方块衬在「简斋」之前，呼应 favicon */
-  content: '簡';
+/* ── 「簡」品牌方印（BrandSeal 组件，2026-09-02 三处收编为一组规则）──
+   顶栏 xs 28/r5、后台 md 42/r12、登录 lg 56/r14；悬停旋转由 .jz-seal-host 触发。 */
+.jz-seal {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 5px;
-  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
-  color: var(--jz-on-accent, #0a1f1a);
+  flex: none;
+  border-radius: var(--jz-seal-radius);
+  width: var(--jz-seal-size);
+  height: var(--jz-seal-size);
+  font-size: var(--jz-seal-fs);
+  font-weight: var(--jz-seal-weight, 800);
   font-family: var(--jz-font-serif);
-  font-weight: 700;
-  font-size: var(--jz-fs-2xl);
   letter-spacing: 0;
+  line-height: 1;
+  color: var(--jz-on-accent, #0a1f1a);
+  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
   box-shadow:
-    0 2px 6px color-mix(in srgb, var(--jz-accent) 35%, transparent),
-    0 0 0 1px rgba(255, 255, 255, 0.18) inset;
-  transition: transform 0.3s var(--jz-ease-spring);
+    0 var(--jz-seal-lift, 2px) calc(var(--jz-seal-lift, 2px) * 3) var(--jz-accent-glow),
+    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
+  transition: transform var(--jz-dur-slow) var(--jz-ease-spring);
+}
+.jz-seal--xs { --jz-seal-size: 28px; --jz-seal-radius: 5px; --jz-seal-fs: var(--jz-fs-2xl); --jz-seal-weight: 700; --jz-seal-lift: 2px; }
+.jz-seal--md { --jz-seal-size: 42px; --jz-seal-radius: 12px; --jz-seal-fs: var(--jz-fs-5xl); --jz-seal-lift: 6px; }
+.jz-seal--lg { --jz-seal-size: 56px; --jz-seal-radius: 14px; --jz-seal-fs: 32px; --jz-seal-lift: 10px; } /* 32px 一次性展示字号，刻意不进阶梯 */
+.jz-seal-host:hover .jz-seal {
+  transform: rotate(-6deg) scale(1.05);
 }
 .jz-brand:hover {
   transform: translateY(-1px);
-}
-.jz-brand:hover::before {
-  transform: rotate(-6deg) scale(1.05);
 }
 .jz-brand-cn {
   font-family: var(--jz-font-display);
@@ -1417,26 +1422,6 @@ a.jz-meta-full-edit-btn:focus-visible {
   padding: 24px 22px 22px;
   border-bottom: 1px solid var(--glass-divider);
   margin-bottom: 10px;
-}
-.jz-admin-glass .jz-admin-brand-seal {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
-  color: var(--jz-on-accent, #0a1f1a);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--jz-fs-5xl);
-  font-weight: 800;
-  font-family: var(--jz-font-serif);
-  box-shadow:
-    0 6px 18px var(--jz-accent-glow),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-  transition: transform 0.25s var(--jz-ease-spring);
-}
-.jz-admin-glass .jz-admin-brand:hover .jz-admin-brand-seal {
-  transform: rotate(-6deg) scale(1.05);
 }
 .jz-admin-glass .jz-admin-brand-name {
   font-size: var(--jz-fs-4xl);
@@ -4158,27 +4143,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   -webkit-backdrop-filter: blur(22px) saturate(186%);
 }
 
-/* 朱砂方印 */
 .jz-login-seal {
-  width: 56px;
-  height: 56px;
   margin: 0 auto 12px;
-  border-radius: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-family: var(--jz-font-serif);
-  font-size: 32px;
-  font-weight: 800;
-  color: var(--jz-on-accent, #0a1f1a);
-  background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%);
-  box-shadow:
-    0 10px 26px var(--jz-accent-glow),
-    0 0 0 1px rgba(255, 255, 255, 0.14) inset;
-  transition: transform 0.35s var(--jz-ease-spring);
-}
-.jz-login-card:hover .jz-login-seal {
-  transform: rotate(-6deg) scale(1.06);
 }
 
 .jz-login-title {
@@ -4619,12 +4585,8 @@ a.jz-meta-full-edit-btn:focus-visible {
   .jz-feature-card::before { display: none; }
   .jz-admin-glass .jz-feature-card:hover { transform: none; }
   .jz-brand,
-  .jz-brand::before,
-  .jz-admin-glass .jz-admin-brand-seal,
-  .jz-login-seal { transition: none; }
-  .jz-brand:hover::before,
-  .jz-admin-glass .jz-admin-brand:hover .jz-admin-brand-seal,
-  .jz-login-card:hover .jz-login-seal { transform: none; }
+  .jz-seal { transition: none; }
+  .jz-seal-host:hover .jz-seal { transform: none; }
   .jz-login-glow { animation: none; }
 }
 
@@ -4731,10 +4693,12 @@ a.jz-meta-full-edit-btn:focus-visible {
 :root[data-motion='min'] .jz-blog-glass .jz-nav-link-icon svg { transition: none; }
 /* 图标 hover/选中缩放与滤镜（2026-09-02 补漏：此前只关了两处 svg 的 transition，
    .jz-icon 通用过渡 / 菜单槽 scale / 侧栏 Tab scale / 功能卡 scale / meta 图标 scale 仍在动） */
+:root[data-motion='min'] .jz-seal,
 :root[data-motion='min'] .jz-glass .jz-icon,
 :root[data-motion='min'] .jz-admin-glass .jz-menu-icon-slot,
 :root[data-motion='min'] .jz-sidebar-tab svg,
 :root[data-motion='min'] .jz-post-meta .jz-meta-icon { transition: none; }
+:root[data-motion='min'] .jz-seal-host:hover .jz-seal,
 :root[data-motion='min'] .jz-admin-glass .jz-admin-menu .ant-menu-item:hover .jz-menu-icon-slot,
 :root[data-motion='min'] .jz-sidebar-tab:hover svg,
 :root[data-motion='min'] .jz-sidebar-tab.is-active svg,

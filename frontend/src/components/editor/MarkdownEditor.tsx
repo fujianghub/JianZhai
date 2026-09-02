@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Dropdown, Segmented, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Segmented, Tooltip, Typography } from 'antd';
 import {
   BoldOutlined,
   CodeOutlined,
@@ -71,6 +71,8 @@ import { trackRecentSlashCommand } from './slashCommandRegistry';
 import type { SlashCommandItem } from './slashCommandRegistry';
 import { CaretIcon, TextColorIcon } from '@/components/common/actionIcons';
 import { JzCalloutIcon } from '@/components/common/JzIcon';
+import SaveStatusPill from './SaveStatusPill';
+import type { SaveStatus } from './saveStatus';
 
 const { Text } = Typography;
 
@@ -93,7 +95,6 @@ interface Props {
   onSaveReady?: (handle: EditorSaveHandle | null) => void;
 }
 
-type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
 type MdLayoutMode = 'split' | 'edit' | 'preview';
 const MD_LAYOUT_KEY = 'jz-md-layout';
 
@@ -900,21 +901,11 @@ export default function MarkdownEditor({
     [updateSlashFromView, readOnly],
   );
 
-  const statusLabel: Record<SaveStatus, { text: string; color?: string }> = {
-    idle: { text: '已同步' },
-    pending: { text: '待保存…', color: 'orange' },
-    saving: { text: '保存中…', color: 'blue' },
-    saved: { text: '已保存', color: 'green' },
-    error: { text: '保存失败', color: 'red' },
-  };
-
   return (
     <div className="jz-editor-surface jz-md-editor-root">
       <div className="jz-editor-toolbar jz-editor-toolbar--compact" role="toolbar" aria-label="Markdown 工具栏">
         <div className="jz-editor-toolbar-meta">
-          <Tag color={statusLabel[status].color} style={{ margin: 0 }}>
-            {statusLabel[status].text}
-          </Tag>
+          <SaveStatusPill status={status} />
           <Text type="secondary" style={{ fontSize: 12 }}>{count} 字</Text>
           <Tooltip title="立即保存 (Ctrl/⌘+S)">
             <Button aria-label="立即保存"

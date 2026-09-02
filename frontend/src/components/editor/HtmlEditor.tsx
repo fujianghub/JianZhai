@@ -6,6 +6,8 @@ import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
 import { uploadFile } from '@/api/attachments';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 import { draftBackupKey } from '@/utils/localDraftBackup';
+import SaveStatusPill from './SaveStatusPill';
+import type { SaveStatus } from './saveStatus';
 
 const { TextArea } = Input;
 const { Text } = Typography;
@@ -32,8 +34,6 @@ interface Props {
   showPreviewPane?: boolean;
 }
 
-type SaveStatus = 'idle' | 'pending' | 'saving' | 'saved' | 'error';
-
 /** Pure helper — exported for unit tests. The `--split` modifier may only ride
  *  along when the host actually permits preview AND the user picked split;
  *  otherwise a stale localStorage 'split' would leave the source pane in a
@@ -45,14 +45,6 @@ export function htmlEditorPanesClass(
   return 'jz-html-editor-panes'
     + (showPreviewPane && layoutMode === 'split' ? ' jz-html-editor-panes--split' : '');
 }
-
-const STATUS_LABEL: Record<SaveStatus, { text: string; color?: string }> = {
-  idle: { text: '已同步' },
-  pending: { text: '待保存…', color: 'orange' },
-  saving: { text: '保存中…', color: 'blue' },
-  saved: { text: '已保存', color: 'green' },
-  error: { text: '保存失败', color: 'red' },
-};
 
 /**
  * Decode a binary HTML payload. We try UTF-8 first (most modern files), and if
@@ -378,9 +370,7 @@ export default function HtmlEditor({
       <div className="jz-editor-toolbar jz-editor-toolbar--compact jz-html-editor-toolbar" role="toolbar" aria-label="HTML 工具栏">
         {/* LEFT zone — status info (sticky, never wraps) */}
         <div className="jz-html-toolbar-status">
-          <Tag color={STATUS_LABEL[status].color} style={{ margin: 0 }}>
-            {STATUS_LABEL[status].text}
-          </Tag>
+          <SaveStatusPill status={status} />
           <Text type="secondary" style={{ fontSize: 12 }}>
             {value.length.toLocaleString()} 字符
           </Text>
