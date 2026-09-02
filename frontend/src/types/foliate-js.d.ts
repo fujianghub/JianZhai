@@ -126,10 +126,59 @@ declare module '@/vendor/foliate-js/view.js' {
       matchCase?: boolean;
       matchDiacritics?: boolean;
       matchWholeWords?: boolean;
+      /** Overlay draw function for hits (default ``Overlayer.outline``). */
+      draw?: FoliateDrawFn;
+      drawOptions?: Record<string, unknown>;
     }): AsyncGenerator<FoliateSearchResult | 'done'>;
     clearSearch(): void;
     deselect(): void;
+    /* ── Annotations (overlayer) ─────────────────────────────────────── */
+    /** Draw ``annotation`` when its section is the rendered one; the host
+     * picks the drawing in a ``draw-annotation`` listener. Returns the
+     * section index + TOC label. No-op (except the return) for other
+     * sections — replay from ``create-overlay``. */
+    addAnnotation(annotation: FoliateAnnotation, remove?: boolean): Promise<{ index: number; label: string }>;
+    deleteAnnotation(annotation: FoliateAnnotation): Promise<{ index: number; label: string }>;
+    /** Navigate to the annotation and re-emit ``show-annotation``. */
+    showAnnotation(annotation: FoliateAnnotation): Promise<void>;
+    /** Range CFI for a DOM range inside section ``index`` (section CFI when
+     * ``range`` is omitted). */
+    getCFI(index: number, range?: Range): string;
+    resolveCFI(cfi: string): { index: number; anchor: (doc: Document) => Range | Element | null };
+    resolveNavigation(target: string | number | { fraction: number }): Promise<{ index: number; anchor: (doc: Document) => Range | Element | null }>;
+    /** Navigate and turn the target into a live DOM selection. */
+    select(target: string): Promise<void>;
+    /** TOC / page-list entries covering ``range`` in section ``index``. */
+    getProgressOf(index: number, range?: Range): { tocItem?: FoliateTocItem | null; pageItem?: FoliateTocItem | null };
   }
+
+  /** Host-defined annotation object; only ``value`` (a CFI, also the overlay
+   * key) is required — everything else is passed through untouched. */
+  export interface FoliateAnnotation {
+    value: string;
+    [key: string]: unknown;
+  }
+  export type FoliateDrawFn = (rects: DOMRect[] | DOMRectList, options?: Record<string, unknown>) => SVGElement;
+  export interface FoliateDrawAnnotationDetail {
+    draw: (fn: FoliateDrawFn, options?: Record<string, unknown>) => void;
+    annotation: FoliateAnnotation;
+    doc: Document;
+    range: Range;
+  }
+  export interface FoliateShowAnnotationDetail {
+    value: string;
+    index: number;
+    range: Range;
+  }
+}
+
+declare module '@/vendor/foliate-js/epubcfi.js' {
+  /** Total order over CFIs (reading order); works for range CFIs. */
+  export function compare(a: string, b: string): number;
+  /** Range CFI → start (or end) point CFI. */
+  export function collapse(cfi: string, toEnd?: boolean): string;
+  export function fromRange(range: Range, filter?: (node: Node) => number): string;
+  export const isCFI: RegExp;
 }
 
 declare module '@/vendor/foliate-js/footnotes.js' {
@@ -152,9 +201,17 @@ declare module '@/vendor/foliate-js/footnotes.js' {
 }
 
 declare module '@/vendor/foliate-js/overlayer.js' {
+  type Rects = DOMRect[] | DOMRectList;
   export class Overlayer {
-    static highlight: (rects: DOMRect[], opts?: { color?: string }) => SVGElement;
-    static underline: (rects: DOMRect[], opts?: { color?: string }) => SVGElement;
-    static outline: (rects: DOMRect[], opts?: { color?: string }) => SVGElement;
+    static highlight: (rects: Rects, opts?: { color?: string }) => SVGElement;
+    static underline: (rects: Rects, opts?: { color?: string; width?: number; writingMode?: string }) => SVGElement;
+    static strikethrough: (rects: Rects, opts?: { color?: string; width?: number; writingMode?: string }) => SVGElement;
+    static squiggly: (rects: Rects, opts?: { color?: string; width?: number; writingMode?: string }) => SVGElement;
+    static outline: (rects: Rects, opts?: { color?: string; width?: number; radius?: number }) => SVGElement;
+    readonly element: SVGSVGElement;
+    add(key: string, range: Range | ((root: Node) => Range), draw: (rects: Rects, opts?: Record<string, unknown>) => SVGElement, options?: Record<string, unknown>): void;
+    remove(key: string): void;
+    redraw(): void;
+    hitTest(point: { x: number; y: number }): [string, Range] | [];
   }
 }

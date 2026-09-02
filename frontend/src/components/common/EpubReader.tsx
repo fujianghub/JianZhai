@@ -37,6 +37,7 @@
  * wrapper — anything portalled to ``body`` is invisible while full-screen.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Alert,
   Button,
@@ -53,8 +54,11 @@ import {
   Spin,
   Tooltip,
   Typography,
+  message,
 } from 'antd';
 import {
+  BookFilled,
+  BookOutlined,
   CloseOutlined,
   ControlOutlined,
   DownloadOutlined,
@@ -72,10 +76,48 @@ import {
   UnorderedListOutlined,
 } from '@ant-design/icons';
 import '@/vendor/foliate-js/view.js';
-import type { FoliateBook, FoliateRelocateDetail, View as FoliateView } from '@/vendor/foliate-js/view.js';
+import type {
+  FoliateAnnotation,
+  FoliateBook,
+  FoliateDrawAnnotationDetail,
+  FoliateRelocateDetail,
+  FoliateShowAnnotationDetail,
+  View as FoliateView,
+} from '@/vendor/foliate-js/view.js';
 import { FootnoteHandler, type FootnoteRenderDetail } from '@/vendor/foliate-js/footnotes.js';
-import EpubSidebar, { type EpubSearchGroup } from './EpubSidebar';
+import { Overlayer } from '@/vendor/foliate-js/overlayer.js';
+import EpubSidebar, { type EpubSearchGroup, type EpubSideTab } from './EpubSidebar';
+import EpubSelectionBar, { type SelectionAnchor } from './EpubSelectionBar';
+import EpubHighlightCard from './EpubHighlightCard';
+import EpubNotesExportModal from './EpubNotesExportModal';
 import { isLightTheme, useThemeStore } from '@/stores/theme';
+import { useAuthStore } from '@/stores/auth';
+import {
+  createBookmark,
+  createHighlight,
+  deleteBookmark,
+  deleteHighlight,
+  listBookmarks,
+  listHighlights,
+  updateHighlight,
+  type Bookmark,
+  type Highlight,
+  type HighlightColor,
+  type HighlightStyle,
+} from '@/api/reading';
+import { listPublicPosts } from '@/api/blog';
+import type { PublicPost } from '@/types';
+import { createComment } from '@/api/comments';
+import {
+  buildCommentFromHighlight,
+  buildNotesMarkdown,
+  buildQuoteMarkdown,
+  loadLastHighlightColor,
+  normalizeSelectionText,
+  notesFilename,
+  saveLastHighlightColor,
+  swatchHex,
+} from '@/utils/epubNotes';
 import { ARTICLE_FONT_PRESETS, loadArticleFont, saveArticleFont, stackFor, useArticleFontPresets } from '@/utils/articleFont';
 import {
   FONT_SCALE_MAX,
@@ -113,6 +155,7 @@ import {
   formatMinutes,
   legacyEpubFontKey,
   loadEpubPosition,
+  markEpubDone,
   loadEpubPrefs,
   paperFor,
   pickActiveTocId,
@@ -143,6 +186,14 @@ interface Props {
   scroll?: 'inner' | 'page';
   /** Fallback title when the book carries none. */
   title?: string;
+  /** Document the book belongs to — enables highlights / notes (persisted
+   * per user). Without it the selection bar only offers copy / search / quote. */
+  documentId?: number | null;
+  /** Open at this CFI instead of the remembered position (deep link
+   * ``/d/:id?cfi=``), flashing the target once. */
+  initialCfi?: string | null;
+  /** KB slug — the 读完页 lists other books of the same shelf. */
+  kbSlug?: string | null;
 }
 
 /** Column gap as a percentage of the page (Readium uses ~6–8%). */
@@ -396,7 +447,37 @@ async function highlightChapterCode(doc: Document) {
   }
 }
 
-export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 1100px)', scroll = 'inner', title }: Props) {
+/** Selection / highlight rect mapped from the chapter iframe to the stage. */
+function anchorFromRange(range: Range, stage: HTMLElement | null): SelectionAnchor | null {
+  const doc = range.startContainer.ownerDocument;
+  const frame = doc?.defaultView?.frameElement;
+  if (!frame || !stage) return null;
+  const rects = Array.from(range.getClientRects()).filter((r) => r.width > 0 || r.height > 0);
+  const bound = range.getBoundingClientRect();
+  const first = rects[0] ?? bound;
+  const last = rects[rects.length - 1] ?? bound;
+  const fr = frame.getBoundingClientRect();
+  const sr = stage.getBoundingClientRect();
+  return {
+    x: fr.left + bound.left - sr.left,
+    y: fr.top + first.top - sr.top,
+    w: bound.width,
+    h: Math.max(first.height, last.bottom - first.top),
+  };
+}
+
+/** Milliseconds the deep-link / note-jump flash outline stays visible. */
+const FLASH_MS = 1800;
+
+export default function EpubReader({
+  url,
+  height = 'min(calc(100vh - 200px), 1100px)',
+  scroll = 'inner',
+  title,
+  documentId = null,
+  initialCfi = null,
+  kbSlug = null,
+}: Props) {
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
@@ -425,6 +506,32 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
   const chromeTimerRef = useRef<number | null>(null);
   const fullscreenRef = useRef(false);
   const presetsRef = useRef<Array<{ key: string; stack: string }>>([]);
+  /* ── Highlights / notes ─────────────────────────────────────────────── */
+  const authUser = useAuthStore((s) => s.user);
+  /** Source of truth for overlay replay (the ``create-overlay`` listener
+   * lives in the open effect and must see the latest list). */
+  const highlightsRef = useRef<Highlight[]>([]);
+  const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [highlightsLoaded, setHighlightsLoaded] = useState(false);
+  /** Chapter label of the page in view (stored with each new highlight). */
+  const chapterRef = useRef('');
+  const pointerDownRef = useRef(false);
+  const lastPageCfiRef = useRef('');
+  const pendingFocusRef = useRef<number | null>(null);
+  const [selection, setSelection] = useState<{ text: string; cfi: string; anchor: SelectionAnchor; chapter: string } | null>(null);
+  const [card, setCard] = useState<{ id: number; anchor: SelectionAnchor; focusNote?: boolean } | null>(null);
+  const [lastColor, setLastColor] = useState<HighlightColor>(() => loadLastHighlightColor());
+  const [searchRequest, setSearchRequest] = useState<{ query: string; seq: number } | null>(null);
+  const [tabRequest, setTabRequest] = useState<{ tab: EpubSideTab; seq: number } | null>(null);
+  const [exportOpen, setExportOpen] = useState(false);
+  /* ── Bookmarks / 读完页 (批次 C) ─────────────────────────────────────── */
+  const [bookmarks, setBookmarks] = useState<Bookmark[]>([]);
+  const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
+  const bookmarksRef = useRef<Bookmark[]>([]);
+  const pageRangeRef = useRef<Range | null>(null);
+  const [finishOpen, setFinishOpen] = useState(false);
+  const [finishDoneAt, setFinishDoneAt] = useState<number | null>(null);
+  const [related, setRelated] = useState<PublicPost[] | null>(null);
 
   const [loading, setLoading] = useState(true);
   const [download, setDownload] = useState<number | null>(null);
@@ -803,12 +910,47 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
       setLoading(false);
       setProgress(detail);
       setSliderValue(null);
-      setActiveTocId(resolveActiveToc(detail));
+      const activeId = resolveActiveToc(detail);
+      setActiveTocId(activeId);
+      chapterRef.current = (tocRef.current.find((en) => en.id === activeId)?.title ?? detail.tocItem?.label ?? '').trim();
+      pageRangeRef.current = detail.range ?? null;
+      // The paginator relocates several times after a chapter loads (fonts,
+      // ResizeObserver); only a real page change drops the selection bar,
+      // and an open card follows its highlight instead of closing.
+      if (detail.cfi !== lastPageCfiRef.current) {
+        lastPageCfiRef.current = detail.cfi;
+        setSelection(null);
+      }
+      refreshCard();
       updateMarginals(detail);
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(() => {
         saveEpubPosition(positionKey, { cfi: detail.cfi, fraction: detail.fraction ?? 0 });
       }, 400);
+    };
+
+    /** Re-anchor the open card to its highlight in the rendered chapter, or
+     * close it when the highlight is off-page / in another chapter. */
+    const refreshCard = () => {
+      setCard((prev) => {
+        if (!prev) return prev;
+        const h = highlightsRef.current.find((x) => x.id === prev.id);
+        const content = view.renderer?.getContents?.()[0];
+        const stage = stageRef.current;
+        if (!h || !content?.doc || !stage) return null;
+        try {
+          const { index, anchor } = view.resolveCFI(h.cfi);
+          if (index !== content.index) return null;
+          const r = anchor(content.doc);
+          if (!(r instanceof Range)) return null;
+          const a = anchorFromRange(r, stage);
+          if (!a) return null;
+          if (a.y + a.h < 0 || a.y > stage.clientHeight || a.x + a.w < 0 || a.x > stage.clientWidth) return null;
+          return { ...prev, anchor: a };
+        } catch {
+          return null;
+        }
+      });
     };
 
     const onHistory = () => {
@@ -818,6 +960,13 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
 
     const keyNav = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+      if (e.key === 'Escape') {
+        // Closes the selection bar / highlight card wherever focus sits
+        // (segmented tab inputs, the note field, the chapter iframe).
+        setSelection(null);
+        setCard(null);
+        return;
+      }
       if (isTypingTarget(e.target)) return;
       const v = viewRef.current;
       if (!v) return;
@@ -899,7 +1048,7 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
     };
 
     const onLoad = (e: Event) => {
-      const { doc } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
+      const { doc, index } = (e as CustomEvent<{ doc: Document; index: number }>).detail;
       docRef.current = doc;
       injectSiteFonts(doc);
       normalizeChapter(doc);
@@ -909,8 +1058,57 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
       doc.addEventListener('keydown', keyNav);
       doc.addEventListener('wheel', onWheel, { passive: true });
       doc.addEventListener('mousemove', pokeChrome, { passive: true });
+      // Text selection → floating bar. The selection lives in the chapter
+      // document (the parent never sees it), so listen there and map the
+      // range rect through the iframe element. Debounced: selectionchange
+      // fires per character while dragging; the bar appears on release.
+      let selTimer = 0;
+      const readSelection = () => {
+        window.clearTimeout(selTimer);
+        selTimer = window.setTimeout(() => {
+          if (cancelled || pointerDownRef.current) return;
+          const sel = doc.getSelection();
+          const raw = sel?.toString() ?? '';
+          if (!sel || sel.isCollapsed || !raw.trim()) {
+            setSelection(null);
+            return;
+          }
+          const range = sel.getRangeAt(0);
+          const anchor = anchorFromRange(range, stageRef.current);
+          if (!anchor) return;
+          let cfi = '';
+          let chapter = '';
+          try {
+            cfi = view.getCFI(index, range);
+            // Chapter of the *selection* (a spine section can hold several
+            // TOC entries), falling back to the page-top chapter.
+            chapter = (view.getProgressOf?.(index, range)?.tocItem?.label ?? '').trim();
+          } catch {
+            cfi = '';
+          }
+          setCard(null);
+          setSelection({ text: normalizeSelectionText(raw), cfi, anchor, chapter: chapter || chapterRef.current });
+        }, 160);
+      };
+      doc.addEventListener('selectionchange', readSelection);
+      doc.addEventListener('pointerdown', () => {
+        pointerDownRef.current = true;
+      });
+      doc.addEventListener('pointerup', () => {
+        pointerDownRef.current = false;
+        readSelection();
+      });
+      doc.addEventListener('pointercancel', () => {
+        pointerDownRef.current = false;
+      });
       doc.addEventListener('click', (ev) => {
         const target = ev.target as Element | null;
+        // A click on an existing highlight is foliate's (``show-annotation``
+        // opens the card); anywhere else closes it and never turns the page.
+        const overlayer = view.renderer?.getContents?.()[0]?.overlayer as Overlayer | undefined;
+        const [hitKey] = overlayer?.hitTest?.(ev) ?? [];
+        if (hitKey) return;
+        setCard(null);
         // Code block: the pseudo-element "复制" button lives in the top-right
         // corner; a click landing there copies the block.
         const pre = target?.closest?.('pre') as HTMLElement | null;
@@ -968,6 +1166,40 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
       });
     };
 
+    // ── Highlights: replay per chapter, draw by colour/style, open the card
+    // on click. foliate keeps one chapter alive at a time and recreates the
+    // overlay on every chapter load, so the host replays from its own list.
+    const annoOf = (h: Highlight): FoliateAnnotation => ({ value: h.cfi, id: h.id, color: h.color, style: h.style });
+    const onCreateOverlay = () => {
+      for (const h of highlightsRef.current) view.addAnnotation(annoOf(h)).catch(() => undefined);
+    };
+    const onDrawAnnotation = (e: Event) => {
+      const { draw, annotation, doc } = (e as CustomEvent<FoliateDrawAnnotationDetail>).detail;
+      if (annotation.kind === 'flash') {
+        const accent = getComputedStyle(wrapRef.current ?? document.documentElement).getPropertyValue('--jz-accent').trim() || '#10b981';
+        draw(Overlayer.outline, { color: accent, width: 3, radius: 4 });
+        return;
+      }
+      const color = swatchHex(String(annotation.color ?? ''));
+      if (annotation.style === 'underline' || annotation.style === 'squiggly') {
+        const writingMode = doc?.body ? getComputedStyle(doc.body).writingMode : undefined;
+        draw(annotation.style === 'squiggly' ? Overlayer.squiggly : Overlayer.underline, { color, width: 2, writingMode });
+      } else draw(Overlayer.highlight, { color });
+    };
+    const onShowAnnotation = (e: Event) => {
+      const { value, range } = (e as CustomEvent<FoliateShowAnnotationDetail>).detail;
+      if (cancelled) return;
+      const h = highlightsRef.current.find((x) => x.cfi === value);
+      if (!h) return;
+      const anchor = anchorFromRange(range, stageRef.current);
+      if (!anchor) return;
+      setSelection(null);
+      setCard({ id: h.id, anchor, focusNote: pendingFocusRef.current === h.id });
+      pendingFocusRef.current = null;
+    };
+    view.addEventListener('create-overlay', onCreateOverlay);
+    view.addEventListener('draw-annotation', onDrawAnnotation);
+    view.addEventListener('show-annotation', onShowAnnotation);
     view.addEventListener('relocate', onRelocate);
     view.addEventListener('load', onLoad);
     view.addEventListener('link', onLink);
@@ -1049,9 +1281,12 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
         applyStyles();
 
         const saved = loadEpubPosition(positionKey);
-        await view.init({ lastLocation: saved?.cfi ?? null });
+        const deepLink = initialCfi && /^epubcfi\(/.test(initialCfi) ? initialCfi : null;
+        await view.init({ lastLocation: deepLink ?? saved?.cfi ?? null });
         if (cancelled) return;
-        if (saved) {
+        if (deepLink) {
+          flashCfi(deepLink);
+        } else if (saved) {
           const got = view.lastLocation?.fraction ?? 0;
           if (Math.abs(got - saved.fraction) > 0.03) await view.goToFraction(saved.fraction);
           setResumed(true);
@@ -1069,6 +1304,9 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
     return () => {
       cancelled = true;
       window.removeEventListener('keydown', keyNav);
+      view.removeEventListener('create-overlay', onCreateOverlay);
+      view.removeEventListener('draw-annotation', onDrawAnnotation);
+      view.removeEventListener('show-annotation', onShowAnnotation);
       view.removeEventListener('relocate', onRelocate);
       view.removeEventListener('load', onLoad);
       view.removeEventListener('link', onLink);
@@ -1096,6 +1334,86 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
     // Re-open only when the URL changes; style/layout effects handle the rest.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fetchUrl]);
+
+  /* ── Highlights: load + replay ──────────────────────────────────────── */
+  const annoFor = (h: Highlight): FoliateAnnotation => ({ value: h.cfi, id: h.id, color: h.color, style: h.style });
+  /** The view only resolves CFIs once a book is open; before that (list
+   * fetched first) the ``create-overlay`` replay covers it. */
+  const openView = () => {
+    const v = viewRef.current;
+    return v?.book ? v : null;
+  };
+  const drawHighlight = (h: Highlight) => openView()?.addAnnotation(annoFor(h)).catch(() => undefined);
+  const undrawHighlight = (h: Highlight) => openView()?.deleteAnnotation(annoFor(h)).catch(() => undefined);
+  const commitHighlights = (next: Highlight[]) => {
+    highlightsRef.current = next;
+    setHighlights(next);
+  };
+  /** Outline ``cfi`` briefly (deep link / note jump). The overlay key is the
+   * CFI itself, so a highlight at the same CFI is redrawn afterwards. */
+  const flashCfi = (cfi: string) => {
+    const v = openView();
+    if (!v) return;
+    const anno: FoliateAnnotation = { value: cfi, kind: 'flash' };
+    v.addAnnotation(anno).catch(() => undefined);
+    window.setTimeout(() => {
+      const cur = viewRef.current;
+      if (cur !== v) return;
+      v.deleteAnnotation(anno).catch(() => undefined);
+      const h = highlightsRef.current.find((x) => x.cfi === cfi);
+      if (h) void drawHighlight(h);
+    }, FLASH_MS);
+  };
+
+  const userId = authUser?.id ?? null;
+  useEffect(() => {
+    commitHighlights([]);
+    setHighlightsLoaded(false);
+    setCard(null);
+    if (!documentId || !userId) return;
+    let cancelled = false;
+    listHighlights(documentId)
+      .then((list) => {
+        if (cancelled) return;
+        commitHighlights(list);
+        setHighlightsLoaded(true);
+        // The current chapter's overlay may already exist (book opened first).
+        for (const h of list) void drawHighlight(h);
+      })
+      .catch(() => {
+        if (!cancelled) setHighlightsLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId, userId, fetchUrl]);
+
+  const commitBookmarks = (next: Bookmark[]) => {
+    bookmarksRef.current = next;
+    setBookmarks(next);
+  };
+  useEffect(() => {
+    commitBookmarks([]);
+    setBookmarksLoaded(false);
+    setFinishOpen(false);
+    setRelated(null);
+    if (!documentId || !userId) return;
+    let cancelled = false;
+    listBookmarks(documentId)
+      .then((list) => {
+        if (cancelled) return;
+        commitBookmarks(list);
+        setBookmarksLoaded(true);
+      })
+      .catch(() => {
+        if (!cancelled) setBookmarksLoaded(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [documentId, userId, fetchUrl]);
 
   // Auto-open the rail on wide layouts once the TOC is known (like PdfCanvas).
   useEffect(() => {
@@ -1161,7 +1479,9 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
     const view = viewRef.current;
     if (!view) return;
     searchGenRef.current?.return?.(undefined);
-    const gen = view.search({ query, matchCase: false, matchDiacritics: false, matchWholeWords: false });
+    // Hits outline in the site accent instead of foliate's default red.
+    const accent = getComputedStyle(wrapRef.current ?? document.documentElement).getPropertyValue('--jz-accent').trim() || '#10b981';
+    const gen = view.search({ query, matchCase: false, matchDiacritics: false, matchWholeWords: false, drawOptions: { color: accent } });
     searchGenRef.current = gen;
     try {
       for await (const r of gen) {
@@ -1182,6 +1502,183 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
     searchGenRef.current = null;
     viewRef.current?.clearSearch();
   };
+
+  const jumpSearchHit = (cfi: string) => {
+    jumpCfi(cfi);
+    flashCfi(cfi);
+  };
+
+  const pageBookmark = progress?.cfi ? bookmarks.find((b) => b.cfi === progress.cfi) ?? null : null;
+  const toggleBookmark = async () => {
+    if (!documentId || !progress?.cfi) return;
+    const existing = pageBookmark;
+    if (existing) {
+      commitBookmarks(bookmarksRef.current.filter((b) => b.id !== existing.id));
+      try {
+        await deleteBookmark(existing.id);
+      } catch {
+        commitBookmarks([...bookmarksRef.current, existing]);
+        message.error('删除书签失败');
+      }
+      return;
+    }
+    const excerpt = (pageRangeRef.current?.toString() ?? '').replace(/\s+/g, ' ').trim().slice(0, 100);
+    try {
+      const b = await createBookmark(documentId, { cfi: progress.cfi, chapter: chapterRef.current.slice(0, 200), excerpt });
+      if (!bookmarksRef.current.some((x) => x.id === b.id)) commitBookmarks([...bookmarksRef.current, b]);
+    } catch {
+      message.error('书签保存失败');
+    }
+  };
+  const removeBookmark = async (b: Bookmark) => {
+    commitBookmarks(bookmarksRef.current.filter((x) => x.id !== b.id));
+    try {
+      await deleteBookmark(b.id);
+    } catch {
+      commitBookmarks([...bookmarksRef.current, b]);
+      message.error('删除书签失败');
+    }
+  };
+
+  /** First TOC entry of a later spine section — the 章末卡 headline. */
+  const nextChapterTitle = useMemo(() => {
+    const cur = progress?.section?.current;
+    if (cur == null) return '';
+    let best: { sec: number; title: string } | null = null;
+    tocRef.current.forEach((en, i) => {
+      const sec = tocSectionRef.current[i];
+      if (sec > cur && (best == null || sec < best.sec)) best = { sec, title: en.title };
+    });
+    return (best as { sec: number; title: string } | null)?.title ?? '';
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [progress]);
+
+  const openFinish = () => {
+    setFinishDoneAt(markEpubDone(positionKey));
+    setFinishOpen(true);
+    if (related === null) {
+      if (kbSlug) {
+        listPublicPosts({ kb: kbSlug, doc_format: 'epub' })
+          .then((list) => setRelated(list.filter((p) => p.id !== documentId).slice(0, 6)))
+          .catch(() => setRelated([]));
+      } else setRelated([]);
+    }
+  };
+
+  /* ── Selection bar / highlight card actions ─────────────────────────── */
+  const canHighlight = !!documentId && !!userId && !viewRef.current?.isFixedLayout;
+  const bookTitleText = bookTitle || title || '';
+  const copyText = async (text: string, ok = '已复制') => {
+    try {
+      await navigator.clipboard.writeText(text);
+      message.success(ok);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+      document.body.append(ta);
+      ta.select();
+      try {
+        if (document.execCommand('copy')) message.success(ok);
+        else message.error('复制失败');
+      } finally {
+        ta.remove();
+      }
+    }
+  };
+  const quoteOf = (text: string, cfi: string, chapter = chapterRef.current) =>
+    buildQuoteMarkdown(text, { title: bookTitleText, author: bookAuthor, chapter, docId: documentId, cfi });
+  const finishSelection = () => {
+    viewRef.current?.deselect();
+    setSelection(null);
+  };
+  const addHighlight = async (color: HighlightColor, style: HighlightStyle, withNote = false) => {
+    if (!selection || !documentId) return;
+    if (!selection.cfi) {
+      message.error('无法定位这段文字');
+      return;
+    }
+    const anchor = selection.anchor;
+    try {
+      const h = await createHighlight(documentId, {
+        cfi: selection.cfi,
+        text: selection.text,
+        chapter: selection.chapter.slice(0, 200),
+        color,
+        style,
+      });
+      if (highlightsRef.current.length === 0) setTabRequest({ tab: 'notes', seq: Date.now() });
+      commitHighlights([...highlightsRef.current, h]);
+      saveLastHighlightColor(color);
+      setLastColor(color);
+      finishSelection();
+      await drawHighlight(h);
+      if (withNote) setCard({ id: h.id, anchor, focusNote: true });
+    } catch {
+      message.error('划线保存失败');
+    }
+  };
+  const patchHighlight = async (id: number, patch: { color?: HighlightColor; style?: HighlightStyle; note?: string }) => {
+    const cur = highlightsRef.current.find((h) => h.id === id);
+    if (!cur) return;
+    const next = { ...cur, ...patch };
+    commitHighlights(highlightsRef.current.map((h) => (h.id === id ? next : h)));
+    if (patch.color || patch.style) {
+      await undrawHighlight(cur);
+      await drawHighlight(next);
+    }
+    try {
+      const saved = await updateHighlight(id, patch);
+      commitHighlights(highlightsRef.current.map((h) => (h.id === id ? saved : h)));
+    } catch {
+      commitHighlights(highlightsRef.current.map((h) => (h.id === id ? cur : h)));
+      if (patch.color || patch.style) {
+        await undrawHighlight(next);
+        await drawHighlight(cur);
+      }
+      message.error('保存失败');
+    }
+  };
+  const removeHighlight = async (id: number) => {
+    const cur = highlightsRef.current.find((h) => h.id === id);
+    if (!cur) return;
+    setCard(null);
+    commitHighlights(highlightsRef.current.filter((h) => h.id !== id));
+    await undrawHighlight(cur);
+    try {
+      await deleteHighlight(id);
+    } catch {
+      commitHighlights([...highlightsRef.current, cur]);
+      await drawHighlight(cur);
+      message.error('删除失败');
+    }
+  };
+  const openHighlight = (h: Highlight) => {
+    pendingFocusRef.current = null;
+    withTurn('jump', () => openView()?.showAnnotation(annoFor(h)).catch(() => undefined));
+    if (!wide) setSideOpen(false);
+  };
+  const commentHighlight = async (h: Highlight) => {
+    if (!documentId) return;
+    try {
+      await createComment(documentId, buildCommentFromHighlight(h));
+      message.success('已发到本书评论');
+    } catch {
+      message.error('发送失败');
+    }
+  };
+  const searchSelection = () => {
+    if (!selection) return;
+    const q = selection.text.slice(0, 80);
+    setSearchRequest({ query: q, seq: Date.now() });
+    setSideOpen(true);
+    finishSelection();
+  };
+  const cardHighlight = card ? highlights.find((h) => h.id === card.id) ?? null : null;
+  const notesMarkdown = useMemo(
+    () => (exportOpen ? buildNotesMarkdown({ title: bookTitleText, author: bookAuthor, docId: documentId, highlights }) : ''),
+    [exportOpen, bookTitleText, bookAuthor, documentId, highlights],
+  );
 
   /** Chapter label for a whole-book fraction (slider tooltip), sync via the
    * section boundaries foliate computed at open. */
@@ -1508,6 +2005,19 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
         </Text>
       </div>
       <div className="jz-epub-tb-group">
+        {documentId != null && userId != null && (
+          <Tooltip {...tip(pageBookmark ? '移除本页书签' : '为本页添加书签')}>
+            <Button
+              size="small"
+              type={pageBookmark ? 'primary' : 'default'}
+              icon={pageBookmark ? <BookFilled /> : <BookOutlined />}
+              onClick={() => void toggleBookmark()}
+              disabled={loading || !!err || !progress?.cfi}
+              aria-label={pageBookmark ? '移除本页书签' : '添加书签'}
+              aria-pressed={!!pageBookmark}
+            />
+          </Tooltip>
+        )}
         <Popover content={settings} trigger="click" placement="bottomRight" getPopupContainer={popupContainer}>
           <Tooltip {...tip('排版：版式 / 翻页动画 / 纸色 / 字号 / 字体')}>
             <Button size="small" icon={<ControlOutlined />} aria-label="排版设置">
@@ -1557,6 +2067,34 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
       onSearch={runSearch}
       onClearSearch={clearSearch}
       onJumpToCfi={jumpCfi}
+      searchRequest={searchRequest}
+      tabRequest={tabRequest}
+      onJumpToSearchHit={jumpSearchHit}
+      bookmarks={
+        documentId
+          ? {
+              items: bookmarks,
+              loaded: bookmarksLoaded,
+              loggedIn: !!userId,
+              onOpen: (b) => {
+                jumpCfi(b.cfi);
+                flashCfi(b.cfi);
+              },
+              onDelete: (b) => void removeBookmark(b),
+            }
+          : null
+      }
+      notes={
+        documentId
+          ? {
+              highlights,
+              loaded: highlightsLoaded,
+              loggedIn: !!userId,
+              onOpen: openHighlight,
+              onExport: () => setExportOpen(true),
+            }
+          : null
+      }
     />
   );
 
@@ -1583,6 +2121,7 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
       data-columns={columns}
       data-turn={prefs.turn}
       data-paper={prefs.paper}
+      data-dark={(paper.key === 'theme' ? !isLightTheme(themeMode) : paper.dark) ? '' : undefined}
       onMouseMove={pokeChrome}
     >
       {toolbar}
@@ -1660,8 +2199,113 @@ export default function EpubReader({ url, height = 'min(calc(100vh - 200px), 110
             </div>
             <div ref={footnoteHostRef} className="jz-epub-footnote-body" />
           </div>
+          {(() => {
+            const isPaginated = effectiveFlow === 'paginated';
+            const atChapterEnd =
+              isPaginated && !loading && !err && chapterPages != null && chapterPages.pages > 0 && chapterPages.page >= chapterPages.pages;
+            const secCur = progress?.section?.current;
+            const secTotal = progress?.section?.total ?? 0;
+            const isLastSection = secCur != null && secTotal > 0 && secCur >= secTotal - 1;
+            if (!atChapterEnd || finishOpen) return null;
+            return (
+              <div className="jz-epub-nextcard">
+                {isLastSection ? (
+                  <button type="button" onClick={openFinish}>
+                    已到全书末页 · 读完这本书 →
+                  </button>
+                ) : (
+                  <button type="button" onClick={() => withTurn('jump', () => viewRef.current?.renderer?.nextSection?.())}>
+                    下一章{nextChapterTitle ? ` · ${nextChapterTitle}` : ''} →
+                  </button>
+                )}
+              </div>
+            );
+          })()}
+          {finishOpen && (
+            <div className="jz-epub-finish" role="dialog" aria-label="全书读完">
+              <div className="jz-epub-finish-card">
+                <div className="jz-epub-finish-seal" aria-hidden>
+                  终
+                </div>
+                <div className="jz-epub-finish-title">《{bookTitleText || '这本书'}》读完了</div>
+                <Text type="secondary" className="jz-epub-finish-meta">
+                  {finishDoneAt ? `完成于 ${new Date(finishDoneAt).toLocaleDateString()}` : ''}
+                  {highlights.length ? ` · ${highlights.length} 条划线` : ''}
+                  {bookmarks.length ? ` · ${bookmarks.length} 个书签` : ''}
+                </Text>
+                <Space wrap style={{ justifyContent: 'center', marginTop: 12 }}>
+                  {documentId != null && userId != null && highlights.length > 0 && (
+                    <Button type="primary" onClick={() => setExportOpen(true)}>
+                      导出读书笔记
+                    </Button>
+                  )}
+                  <Button onClick={() => setFinishOpen(false)}>回到书里</Button>
+                </Space>
+                {related && related.length > 0 && (
+                  <div className="jz-epub-finish-related">
+                    <div className="jz-epub-finish-related-title">同一书架还有</div>
+                    <ul>
+                      {related.map((p) => (
+                        <li key={p.id}>
+                          <Link to={`/posts/${encodeURIComponent(p.slug)}${kbSlug ? `?kb=${encodeURIComponent(kbSlug)}` : ''}`}>{p.title}</Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {selection && (
+            <EpubSelectionBar
+              anchor={selection.anchor}
+              stageWidth={stageRef.current?.clientWidth ?? 0}
+              stageHeight={stageRef.current?.clientHeight ?? 0}
+              canHighlight={canHighlight}
+              lastColor={lastColor}
+              popupContainer={popupContainer}
+              onCopy={() => {
+                void copyText(selection.text);
+                finishSelection();
+              }}
+              onHighlight={(color, style) => void addHighlight(color, style)}
+              onNote={() => void addHighlight(lastColor, 'highlight', true)}
+              onSearch={searchSelection}
+              onQuote={() => {
+                void copyText(quoteOf(selection.text, selection.cfi, selection.chapter), '已复制引用（Markdown）');
+                finishSelection();
+              }}
+            />
+          )}
+          {card && cardHighlight && (
+            <EpubHighlightCard
+              key={cardHighlight.id}
+              highlight={cardHighlight}
+              anchor={card.anchor}
+              stageWidth={stageRef.current?.clientWidth ?? 0}
+              stageHeight={stageRef.current?.clientHeight ?? 0}
+              autoFocusNote={card.focusNote}
+              popupContainer={popupContainer}
+              onChangeStyle={(patch) => void patchHighlight(cardHighlight.id, patch)}
+              onSaveNote={(note) => patchHighlight(cardHighlight.id, { note })}
+              onCopy={() => void copyText(cardHighlight.text)}
+              onQuote={() => void copyText(quoteOf(cardHighlight.text, cardHighlight.cfi, cardHighlight.chapter), '已复制引用（Markdown）')}
+              onComment={documentId ? () => void commentHighlight(cardHighlight) : undefined}
+              onDelete={() => void removeHighlight(cardHighlight.id)}
+              onClose={() => setCard(null)}
+            />
+          )}
         </div>
       </div>
+      <EpubNotesExportModal
+        open={exportOpen}
+        onClose={() => setExportOpen(false)}
+        markdown={notesMarkdown}
+        filename={notesFilename(bookTitleText)}
+        title={bookTitleText}
+        canCreateDoc={!!authUser?.is_staff}
+        popupContainer={popupContainer}
+      />
       {!wide && (
         <Drawer
           open={sideOpen}

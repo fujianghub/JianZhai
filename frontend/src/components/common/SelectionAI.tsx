@@ -18,18 +18,30 @@ interface SelectionState {
 interface Props {
   scopeRef?: React.RefObject<HTMLElement | null>;
   contextProvider?: () => string;
+  /** Suppress the floating trigger button (another bar owns the entry). */
+  hideTrigger?: boolean;
+  /** External run request; a new ``seq`` value triggers it. */
+  externalRequest?: SelectionAIRequest | null;
   /** 提供当前编辑面（MD/HTML 的 EditorSurface）。给到后，润色/扩写/纠错/翻译
    *  等 replace 型操作可把结果一键回写原选区；不给则保持只读（复制）。 */
   surfaceProvider?: () => EditorSurfaceHandle | null;
 }
 
-const SELECTION_OPS = AI_OPS.filter((o) =>
-  (['polish', 'expand', 'fix', 'summarize', 'translate_en', 'translate_zh'] as AIOperation[]).includes(
+export const SELECTION_OPS = AI_OPS.filter((o) =>
+  (['polish', 'expand', 'fix', 'summarize', 'explain', 'translate_en', 'translate_zh'] as AIOperation[]).includes(
     o.key,
   ),
 );
 
-export function SelectionAI({ scopeRef, contextProvider, surfaceProvider }: Props) {
+/** AI request handed in from another surface (the Markdown annotation bar):
+ * runs the op on ``text`` in this component's streaming panel. */
+export interface SelectionAIRequest {
+  text: string;
+  op: AIOpDef | 'ask';
+  seq: number;
+}
+
+export function SelectionAI({ scopeRef, contextProvider, surfaceProvider, hideTrigger, externalRequest }: Props) {
   const [sel, setSel] = useState<SelectionState | null>(null);
   const [panelOpen, setPanelOpen] = useState(false);
   const [askMode, setAskMode] = useState(false);
@@ -86,8 +98,9 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider }: Prop
   }, [scopeRef, panelOpen]);
 
   const runOperation = useCallback(
-    async (op: AIOpDef, customQuestion?: string) => {
-      if (!sel) return;
+    async (op: AIOpDef, customQuestion?: string, textOverride?: string) => {
+      const selText = textOverride ?? sel?.text;
+      if (!selText) return;
       setAskMode(false);
       // replace 型操作：发起时快照编辑面选区（与 AI 选区时机 bug 同理 ——
       // 快照在前，应用在后校验）。DOM 选区文本须与编辑面切片一致才可回写。
@@ -98,7 +111,7 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider }: Prop
           const r = surface.getSelection();
           if (r.to > r.from) {
             const slice = surface.getValue().slice(r.from, r.to);
-            if (slice.trim() === sel.text) {
+            if (slice.trim() === selText) {
               replaceRangeRef.current = { from: r.from, to: r.to, text: slice };
             }
           }
@@ -112,10 +125,10 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider }: Prop
       const ctrl = new AbortController();
       abortRef.current = ctrl;
       const content = customQuestion
-        ? `问题：${customQuestion}\n\n参考片段：${sel.text}${
+        ? `问题：${customQuestion}\n\n参考片段：${selText}${
             contextProvider ? '\n\n全文：' + contextProvider() : ''
           }`
-        : sel.text;
+        : selText;
       try {
         await streamAI(op.key, content, {
           model,
@@ -131,8 +144,35 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider }: Prop
         setStreaming(false);
       }
     },
-    [sel, contextProvider],
+    [sel, contextProvider, surfaceProvider],
   );
+
+  // A bar elsewhere picked an op for its own selection — run it here so the
+  // streaming panel / ask form stay single-sourced.
+  const lastExternalSeq = useRef(0);
+  useEffect(() => {
+    if (!externalRequest || externalRequest.seq === lastExternalSeq.current) return;
+    lastExternalSeq.current = externalRequest.seq;
+    lastSelectionRef.current = externalRequest.text;
+    if (externalRequest.op === 'ask') {
+      setQuestion('');
+      setAnswer('');
+      setActiveOp({
+        key: 'continue',
+        label: '问答',
+        hint: '',
+        icon: createElement(JzAiAskIcon, { size: 18 }),
+        replace: false,
+      });
+      setAskMode(true);
+      setPanelOpen(true);
+      setSel({ text: externalRequest.text, x: 0, y: 0 });
+      return;
+    }
+    setSel({ text: externalRequest.text, x: 0, y: 0 });
+    void runOperation(externalRequest.op, undefined, externalRequest.text);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalRequest]);
 
   function closePanel() {
     abortRef.current?.abort();
@@ -165,7 +205,7 @@ export function SelectionAI({ scopeRef, contextProvider, surfaceProvider }: Prop
 
   return (
     <>
-      {sel && !panelOpen && (
+      {sel && !panelOpen && !hideTrigger && (
         <Dropdown
           trigger={['click']}
           placement="bottomRight"

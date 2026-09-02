@@ -3,12 +3,18 @@ import { Button, Empty, Input, Popover, Segmented, Spin, Switch, Tooltip, Typogr
 import {
   BookOutlined,
   CloseOutlined,
+  DeleteOutlined,
+  DownOutlined,
+  ExportOutlined,
   MinusSquareOutlined,
   PlusSquareOutlined,
   RightOutlined,
   SearchOutlined,
   SettingOutlined,
+  UpOutlined,
 } from '@ant-design/icons';
+import type { Bookmark, Highlight } from '@/api/reading';
+import { groupByChapter, sortHighlights, swatchHex } from '@/utils/epubNotes';
 import {
   defaultExpandedTocKeys,
   filterTocEntries,
@@ -32,6 +38,28 @@ export interface EpubSearchHit {
 export interface EpubSearchGroup {
   label: string;
   hits: EpubSearchHit[];
+}
+
+/** Notes tab wiring (highlights + notes are private per reader). */
+export interface EpubNotesProps {
+  highlights: Highlight[];
+  /** False while the list is loading or when the book has no document id. */
+  loaded: boolean;
+  /** Logged-out readers see a hint instead of an empty list. */
+  loggedIn: boolean;
+  onOpen: (h: Highlight) => void;
+  onExport: () => void;
+}
+
+export type EpubSideTab = 'toc' | 'search' | 'notes' | 'bookmarks';
+
+/** Bookmarks tab wiring (manual bookmarks, distinct from position memory). */
+export interface EpubBookmarksProps {
+  items: Bookmark[];
+  loaded: boolean;
+  loggedIn: boolean;
+  onOpen: (b: Bookmark) => void;
+  onDelete: (b: Bookmark) => void;
 }
 
 interface Props {
@@ -60,6 +88,19 @@ interface Props {
   onSearch: (query: string, push: (group: EpubSearchGroup) => void) => Promise<void>;
   onClearSearch: () => void;
   onJumpToCfi: (cfi: string) => void;
+  /** A search requested from elsewhere (selection bar "搜本书"): switches
+   * to the search tab and runs it. ``seq`` makes repeats of the same query
+   * re-run. */
+  searchRequest?: { query: string; seq: number } | null;
+  /** Present when the reader supports highlights (documentId known). */
+  notes?: EpubNotesProps | null;
+  /** Present when the reader supports bookmarks (documentId known). */
+  bookmarks?: EpubBookmarksProps | null;
+  /** Jump to a search hit — the reader also flashes the target. Falls back
+   * to ``onJumpToCfi`` when omitted. */
+  onJumpToSearchHit?: (cfi: string) => void;
+  /** Force a tab (e.g. after creating the first note); ``seq`` re-applies. */
+  tabRequest?: { tab: EpubSideTab; seq: number } | null;
 }
 
 /**
@@ -87,8 +128,16 @@ export default function EpubSidebar({
   onSearch,
   onClearSearch,
   onJumpToCfi,
+  searchRequest,
+  notes,
+  bookmarks,
+  onJumpToSearchHit,
+  tabRequest,
 }: Props) {
-  const [tab, setTab] = useState<'toc' | 'search'>('toc');
+  const [tab, setTab] = useState<EpubSideTab>('toc');
+  const [notesQuery, setNotesQuery] = useState('');
+  /** Index into the flattened hit list of the "current" search result. */
+  const [hitCursor, setHitCursor] = useState<number | null>(null);
   const [query, setQuery] = useState('');
   const [groups, setGroups] = useState<EpubSearchGroup[]>([]);
   const [searching, setSearching] = useState(false);
@@ -139,6 +188,13 @@ export default function EpubSidebar({
     return m;
   }, [entries]);
   const total = useMemo(() => groups.reduce((n, g) => n + g.hits.length, 0), [groups]);
+  /** All hits in reading order (foliate yields chapters in spine order). */
+  const allHits = useMemo(() => groups.flatMap((g) => g.hits), [groups]);
+  const jumpHit = (i: number) => {
+    if (i < 0 || i >= allHits.length) return;
+    setHitCursor(i);
+    (onJumpToSearchHit ?? onJumpToCfi)(allHits[i].cfi);
+  };
 
   const allFolderKeys = useMemo(() => entries.filter((_, i) => tocHasChildren(entries, i)).map((e) => e.key), [entries]);
   const allExpanded = allFolderKeys.length > 0 && allFolderKeys.every((k) => expanded.has(k));
@@ -226,12 +282,33 @@ export default function EpubSidebar({
       return next;
     });
 
+  useEffect(() => {
+    if (!tabRequest) return;
+    setTab(tabRequest.tab);
+  }, [tabRequest]);
+
+  useEffect(() => {
+    if (!searchRequest || !searchRequest.query.trim()) return;
+    setTab('search');
+    setQuery(searchRequest.query);
+    void submit(searchRequest.query);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchRequest]);
+
+  const noteGroups = useMemo(() => {
+    if (!notes) return [];
+    const q = notesQuery.trim().toLowerCase();
+    const list = q ? notes.highlights.filter((h) => (h.text + '\n' + h.note + '\n' + h.chapter).toLowerCase().includes(q)) : notes.highlights;
+    return groupByChapter(sortHighlights(list));
+  }, [notes, notesQuery]);
+
   const submit = async (q: string) => {
     const trimmed = q.trim();
     const run = ++runRef.current;
     onClearSearch();
     setGroups([]);
     setSearched(false);
+    setHitCursor(null);
     if (!trimmed) return;
     setSearching(true);
     setSearched(true);
@@ -296,10 +373,12 @@ export default function EpubSidebar({
         block
         size="small"
         value={tab}
-        onChange={(v) => setTab(v as 'toc' | 'search')}
+        onChange={(v) => setTab(v as EpubSideTab)}
         options={[
           { label: '目录', value: 'toc' },
           { label: '搜索', value: 'search' },
+          ...(notes ? [{ label: notes.highlights.length ? `笔记 ${notes.highlights.length}` : '笔记', value: 'notes' }] : []),
+          ...(bookmarks ? [{ label: bookmarks.items.length ? `书签 ${bookmarks.items.length}` : '书签', value: 'bookmarks' }] : []),
         ]}
         className="jz-epub-side-tabs"
       />
@@ -340,8 +419,105 @@ export default function EpubSidebar({
           </Popover>
         </div>
       )}
+      {tab === 'notes' && notes && (
+        <div className="jz-epub-toc-tools">
+          {notes.highlights.length > 8 ? (
+            <Input
+              size="small"
+              allowClear
+              variant="filled"
+              prefix={<SearchOutlined className="jz-epub-toc-filter-icon" />}
+              placeholder={`筛选笔记（${notes.highlights.length} 条）`}
+              value={notesQuery}
+              onChange={(e) => setNotesQuery(e.target.value)}
+              className="jz-epub-toc-filter"
+              aria-label="筛选笔记"
+            />
+          ) : (
+            <span style={{ flex: 1 }} />
+          )}
+          <Tooltip title="导出为 Markdown 笔记" getPopupContainer={popupContainer}>
+            <Button
+              type="text"
+              size="small"
+              className="jz-epub-toc-tool"
+              icon={<ExportOutlined />}
+              onClick={notes.onExport}
+              aria-label="导出笔记"
+              disabled={notes.highlights.length === 0}
+            />
+          </Tooltip>
+        </div>
+      )}
       <div ref={scrollRef} className="jz-epub-side-scroll">
-        {tab === 'toc' ? (
+        {tab === 'bookmarks' && bookmarks ? (
+          !bookmarks.loggedIn ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="登录后可添加书签" />
+          ) : !bookmarks.loaded ? (
+            <div style={{ textAlign: 'center', padding: 12 }}>
+              <Spin size="small" />
+            </div>
+          ) : bookmarks.items.length === 0 ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="工具条的书签按钮可收藏当前页" />
+          ) : (
+            <div className="jz-epub-notes">
+              {bookmarks.items.map((b) => (
+                <div key={b.id} className="jz-epub-bm-row">
+                  <button type="button" className="jz-epub-note jz-epub-bm" onClick={() => bookmarks.onOpen(b)} title="跳转到该页">
+                    <span className="jz-epub-search-chapter">{b.chapter || '（正文）'}</span>
+                    <span className="jz-epub-note-quote">{b.excerpt || '（本页）'}</span>
+                    <span className="jz-epub-note-text">{new Date(b.created_at).toLocaleString()}</span>
+                  </button>
+                  <Tooltip title="删除书签">
+                    <Button
+                      type="text"
+                      size="small"
+                      className="jz-epub-bm-del"
+                      icon={<DeleteOutlined />}
+                      onClick={() => bookmarks.onDelete(b)}
+                      aria-label="删除书签"
+                    />
+                  </Tooltip>
+                </div>
+              ))}
+            </div>
+          )
+        ) : tab === 'notes' && notes ? (
+          !notes.loggedIn ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="登录后可划线、写笔记" />
+          ) : !notes.loaded ? (
+            <div style={{ textAlign: 'center', padding: 12 }}>
+              <Spin size="small" />
+            </div>
+          ) : notes.highlights.length === 0 ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选中正文文字即可划线、写笔记" />
+          ) : noteGroups.length === 0 ? (
+            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有匹配的笔记" />
+          ) : (
+            <div className="jz-epub-notes">
+              {noteGroups.map((g, gi) => (
+                <div key={gi} className="jz-epub-search-group">
+                  <div className="jz-epub-search-chapter" title={g.chapter}>
+                    {g.chapter || '（正文）'}
+                  </div>
+                  {g.items.map((h) => (
+                    <button
+                      type="button"
+                      key={h.id}
+                      className={'jz-epub-note is-' + h.style}
+                      style={{ ['--jz-swatch' as string]: swatchHex(h.color) } as React.CSSProperties}
+                      onClick={() => notes.onOpen(h)}
+                      title="跳转到该处"
+                    >
+                      <span className="jz-epub-note-quote">{h.text || '（无引文）'}</span>
+                      {h.note && <span className="jz-epub-note-text">{h.note}</span>}
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )
+        ) : tab === 'toc' ? (
           entries.length === 0 ? (
             <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="本书没有目录" />
           ) : filtering && visible.length === 0 ? (
@@ -414,35 +590,68 @@ export default function EpubSidebar({
               loading={searching}
             />
             {searched && (
-              <Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)', display: 'block', margin: '6px 0' }}>
-                {searching ? '正在逐章扫描…' : `共 ${total} 处`}
-              </Text>
+              <div className="jz-epub-search-nav">
+                <Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
+                  {searching ? '正在逐章扫描…' : hitCursor == null ? `共 ${total} 处` : `${hitCursor + 1} / ${total} 处`}
+                </Text>
+                {total > 0 && (
+                  <span className="jz-epub-search-nav-btns">
+                    <Tooltip title="上一处">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<UpOutlined />}
+                        disabled={total === 0}
+                        onClick={() => jumpHit(hitCursor == null ? total - 1 : (hitCursor - 1 + total) % total)}
+                        aria-label="上一处"
+                      />
+                    </Tooltip>
+                    <Tooltip title="下一处">
+                      <Button
+                        type="text"
+                        size="small"
+                        icon={<DownOutlined />}
+                        disabled={total === 0}
+                        onClick={() => jumpHit(hitCursor == null ? 0 : (hitCursor + 1) % total)}
+                        aria-label="下一处"
+                      />
+                    </Tooltip>
+                  </span>
+                )}
+              </div>
             )}
             {searching && groups.length === 0 && (
               <div style={{ textAlign: 'center', padding: 12 }}>
                 <Spin size="small" />
               </div>
             )}
-            {groups.map((g, gi) => (
-              <div key={gi} className="jz-epub-search-group">
-                <div className="jz-epub-search-chapter" title={g.label}>
-                  {g.label || '（正文）'}
+            {(() => {
+              let flat = -1;
+              return groups.map((g, gi) => (
+                <div key={gi} className="jz-epub-search-group">
+                  <div className="jz-epub-search-chapter" title={g.label}>
+                    {g.label || '（正文）'}
+                  </div>
+                  {g.hits.map((h, hi) => {
+                    flat += 1;
+                    const idx = flat;
+                    return (
+                      <button
+                        type="button"
+                        key={hi}
+                        className={'jz-epub-search-hit' + (idx === hitCursor ? ' is-current' : '')}
+                        onClick={() => jumpHit(idx)}
+                        title="跳转到该处"
+                      >
+                        <span>{h.pre}</span>
+                        <mark>{h.match}</mark>
+                        <span>{h.post}</span>
+                      </button>
+                    );
+                  })}
                 </div>
-                {g.hits.map((h, hi) => (
-                  <button
-                    type="button"
-                    key={hi}
-                    className="jz-epub-search-hit"
-                    onClick={() => onJumpToCfi(h.cfi)}
-                    title="跳转到该处"
-                  >
-                    <span>{h.pre}</span>
-                    <mark>{h.match}</mark>
-                    <span>{h.post}</span>
-                  </button>
-                ))}
-              </div>
-            ))}
+              ));
+            })()}
             {searched && !searching && total === 0 && (
               <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有找到匹配内容" />
             )}

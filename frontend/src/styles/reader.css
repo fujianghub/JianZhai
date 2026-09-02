@@ -1447,3 +1447,501 @@ html[data-jz-turn='flip'][data-jz-turn-dir='prev']::view-transition-new(jz-epub-
   font-size: var(--jz-fs-xs);
   padding-inline: 4px;
 }
+
+/* ── EPUB highlights / notes ─────────────────────────────────────────────
+   The overlay SVG lives in foliate's shadow tree; the custom properties
+   inherit through the shadow boundary from the reader wrapper. Marker
+   colours multiply on light paper and screen on dark paper. */
+.jz-epub-reader {
+  --overlayer-highlight-opacity: 0.4;
+  --overlayer-highlight-blend-mode: multiply;
+}
+.jz-epub-reader[data-dark] {
+  --overlayer-highlight-opacity: 0.45;
+  --overlayer-highlight-blend-mode: screen;
+}
+
+/* Selection bar: floats over the stage, above (or below) the selection. */
+.jz-epub-selbar {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 36px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--jz-overlay-surface, var(--jz-surface));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.18);
+  font-family: var(--jz-font-ui);
+  animation: jz-epub-pop var(--jz-dur-fast, 160ms) var(--jz-ease-out, ease-out);
+}
+@keyframes jz-epub-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+[data-motion='min'] .jz-epub-selbar,
+[data-motion='min'] .jz-epub-hlcard {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-epub-selbar,
+  .jz-epub-hlcard {
+    animation: none;
+  }
+}
+.jz-epub-selbar::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border: 1px solid var(--glass-border, var(--jz-border));
+  border-width: 0 1px 1px 0;
+  transform: translateX(-50%) rotate(45deg);
+  bottom: -6px;
+}
+.jz-epub-selbar.is-below::after {
+  bottom: auto;
+  top: -6px;
+  border-width: 1px 0 0 1px;
+}
+.jz-epub-selbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--jz-text);
+  font-size: var(--jz-fs-md);
+  cursor: pointer;
+}
+.jz-epub-selbtn:hover,
+.jz-epub-selbtn.is-active {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-accent);
+}
+.jz-epub-selsep {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--glass-divider, var(--jz-divider));
+}
+.jz-epub-swatch {
+  width: 20px;
+  height: 20px;
+  margin: 0 2px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  background: var(--jz-swatch);
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+  transition: transform var(--jz-dur-fast, 160ms) var(--jz-ease-out, ease-out);
+}
+.jz-epub-swatch:hover {
+  transform: scale(1.15);
+}
+.jz-epub-swatch.is-last {
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--jz-text-muted);
+}
+.jz-epub-swatch.is-active {
+  border-color: var(--jz-text);
+}
+
+/* Highlight card (existing highlight: colour / note / actions). */
+.jz-epub-hlcard {
+  position: absolute;
+  z-index: 4;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px 8px;
+  border-radius: 10px;
+  background: var(--jz-overlay-surface, var(--jz-surface));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.2);
+  font-family: var(--jz-font-ui);
+  animation: jz-epub-pop var(--jz-dur-fast, 160ms) var(--jz-ease-out, ease-out);
+}
+.jz-epub-hlcard-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.jz-epub-hlcard-swatches {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.jz-epub-hlcard-quote {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--jz-fs-xs);
+  line-height: 1.5;
+  padding-left: 8px;
+  border-left: 3px solid var(--jz-accent);
+}
+.jz-epub-hlcard-note {
+  font-size: var(--jz-fs-sm) !important;
+  font-family: var(--jz-font-ui) !important;
+}
+.jz-epub-hlcard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+/* Notes tab: entries with the marker colour as a left bar. */
+.jz-epub-notes {
+  padding-bottom: 8px;
+}
+.jz-epub-note {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: 0;
+  border-radius: 7px;
+  padding: 5px 8px 5px 10px;
+  margin: 2px 0;
+  cursor: pointer;
+  font-family: inherit;
+  position: relative;
+}
+.jz-epub-note::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 7px;
+  bottom: 7px;
+  width: 3px;
+  border-radius: 2px;
+  background: var(--jz-swatch);
+}
+.jz-epub-note.is-underline::before {
+  background: repeating-linear-gradient(to bottom, var(--jz-swatch) 0 3px, transparent 3px 6px);
+}
+.jz-epub-note.is-squiggly::before {
+  background: repeating-linear-gradient(to bottom, var(--jz-swatch) 0 2px, transparent 2px 4px);
+  border-radius: 0;
+}
+.jz-epub-note:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+}
+.jz-epub-note-quote {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--jz-fs-xs);
+  line-height: 1.55;
+  color: var(--jz-text);
+}
+.jz-epub-note-text {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-top: 3px;
+  font-size: var(--jz-fs-2xs);
+  line-height: 1.5;
+  color: var(--jz-text-muted);
+}
+.jz-epub-notes-export-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+/* ── Markdown highlights (CSS Custom Highlight API) ──────────────────────
+   Painted by MdAnnotator with zero DOM mutation; ::highlight() only allows
+   color / background-color / text-decoration / text-shadow. Hex values are
+   HIGHLIGHT_SWATCHES (utils/epubNotes.ts) — keep in sync. */
+article.paper { position: relative; /* floating selection bar / note card anchor */ }
+::highlight(jz-md-hl-yellow) { background-color: color-mix(in srgb, #ffd21f 40%, transparent); }
+::highlight(jz-md-un-yellow) { text-decoration: underline; text-decoration-color: #ffd21f; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+::highlight(jz-md-sq-yellow) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ffd21f; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-hl-green) { background-color: color-mix(in srgb, #4cd964 40%, transparent); }
+::highlight(jz-md-un-green) { text-decoration: underline; text-decoration-color: #4cd964; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+::highlight(jz-md-sq-green) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #4cd964; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-hl-blue) { background-color: color-mix(in srgb, #4da3ff 40%, transparent); }
+::highlight(jz-md-un-blue) { text-decoration: underline; text-decoration-color: #4da3ff; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+::highlight(jz-md-sq-blue) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #4da3ff; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-hl-pink) { background-color: color-mix(in srgb, #ff6b9a 40%, transparent); }
+::highlight(jz-md-un-pink) { text-decoration: underline; text-decoration-color: #ff6b9a; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+::highlight(jz-md-sq-pink) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ff6b9a; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-hl-purple) { background-color: color-mix(in srgb, #b07cff 40%, transparent); }
+::highlight(jz-md-un-purple) { text-decoration: underline; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+::highlight(jz-md-sq-purple) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 2px; }
+::highlight(jz-md-flash) { background-color: color-mix(in srgb, var(--jz-accent, #10b981) 32%, transparent); }
+
+/* Right-rail 目录/笔记 panel header + notes list density tweaks. */
+.jz-post-side-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.jz-post-notes .jz-epub-note-quote {
+  -webkit-line-clamp: 2;
+}
+
+
+/* ── KB directory tree (EPUB TOC language on the blog rail, 批次 B) ────── */
+.jz-kb-toc {
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.jz-kb-toc .jz-epub-toc-tools {
+  margin: 0 0 6px;
+}
+.jz-kb-toc-folder {
+  text-align: left;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  width: 100%;
+}
+.jz-kb-toc .jz-kb-toc-fmt {
+  flex: 0 0 auto;
+  margin-left: auto;
+  padding-left: 6px;
+  display: inline-flex;
+  align-items: center;
+}
+.jz-kb-toc .jz-kb-toc-actions {
+  flex: 0 0 auto;
+  align-self: center;
+}
+/* 大类 group headers in the rail's KB list. */
+.jz-kb-nav-cat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 10px 2px 4px;
+  font-family: var(--jz-font-serif);
+  font-size: var(--jz-fs-2xs);
+  letter-spacing: var(--jz-ls-md, 0.06em);
+  color: var(--jz-text-muted);
+}
+.jz-kb-nav-cat i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--jz-cat-accent, var(--jz-accent));
+  flex: 0 0 auto;
+}
+.jz-kb-nav-kb-group {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+/* Landing page: collapsible folder sections. */
+.jz-kb-folder-heading.is-foldable {
+  cursor: pointer;
+  user-select: none;
+}
+.jz-kb-fold-chevron {
+  color: var(--jz-text-muted);
+  font-size: 12px;
+  margin-right: 2px;
+  display: inline-grid;
+  place-items: center;
+}
+.jz-kb-folder-heading.is-foldable:hover .jz-kb-fold-chevron {
+  color: var(--jz-accent);
+}
+
+/* ── 批次 C：搜索导航 / 书签 / 章末卡 / 读完页 ──────────────────────────── */
+.jz-epub-search-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0;
+}
+.jz-epub-search-nav-btns {
+  display: inline-flex;
+  gap: 2px;
+}
+.jz-epub-search-hit.is-current {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  color: var(--jz-text);
+}
+.jz-epub-bm-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+.jz-epub-bm-row .jz-epub-bm {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.jz-epub-bm .jz-epub-search-chapter {
+  margin-bottom: 2px;
+}
+.jz-epub-bm-del.ant-btn {
+  color: var(--jz-text-muted);
+  margin-top: 4px;
+}
+.jz-epub-bm-del.ant-btn:hover {
+  color: var(--jz-danger, #d4380d);
+}
+/* 章末「下一章」卡：页脚上方居中的胶囊，不遮正文。 */
+.jz-epub-nextcard {
+  position: absolute;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  z-index: 3;
+  animation: jz-epub-pop var(--jz-dur-base, 240ms) var(--jz-ease-out, ease-out);
+}
+.jz-epub-nextcard button {
+  border: 1px solid var(--glass-border, var(--jz-border));
+  background: var(--jz-overlay-surface, var(--jz-surface));
+  color: var(--jz-text);
+  font-family: var(--jz-font-ui);
+  font-size: var(--jz-fs-sm);
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
+  max-width: min(70vw, 480px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jz-epub-nextcard button:hover {
+  color: var(--jz-accent);
+  border-color: color-mix(in srgb, var(--jz-accent) 45%, transparent);
+}
+/* 读完页：stage 内覆盖层（勿 portal——全屏与 iframe 状态都在原地）。 */
+.jz-epub-finish {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--jz-cell-surface, var(--jz-surface)) 88%, transparent);
+  backdrop-filter: blur(6px);
+  animation: jz-epub-pop var(--jz-dur-base, 240ms) var(--jz-ease-out, ease-out);
+}
+.jz-epub-finish-card {
+  text-align: center;
+  max-width: min(86%, 460px);
+  padding: 28px 24px;
+}
+.jz-epub-finish-seal {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  border: 2px solid color-mix(in srgb, var(--jz-cinnabar, #b3554d) 70%, transparent);
+  color: var(--jz-cinnabar, #b3554d);
+  font-family: var(--jz-font-kai);
+  font-size: 26px;
+}
+.jz-epub-finish-title {
+  font-family: var(--jz-font-serif);
+  font-size: var(--jz-fs-xl);
+  font-weight: 600;
+  color: var(--jz-text);
+  margin-bottom: 6px;
+}
+.jz-epub-finish-meta {
+  display: block;
+  font-size: var(--jz-fs-xs);
+}
+.jz-epub-finish-related {
+  margin-top: 18px;
+  text-align: left;
+}
+.jz-epub-finish-related-title {
+  font-size: var(--jz-fs-2xs);
+  color: var(--jz-text-muted);
+  letter-spacing: var(--jz-ls-md, 0.06em);
+  font-family: var(--jz-font-serif);
+  margin-bottom: 6px;
+}
+.jz-epub-finish-related ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 180px;
+  overflow-y: auto;
+}
+.jz-epub-finish-related a {
+  display: block;
+  padding: 5px 8px;
+  border-radius: 7px;
+  color: var(--jz-text);
+  font-size: var(--jz-fs-sm);
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jz-epub-finish-related a:hover {
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  color: var(--jz-accent);
+}
+
+/* 知识库 list settings (the rail's own 目录设置键). */
+.jz-kb-nav-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+}
+.jz-kb-nav-section-head .jz-kb-nav-section-title {
+  margin-bottom: 0;
+}
+.jz-kb-nav-section-head + .jz-kb-nav-kb-list {
+  margin-top: 6px;
+}
+.jz-kb-nav-kbs[data-density='compact'] .jz-kb-nav-kb-item {
+  padding: 3px 8px;
+}
+.jz-kb-nav-kbs[data-density='loose'] .jz-kb-nav-kb-item {
+  padding: 8px 10px;
+}
+.jz-kb-nav-kbs[data-size='s'] .jz-kb-nav-kb-item {
+  font-size: var(--jz-fs-xs);
+}
+.jz-kb-nav-kbs[data-size='l'] .jz-kb-nav-kb-item {
+  font-size: var(--jz-fs-md);
+}
+.jz-kb-nav-kbs[data-font='serif'] .jz-kb-nav-kb-item {
+  font-family: var(--jz-font-serif);
+}
+.jz-kb-nav-kbs[data-font='kai'] .jz-kb-nav-kb-item {
+  font-family: var(--jz-font-kai);
+}
+.jz-kb-nav-kbs[data-font='wenkai'] .jz-kb-nav-kb-item {
+  font-family: var(--jz-font-display);
+}
+.jz-kb-nav-kbs[data-color='muted'] .jz-kb-nav-kb-item:not(.is-active) {
+  color: var(--jz-text-muted);
+}
+.jz-kb-nav-kbs[data-counts='off'] .jz-kb-nav-kb-item-count {
+  display: none;
+}

@@ -6,6 +6,16 @@ import { resolvePublicById } from '@/api/linking';
 import { useAuthStore } from '@/stores/auth';
 import { postReadHref } from '@/utils/docLinks';
 
+/** Carry the deep-link query (``?cfi=`` for EPUBs) through the redirect. */
+function withQuery(href: string, search: string): string {
+  const extra = new URLSearchParams(search);
+  if ([...extra.keys()].length === 0) return href;
+  const [path, existing = ''] = href.split('?');
+  const merged = new URLSearchParams(existing);
+  extra.forEach((v, k) => merged.set(k, v));
+  return `${path}?${merged.toString()}`;
+}
+
 type Resolution =
   | { kind: 'admin'; kbId: number; docId: number }
   | { kind: 'public'; href: string }
@@ -37,7 +47,7 @@ export default function DocLinkResolver() {
       try {
         const pub = await resolvePublicById(docId);
         if (!cancelled) {
-          setResolution({ kind: 'public', href: postReadHref(pub.slug) });
+          setResolution({ kind: 'public', href: withQuery(postReadHref(pub.slug), location.search) });
           return;
         }
       } catch {
@@ -61,7 +71,7 @@ export default function DocLinkResolver() {
     return () => {
       cancelled = true;
     };
-  }, [loaded, user, id]);
+  }, [loaded, user, id, location.search]);
 
   // Friends-only mode (SITE_REQUIRE_LOGIN): /d/:id lives outside BlogLayout,
   // so bounce anonymous visitors to the login page just like BlogLayout does.
@@ -78,7 +88,7 @@ export default function DocLinkResolver() {
     );
   }
   if (resolution.kind === 'admin') {
-    return <Navigate to={`/admin/kbs/${resolution.kbId}?doc=${resolution.docId}`} replace />;
+    return <Navigate to={withQuery(`/admin/kbs/${resolution.kbId}?doc=${resolution.docId}`, location.search)} replace />;
   }
   if (resolution.kind === 'public') {
     return <Navigate to={resolution.href} replace />;

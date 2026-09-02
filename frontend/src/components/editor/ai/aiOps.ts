@@ -1,6 +1,7 @@
 import { createElement, type ReactNode } from 'react';
 import type { AIOperation } from '@/api/ai';
 import {
+  JzAiAskIcon,
   JzAiContinueIcon,
   JzAiPolishIcon,
   JzAiExpandIcon,
@@ -56,6 +57,13 @@ export const AI_OPS: AIOpDef[] = [
     label: '总结',
     hint: '提炼 3-5 句要点',
     icon: createElement(JzAiSummarizeIcon, { size: ICON_SIZE }),
+    replace: false,
+  },
+  {
+    key: 'explain',
+    label: '解释',
+    hint: '通俗解释含义与术语',
+    icon: createElement(JzAiAskIcon, { size: ICON_SIZE }),
     replace: false,
   },
   {

@@ -919,6 +919,7 @@ export default function DocEditorPage({
             contentSource={contentSource}
             forceSyncRevision={conflictSyncRevision}
             primaryUrl={primaryUrl}
+            initialCfi={searchParams.get('cfi')}
             onChange={(next) => {
               hasPendingChangesRef.current = true;
               setLocalEditorBody(next);
@@ -1059,6 +1060,8 @@ interface SurfaceProps {
   contentSource: ContentSource;
   forceSyncRevision: number;
   primaryUrl: string | null;
+  /** ``?cfi=`` deep link for EPUB documents. */
+  initialCfi?: string | null;
   onChange: (next: string) => void;
   onAutoSave: (next: string) => Promise<void>;
   onSwitchToMarkdown: () => void;
@@ -1077,6 +1080,7 @@ function EditorSurface({
   contentSource,
   forceSyncRevision,
   primaryUrl,
+  initialCfi,
   onChange,
   onAutoSave,
   onSwitchToMarkdown,
@@ -1126,7 +1130,7 @@ function EditorSurface({
       );
     }
     // View-only book reader (same component the blog uses).
-    return <LazyEpubReader url={primaryUrl} height="min(78vh, 760px)" title={doc.title} />;
+    return <LazyEpubReader url={primaryUrl} height="min(78vh, 760px)" title={doc.title} documentId={doc.id} initialCfi={initialCfi} />;
   }
   if (mode === 'pptx') {
     if (doc.doc_format !== 'pptx') {

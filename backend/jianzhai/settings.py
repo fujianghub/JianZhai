@@ -102,6 +102,7 @@ INSTALLED_APPS = [
     "apps.tags",
     "apps.blog",
     "apps.ai",
+    "apps.reading",
 ]
 
 MIDDLEWARE = [

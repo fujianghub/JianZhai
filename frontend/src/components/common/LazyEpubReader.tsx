@@ -17,6 +17,9 @@ interface Props {
   height?: number | string;
   scroll?: 'inner' | 'page';
   title?: string;
+  documentId?: number | null;
+  initialCfi?: string | null;
+  kbSlug?: string | null;
 }
 
 export default function LazyEpubReader(props: Props) {

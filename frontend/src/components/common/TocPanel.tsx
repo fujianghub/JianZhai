@@ -11,13 +11,15 @@ interface Props {
   articleSelector?: string;
   /** Optional collapse handler; when provided, a close button is shown. */
   onClose?: () => void;
+  /** Hide the built-in 目录 header (a wrapping panel renders its own). */
+  hideHeader?: boolean;
 }
 
 /**
  * Sticky right-rail table of contents. Updates the highlighted entry as the
  * reader scrolls; clicking jumps the relevant heading into view.
  */
-export default function TocPanel({ toc, articleSelector = '.markdown-preview', onClose }: Props) {
+export default function TocPanel({ toc, articleSelector = '.markdown-preview', onClose, hideHeader }: Props) {
   const [activeId, setActiveId] = useState<string | null>(toc[0]?.id ?? null);
 
   useEffect(() => {
@@ -63,22 +65,24 @@ export default function TocPanel({ toc, articleSelector = '.markdown-preview', o
 
   return (
     <nav className="jz-toc" aria-label="目录">
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
-        <Text type="secondary" style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>
-          目录
-        </Text>
-        {onClose && (
-          <Tooltip title="隐藏目录">
-            <Button
-              type="text"
-              size="small"
-              icon={<CloseOutlined />}
-              onClick={onClose}
-              aria-label="隐藏目录"
-            />
-          </Tooltip>
-        )}
-      </div>
+      {!hideHeader && (
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 4 }}>
+          <Text type="secondary" style={{ fontSize: 11, letterSpacing: 1, textTransform: 'uppercase' }}>
+            目录
+          </Text>
+          {onClose && (
+            <Tooltip title="隐藏目录">
+              <Button
+                type="text"
+                size="small"
+                icon={<CloseOutlined />}
+                onClick={onClose}
+                aria-label="隐藏目录"
+              />
+            </Tooltip>
+          )}
+        </div>
+      )}
       <ul style={{ listStyle: 'none', padding: 0, margin: '10px 0 0' }}>
         {toc.map((entry) => (
           <li

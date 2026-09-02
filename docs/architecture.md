@@ -1,6 +1,6 @@
 # 简斋 · 架构与数据模型
 
-> 实现向参考：四层架构、11 个 Django app、数据模型、请求时序、扩展入口。
+> 实现向参考：四层架构、12 个 Django app、数据模型、请求时序、扩展入口。
 > 上手导览见 [dev-guide/simple.md](./dev-guide/simple.md)；权限体系见 [permissions.md](./permissions.md)。
 > 本文基于源码核对（2026-06-21），与代码不一致以代码为准。
 
@@ -13,7 +13,7 @@
           │  /api · /media · /feed.xml （Vite dev 代理，每请求强制新 TCP 连接）
 [ 边缘/代理 ]  Session + CSRF（CSRF_COOKIE_HTTPONLY=False）· DRF 节流 · CORS 白名单
           │
-[ 应用层 :8002 ]  Django 5.2 + DRF 3.15（Python 3.12）· 11 个本地 app
+[ 应用层 :8002 ]  Django 5.2 + DRF 3.15（Python 3.12）· 12 个本地 app
           │  保存后 transaction.on_commit → Celery .delay()（避免 worker 读未提交）
 [ 持久层 ]  PostgreSQL 14+（search_vector GIN）· Redis（缓存 DB0 / broker DB1 / result DB2）· MEDIA_ROOT
 ```
@@ -35,6 +35,7 @@
 | `search` | `services.py` `tasks.py` | jieba 切词 → `tsvector`；`/search/`；`reindex_search` 命令 |
 | `tags` | `models.py` `views.py` | 标签可挂 KB / Folder / Document；空 color 自动派生 djb2 hash |
 | `comments` | `models.py` `views.py` | 文档级与段落级（`block_id`）评论；单用户自动通过审核 |
+| `reading` | `models.py` `views.py` | 阅读器读者状态：`Highlight`（双锚二选一：EPUB 范围 CFI / MD TextQuote `selector` JSON + 引文 + 五色 × 高亮/下划线/波浪线 + 笔记）与 `Bookmark`（点 CFI）；每用户私有、读者可写（`_readable_doc` 同收藏/评论） |
 | `exporter` | `services/*` `tasks.py` `scope.py` | 异步导出 MD/HTML/PDF/DOCX/site zip；anthology 单文件壳 |
 | `blog` | `views.py` `feeds.py` | 公开 posts API、RSS、`resolve_public_post_by_slug` |
 | `ai` | `services.py` `prompts.py` `pricing.py` `views.py` | **多供应商**代理、降级链、日预算、自定义模板、多轮对话、用量日志、价格估算 |
@@ -124,6 +125,7 @@ trash/  /trash/kbs/<pk>/restore  /trash/empty  …  回收站（purge/empty = Is
 uploads/  imports/  imports/batch/  imports/zip/   附件上传 + Word/MD/ZIP 导入
 attachments/  documents/<id>/attachments/  link-preview/
 documents/<id>/{preview,backlinks,versions,comments,tags}/   含 versions/diff · restore
+documents/<id>/{highlights,bookmarks}/  highlights/<pk>/  bookmarks/<pk>/   EPUB 划线/书签（reading）
 kbs/<id>/tags/  folders/<id>/tags/  tags/
 links/graph/                  知识图谱
 search/                       全文搜索

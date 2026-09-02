@@ -18,7 +18,20 @@ import CodeBlockEnhancer from './CodeBlockEnhancer';
 import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import LongImageEnhancer from '@/components/common/LongImageEnhancer';
 
-export default function PublicAttachmentPreview({ att }: { att: PublicAttachment }) {
+export default function PublicAttachmentPreview({
+  att,
+  documentId,
+  initialCfi,
+  kbSlug,
+}: {
+  att: PublicAttachment;
+  /** Owning document — lets the EPUB reader persist highlights / notes. */
+  documentId?: number | null;
+  /** Deep link into an EPUB (``?cfi=``). */
+  initialCfi?: string | null;
+  /** KB slug for the EPUB 读完页's related books. */
+  kbSlug?: string | null;
+}) {
   const url = attachmentAbsoluteUrl(att.url);
   const kind = previewKind(att);
 
@@ -53,7 +66,16 @@ export default function PublicAttachmentPreview({ att }: { att: PublicAttachment
   }
   if (kind === 'epub') {
     // A book: viewport-sized paginated/scrolled reader (foliate-js).
-    return <EpubReader url={url} scroll="page" title={att.original_filename.replace(/\.epub$/i, '')} />;
+    return (
+      <EpubReader
+        url={url}
+        scroll="page"
+        title={att.original_filename.replace(/\.epub$/i, '')}
+        documentId={documentId}
+        initialCfi={initialCfi}
+        kbSlug={kbSlug}
+      />
+    );
   }
   if (kind === 'image') {
     return (

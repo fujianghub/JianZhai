@@ -53,7 +53,6 @@ import PublicAttachmentPreview from '@/components/common/PublicAttachmentPreview
 import LazyPptxReader from '@/components/common/LazyPptxReader';
 import DocFormatTag from '@/components/common/DocFormatTag';
 import KbNavSidebar from '@/components/common/KbNavSidebar';
-import TocPanel from '@/components/common/TocPanel';
 import HtmlPostReader, { type HtmlReaderMeta } from '@/components/blog/HtmlPostReader';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import TableEnhancer from '@/components/common/TableEnhancer';
@@ -80,10 +79,18 @@ const SelectionAI = lazy(() =>
 const DocAIPanel = lazy(() =>
   import('@/components/common/DocAIPanel').then((m) => ({ default: m.DocAIPanel })),
 );
+// Lazy for the same reason: highlight/notes UI only matters once the reader
+// selects text; the anchor engine + antd pieces stay off the initial chunk.
+const MdAnnotator = lazy(() => import('@/components/blog/MdAnnotator'));
 import ReadingProgressBar from '@/components/common/ReadingProgressBar';
 import RelatedPostsSection from '@/components/blog/RelatedPostsSection';
 import { applyPageMeta, resetPageMeta } from '@/utils/pageMeta';
 import ColumnResizer from '@/components/common/ColumnResizer';
+import PostSidePanel from '@/components/blog/PostSidePanel';
+import type { MdAnnotationsApi } from '@/components/blog/MdAnnotator';
+import type { SelectionAIRequest } from '@/components/common/SelectionAI';
+import { AI_OPS, type AIOpDef } from '@/components/editor/ai/aiOps';
+import type { AIOperation } from '@/api/ai';
 import { useColumnResize } from '@/hooks/useColumnResize';
 import { useFootnoteHover } from '@/hooks/useFootnoteHover';
 import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
@@ -92,6 +99,11 @@ import LongImageEnhancer from '@/components/common/LongImageEnhancer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 const { Title, Text } = Typography;
+
+/** Bar AI ops (same set as SelectionAI's SELECTION_OPS — keep in sync). */
+const MD_BAR_AI_OPS: AIOpDef[] = AI_OPS.filter((o) =>
+  (['polish', 'expand', 'fix', 'summarize', 'explain', 'translate_en', 'translate_zh'] as AIOperation[]).includes(o.key),
+);
 
 const POST_KB_W = { min: 200, max: 480, default: 240, key: 'jz-post-kb-w' };
 const POST_TOC_W = { min: 160, max: 400, default: 200, key: 'jz-post-toc-w' };
@@ -188,6 +200,14 @@ export default function PostDetail() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const kbSlug = searchParams.get('kb') ?? undefined;
+  /** EPUB deep link (``/d/:id?cfi=`` forwards here). */
+  const initialCfi = searchParams.get('cfi');
+  /** Markdown highlight deep link (``/d/:id?hl=`` forwards here). */
+  const initialHlId = Number(searchParams.get('hl')) || null;
+  /** Highlights/notes state surfaced by MdAnnotator for the side panel. */
+  const [mdNotes, setMdNotes] = useState<MdAnnotationsApi | null>(null);
+  /** AI request forwarded from the annotation bar into SelectionAI's panel. */
+  const [aiReq, setAiReq] = useState<SelectionAIRequest | null>(null);
   const [post, setPost] = useState<PublicPostDetail | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -1032,7 +1052,7 @@ export default function PostDetail() {
             </div>
           ) : hasInlineFile && post.primary_attachment ? (
             <div className="paper-breakout">
-              <PublicAttachmentPreview att={post.primary_attachment} />
+              <PublicAttachmentPreview att={post.primary_attachment} documentId={post.id} initialCfi={initialCfi} kbSlug={post.knowledge_base.slug} />
             </div>
           ) : (
             <div
@@ -1102,6 +1122,22 @@ export default function PostDetail() {
               </div>
             </nav>
           )}
+          {authUser && isMarkdownReadPath && post && (
+            <Suspense fallback={null}>
+              <MdAnnotator
+                documentId={post.id}
+                docTitle={post.title}
+                articleRef={articleRef}
+                renderKey={rendered.html}
+                enabled={pageMode === 'read'}
+                canCreateDoc={!!authUser.is_staff}
+                initialHlId={initialHlId}
+                aiOps={authUser.is_staff ? MD_BAR_AI_OPS : null}
+                onAI={(text, op) => setAiReq({ text, op, seq: Date.now() })}
+                onChange={setMdNotes}
+              />
+            </Suspense>
+          )}
         </article>
       </div>
 
@@ -1117,7 +1153,7 @@ export default function PostDetail() {
 
       {showTocRail && (
         <aside className="jz-post-aside jz-post-aside-right">
-          <TocPanel toc={rendered.toc} onClose={() => setTocOpen(false)} />
+          <PostSidePanel toc={rendered.toc} notes={isMarkdownReadPath ? mdNotes : null} onClose={() => setTocOpen(false)} />
         </aside>
       )}
 
@@ -1180,7 +1216,7 @@ export default function PostDetail() {
             if ((e.target as HTMLElement).closest('.jz-toc-link')) setTocDrawerOpen(false);
           }}
         >
-          <TocPanel toc={rendered.toc} />
+          <PostSidePanel toc={rendered.toc} notes={isMarkdownReadPath ? mdNotes : null} />
         </div>
       </Drawer>
 
@@ -1221,6 +1257,8 @@ export default function PostDetail() {
         <Suspense fallback={null}>
           <SelectionAI
             scopeRef={articleRef}
+            hideTrigger={isMarkdownReadPath && pageMode === 'read'}
+            externalRequest={aiReq}
             contextProvider={() =>
               pageMode === 'edit' && editDoc
                 ? editDoc.raw_content

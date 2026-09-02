@@ -58,7 +58,7 @@ class AISettings(models.Model):
 | operation | 语义 |
 |-----------|------|
 | `continue` 续写 / `polish` 润色 / `expand` 扩写 / `fix` 纠错 | |
-| `summarize` 总结 / `outline` 大纲 / `translate_en` 中→英 / `translate_zh` 英→中 | |
+| `summarize` 总结 / `explain` 解释（2026-09-02，阅读页划线浮条）/ `outline` 大纲 / `translate_en` 中→英 / `translate_zh` 英→中 | |
 
 完整 prompt 在 `apps/ai/prompts.py`（系统 prompt 对 Anthropic 标 `cache_control: ephemeral` 做 **prompt caching**）。
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Empty, Select, Spin, Tooltip, Typography } from 'antd';
-import { CloseOutlined } from '@ant-design/icons';
+import { Button, Empty, Popover, Segmented, Select, Spin, Switch, Tooltip, Typography } from 'antd';
+import { CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import { burstAtPointer } from '@/utils/inkBurst';
 import * as kbsApi from '@/api/kbs';
@@ -9,6 +9,7 @@ import * as docsApi from '@/api/docs';
 import { formatApiError } from '@/api/client';
 import type { DocSortMode, PublicKB, PublicKBTree, PublicPost } from '@/types';
 import { useAuthStore } from '@/stores/auth';
+import { groupKbsByCategory, loadKbListPrefs, saveKbListPrefs, type KbListPrefs } from '@/utils/kbToc';
 import PublicKbFolderTree from './PublicKbFolderTree';
 
 const { Text } = Typography;
@@ -43,6 +44,16 @@ export default function BlogKbNavPanel({
 }: Props) {
   const sessionUser = useAuthStore((s) => s.user);
   const [kbs, setKbs] = useState<PublicKB[] | null>(null);
+  /** 知识库 list presentation (间距/字号/字体/颜色/篇数/大类分组) — its own
+   * 目录设置 popover, persisted only on explicit changes. */
+  const [listPrefs, setListPrefs] = useState<KbListPrefs>(() => loadKbListPrefs());
+  const updateListPrefs = (patch: Partial<KbListPrefs>) => {
+    setListPrefs((p) => {
+      const next = { ...p, ...patch };
+      saveKbListPrefs(next);
+      return next;
+    });
+  };
   const [localTree, setLocalTree] = useState<PublicKBTree | null>(null);
 
   const tree = controlledTree !== undefined ? controlledTree : localTree;
@@ -189,26 +200,134 @@ export default function BlogKbNavPanel({
         </div>
       ) : (
         <>
-          <section className="jz-kb-nav-section" aria-labelledby="jz-kb-nav-kb-list-title">
-            <h3 id="jz-kb-nav-kb-list-title" className="jz-kb-nav-section-title">
-              知识库
-            </h3>
+          <section
+            className="jz-kb-nav-section jz-kb-nav-kbs"
+            aria-labelledby="jz-kb-nav-kb-list-title"
+            data-density={listPrefs.density}
+            data-size={listPrefs.size}
+            data-font={listPrefs.font}
+            data-color={listPrefs.color}
+            data-counts={listPrefs.counts ? 'on' : 'off'}
+          >
+            <div className="jz-kb-nav-section-head">
+              <h3 id="jz-kb-nav-kb-list-title" className="jz-kb-nav-section-title">
+                知识库
+              </h3>
+              <Popover
+                trigger="click"
+                placement="bottomRight"
+                content={
+                  <div className="jz-reader-layout-pop jz-epub-toc-settings" style={{ width: 232 }}>
+                    <div className="jz-rl-section">
+                      <div className="jz-rl-label">间距</div>
+                      <Segmented
+                        block
+                        size="small"
+                        value={listPrefs.density}
+                        onChange={(v) => updateListPrefs({ density: v as KbListPrefs['density'] })}
+                        options={[
+                          { label: '紧凑', value: 'compact' },
+                          { label: '标准', value: 'normal' },
+                          { label: '宽松', value: 'loose' },
+                        ]}
+                      />
+                    </div>
+                    <div className="jz-rl-section">
+                      <div className="jz-rl-label">字号</div>
+                      <Segmented
+                        block
+                        size="small"
+                        value={listPrefs.size}
+                        onChange={(v) => updateListPrefs({ size: v as KbListPrefs['size'] })}
+                        options={[
+                          { label: '小', value: 's' },
+                          { label: '中', value: 'm' },
+                          { label: '大', value: 'l' },
+                        ]}
+                      />
+                    </div>
+                    <div className="jz-rl-section">
+                      <div className="jz-rl-label">字体</div>
+                      <Segmented
+                        block
+                        size="small"
+                        value={listPrefs.font}
+                        onChange={(v) => updateListPrefs({ font: v as KbListPrefs['font'] })}
+                        options={[
+                          { label: <span style={{ fontFamily: 'var(--jz-font-ui)' }}>界面</span>, value: 'ui', title: '站内界面字体' },
+                          { label: <span style={{ fontFamily: 'var(--jz-font-serif)' }}>衬线</span>, value: 'serif', title: '宋体 / 衬线' },
+                          { label: <span style={{ fontFamily: 'var(--jz-font-kai)' }}>楷体</span>, value: 'kai', title: '楷体' },
+                          { label: <span style={{ fontFamily: 'var(--jz-font-display)' }}>文楷</span>, value: 'wenkai', title: '霞鹜文楷' },
+                        ]}
+                      />
+                    </div>
+                    <div className="jz-rl-section">
+                      <div className="jz-rl-label">颜色</div>
+                      <Segmented
+                        block
+                        size="small"
+                        value={listPrefs.color}
+                        onChange={(v) => updateListPrefs({ color: v as KbListPrefs['color'] })}
+                        options={[
+                          { label: '正文色', value: 'text', title: '库名用正文色' },
+                          { label: '淡显', value: 'muted', title: '全部淡色，当前库高亮' },
+                        ]}
+                      />
+                    </div>
+                    <div className="jz-rl-section jz-epub-toc-switches">
+                      <label>
+                        <span>大类分组</span>
+                        <Switch size="small" checked={listPrefs.grouped} onChange={(v) => updateListPrefs({ grouped: v })} />
+                      </label>
+                      <label>
+                        <span>显示篇数</span>
+                        <Switch size="small" checked={listPrefs.counts} onChange={(v) => updateListPrefs({ counts: v })} />
+                      </label>
+                    </div>
+                  </div>
+                }
+              >
+                <Tooltip title="列表设置：间距 / 字号 / 字体 / 颜色 / 分组 / 篇数">
+                  <Button type="text" size="small" className="jz-epub-toc-tool" icon={<SettingOutlined />} aria-label="知识库列表设置" />
+                </Tooltip>
+              </Popover>
+            </div>
             <ul className="jz-kb-nav-kb-list">
-              {(kbs ?? []).map((kb) => {
-                const active = kb.slug === kbSlug;
-                return (
-                  <li key={kb.id}>
-                    <Link
-                      to={`/kb/${encodeURIComponent(kb.slug)}`}
-                      className={'jz-kb-nav-kb-item' + (active ? ' is-active' : '')}
-                      aria-current={active ? 'page' : undefined}
+              {/* 大类分组（`/public/kbs/` 自带 category，纯前端）——组头小字 +
+                  accent 色点，未分类殿后；EPUB 目录「篇」层的视觉语言。 */}
+              {(listPrefs.grouped
+                ? groupKbsByCategory(kbs ?? [])
+                : [{ category: null, kbs: kbs ?? [] }]
+              ).map((group) => (
+                <li key={group.category?.id ?? 'uncat'}>
+                  {listPrefs.grouped && (group.category || (kbs ?? []).some((k) => k.category)) && (
+                    <div
+                      className="jz-kb-nav-cat"
+                      style={group.category?.accent_color ? ({ ['--jz-cat-accent' as string]: group.category.accent_color } as React.CSSProperties) : undefined}
                     >
-                      <span className="jz-kb-nav-kb-item-name">{kb.name}</span>
-                      <span className="jz-kb-nav-kb-item-count">{kb.post_count}</span>
-                    </Link>
-                  </li>
-                );
-              })}
+                      <i aria-hidden />
+                      {group.category?.name ?? '未分类'}
+                    </div>
+                  )}
+                  <ul className="jz-kb-nav-kb-list jz-kb-nav-kb-group">
+                    {group.kbs.map((kb) => {
+                      const active = kb.slug === kbSlug;
+                      return (
+                        <li key={kb.id}>
+                          <Link
+                            to={`/kb/${encodeURIComponent(kb.slug)}`}
+                            className={'jz-kb-nav-kb-item' + (active ? ' is-active' : '')}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            <span className="jz-kb-nav-kb-item-name">{kb.name}</span>
+                            <span className="jz-kb-nav-kb-item-count">{kb.post_count}</span>
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </li>
+              ))}
             </ul>
           </section>
 
@@ -226,7 +345,10 @@ export default function BlogKbNavPanel({
                 >
                   <span className="jz-kb-nav-kb-current-name">{tree.name}</span>
                   <Text type="secondary" className="jz-kb-nav-kb-current-meta">
-                    {docCount} 篇文档
+                    {(() => {
+                      const cat = (kbs ?? []).find((k) => k.slug === tree.slug)?.category;
+                      return cat ? `${cat.name} · ${docCount} 篇文档` : `${docCount} 篇文档`;
+                    })()}
                   </Text>
                 </Link>
                 {canManage && (

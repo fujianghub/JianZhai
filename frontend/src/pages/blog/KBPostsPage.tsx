@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
   Breadcrumb,
   Button,
@@ -30,6 +30,10 @@ import {
   PlusOutlined,
   ProfileOutlined,
   UnorderedListOutlined,
+  CaretDownOutlined,
+  CaretRightOutlined,
+  MinusSquareOutlined,
+  PlusSquareOutlined,
 } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import * as kbsApi from '@/api/kbs';
@@ -49,6 +53,7 @@ import {
   type CollectedUploads,
 } from '@/utils/uploadBatch';
 import { resolveTagColor } from '@/utils/tagColor';
+import { loadKbFolds, saveKbFolds } from '@/utils/kbToc';
 import {
   NEW_HTML_DOCUMENT_TEMPLATE,
   type NewDocContentKind,
@@ -497,6 +502,9 @@ function KbBody({
   })();
 
   const [view, setView] = useState<GroupView>(initialView as GroupView);
+  /** Collapsed folder sections (landing page), persisted per KB — written
+   * only on explicit toggles (frozen-default trap, see CLAUDE.md). */
+  const [folds, setFolds] = useState<Set<number>>(() => loadKbFolds(tree.slug));
   const [density, setDensity] = useState<Density>(initialDensity as Density);
   const [sidebarWidth, setSidebarWidth] = useState<number>(initialSidebar);
   /** While the user is dragging the divider we suppress text selection +
@@ -523,6 +531,33 @@ function KbBody({
   const changeSidebar = (w: number) => {
     setSidebarWidth(w);
     persistPref(sidebarKey, String(w));
+  };
+  useEffect(() => {
+    setFolds(loadKbFolds(tree.slug));
+  }, [tree.slug]);
+  const toggleFold = (id: number) => {
+    setFolds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      saveKbFolds(tree.slug, next);
+      return next;
+    });
+  };
+  const allFolderIds = useMemo(() => {
+    const out: number[] = [];
+    const walk = (f: PublicFolder) => {
+      out.push(f.id);
+      f.children.forEach(walk);
+    };
+    (tree.folders ?? []).forEach(walk);
+    return out;
+  }, [tree.folders]);
+  const anyFolded = folds.size > 0;
+  const foldAllToggle = () => {
+    const next = anyFolded ? new Set<number>() : new Set(allFolderIds);
+    setFolds(next);
+    saveKbFolds(tree.slug, next);
   };
   /** 拖拽期间只更新 state，松手时一次性持久化（onMove 里写 localStorage 太吵）。 */
   const dragWidthRef = useRef<number | null>(null);
@@ -662,6 +697,16 @@ function KbBody({
                 aria-label="平铺所有文章"
               />
             </Tooltip>
+            {view === 'folders' && hasFolders && (
+              <Tooltip title={anyFolded ? '展开全部分组' : '折叠全部分组'}>
+                <Button
+                  size="small"
+                  icon={anyFolded ? <PlusSquareOutlined /> : <MinusSquareOutlined />}
+                  onClick={foldAllToggle}
+                  aria-label={anyFolded ? '展开全部分组' : '折叠全部分组'}
+                />
+              </Tooltip>
+            )}
           </Space>
           <Space size={4}>
             <Tooltip title="摘要视图（标题 + 标签 + 摘要 + 时间）">
@@ -692,7 +737,7 @@ function KbBody({
         ) : (
           <Space direction="vertical" size={28} style={{ width: '100%' }}>
             {(tree.folders ?? []).map((f) => (
-              <FolderGroup key={f.id} folder={f} depth={0} density={density} kbSlug={tree.slug} />
+              <FolderGroup key={f.id} folder={f} depth={0} density={density} kbSlug={tree.slug} folds={folds} onToggleFold={toggleFold} />
             ))}
             {(tree.root_documents ?? []).length > 0 && (
               <section>
@@ -745,12 +790,18 @@ function FolderGroup({
   depth,
   density,
   kbSlug,
+  folds,
+  onToggleFold,
 }: {
   folder: PublicFolder;
   depth: number;
   density: Density;
   kbSlug?: string;
+  /** Collapsed folder ids (EPUB-style collapsible sections, per-KB persisted). */
+  folds?: Set<number>;
+  onToggleFold?: (id: number) => void;
 }) {
+  const folded = folds?.has(folder.id) ?? false;
   const totalDocs =
     folder.documents.length +
     folder.children.reduce(function rec(n, c): number {
@@ -760,9 +811,28 @@ function FolderGroup({
   return (
     <section style={{ paddingLeft: depth === 0 ? 0 : 12 }}>
       <h3
-        className="jz-kb-folder-heading"
+        className={'jz-kb-folder-heading' + (onToggleFold ? ' is-foldable' : '') + (folded ? ' is-folded' : '')}
         style={{ fontSize: depth === 0 ? 18 : 16 }}
+        onClick={onToggleFold ? () => onToggleFold(folder.id) : undefined}
+        role={onToggleFold ? 'button' : undefined}
+        aria-expanded={onToggleFold ? !folded : undefined}
+        tabIndex={onToggleFold ? 0 : undefined}
+        onKeyDown={
+          onToggleFold
+            ? (e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  onToggleFold(folder.id);
+                }
+              }
+            : undefined
+        }
       >
+        {onToggleFold && (
+          <span className="jz-kb-fold-chevron" aria-hidden>
+            {folded ? <CaretRightOutlined /> : <CaretDownOutlined />}
+          </span>
+        )}
         <span className="jz-kb-folder-heading-mark" aria-hidden />
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
           <span>{folder.name}</span>
@@ -779,13 +849,13 @@ function FolderGroup({
         </span>
         <span className="jz-kb-folder-count">{totalDocs}</span>
       </h3>
-      {folder.documents.length > 0 && (
+      {!folded && folder.documents.length > 0 && (
         <PostList posts={folder.documents} density={density} kbSlug={kbSlug} />
       )}
-      {folder.children.length > 0 && (
+      {!folded && folder.children.length > 0 && (
         <Space direction="vertical" size={20} style={{ width: '100%', marginTop: 16 }}>
           {folder.children.map((c) => (
-            <FolderGroup key={c.id} folder={c} depth={depth + 1} density={density} kbSlug={kbSlug} />
+            <FolderGroup key={c.id} folder={c} depth={depth + 1} density={density} kbSlug={kbSlug} folds={folds} onToggleFold={onToggleFold} />
           ))}
         </Space>
       )}

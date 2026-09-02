@@ -23,7 +23,7 @@ export async function fetchPostSlides(postId: number): Promise<PostSlidesResult>
   };
 }
 
-export async function listPublicPosts(params?: { limit?: number; kb?: string; tag?: string }): Promise<PublicPost[]> {
+export async function listPublicPosts(params?: { limit?: number; kb?: string; tag?: string; doc_format?: 'epub' }): Promise<PublicPost[]> {
   const { data } = await apiClient.get<Paginated<PublicPost>>('/public/posts/', { params });
   return data.results;
 }

@@ -222,6 +222,10 @@ cd backend && python manage.py seed_architecture_kb
 | **PDF 阅读器原地缩放修复** | 缩放不再跳转：比例锚定让正在看的内容点保持视口原位（可连点 +/- 微调）；根治 `scrollIntoView` 连窗口一起滚致工具条消失（inner 模式只滚容器）；阅读页工具条 sticky 避开吸顶顶栏不再被盖；页面容器 `overflow-anchor:none` 防浏览器滚动锚定干扰。2026-09-01，待部署 |
 | **博客字体样式统一批次** | 三个可感知断层根治：卡片/列表条目标题统一衬线（h4-h6 纳入规则）、markdown 渲染面五处五样收口到 `.markdown-preview` 基类单源（评论/附件预览与正文同排版，阅读三件套通道保留）、题记跨页字号回归单源；文楷/小魏伪加粗归 400；Tiptap 与阅读端字号基准对齐（16→16.5px）；`--jz-fs-*` 扩至十二档 + `--jz-ls-*` 字距六档，博客侧约 210 处硬编码字号/行高/字距全量令牌化（碎片值就近归档）；新增 typographyTokens 双守卫测试。前端 576 测试 + build + Playwright 14/14 全绿。2026-09-01，待部署 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
+| **EPUB 二期 ①：划线 · 笔记** | 新 app `apps.reading`（`Highlight`/`Bookmark`，每用户私有、读者可写、经 `visible_documents` 两道闸）；选区浮条（复制 / 五色划线 / 下划线 / 写笔记 / 搜本书 / 引用为 Markdown 含 `/d/<id>?cfi=` 回链）+ 划线卡（换色 / 笔记 / 发到评论 / 删除）+ 侧栏「笔记」tab + 导出读书笔记（下载 .md / 作者存为文档）；foliate overlayer SVG 绘制零 DOM 注入、翻章回放、深链闪烁。pytest 18 + vitest 11 + Playwright 27×2。2026-09-02 |
+| **划线批次 A：MD 阅读页划线 · 笔记** | 波浪线三态划线（EPUB+MD）；MD 侧 TextQuote 锚（quote+上下文+标题节，失效保留标记）+ CSS Custom Highlight API 零 DOM 绘制 + 右栏目录/笔记双 tab + `?hl=` 深链闪烁 + 导出/引用回链；浮条与 SelectionAI 合并（AI 仅作者，新增 `explain`）。textAnchor 12 单测 + 冒烟 25/26 两账号。2026-09-02 |
+| **批次 B：KB 目录 EPUB 范式 + 大类标识** | 通用树工具抽出（treeToc/kbToc）；博客左栏目录树重写为 EPUB 目录语言（两级默认展开/筛选/全展折/设置弹层全套/活动行自动滚动）；知识库列表按大类分组（组头色点，零后端改动）；KB 页文件夹分组可折叠持久化。冒烟 19 项。2026-09-02 |
+| **批次 C：EPUB 导航** | 搜索上一处/下一处（游标计数+命中闪烁+accent 描边）、书签（工具条切换+侧栏 tab）、章末「下一章」卡、读完页（完成时间/笔记计数/导出/同书架书目 `?doc_format=epub`）。冒烟 12+14 项。2026-09-02 |
 
 ## 生产部署（腾讯云）
 

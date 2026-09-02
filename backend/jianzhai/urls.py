@@ -18,6 +18,7 @@ api_v1_patterns = [
     path("", include("apps.tags.urls")),
     path("", include("apps.comments.urls")),
     path("", include("apps.ai.urls")),
+    path("", include("apps.reading.urls")),
     path("public/tags/", public_tag_cloud, name="public-tag-cloud"),
     path("public/tags/<int:tag_id>/entries/", public_tag_entries, name="public-tag-entries"),
     path("public/hero/", hero_public, name="public-hero"),

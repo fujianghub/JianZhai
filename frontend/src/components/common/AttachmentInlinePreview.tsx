@@ -46,10 +46,10 @@ export default function AttachmentInlinePreview({ documentId, reloadKey }: Props
   if (!att) {
     return <Empty description="未找到可预览的附件" />;
   }
-  return <Body att={att} />;
+  return <Body att={att} documentId={documentId} />;
 }
 
-function Body({ att }: { att: Attachment }) {
+function Body({ att, documentId }: { att: Attachment; documentId: number }) {
   const url = attachmentAbsoluteUrl(att.url);
   const kind = previewKind(att);
   // Match the Markdown editor's vertical footprint — PDF/HTML previews used
@@ -82,7 +82,9 @@ function Body({ att }: { att: Attachment }) {
     return <PdfCanvas url={url} height="min(calc(100vh - 240px), 1080px)" />;
   }
   if (kind === 'epub') {
-    return <EpubReader url={url} height="min(calc(100vh - 240px), 1080px)" title={att.original_filename.replace(/\.epub$/i, '')} />;
+    return (
+      <EpubReader url={url} height="min(calc(100vh - 240px), 1080px)" title={att.original_filename.replace(/\.epub$/i, '')} documentId={documentId} />
+    );
   }
   if (kind === 'image') {
     return (

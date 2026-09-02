@@ -73,7 +73,7 @@ function PreviewBody({ attachment }: { attachment: Attachment }) {
     return <PdfCanvas url={url} height={frameHeight} />;
   }
   if (kind === 'epub') {
-    return <EpubReader url={url} height={frameHeight} title={attachment.original_filename.replace(/\.epub$/i, '')} />;
+    return <EpubReader url={url} height={frameHeight} title={attachment.original_filename.replace(/\.epub$/i, '')} documentId={attachment.document} />;
   }
 
   if (kind === 'image') {

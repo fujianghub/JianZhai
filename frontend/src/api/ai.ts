@@ -5,6 +5,7 @@ export type AIOperation =
   | 'polish'
   | 'expand'
   | 'summarize'
+  | 'explain'
   | 'translate_en'
   | 'translate_zh'
   | 'fix'

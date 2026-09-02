@@ -133,6 +133,15 @@ class PublicPostViewSet(
         tag_slug = self.request.query_params.get("tag")
         if tag_slug:
             qs = qs.filter(tags__slug=tag_slug)
+        # ``?doc_format=epub`` — books only (``format`` is DRF's reserved
+        # content-negotiation override, so a different name). (the EPUB reader's 读完页 relates
+        # "same-shelf" books). ``doc_format`` is derived from the primary
+        # attachment, so approximate in SQL: any epub attachment on the doc.
+        if self.request.query_params.get("doc_format") == "epub":
+            qs = qs.filter(
+                Q(attachments__original_filename__iendswith=".epub")
+                | Q(attachments__mime_type="application/epub+zip")
+            ).distinct()
         return qs
 
     def get_serializer_class(self):
