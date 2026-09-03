@@ -1,15 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Drawer,
-  Empty,
-  Grid,
-  Input,
-  Segmented,
-  Spin,
-  Tag as AntTag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Drawer, Grid, Input, Segmented, Spin, Tag as AntTag, Tooltip, Typography } from 'antd';
 import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 import {
@@ -19,6 +9,7 @@ import {
   type PublicTagEntries,
 } from '@/api/tags';
 import { resolveTagColor, resolveTagCssColor } from '@/utils/tagColor';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -52,7 +43,7 @@ function TagEntriesBody({
     );
   }
   if (entries.posts.length === 0) {
-    return <Empty description="该标签下还没有公开文章" />;
+    return <JzEmpty description="该标签下还没有公开文章"  />;
   }
   return (
     <ul className="jz-tagcloud-post-list">
@@ -146,7 +137,7 @@ export default function TagCloudPage() {
     );
   }
   if (visibleTags.length === 0) {
-    return <Empty description="还没有带公开文章的标签" />;
+    return <JzEmpty description="还没有带公开文章的标签"  />;
   }
 
   const drawerTitle = activeTag ? (

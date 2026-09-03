@@ -2,7 +2,7 @@
  * EPUB CFI. Backend: ``apps/reading``. */
 import { apiClient, ensureCsrf } from './client';
 
-export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'purple';
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'purple' | 'red' | 'orange';
 export type HighlightStyle = 'highlight' | 'underline' | 'squiggly';
 
 /** TextQuote-style anchor for Markdown highlights (see utils/textAnchor.ts). */

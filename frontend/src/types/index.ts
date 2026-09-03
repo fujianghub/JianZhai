@@ -316,6 +316,8 @@ export interface PublicPostDetail {
   id: number;
   title: string;
   slug: string;
+  is_pinned?: boolean;
+  is_favorited?: boolean;
   published_content: string;
   published_at: string;
   updated_at: string;

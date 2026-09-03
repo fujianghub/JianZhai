@@ -3,7 +3,7 @@ from __future__ import annotations
 from rest_framework import serializers
 
 from apps.knowledge.html_content import resolve_published_html_body
-from apps.knowledge.models import Document, KnowledgeBase
+from apps.knowledge.models import DocumentFavorite, Document, KnowledgeBase
 from apps.knowledge.serializers import detect_doc_format
 
 
@@ -117,6 +117,10 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
     doc_format = serializers.SerializerMethodField()
     published_content = serializers.SerializerMethodField()
     slides = serializers.SerializerMethodField()
+    # Same two flags as the list shape so the reading page can offer the
+    # pin / favorite toggles itself (2026-09-03).
+    is_pinned = serializers.SerializerMethodField()
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -124,6 +128,8 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "slug",
+            "is_pinned",
+            "is_favorited",
             "published_content",
             "published_at",
             "updated_at",
@@ -137,6 +143,16 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
             "slide_status",
             "slide_error",
         ]
+
+    def get_is_pinned(self, obj: Document) -> bool:
+        return bool(obj.is_pinned)
+
+    def get_is_favorited(self, obj: Document) -> bool:
+        request = self.context.get("request")
+        user = getattr(request, "user", None)
+        if not user or not getattr(user, "is_authenticated", False):
+            return False
+        return DocumentFavorite.objects.filter(user=user, document_id=obj.id).exists()
 
     def get_knowledge_base(self, obj: Document) -> dict:
         kb = obj.knowledge_base

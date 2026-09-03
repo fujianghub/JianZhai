@@ -29,8 +29,8 @@ const hl = (over: Partial<Highlight>): Highlight => ({
 });
 
 describe('epubNotes', () => {
-  it('has five swatches with a hex fallback', () => {
-    expect(HIGHLIGHT_SWATCHES.map((s) => s.key)).toEqual(['yellow', 'green', 'blue', 'pink', 'purple']);
+  it('has seven swatches with a hex fallback', () => {
+    expect(HIGHLIGHT_SWATCHES.map((s) => s.key)).toEqual(['yellow', 'green', 'blue', 'pink', 'purple', 'red', 'orange']);
     expect(swatchHex('purple')).toBe('#b07cff');
     expect(swatchHex('nope')).toBe(HIGHLIGHT_SWATCHES[0].hex);
   });

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Alert, Button, Empty, Spin } from 'antd';
+import { Alert, Button, Spin } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import { renderMarkdown, sanitizeHtml } from '@/utils/markdown';
 import { convertDocxToHtml } from '@/utils/docx';
@@ -12,6 +12,7 @@ import {
 import PdfCanvas from './LazyPdfCanvas';
 import EpubReader from './LazyEpubReader';
 import FullscreenableIframe from './FullscreenableIframe';
+import JzEmpty from '@/components/common/JzEmpty';
 
 interface Props {
   documentId: number;
@@ -44,7 +45,7 @@ export default function AttachmentInlinePreview({ documentId, reloadKey }: Props
     return <Spin />;
   }
   if (!att) {
-    return <Empty description="未找到可预览的附件" />;
+    return <JzEmpty description="未找到可预览的附件"  />;
   }
   return <Body att={att} documentId={documentId} />;
 }

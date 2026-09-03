@@ -337,10 +337,6 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 .jz-post-inline-html > div {
   min-height: min(75vh, 720px);
 }
-.jz-toc-link:hover {
-  color: var(--jz-doc-accent, var(--jz-accent)) !important;
-  border-left-color: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 50%, transparent) !important;
-}
 
 /* PDF continuous-scroll page slots — a blank white sheet until the canvas
    paints. No overflow:hidden so a taller-than-estimated page isn't clipped.
@@ -438,17 +434,17 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   justify-content: space-between;
   gap: 8px;
   padding: 5px 8px;
-  border-radius: 8px;
+  border-radius: var(--jz-radius-md);
   color: inherit;
   text-decoration: none;
-  transition: background-color 0.18s ease, color 0.18s ease;
+  transition: background-color var(--jz-dur-fast) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard);
 }
 .jz-kb-nav-kb-item:hover {
-  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 6%, transparent);
+  background: var(--jz-hover-accent-bg);
   color: var(--jz-doc-accent, var(--jz-accent));
 }
 .jz-kb-nav-kb-item.is-active {
-  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 12%, transparent);
+  background: color-mix(in srgb, var(--jz-doc-accent, var(--jz-accent)) 13%, transparent);
   color: var(--jz-doc-accent, var(--jz-accent));
   font-weight: 600;
 }
@@ -461,7 +457,9 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 .jz-kb-nav-kb-item-count {
   flex-shrink: 0;
   font-size: var(--jz-fs-2xs);
+  font-variant-numeric: tabular-nums;
   color: var(--glass-text-muted, var(--jz-text-muted));
+  opacity: 0.8;
 }
 .jz-kb-nav-kb-current {
   display: block;
@@ -916,23 +914,8 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 .jz-epub-toc[data-size='l'] {
   --jz-toc-fs: var(--jz-fs-md);
 }
-/* Typeface options (the nav carries the body stack inline for 'reader'). */
-.jz-epub-toc[data-font='serif'] .jz-epub-toc-item,
-.jz-epub-toc[data-font='serif'] .jz-epub-toc-link {
-  font-family: var(--jz-font-serif);
-}
-.jz-epub-toc[data-font='kai'] .jz-epub-toc-item,
-.jz-epub-toc[data-font='kai'] .jz-epub-toc-link {
-  font-family: var(--jz-font-kai);
-}
-.jz-epub-toc[data-font='wenkai'] .jz-epub-toc-item,
-.jz-epub-toc[data-font='wenkai'] .jz-epub-toc-link {
-  font-family: var(--jz-font-display);
-}
-.jz-epub-toc[data-font='reader'] .jz-epub-toc-item,
-.jz-epub-toc[data-font='reader'] .jz-epub-toc-link {
-  font-family: inherit;
-}
+/* Typeface: the nav sets --jz-font-toc inline (utils/tocPrefs.ts tocFontFamily —
+   token references or reader-preset stacks; data-font is informational). */
 /* Colour schemes. 'text' is the base (all rows --jz-text). */
 .jz-epub-toc[data-color='muted'] .jz-epub-toc-link {
   color: var(--jz-text-muted);
@@ -963,6 +946,24 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 }
 .jz-epub-toc-tool.ant-btn:hover {
   color: var(--jz-toc-accent);
+}
+.jz-epub-toc-tool.is-overridden {
+  position: relative;
+}
+.jz-epub-toc-tool.is-overridden::after {
+  content: '';
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--jz-toc-accent);
+}
+.jz-epub-toc-reset {
+  border-top: 1px solid color-mix(in srgb, var(--jz-text) 10%, transparent);
+  padding-top: 8px;
+  text-align: right;
 }
 .jz-epub-toc-switches label {
   display: flex;
@@ -1017,19 +1018,62 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   display: flex;
   align-items: flex-start;
   gap: 2px;
-  padding-left: calc(var(--jz-toc-depth, 0) * 14px);
-  margin: var(--jz-toc-row-gap) 0;
-  font-family: var(--jz-font-ui);
+  /* Row gap is padding (not margin) so the level guide lines below run
+     unbroken from row to row. */
+  padding: var(--jz-toc-row-gap) 0 var(--jz-toc-row-gap) calc(var(--jz-toc-depth, 0) * var(--jz-toc-indent));
+  margin: 0;
+  font-family: var(--jz-font-toc, var(--jz-font-ui));
+  background-repeat: no-repeat;
 }
-/* Nested levels get a hairline guide instead of empty chevron gutters. */
-.jz-epub-toc-item.is-l3::before,
-.jz-epub-toc-item.is-l4::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: calc(var(--jz-toc-depth, 0) * 14px - 6px);
-  border-left: 1px solid color-mix(in srgb, var(--jz-text) 12%, transparent);
+/* Level guide lines (有道云式)：one hairline per ancestor level, drawn as
+   stacked 1px background stripes at each ancestor's chevron centre
+   (--jz-toc-guide-x + k × indent). Nested rows read as a tree at a glance;
+   the nearest ancestor's line is a touch stronger. */
+.jz-epub-toc {
+  --jz-toc-indent: 14px;
+  --jz-toc-guide-x: 8px;
+  --jz-toc-guide: color-mix(in srgb, var(--jz-text) 13%, transparent);
+  --jz-toc-guide-near: color-mix(in srgb, var(--jz-text) 22%, transparent);
+}
+.jz-epub-toc-item.is-l2 {
+  background-image: linear-gradient(var(--jz-toc-guide-near), var(--jz-toc-guide-near));
+  background-size: 1px 100%;
+  background-position: var(--jz-toc-guide-x) 0;
+}
+.jz-epub-toc-item.is-l3 {
+  background-image:
+    linear-gradient(var(--jz-toc-guide), var(--jz-toc-guide)),
+    linear-gradient(var(--jz-toc-guide-near), var(--jz-toc-guide-near));
+  background-size: 1px 100%, 1px 100%;
+  background-position:
+    var(--jz-toc-guide-x) 0,
+    calc(var(--jz-toc-guide-x) + var(--jz-toc-indent)) 0;
+}
+.jz-epub-toc-item.is-l4 {
+  background-image:
+    linear-gradient(var(--jz-toc-guide), var(--jz-toc-guide)),
+    linear-gradient(var(--jz-toc-guide), var(--jz-toc-guide)),
+    linear-gradient(var(--jz-toc-guide-near), var(--jz-toc-guide-near));
+  background-size: 1px 100%, 1px 100%, 1px 100%;
+  background-position:
+    var(--jz-toc-guide-x) 0,
+    calc(var(--jz-toc-guide-x) + var(--jz-toc-indent)) 0,
+    calc(var(--jz-toc-guide-x) + var(--jz-toc-indent) * 2) 0;
+}
+/* The active row lights its nearest guide in the accent. */
+.jz-epub-toc-item:has(> .jz-epub-toc-link.is-active).is-l2 {
+  background-image: linear-gradient(var(--jz-toc-accent), var(--jz-toc-accent));
+}
+.jz-epub-toc-item:has(> .jz-epub-toc-link.is-active).is-l3 {
+  background-image:
+    linear-gradient(var(--jz-toc-guide), var(--jz-toc-guide)),
+    linear-gradient(var(--jz-toc-accent), var(--jz-toc-accent));
+}
+.jz-epub-toc-item:has(> .jz-epub-toc-link.is-active).is-l4 {
+  background-image:
+    linear-gradient(var(--jz-toc-guide), var(--jz-toc-guide)),
+    linear-gradient(var(--jz-toc-guide), var(--jz-toc-guide)),
+    linear-gradient(var(--jz-toc-accent), var(--jz-toc-accent));
 }
 .jz-epub-toc-chevron {
   flex: 0 0 18px;
@@ -1043,25 +1087,36 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   color: var(--jz-text-muted);
   cursor: pointer;
   font-size: 9px;
-  opacity: 0.55;
-  border-radius: 6px;
+  opacity: 0.6;
+  border-radius: 50%;
   margin-left: -2px;
+  transition: background-color var(--jz-dur-fast) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard), opacity var(--jz-dur-fast) var(--jz-ease-standard), transform var(--jz-dur-fast) var(--jz-ease-standard);
 }
-.jz-epub-toc-chevron .anticon {
-  transition: transform var(--jz-dur-fast, 120ms) var(--jz-ease-standard, ease);
-}
-.jz-epub-toc-chevron.is-open .anticon {
-  transform: rotate(90deg);
-}
+/* Rotation lives on the inner <Disclosure> (.jz-disclosure, theme.css). */
 .jz-epub-toc-chevron:hover {
   opacity: 1;
   color: var(--jz-toc-accent);
   background: color-mix(in srgb, var(--jz-toc-accent) 10%, transparent);
 }
+.jz-epub-toc-chevron:active { transform: scale(0.88); }
 .jz-epub-toc-chevron.is-leaf {
   cursor: default;
   flex-basis: 8px;
   width: 8px;
+  opacity: 1;
+}
+/* Leaf rows: a soft dot in the gutter instead of an empty slot — the tree
+   reads as "bullet under a branch" rather than a ragged left edge. */
+.jz-epub-toc-chevron.is-leaf::before {
+  content: '';
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--jz-text) 28%, transparent);
+}
+.jz-epub-toc-item.is-l1 .jz-epub-toc-chevron.is-leaf::before { width: 4px; height: 4px; }
+.jz-epub-toc-item:has(> .jz-epub-toc-link.is-active) .jz-epub-toc-chevron.is-leaf::before {
+  background: var(--jz-toc-accent);
 }
 .jz-epub-toc-item.is-l1 .jz-epub-toc-chevron.is-leaf {
   flex-basis: 18px;
@@ -1075,7 +1130,7 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   min-width: 0;
   padding: var(--jz-toc-row-pad) 8px var(--jz-toc-row-pad) 6px;
   border-radius: 7px;
-  font-family: var(--jz-font-ui);
+  font-family: var(--jz-font-toc, var(--jz-font-ui));
   font-size: var(--jz-toc-fs);
   line-height: 1.45;
   color: var(--jz-text);
@@ -1083,7 +1138,7 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   transition: background-color var(--jz-dur-fast, 120ms) var(--jz-ease-standard, ease), color var(--jz-dur-fast, 120ms) var(--jz-ease-standard, ease);
 }
 .jz-epub-toc-link:hover {
-  background: color-mix(in srgb, var(--jz-text) 6%, transparent);
+  background: var(--jz-hover-bg);
   color: var(--jz-text);
 }
 .jz-epub-toc-num {
@@ -1112,10 +1167,10 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   flex: 0 0 auto;
   margin-left: auto;
   padding-left: 6px;
-  font-size: 0.82em;
+  font-size: var(--jz-fs-2xs);
   font-variant-numeric: tabular-nums;
-  color: inherit;
-  opacity: 0.55;
+  color: var(--jz-text-muted);
+  opacity: 0.8;
 }
 /* Levels share font, size and colour; weight alone signals hierarchy. */
 .jz-epub-toc-item.is-l1 {
@@ -1134,6 +1189,13 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
 .jz-epub-toc-item.is-l4 .jz-epub-toc-link {
   font-weight: 400;
 }
+/* Weight scale pref: shift every level one step lighter / heavier. */
+.jz-epub-toc[data-weight='light'] .jz-epub-toc-item.is-l1 .jz-epub-toc-link { font-weight: 500; }
+.jz-epub-toc[data-weight='light'] .jz-epub-toc-item.is-l2 .jz-epub-toc-link { font-weight: 400; }
+.jz-epub-toc[data-weight='bold'] .jz-epub-toc-item.is-l1 .jz-epub-toc-link { font-weight: 700; }
+.jz-epub-toc[data-weight='bold'] .jz-epub-toc-item.is-l2 .jz-epub-toc-link { font-weight: 600; }
+.jz-epub-toc[data-weight='bold'] .jz-epub-toc-item.is-l3 .jz-epub-toc-link,
+.jz-epub-toc[data-weight='bold'] .jz-epub-toc-item.is-l4 .jz-epub-toc-link { font-weight: 500; }
 /* Active row: soft fill + accent text, no stripes */
 .jz-epub-toc-link.is-active,
 .jz-epub-toc-item.is-l1 .jz-epub-toc-link.is-active,
@@ -1688,6 +1750,12 @@ article.paper { position: relative; /* floating selection bar / note card anchor
 ::highlight(jz-md-hl-purple) { background-color: color-mix(in srgb, #b07cff 40%, transparent); }
 ::highlight(jz-md-un-purple) { text-decoration: underline; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 5px; }
 ::highlight(jz-md-sq-purple) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #b07cff; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+::highlight(jz-md-hl-red) { background-color: color-mix(in srgb, #ff5a4e 40%, transparent); }
+::highlight(jz-md-un-red) { text-decoration: underline; text-decoration-color: #ff5a4e; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+::highlight(jz-md-sq-red) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ff5a4e; text-decoration-thickness: 2px; text-underline-offset: 4px; }
+::highlight(jz-md-hl-orange) { background-color: color-mix(in srgb, #ff9f2e 40%, transparent); }
+::highlight(jz-md-un-orange) { text-decoration: underline; text-decoration-color: #ff9f2e; text-decoration-thickness: 2px; text-underline-offset: 5px; }
+::highlight(jz-md-sq-orange) { text-decoration: underline; text-decoration-style: wavy; text-decoration-color: #ff9f2e; text-decoration-thickness: 2px; text-underline-offset: 4px; }
 ::highlight(jz-md-flash) { background-color: color-mix(in srgb, var(--jz-accent, #10b981) 32%, transparent); }
 
 /* Right-rail 目录/笔记 panel header + notes list density tweaks. */
@@ -1729,6 +1797,7 @@ article.paper { position: relative; /* floating selection bar / note card anchor
 .jz-kb-toc .jz-kb-toc-actions {
   flex: 0 0 auto;
   align-self: center;
+  margin-left: 2px;
 }
 /* 大类 group headers in the rail's KB list. */
 .jz-kb-nav-cat {
@@ -1753,6 +1822,25 @@ article.paper { position: relative; /* floating selection bar / note card anchor
   padding: 0;
   list-style: none;
 }
+/* Landing page: nested folder sections hang off a vertical guide (有道云式). */
+.jz-kb-folder-section.is-nested {
+  position: relative;
+  margin-left: 10px;
+  padding-left: 16px;
+  border-left: 1px solid color-mix(in srgb, var(--jz-text) 14%, transparent);
+}
+.jz-kb-folder-section.is-nested > .jz-kb-folder-heading::before {
+  /* elbow from the guide to the heading */
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.9em;
+  width: 10px;
+  border-top: 1px solid color-mix(in srgb, var(--jz-text) 14%, transparent);
+}
+.jz-kb-folder-section.is-nested > .jz-kb-folder-heading {
+  position: relative;
+}
 /* Landing page: collapsible folder sections. */
 .jz-kb-folder-heading.is-foldable {
   cursor: pointer;
@@ -1767,6 +1855,55 @@ article.paper { position: relative; /* floating selection bar / note card anchor
 }
 .jz-kb-folder-heading.is-foldable:hover .jz-kb-fold-chevron {
   color: var(--jz-accent);
+}
+
+/* ── Article right rail + PDF outline (same TOC language, 2026-09-03) ───
+   TocPanel / PdfTocPanel render .jz-epub-toc-* rows inside the post aside
+   (which already paints the glass card), so the nav itself is bare. The
+   per-document accent is right here (the EPUB rail avoids it only because
+   its own chrome is the site accent). */
+.jz-article-toc {
+  --jz-toc-accent: var(--jz-doc-accent, var(--jz-accent));
+  display: block;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+}
+.jz-article-toc-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.jz-article-toc .jz-epub-toc-tools {
+  margin: 0 0 6px;
+}
+.jz-article-toc .jz-epub-toc-tools:has(> span:only-child) {
+  /* Fewer than 13 entries: no filter box, keep only the gear on the right. */
+  justify-content: flex-end;
+  margin-bottom: 2px;
+}
+/* Level-1 rows in an article are usually the h2s: no group gap needed. */
+.jz-article-toc .jz-epub-toc-item.is-l1 {
+  margin-top: var(--jz-toc-row-gap);
+}
+.jz-article-toc[data-density='loose'] .jz-epub-toc-item.is-l1 {
+  margin-top: calc(var(--jz-toc-group-gap) / 2);
+}
+/* PDF outline keeps its own card look (it lives in the canvas row, not the aside). */
+.jz-article-toc.jz-pdf-toc {
+  padding: 12px 10px;
+  background: var(--glass-surface, color-mix(in srgb, var(--jz-surface) 70%, transparent));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  border-left: 3px solid var(--jz-doc-accent, var(--jz-accent));
+  border-radius: 8px;
+}
+/* /admin/toc — see theme.css「目录设置页」block; the preview navs reuse the
+   .jz-epub-toc rows above. */
+.jz-toc-preview {
+  padding: 4px 2px;
 }
 
 /* ── 批次 C：搜索导航 / 书签 / 章末卡 / 读完页 ──────────────────────────── */
@@ -1929,14 +2066,8 @@ article.paper { position: relative; /* floating selection bar / note card anchor
 .jz-kb-nav-kbs[data-size='l'] .jz-kb-nav-kb-item {
   font-size: var(--jz-fs-md);
 }
-.jz-kb-nav-kbs[data-font='serif'] .jz-kb-nav-kb-item {
-  font-family: var(--jz-font-serif);
-}
-.jz-kb-nav-kbs[data-font='kai'] .jz-kb-nav-kb-item {
-  font-family: var(--jz-font-kai);
-}
-.jz-kb-nav-kbs[data-font='wenkai'] .jz-kb-nav-kb-item {
-  font-family: var(--jz-font-display);
+.jz-kb-nav-kbs .jz-kb-nav-kb-item {
+  font-family: var(--jz-font-toc, var(--jz-font-ui));
 }
 .jz-kb-nav-kbs[data-color='muted'] .jz-kb-nav-kb-item:not(.is-active) {
   color: var(--jz-text-muted);

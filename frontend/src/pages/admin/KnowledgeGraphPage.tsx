@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Alert, Button, Card, Empty, Space, Spin, Tag, Typography } from 'antd';
+import { Alert, Button, Card, Space, Spin, Tag, Typography } from 'antd';
 import { ReloadOutlined } from '@ant-design/icons';
 import ForceGraph2D from 'react-force-graph-2d';
 import { getKnowledgeGraph, type GraphNode, type GraphResponse } from '@/api/graph';
 import { formatApiError } from '@/api/client';
 import { FONT_STACK_SANS, resolveFontVar } from '@/utils/fontStacks';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Title, Text, Paragraph } = Typography;
 
@@ -142,7 +143,7 @@ export default function KnowledgeGraphPage() {
             </div>
           ) : data && data.nodes.length === 0 ? (
             <div style={{ display: 'grid', placeItems: 'center', height: '100%' }}>
-              <Empty description="还没有可见的文档" />
+              <JzEmpty description="还没有可见的文档"  />
             </div>
           ) : data ? (
             <ForceGraph2D

@@ -1,38 +1,14 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import {
-  Breadcrumb,
-  Button,
-  Card,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  Modal,
-  Progress,
-  Radio,
-  Result,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { Breadcrumb, Segmented, Button, Card, Dropdown, Form, Input, Modal, Progress, Radio, Result, Space, Tag, Tooltip, Typography } from 'antd';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 import {
-  AppstoreOutlined,
   CloudUploadOutlined,
   FileAddOutlined,
-  FileTextOutlined,
   FolderAddOutlined,
   HomeOutlined,
   PlusOutlined,
-  ProfileOutlined,
-  UnorderedListOutlined,
-  CaretDownOutlined,
-  CaretRightOutlined,
-  MinusSquareOutlined,
-  PlusSquareOutlined,
 } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import * as kbsApi from '@/api/kbs';
@@ -41,6 +17,9 @@ import { formatApiError } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
 import type { PublicFolder, PublicKBTree, PublicPost } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
+import DocPinFavoriteButtons from '@/components/common/DocPinFavoriteButtons';
+import Disclosure from '@/components/common/Disclosure';
+import { burstAtPointer } from '@/utils/inkBurst';
 import BlogKbNavPanel from '@/components/common/BlogKbNavPanel';
 import UploadDropZone from '@/components/common/UploadDropZone';
 import {
@@ -59,7 +38,19 @@ import {
 } from '@/utils/htmlTemplate';
 import { signalRouteReady } from '@/utils/routeTransition';
 import { CaretIcon } from '@/components/common/actionIcons';
-import { JzBookIcon } from '@/components/common/JzIcon';
+import {
+  JzBookIcon,
+  JzCardViewIcon,
+  JzCollapseAllIcon,
+  JzExpandAllIcon,
+  JzFlatViewIcon,
+  JzGroupViewIcon,
+  JzRowsViewIcon,
+} from '@/components/common/JzIcon';
+import IconButton from '@/components/common/IconButton';
+import { ICON_SIZE } from '@/components/common/iconSize';
+import JzEmpty from '@/components/common/JzEmpty';
+import { SepDot } from '@/components/common/symbols';
 
 const { Title, Paragraph } = Typography;
 
@@ -452,6 +443,14 @@ const SIDEBAR_DEFAULT = 240;
  * cards on the right. When the KB has no folders at all we fall back to a
  * simple flat list so newer KBs don't get a half-empty sidebar.
  */
+/** Pin / favorite handlers for rows & cards (set by KbBody; null when the
+ * viewer can't act — anonymous readers see no buttons). */
+interface PostActions {
+  onTogglePin?: (doc: PublicPost) => void;
+  onToggleFavorite?: (doc: PublicPost) => void;
+}
+const PostActionsContext = createContext<PostActions>({});
+
 function KbBody({
   tree,
   onTreeChange,
@@ -459,6 +458,34 @@ function KbBody({
   tree: PublicKBTree;
   onTreeChange: (t: PublicKBTree) => void;
 }) {
+  const authUser = useAuthStore((s) => s.user);
+  const canManage = !!tree.can_manage;
+  const postActions = useMemo<PostActions>(() => {
+    const refresh = () => kbsApi.getPublicKBTree(tree.slug).then(onTreeChange).catch(() => undefined);
+    return {
+      onTogglePin: canManage
+        ? async (doc) => {
+            try {
+              await docsApi.toggleDocumentPin(doc.id, !doc.is_pinned);
+              await refresh();
+            } catch (err) {
+              message.error(formatApiError(err, '置顶操作失败'));
+            }
+          }
+        : undefined,
+      onToggleFavorite: authUser
+        ? async (doc) => {
+            try {
+              const { is_favorited } = await docsApi.toggleDocumentFavorite(doc.id);
+              if (is_favorited) burstAtPointer();
+              await refresh();
+            } catch (err) {
+              message.error(formatApiError(err, '收藏操作失败'));
+            }
+          }
+        : undefined,
+    };
+  }, [authUser, canManage, tree.slug, onTreeChange]);
   /** Card-grouping mode toggle, persisted per-browser:
    * - ``folders``: each folder is its own section with the docs it contains
    * - ``flat``: one stream of all docs, regardless of folder
@@ -633,13 +660,14 @@ function KbBody({
           }}
         />
         <div style={{ paddingLeft: 18, minWidth: 0 }}>
-          <Empty description="还没有公开文章" />
+          <JzEmpty description="还没有公开文章"  />
         </div>
       </div>
     );
   }
 
   return (
+    <PostActionsContext.Provider value={postActions}>
     <div
       id="jz-kb-body"
       className="jz-kb-body"
@@ -679,58 +707,38 @@ function KbBody({
             共 {tree.documents.length} 篇文档
           </Typography.Text>
           <div style={{ flex: 1 }} />
-          <Space size={4}>
-            <Tooltip title="按文件夹分组">
-              <Button
-                size="small"
-                type={view === 'folders' ? 'primary' : 'default'}
-                icon={<UnorderedListOutlined />}
-                onClick={() => changeView('folders')}
-                aria-label="按文件夹分组"
+          <Segmented
+            size="small"
+            className="jz-kb-toolbar-seg"
+            value={view}
+            onChange={(v) => changeView(v as GroupView)}
+            aria-label="视图"
+            options={[
+              { value: 'folders', icon: <JzGroupViewIcon size={ICON_SIZE.md} />, label: '分组', title: '按文件夹分组' },
+              { value: 'flat', icon: <JzFlatViewIcon size={ICON_SIZE.md} />, label: '平铺', title: '平铺所有文章' },
+            ]}
+          />
+          {view === 'folders' && hasFolders && (
+            <Tooltip title={anyFolded ? '展开全部分组' : '折叠全部分组'}>
+              <IconButton
+                size="md"
+                icon={anyFolded ? <JzExpandAllIcon size={ICON_SIZE.lg} /> : <JzCollapseAllIcon size={ICON_SIZE.lg} />}
+                onClick={foldAllToggle}
+                aria-label={anyFolded ? '展开全部分组' : '折叠全部分组'}
               />
             </Tooltip>
-            <Tooltip title="平铺所有文章">
-              <Button
-                size="small"
-                type={view === 'flat' ? 'primary' : 'default'}
-                icon={<AppstoreOutlined />}
-                onClick={() => changeView('flat')}
-                aria-label="平铺所有文章"
-              />
-            </Tooltip>
-            {view === 'folders' && hasFolders && (
-              <Tooltip title={anyFolded ? '展开全部分组' : '折叠全部分组'}>
-                <Button
-                  size="small"
-                  icon={anyFolded ? <PlusSquareOutlined /> : <MinusSquareOutlined />}
-                  onClick={foldAllToggle}
-                  aria-label={anyFolded ? '展开全部分组' : '折叠全部分组'}
-                />
-              </Tooltip>
-            )}
-          </Space>
-          <Space size={4}>
-            <Tooltip title="摘要视图（标题 + 标签 + 摘要 + 时间）">
-              <Button
-                size="small"
-                type={density === 'summary' ? 'primary' : 'text'}
-                icon={<ProfileOutlined />}
-                onClick={() => changeDensity('summary')}
-              >
-                摘要
-              </Button>
-            </Tooltip>
-            <Tooltip title="列表视图（标题 + 标签）">
-              <Button
-                size="small"
-                type={density === 'list' ? 'primary' : 'text'}
-                icon={<FileTextOutlined />}
-                onClick={() => changeDensity('list')}
-              >
-                列表
-              </Button>
-            </Tooltip>
-          </Space>
+          )}
+          <Segmented
+            size="small"
+            className="jz-kb-toolbar-seg"
+            value={density}
+            onChange={(v) => changeDensity(v as Density)}
+            aria-label="密度"
+            options={[
+              { value: 'summary', icon: <JzCardViewIcon size={ICON_SIZE.md} />, label: '摘要', title: '摘要视图（标题 + 标签 + 摘要 + 时间）' },
+              { value: 'list', icon: <JzRowsViewIcon size={ICON_SIZE.md} />, label: '列表', title: '列表视图（标题 + 标签）' },
+            ]}
+          />
         </div>
 
         {view === 'flat' || !hasFolders ? (
@@ -754,6 +762,7 @@ function KbBody({
         )}
       </div>
     </div>
+    </PostActionsContext.Provider>
   );
 }
 
@@ -810,7 +819,7 @@ function FolderGroup({
     }, 0);
 
   return (
-    <section style={{ paddingLeft: depth === 0 ? 0 : 12 }}>
+    <section className={'jz-kb-folder-section' + (depth > 0 ? ' is-nested' : '')}>
       <h3
         className={'jz-kb-folder-heading' + (onToggleFold ? ' is-foldable' : '') + (folded ? ' is-folded' : '')}
         style={{ fontSize: depth === 0 ? 18 : 16 }}
@@ -831,7 +840,7 @@ function FolderGroup({
       >
         {onToggleFold && (
           <span className="jz-kb-fold-chevron" aria-hidden>
-            {folded ? <CaretRightOutlined /> : <CaretDownOutlined />}
+            <Disclosure open={!folded} />
           </span>
         )}
         <span className="jz-kb-folder-heading-mark" aria-hidden />
@@ -866,6 +875,7 @@ function FolderGroup({
 
 /** Compact single-row rendering: title + tags, no excerpt. */
 function PostRow({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
+  const actions = useContext(PostActionsContext);
   return (
     <li className="jz-post-row">
       <TransitionLink
@@ -891,6 +901,9 @@ function PostRow({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
         <span className="jz-post-row-date">
           {dayjs(p.published_at).format('YYYY-MM-DD')}
         </span>
+        {(actions.onTogglePin || actions.onToggleFavorite) && (
+          <DocPinFavoriteButtons doc={p} compact onTogglePin={actions.onTogglePin} onToggleFavorite={actions.onToggleFavorite} />
+        )}
       </TransitionLink>
     </li>
   );
@@ -898,12 +911,18 @@ function PostRow({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
 
 /** Single article card — extracted so both the flat and grouped views share it. */
 function PostCard({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
+  const actions = useContext(PostActionsContext);
   return (
     <Card
       className="jz-card jz-fade-in jz-post-card"
       hoverable
       style={{ borderRadius: 12 }}
     >
+      {(actions.onTogglePin || actions.onToggleFavorite) && (
+        <span className="jz-post-card-actions">
+          <DocPinFavoriteButtons doc={p} onTogglePin={actions.onTogglePin} onToggleFavorite={actions.onToggleFavorite} />
+        </span>
+      )}
       <TransitionLink
         to={postHref(p.slug, kbSlug)}
         style={{ color: 'inherit', textDecoration: 'none' }}
@@ -922,7 +941,7 @@ function PostCard({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
       <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 8 }}>
         {p.excerpt || '（无摘要）'}
       </Paragraph>
-      <Space size={8} wrap split={<span style={{ color: 'var(--jz-divider)' }}>·</span>}>
+      <Space size={8} wrap split={<SepDot />}>
         <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
           {dayjs(p.published_at).format('YYYY-MM-DD HH:mm')}
         </Typography.Text>

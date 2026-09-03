@@ -1,14 +1,15 @@
+import { tocFontFamily } from '@/utils/tocPrefs';
+import Disclosure from './Disclosure';
+import { JzCollapseAllIcon, JzExpandAllIcon } from './JzIcon';
+import { TocFontSelect } from './TocSettingsPopover';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Button, Empty, Input, Popover, Segmented, Spin, Switch, Tooltip, Typography } from 'antd';
+import { Input, Popover, Segmented, Spin, Switch, Tooltip, Typography } from 'antd';
 import {
   BookOutlined,
   CloseOutlined,
   DeleteOutlined,
   DownOutlined,
   ExportOutlined,
-  MinusSquareOutlined,
-  PlusSquareOutlined,
-  RightOutlined,
   SearchOutlined,
   SettingOutlined,
   UpOutlined,
@@ -25,6 +26,8 @@ import {
   type EpubTocEntry,
   type EpubTocPrefs,
 } from '@/utils/epubReader';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -233,19 +236,7 @@ export default function EpubSidebar({
       </div>
       <div className="jz-rl-section">
         <div className="jz-rl-label">字体</div>
-        <Segmented
-          block
-          size="small"
-          value={tocPrefs.font}
-          onChange={(v) => onTocPrefsChange({ font: v as EpubTocPrefs['font'] })}
-          options={[
-            { label: <span style={{ fontFamily: 'var(--jz-font-ui)' }}>界面</span>, value: 'ui', title: '站内界面字体' },
-            { label: <span style={{ fontFamily: 'var(--jz-font-serif)' }}>衬线</span>, value: 'serif', title: '宋体 / 衬线' },
-            { label: <span style={{ fontFamily: 'var(--jz-font-kai)' }}>楷体</span>, value: 'kai', title: '楷体' },
-            { label: <span style={{ fontFamily: 'var(--jz-font-display)' }}>文楷</span>, value: 'wenkai', title: '霞鹜文楷' },
-            { label: <span style={{ fontFamily: readerFontStack }}>正文</span>, value: 'reader', title: '跟随正文字体' },
-          ]}
-        />
+        <TocFontSelect value={tocPrefs.font} onChange={(font) => onTocPrefsChange({ font })} readerFontStack={readerFontStack} />
       </div>
       <div className="jz-rl-section">
         <div className="jz-rl-label">颜色</div>
@@ -331,7 +322,7 @@ export default function EpubSidebar({
       data-wrap={tocPrefs.wrap ? 'on' : 'off'}
       data-font={tocPrefs.font}
       data-color={tocPrefs.color}
-      style={tocPrefs.font === 'reader' && readerFontStack ? { fontFamily: readerFontStack } : undefined}
+      style={{ ['--jz-font-toc' as string]: tocFontFamily(tocPrefs.font, readerFontStack) } as React.CSSProperties}
     >
       <div className="jz-epub-side-head">
         {coverUrl ? (
@@ -365,7 +356,7 @@ export default function EpubSidebar({
         </div>
         {onClose && (
           <Tooltip title="隐藏侧栏">
-            <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClose} aria-label="隐藏侧栏" className="jz-epub-side-close" />
+            <IconButton icon={<CloseOutlined />} onClick={onClose} aria-label="隐藏侧栏" className="jz-epub-side-close" />
           </Tooltip>
         )}
       </div>
@@ -401,11 +392,9 @@ export default function EpubSidebar({
           )}
           {allFolderKeys.length > 0 && (
             <Tooltip title={allExpanded ? '全部折叠' : '全部展开'} getPopupContainer={popupContainer}>
-              <Button
-                type="text"
-                size="small"
+              <IconButton
                 className="jz-epub-toc-tool"
-                icon={allExpanded ? <MinusSquareOutlined /> : <PlusSquareOutlined />}
+                icon={allExpanded ? <JzCollapseAllIcon /> : <JzExpandAllIcon />}
                 onClick={allExpanded ? collapseAll : expandAll}
                 aria-label={allExpanded ? '全部折叠' : '全部展开'}
                 disabled={filtering}
@@ -414,7 +403,7 @@ export default function EpubSidebar({
           )}
           <Popover content={tocSettings} trigger="click" placement="bottomRight" getPopupContainer={popupContainer}>
             <Tooltip title="目录设置：间距 / 字号 / 换行 / 页码" getPopupContainer={popupContainer}>
-              <Button type="text" size="small" className="jz-epub-toc-tool" icon={<SettingOutlined />} aria-label="目录设置" />
+              <IconButton className="jz-epub-toc-tool" icon={<SettingOutlined />} aria-label="目录设置" />
             </Tooltip>
           </Popover>
         </div>
@@ -437,9 +426,7 @@ export default function EpubSidebar({
             <span style={{ flex: 1 }} />
           )}
           <Tooltip title="导出为 Markdown 笔记" getPopupContainer={popupContainer}>
-            <Button
-              type="text"
-              size="small"
+            <IconButton
               className="jz-epub-toc-tool"
               icon={<ExportOutlined />}
               onClick={notes.onExport}
@@ -452,13 +439,13 @@ export default function EpubSidebar({
       <div ref={scrollRef} className="jz-epub-side-scroll">
         {tab === 'bookmarks' && bookmarks ? (
           !bookmarks.loggedIn ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="登录后可添加书签" />
+            <JzEmpty description="登录后可添加书签" size="sm" />
           ) : !bookmarks.loaded ? (
             <div style={{ textAlign: 'center', padding: 12 }}>
               <Spin size="small" />
             </div>
           ) : bookmarks.items.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="工具条的书签按钮可收藏当前页" />
+            <JzEmpty description="工具条的书签按钮可收藏当前页" size="sm" />
           ) : (
             <div className="jz-epub-notes">
               {bookmarks.items.map((b) => (
@@ -469,9 +456,7 @@ export default function EpubSidebar({
                     <span className="jz-epub-note-text">{new Date(b.created_at).toLocaleString()}</span>
                   </button>
                   <Tooltip title="删除书签">
-                    <Button
-                      type="text"
-                      size="small"
+                    <IconButton
                       className="jz-epub-bm-del"
                       icon={<DeleteOutlined />}
                       onClick={() => bookmarks.onDelete(b)}
@@ -484,15 +469,15 @@ export default function EpubSidebar({
           )
         ) : tab === 'notes' && notes ? (
           !notes.loggedIn ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="登录后可划线、写笔记" />
+            <JzEmpty description="登录后可划线、写笔记" size="sm" />
           ) : !notes.loaded ? (
             <div style={{ textAlign: 'center', padding: 12 }}>
               <Spin size="small" />
             </div>
           ) : notes.highlights.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选中正文文字即可划线、写笔记" />
+            <JzEmpty description="选中正文文字即可划线、写笔记" size="sm" />
           ) : noteGroups.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有匹配的笔记" />
+            <JzEmpty description="没有匹配的笔记" size="sm" />
           ) : (
             <div className="jz-epub-notes">
               {noteGroups.map((g, gi) => (
@@ -519,9 +504,9 @@ export default function EpubSidebar({
           )
         ) : tab === 'toc' ? (
           entries.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="本书没有目录" />
+            <JzEmpty description="本书没有目录" size="sm" />
           ) : filtering && visible.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有匹配的目录项" />
+            <JzEmpty description="没有匹配的目录项" size="sm" />
           ) : (
             <ul className="jz-epub-toc-list">
               {visible.map((entry) => {
@@ -548,7 +533,7 @@ export default function EpubSidebar({
                         aria-label={open ? '折叠' : '展开'}
                         aria-expanded={open}
                       >
-                        <RightOutlined />
+                        <Disclosure open={open} />
                       </button>
                     ) : (
                       <span className="jz-epub-toc-chevron is-leaf" aria-hidden />
@@ -597,9 +582,7 @@ export default function EpubSidebar({
                 {total > 0 && (
                   <span className="jz-epub-search-nav-btns">
                     <Tooltip title="上一处">
-                      <Button
-                        type="text"
-                        size="small"
+                      <IconButton
                         icon={<UpOutlined />}
                         disabled={total === 0}
                         onClick={() => jumpHit(hitCursor == null ? total - 1 : (hitCursor - 1 + total) % total)}
@@ -607,9 +590,7 @@ export default function EpubSidebar({
                       />
                     </Tooltip>
                     <Tooltip title="下一处">
-                      <Button
-                        type="text"
-                        size="small"
+                      <IconButton
                         icon={<DownOutlined />}
                         disabled={total === 0}
                         onClick={() => jumpHit(hitCursor == null ? 0 : (hitCursor + 1) % total)}
@@ -653,7 +634,7 @@ export default function EpubSidebar({
               ));
             })()}
             {searched && !searching && total === 0 && (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有找到匹配内容" />
+              <JzEmpty description="没有找到匹配内容" size="sm" />
             )}
           </div>
         )}

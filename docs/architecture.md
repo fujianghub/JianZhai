@@ -27,7 +27,7 @@
 
 | App | 关键文件 | 职责 |
 |-----|----------|------|
-| `accounts` | `scoping.py` `permissions.py` `hero.py` `views.py` `models.py` `captcha.py` | 登录（三因子:密码+邮箱匹配+滑块验证码）/ Session / 用户 CRUD / **scope_queryset** / **四角色 RBAC** / **友邻闸门** / 账号自服务 / **题记（HeroSettings）** |
+| `accounts` | `scoping.py` `permissions.py` `hero.py` `toc.py` `views.py` `models.py` `captcha.py` | 登录（三因子:密码+邮箱匹配+滑块验证码）/ Session / 用户 CRUD / **scope_queryset** / **四角色 RBAC** / **友邻闸门** / 账号自服务 / **题记（HeroSettings）** / **目录站点默认（TocSettings）** |
 | `knowledge` | `models.py` `views.py` `tree.py` `trash_views.py` | `KnowledgeBaseCategory` / `KnowledgeBase` / `Folder` / `Document` 核心 CRUD、`tree/reorder` 调序、回收站 |
 | `editor` | `views.py` `import_word.py` | 附件上传、Word / Markdown / ZIP 导入、本地图片打包 |
 | `versioning` | `services.py` `diff.py` | `DocumentVersion` 快照 + 行级/字符级 diff + 回滚 |
@@ -35,7 +35,7 @@
 | `search` | `services.py` `tasks.py` | jieba 切词 → `tsvector`；`/search/`；`reindex_search` 命令 |
 | `tags` | `models.py` `views.py` | 标签可挂 KB / Folder / Document；空 color 自动派生 djb2 hash |
 | `comments` | `models.py` `views.py` | 文档级与段落级（`block_id`）评论；单用户自动通过审核 |
-| `reading` | `models.py` `views.py` | 阅读器读者状态：`Highlight`（双锚二选一：EPUB 范围 CFI / MD TextQuote `selector` JSON + 引文 + 五色 × 高亮/下划线/波浪线 + 笔记）与 `Bookmark`（点 CFI）；每用户私有、读者可写（`_readable_doc` 同收藏/评论） |
+| `reading` | `models.py` `views.py` | 阅读器读者状态：`Highlight`（双锚二选一：EPUB 范围 CFI / MD TextQuote `selector` JSON + 引文 + 七色（黄绿蓝粉紫红橙）× 高亮/下划线/波浪线 + 笔记）与 `Bookmark`（点 CFI）；每用户私有、读者可写（`_readable_doc` 同收藏/评论） |
 | `exporter` | `services/*` `tasks.py` `scope.py` | 异步导出 MD/HTML/PDF/DOCX/site zip；anthology 单文件壳 |
 | `blog` | `views.py` `feeds.py` | 公开 posts API、RSS、`resolve_public_post_by_slug` |
 | `ai` | `services.py` `prompts.py` `pricing.py` `views.py` | **多供应商**代理、降级链、日预算、自定义模板、多轮对话、用量日志、价格估算 |
@@ -105,7 +105,7 @@ class DocumentLink(models.Model):
 
 `linking/tasks.sync_document_links` 保存后异步：① 对源文档 `select_for_update` 加锁（**锁结果赋值给本地变量**，否则取了锁就丢）→ ② 解析 `raw_content` 抽取 `@[title](doc:N)` → ③ 校验目标同 owner 且未软删 → ④ `bulk_create` 全程在 atomic 块内。
 
-### AI 模型 / HeroSettings
+### AI 模型 / HeroSettings / TocSettings
 
 字段详见 [ai.md](./ai.md)（AISettings / AIUsageLog 含 `estimated_usd` / AIPromptTemplate / AIConversation）与 [frontend.md](./frontend.md)（HeroSettings 含 `enabled` / `play_order`）。
 
@@ -117,6 +117,7 @@ class DocumentLink(models.Model):
 auth/            csrf · captcha(滑块取题) · session(含 require_login) · login(三因子:密码+邮箱匹配+滑块) · logout · me · system-info(IsRoot)
 auth/me/         avatar · change-password · change-email · change-username   账号自服务
 auth/hero/  /hero/batch/      题记：员工读写 + 批量导入
+auth/toc/                     目录站点默认：IsContentAuthor 读、staff 写（{reset:true} 恢复出厂）
 auth/users/                   UserViewSet（可见范围按角色）
 kbs|folders|documents|kb-categories/   knowledge CRUD（DRF Router）
 tree/reorder/                 批量调序与父子关系
@@ -131,7 +132,7 @@ links/graph/                  知识图谱
 search/                       全文搜索
 exports/  exports/<pk>/download/   异步导出
 ai/capabilities · settings · run · stream · chat · estimate · usage(+csv) · templates · conversations
-public/posts(by-id/by-slug/adjacent/related/backlinks) · kbs(tree) · tags · archive · kb-categories · hero
+public/posts(by-id/by-slug/adjacent/related/backlinks) · kbs(tree) · tags · archive · kb-categories · hero · toc-settings
 /feed.xml  /sitemap.xml  /robots.txt  /django-admin/
 ```
 

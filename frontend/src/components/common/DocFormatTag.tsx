@@ -1,16 +1,16 @@
 import type { DocFormat } from '@/types';
 
 const META: Record<DocFormat, { label: string; color: string }> = {
-  // Each pill renders with the same shape; only the accent colour varies. The
-  // values stay as raw hex so the pill is recognisable across all 4 themes —
-  // tinted backgrounds + bold text are computed with color-mix in CSS.
-  markdown: { label: 'MD', color: '#3b82f6' },
-  html: { label: 'HTML', color: '#f97316' },
-  pdf: { label: 'PDF', color: '#ef4444' },
-  docx: { label: 'DOCX', color: '#6366f1' },
-  pptx: { label: 'PPT', color: '#f59e0b' },
-  epub: { label: 'EPUB', color: '#10b981' },
-  image: { label: '图片', color: '#a78bfa' },
+  // Each pill renders with the same shape; only the accent colour varies —
+  // seven ``--jz-fmt-*`` tokens in tokens.css (theme-stable hexes), tinted
+  // backgrounds + bold text are computed with color-mix in CSS.
+  markdown: { label: 'MD', color: 'var(--jz-fmt-markdown)' },
+  html: { label: 'HTML', color: 'var(--jz-fmt-html)' },
+  pdf: { label: 'PDF', color: 'var(--jz-fmt-pdf)' },
+  docx: { label: 'DOCX', color: 'var(--jz-fmt-docx)' },
+  pptx: { label: 'PPT', color: 'var(--jz-fmt-pptx)' },
+  epub: { label: 'EPUB', color: 'var(--jz-fmt-epub)' },
+  image: { label: '图片', color: 'var(--jz-fmt-image)' },
 };
 
 interface Props {

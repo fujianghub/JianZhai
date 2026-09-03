@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Empty, Popconfirm, Spin, Tag, Typography } from 'antd';
+import { Button, Popconfirm, Spin, Tag, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import { useLocation, useNavigate } from 'react-router-dom';
 import TransitionLink from '@/components/common/TransitionLink';
@@ -13,6 +13,7 @@ import {
 import { formatApiError } from '@/api/client';
 import { docBrowseHref, docEditorHref } from '@/utils/docLinks';
 import { useAuthStore } from '@/stores/auth';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text, Title } = Typography;
 
@@ -96,13 +97,13 @@ export default function FavoritesPage() {
     return (
       <div className="jz-favorites">
         {header}
-        <Empty description="还没有收藏的文档">
+        <JzEmpty description="还没有收藏的文档">
           {isAuthor ? (
             <TransitionLink to="/admin/kbs">去知识库</TransitionLink>
           ) : (
             <TransitionLink to="/">去藏经阁逛逛</TransitionLink>
           )}
-        </Empty>
+        </JzEmpty>
       </div>
     );
   }

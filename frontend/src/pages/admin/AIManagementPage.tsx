@@ -42,6 +42,7 @@ import {
 } from '@/components/admin/ai/AIPageSections';
 import PromptsSection from '@/components/admin/ai/PromptsSection';
 import { ICON_SIZE } from '@/components/common/iconSize';
+import { CheckMark, SepDot } from '@/components/common/symbols';
 
 const { Title, Paragraph } = Typography;
 
@@ -134,7 +135,7 @@ export default function AIManagementPage() {
           icon={ok ? <CheckCircleOutlined /> : <WarningOutlined />}
           color={ok ? 'success' : 'default'}
         >
-          {p.label}{ok ? ' ✓' : ' · 未配置'}
+          {p.label} {ok ? <CheckMark /> : <><SepDot /> 未配置</>}
         </Tag>
       </Tooltip>
     );

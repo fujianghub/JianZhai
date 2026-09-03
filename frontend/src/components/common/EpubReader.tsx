@@ -175,6 +175,7 @@ import {
   type PublisherFontRule,
 } from '@/utils/epubReader';
 import { isTypingTarget, useActiveScopes, withShortcut } from '@/shortcuts';
+import IconButton from '@/components/common/IconButton';
 
 const { Text } = Typography;
 
@@ -2214,7 +2215,7 @@ export default function EpubReader({
                     跳转到原文
                   </Button>
                 )}
-                <Button type="text" size="small" icon={<CloseOutlined />} onClick={closeFootnote} aria-label="关闭注释" />
+                <IconButton icon={<CloseOutlined />} onClick={closeFootnote} aria-label="关闭注释" />
               </Space>
             </div>
             <div ref={footnoteHostRef} className="jz-epub-footnote-body" />

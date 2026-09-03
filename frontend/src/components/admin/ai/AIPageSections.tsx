@@ -1,21 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Card,
-  Col,
-  Empty,
-  InputNumber,
-  Progress,
-  Radio,
-  Row,
-  Select,
-  Space,
-  Statistic,
-  Switch,
-  Table,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Card, Col, InputNumber, Progress, Radio, Row, Select, Space, Statistic, Switch, Table, Tag, Tooltip, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import {
   ApiOutlined,
@@ -33,6 +17,7 @@ import {
 import { isModelConfigured, resolveAIModel, writeAIModel, readAIModelFromStorage } from '@/utils/aiModel';
 import UsageHeatmap from './UsageHeatmap';
 import { WarningIcon } from '@/components/common/actionIcons';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Paragraph, Text } = Typography;
 
@@ -242,7 +227,7 @@ export function OverviewSection({
               </Space>
             </>
           ) : (
-            <Empty description="近期无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+            <JzEmpty description="近期无数据" size="sm" />
           )}
         </Card>
       </Col>

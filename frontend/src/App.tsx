@@ -49,6 +49,7 @@ const AIManagementPage = lazy(() => import('@/pages/admin/AIManagementPage'));
 const KnowledgeGraphPage = lazy(() => import('@/pages/admin/KnowledgeGraphPage'));
 const ProfilePage = lazy(() => import('@/pages/admin/ProfilePage'));
 const HeroPage = lazy(() => import('@/pages/admin/HeroPage'));
+const TocSettingsPage = lazy(() => import('@/pages/admin/TocSettingsPage'));
 const FavoritesPage = lazy(() => import('@/pages/FavoritesPage'));
 const TrashPage = lazy(() => import('@/pages/admin/TrashPage'));
 const DocLinkResolver = lazy(() => import('@/pages/DocLinkResolver'));
@@ -125,6 +126,7 @@ export default function App() {
         <Route path="profile" element={<ProfilePage />} />
         <Route path="favorites" element={<FavoritesPage />} />
         <Route path="hero" element={<RequireAuthor><HeroPage /></RequireAuthor>} />
+        <Route path="toc" element={<RequireAuthor><TocSettingsPage /></RequireAuthor>} />
         <Route path="trash" element={<RequireAuthor><TrashPage /></RequireAuthor>} />
       </Route>
 

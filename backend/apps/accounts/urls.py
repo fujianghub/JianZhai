@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 
 from .captcha import get_captcha
 from .hero import hero_batch_import, hero_settings
+from .toc import toc_settings
 from .views import (
     UserTagViewSet,
     UserViewSet,
@@ -38,5 +39,7 @@ urlpatterns = [
     # Hero quote management — auth required; staff for writes.
     path("hero/", hero_settings, name="auth-hero-settings"),
     path("hero/batch/", hero_batch_import, name="auth-hero-batch"),
+    # Site-wide 目录 defaults — auth required; staff for writes.
+    path("toc/", toc_settings, name="auth-toc-settings"),
     path("", include(router.urls)),
 ]

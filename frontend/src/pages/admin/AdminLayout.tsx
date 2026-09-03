@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useState, type ReactNode } from 'react';
 import { Layout, Menu, Button, Space, Tooltip } from 'antd';
 import { StarOutlined } from '@ant-design/icons';
+import { JzTocIcon } from '@/components/common/JzIconKit';
 /* 自制 SF 分层系列（市场标准字形 + 单色双层渲染，2026-06-06 定稿） */
 import {
   JzAiIcon,
@@ -31,6 +32,7 @@ import { ICON_SIZE } from '@/components/common/iconSize';
 import BrandSeal from '@/components/common/BrandSeal';
 import { ariaKeyshortcuts, useShortcut, withShortcut } from '@/shortcuts';
 import Kbd from '@/components/common/Kbd';
+import IconButton from '@/components/common/IconButton';
 
 const { Header, Sider, Content } = Layout;
 
@@ -91,6 +93,7 @@ export default function AdminLayout() {
     if (location.pathname.startsWith('/admin/favorites')) return 'favorites';
     if (location.pathname.startsWith('/admin/profile')) return 'profile';
     if (location.pathname.startsWith('/admin/hero')) return 'hero';
+    if (location.pathname.startsWith('/admin/toc')) return 'toc';
     if (location.pathname.startsWith('/admin/exports')) return 'exports';
     if (location.pathname.startsWith('/admin/ai')) return 'ai';
     if (location.pathname.startsWith('/admin/users')) return 'users';
@@ -238,6 +241,11 @@ export default function AdminLayout() {
                 'hero',
                   ),
                   label: <TransitionLink to="/admin/hero">题记</TransitionLink>,
+                },
+                {
+                  key: 'toc',
+                  icon: menuIcon(<JzTocIcon size={MENU_ICON_SIZE} />, 'toc'),
+                  label: <TransitionLink to="/admin/toc">目录设置</TransitionLink>,
                 }]
               : []),
             {
@@ -254,9 +262,8 @@ export default function AdminLayout() {
       </Sider>
       <Layout>
         <Header className="jz-admin-header">
-          <Button
+          <IconButton
             className="jz-admin-mobile-menu-btn"
-            type="text"
             icon={<JzMenuIcon size={ICON_SIZE.lg} />}
             onClick={() => setSiderCollapsed((c) => !c)}
             aria-label={siderCollapsed ? '展开菜单' : '收起菜单'}

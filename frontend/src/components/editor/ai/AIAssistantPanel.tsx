@@ -6,6 +6,7 @@ import { JzAiIcon } from '@/components/common/JzIcon';
 import { renderMarkdown } from '@/utils/markdown';
 import CodeBlockEnhancer from '@/components/common/CodeBlockEnhancer';
 import { ICON_SIZE } from '@/components/common/iconSize';
+import { CloseIcon } from '@/components/common/actionIcons';
 
 export interface AIAssistantPanelProps {
   open: boolean;
@@ -91,7 +92,7 @@ export default function AIAssistantPanel({
           </Tooltip>
         )}
         <button type="button" className="jz-ai-panel-close" onClick={onClose} aria-label="关闭">
-          ×
+          <CloseIcon />
         </button>
       </div>
       {selectionPreview && (

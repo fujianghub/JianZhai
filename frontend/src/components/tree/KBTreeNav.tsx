@@ -1,20 +1,17 @@
 import { useCallback, useMemo, useRef } from 'react';
-import { Button, Tag, Tooltip, Tree } from 'antd';
+import { Tag, Tooltip, Tree } from 'antd';
 import {
   CloudUploadOutlined,
-  FileTextOutlined,
-  FolderOutlined,
-  PushpinFilled,
-  PushpinOutlined,
-  StarFilled,
-  StarOutlined,
   TagsOutlined,
   ExportOutlined,
 } from '@ant-design/icons';
 import type { DataNode } from 'antd/es/tree';
 import type { KBTree, TreeDocument, TreeFolder } from '@/types';
 import DocFormatTag from '@/components/common/DocFormatTag';
+import DocPinFavoriteButtons from '@/components/common/DocPinFavoriteButtons';
+import Disclosure from '@/components/common/Disclosure';
 import { resolveTagColor } from '@/utils/tagColor';
+import IconButton from '@/components/common/IconButton';
 
 export interface CheckedSelection {
   docIds: number[];
@@ -171,48 +168,21 @@ function docNode(
     key: `doc-${d.id}`,
     title: (
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, maxWidth: '100%' }}>
-        {onTogglePin && (
-          <Tooltip title={d.is_pinned ? '取消置顶' : '置顶'}>
-            <Button
-              type="text"
-              size="small"
-              icon={d.is_pinned ? <PushpinFilled style={{ color: 'var(--jz-accent)' }} /> : <PushpinOutlined />}
-              onClick={(e) => {
-                e.stopPropagation();
-                onTogglePin(d);
-              }}
-              style={{ width: 22, height: 22, minWidth: 22, padding: 0 }}
-            />
-          </Tooltip>
-        )}
-        {onToggleFavorite && (
-          <Tooltip title={d.is_favorited ? '取消收藏' : '收藏'}>
-            <Button
-              type="text"
-              size="small"
-              icon={
-                d.is_favorited ? (
-                  <StarFilled style={{ color: 'var(--jz-gold)' }} />
-                ) : (
-                  <StarOutlined />
-                )
-              }
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleFavorite(d);
-              }}
-              style={{ width: 22, height: 22, minWidth: 22, padding: 0 }}
-            />
-          </Tooltip>
-        )}
         <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', flex: 1, minWidth: 0 }}>
           {renderHighlight(d.title, q)}
-          {d.status === 'published' ? ' ✓' : ''}
+          {d.status === 'published' && <span className="jz-doc-status is-published" title="已发布" aria-label="已发布" />}
         </span>
         <DocFormatTag format={d.doc_format} />
+        {(onTogglePin || onToggleFavorite) && (
+          <DocPinFavoriteButtons
+            doc={d}
+            compact
+            onTogglePin={onTogglePin ? () => onTogglePin(d) : undefined}
+            onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(d) : undefined}
+          />
+        )}
       </span>
     ),
-    icon: <FileTextOutlined />,
     isLeaf: true,
   };
 }
@@ -232,62 +202,53 @@ function folderNode(
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
         <span style={{ fontWeight: 500 }}>{renderHighlight(f.name, q)}</span>
         {(f.tags ?? []).map((t) => (
-          <Tag
-            key={t.id}
-            color={resolveTagColor(t)}
-            style={{ marginInlineEnd: 0, fontSize: 11, lineHeight: '16px', padding: '0 6px' }}
-          >
+          <Tag key={t.id} color={resolveTagColor(t)} className="jz-folder-tag">
             {t.name}
           </Tag>
         ))}
+        <span className="jz-tree-row-actions">
         {onUploadToFolder && (
           <Tooltip title="上传文件到此文件夹">
-            <Button
-              size="small"
-              type="text"
+            <IconButton
               icon={<CloudUploadOutlined />}
               aria-label="上传文件到此文件夹"
               onClick={(e) => {
                 e.stopPropagation();
                 onUploadToFolder(f);
               }}
-              style={{ fontSize: 11, padding: '0 4px', height: 18, lineHeight: '18px' }}
+              size="xs"
             />
           </Tooltip>
         )}
         {onExportFolder && (
           <Tooltip title="导出文件夹">
-            <Button
-              size="small"
-              type="text"
+            <IconButton
               icon={<ExportOutlined />}
               aria-label="导出文件夹"
               onClick={(e) => {
                 e.stopPropagation();
                 onExportFolder(f);
               }}
-              style={{ fontSize: 11, padding: '0 4px', height: 18, lineHeight: '18px' }}
+              size="xs"
             />
           </Tooltip>
         )}
         {onEditFolderTags && (
           <Tooltip title="编辑文件夹标签">
-            <Button
-              size="small"
-              type="text"
+            <IconButton
               icon={<TagsOutlined />}
               aria-label="编辑文件夹标签"
               onClick={(e) => {
                 e.stopPropagation();
                 onEditFolderTags(f);
               }}
-              style={{ fontSize: 11, padding: '0 4px', height: 18, lineHeight: '18px' }}
+              size="xs"
             />
           </Tooltip>
         )}
+        </span>
       </span>
     ),
-    icon: <FolderOutlined />,
     selectable: false,
     children: [
       ...f.children.map((c) =>
@@ -380,8 +341,8 @@ export default function KBTreeNav({
 
   return (
     <Tree
-      showIcon
       blockNode
+      switcherIcon={({ expanded }: { expanded?: boolean }) => <Disclosure open={!!expanded} />}
       treeData={data}
       defaultExpandAll={!filteringActive}
       {...(filteringActive ? { expandedKeys: autoExpanded } : {})}

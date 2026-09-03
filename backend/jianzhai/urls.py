@@ -4,6 +4,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from apps.accounts.hero import hero_public
+from apps.accounts.toc import toc_public
 from apps.blog.views import robots_txt, rss_feed, sitemap_xml
 from apps.tags.views import public_tag_cloud, public_tag_entries
 
@@ -22,6 +23,7 @@ api_v1_patterns = [
     path("public/tags/", public_tag_cloud, name="public-tag-cloud"),
     path("public/tags/<int:tag_id>/entries/", public_tag_entries, name="public-tag-entries"),
     path("public/hero/", hero_public, name="public-hero"),
+    path("public/toc-settings/", toc_public, name="public-toc-settings"),
     path("public/", include("apps.blog.urls")),
 ]
 

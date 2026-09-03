@@ -1,13 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Button,
-  Empty,
-  Popconfirm,
-  Spin,
-  Table,
-  Tabs,
-  Typography,
-} from 'antd';
+import { Button, Popconfirm, Spin, Table, Tabs, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { DeleteOutlined } from '@ant-design/icons';
@@ -32,6 +24,7 @@ import {
 } from '@/api/trash';
 import { formatApiError } from '@/api/client';
 import { useAuthStore } from '@/stores/auth';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -297,9 +290,9 @@ export default function TrashPage() {
       </div>
 
       {emptyAll ? (
-        <Empty className="jz-trash-empty" description="回收站为空">
+        <JzEmpty className="jz-trash-empty" description="回收站为空">
           <Link to="/admin/kbs">去知识库</Link>
-        </Empty>
+        </JzEmpty>
       ) : (
         <Tabs
           activeKey={activeTab}

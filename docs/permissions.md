@@ -94,6 +94,7 @@
 | 能力 | anon | user | admin | root |
 |---|:--:|:--:|:--:|:--:|
 | 题记管理（`/admin/hero` CRUD + 批量导入） | ❌ | ❌ | ✅ | ✅ |
+| 目录站点默认（`/admin/toc`，`PATCH /auth/toc/`；公开读 `/public/toc-settings/` 经友邻闸门） | ❌ | ❌ | ✅ | ✅ |
 | 系统总览 / 架构总览（`/system-info`） | ❌ | ❌ | ❌ | ✅ |
 
 系统总览展示全租户统计，归 root（改模型后 admin 不再是 superuser，自然只剩 root）。

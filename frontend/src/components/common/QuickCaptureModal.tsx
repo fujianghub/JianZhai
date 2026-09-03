@@ -6,6 +6,7 @@ import { listKBs } from '@/api/kbs';
 import { formatApiError } from '@/api/client';
 import { message } from '@/utils/notify';
 import type { KnowledgeBase } from '@/types';
+import { ArrowRightOutlined } from '@ant-design/icons';
 
 const { Text } = Typography;
 const INBOX_KB_KEY = 'jz-inbox-kb';
@@ -100,7 +101,7 @@ export default function QuickCaptureModal({ open, onClose }: Props) {
       title={
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
           速记
-          {inboxKb && <Tag color="green" style={{ marginRight: 0 }}>→ {inboxKb.name}</Tag>}
+          {inboxKb && <Tag color="green" style={{ marginRight: 0 }}><ArrowRightOutlined /> {inboxKb.name}</Tag>}
         </span>
       }
     >

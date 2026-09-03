@@ -226,7 +226,7 @@
 /* Callouts */
 .jz-markdown.export-markdown .jz-callout {
   --c: #6366f1;
-  --c-icon: "★";
+  --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 7.2v.2M12 10.8v6.4' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   position: relative;
   margin: 1.1em 0;
   padding: 16px 18px 14px 52px;
@@ -238,20 +238,18 @@
 }
 
 .jz-markdown.export-markdown .jz-callout::before {
-  content: var(--c-icon);
+  content: '';
   position: absolute;
   top: 14px;
   left: 16px;
-  display: grid;
-  place-items: center;
   width: 24px;
   height: 24px;
   border-radius: 7px;
-  background: var(--c);
-  color: #fff;
-  font-weight: 700;
-  font-size: 14px;
-  line-height: 1;
+  background-color: var(--c);
+  background-image: var(--c-glyph);
+  background-size: 17px 17px;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .jz-markdown.export-markdown .jz-callout-title {
@@ -263,20 +261,20 @@
 .jz-markdown.export-markdown .jz-callout-body > :first-child { margin-top: 0; }
 .jz-markdown.export-markdown .jz-callout-body > :last-child { margin-bottom: 0; }
 
-.jz-markdown.export-markdown .jz-callout-tips { --c: #3b82f6; --c-icon: "💡"; background: #eff6ff; }
-.jz-markdown.export-markdown .jz-callout-info { --c: #6366f1; --c-icon: "i"; }
-.jz-markdown.export-markdown .jz-callout-warning { --c: #f59e0b; --c-icon: "!"; background: #fffbeb; }
-.jz-markdown.export-markdown .jz-callout-danger { --c: #ef4444; --c-icon: "✕"; background: #fef2f2; }
-.jz-markdown.export-markdown .jz-callout-success { --c: #10b981; --c-icon: "✓"; background: #ecfdf5; }
-.jz-markdown.export-markdown .jz-callout-color1 { --c: #2f8ef4; --c-icon: "①"; }
-.jz-markdown.export-markdown .jz-callout-color2 { --c: #a78bfa; --c-icon: "②"; }
-.jz-markdown.export-markdown .jz-callout-color3 { --c: #10b981; --c-icon: "③"; background: #ecfdf5; }
-.jz-markdown.export-markdown .jz-callout-color4 { --c: #f59e0b; --c-icon: "④"; background: #fffbeb; }
-.jz-markdown.export-markdown .jz-callout-color5 { --c: #ef4444; --c-icon: "⑤"; background: #fef2f2; }
-.jz-markdown.export-markdown .jz-callout-color6 { --c: #f43f5e; --c-icon: "⑥"; background: #fff1f2; }
-.jz-markdown.export-markdown .jz-callout-note    { --c: #6366f1; --c-icon: "📝"; }
-.jz-markdown.export-markdown .jz-callout-quote   { --c: #94a3b8; --c-icon: "❝"; background: #f8fafc; }
-.jz-markdown.export-markdown .jz-callout-error   { --c: #ef4444; --c-icon: "✕"; background: #fef2f2; }
+.jz-markdown.export-markdown .jz-callout-tips { --c: #3b82f6; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9.5 17.5h5M10.3 20h3.4M12 3.6a5.4 5.4 0 0 0-3.3 9.7c.6.5.9 1.1.9 1.8v.4h4.8v-.4c0-.7.3-1.3.9-1.8A5.4 5.4 0 0 0 12 3.6z' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background: #eff6ff; }
+.jz-markdown.export-markdown .jz-callout-info { --c: #6366f1; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 7.2v.2M12 10.8v6.4' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.jz-markdown.export-markdown .jz-callout-warning { --c: #f59e0b; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 5.5v7.5M12 17v.2' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background: #fffbeb; }
+.jz-markdown.export-markdown .jz-callout-danger { --c: #ef4444; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7.5 7.5l9 9M16.5 7.5l-9 9' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background: #fef2f2; }
+.jz-markdown.export-markdown .jz-callout-success { --c: #10b981; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6 12.5l3.8 3.8L18 8' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background: #ecfdf5; }
+.jz-markdown.export-markdown .jz-callout-color1 { --c: #2f8ef4; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='12' y='16.6' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-size='13' font-weight='700' fill='%23fff'%3E1%3C/text%3E%3C/svg%3E"); }
+.jz-markdown.export-markdown .jz-callout-color2 { --c: #a78bfa; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='12' y='16.6' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-size='13' font-weight='700' fill='%23fff'%3E2%3C/text%3E%3C/svg%3E"); }
+.jz-markdown.export-markdown .jz-callout-color3 { --c: #10b981; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='12' y='16.6' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-size='13' font-weight='700' fill='%23fff'%3E3%3C/text%3E%3C/svg%3E"); background: #ecfdf5; }
+.jz-markdown.export-markdown .jz-callout-color4 { --c: #f59e0b; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='12' y='16.6' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-size='13' font-weight='700' fill='%23fff'%3E4%3C/text%3E%3C/svg%3E"); background: #fffbeb; }
+.jz-markdown.export-markdown .jz-callout-color5 { --c: #ef4444; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='12' y='16.6' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-size='13' font-weight='700' fill='%23fff'%3E5%3C/text%3E%3C/svg%3E"); background: #fef2f2; }
+.jz-markdown.export-markdown .jz-callout-color6 { --c: #f43f5e; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctext x='12' y='16.6' text-anchor='middle' font-family='system-ui,-apple-system,sans-serif' font-size='13' font-weight='700' fill='%23fff'%3E6%3C/text%3E%3C/svg%3E"); background: #fff1f2; }
+.jz-markdown.export-markdown .jz-callout-note    { --c: #6366f1; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M6.5 4v16M6.5 5h10.2l-2.4 3.5 2.4 3.5H6.5' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+.jz-markdown.export-markdown .jz-callout-quote   { --c: #94a3b8; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M9 15c-1.6 0-2.7-1.1-2.7-2.6S7.4 9.8 9 9.8c0-2 1-3.2 2.6-3.6M17.2 15c-1.6 0-2.7-1.1-2.7-2.6s1.1-2.6 2.7-2.6c0-2 1-3.2 2.6-3.6' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background: #f8fafc; }
+.jz-markdown.export-markdown .jz-callout-error   { --c: #ef4444; --c-glyph: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7.5 7.5l9 9M16.5 7.5l-9 9' fill='none' stroke='%23fff' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); background: #fef2f2; }
 
 /* Math (KaTeX) — display + inline forms emitted by markdown-it katex plugin */
 .jz-markdown.export-markdown .jz-math-block {

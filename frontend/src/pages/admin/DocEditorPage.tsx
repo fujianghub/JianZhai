@@ -1,21 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import {
-  Alert,
-  Button,
-  Dropdown,
-  Empty,
-  Modal,
-  Segmented,
-  Select,
-  Space,
-  Spin,
-  Switch,
-  Tag,
-  Tooltip,
-  Typography,
-  Upload,
-} from 'antd';
+import { Alert, Button, Dropdown, Modal, Segmented, Select, Space, Spin, Switch, Tag, Tooltip, Typography, Upload } from 'antd';
 import {
   CloudUploadOutlined,
   CompressOutlined,
@@ -80,6 +65,8 @@ import {
 } from '@/components/editor/surface/EditorSurface';
 import { CloseIcon } from '@/components/common/actionIcons';
 import { formatShortcut, useActiveScopes, useShortcut, withShortcut } from '@/shortcuts';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 type EditorMode = 'markdown' | 'rich' | 'html' | 'pdf' | 'pptx' | 'epub';
 type ContentSource = 'raw' | 'published';
@@ -780,7 +767,7 @@ export default function DocEditorPage({
               />
             </Tooltip>
             <Tooltip title={withShortcut('专注写作模式', 'editor.focus')}>
-              <Button aria-label="专注写作模式" size="small" type="text" icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
+              <IconButton aria-label="专注写作模式"  icon={<FullscreenOutlined />} onClick={() => setFocusMode(true)} />
             </Tooltip>
           </span>
           {doc.status === 'published' ? (
@@ -1092,7 +1079,7 @@ function EditorSurface({
     }
     if (doc.doc_format !== 'pdf') {
       return (
-        <Empty
+        <JzEmpty
           description={
             <span>
               当前文档不是 PDF（主附件为 <code>{doc.primary_attachment?.original_filename}</code>）。

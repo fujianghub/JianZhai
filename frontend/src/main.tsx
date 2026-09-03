@@ -4,6 +4,7 @@ import { App as AntdApp, ConfigProvider, theme } from 'antd';
 import zhCN from 'antd/locale/zh_CN';
 import { BrowserRouter } from 'react-router-dom';
 import App from './App';
+import Disclosure from '@/components/common/Disclosure';
 import { isLightTheme, useThemeStore } from '@/stores/theme';
 import { readThemeAccent } from '@/utils/themeAccent';
 import { setMessageInstance, setNotificationInstance } from '@/utils/notify';
@@ -36,6 +37,7 @@ function Root() {
   return (
     <ConfigProvider
       locale={zhCN}
+      collapse={{ expandIcon: ({ isActive }) => <Disclosure open={!!isActive} /> }}
       theme={{
         algorithm: isDark ? theme.darkAlgorithm : theme.defaultAlgorithm,
         token: {

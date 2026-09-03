@@ -1,14 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import {
-  Button,
-  Empty,
-  Popconfirm,
-  Space,
-  Table,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Popconfirm, Space, Table, Tag, Tooltip, Typography } from 'antd';
 import { DeleteOutlined, DownloadOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { message } from '@/utils/notify';
@@ -16,6 +7,7 @@ import * as exportsApi from '@/api/exports';
 import { formatApiError } from '@/api/client';
 import type { ExportFormat, ExportStatus, ExportTask } from '@/api/exports';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Paragraph } = Typography;
 
@@ -192,7 +184,7 @@ export default function ExportsPage() {
       />
       <div className="jz-admin-panel">
       {tasks.length === 0 && !loading ? (
-        <Empty description="还没有导出过任何内容" />
+        <JzEmpty description="还没有导出过任何内容"  />
       ) : (
         <Table<ExportTask>
           rowKey="id"

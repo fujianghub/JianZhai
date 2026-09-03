@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useState, type ReactNode } from 'react';
-import { Button, Layout, Space, Spin, Tooltip } from 'antd';
+import { Layout, Space, Spin, Tooltip } from 'antd';
 import { Link, NavLink, Navigate, Outlet, useLocation } from 'react-router-dom';
 import ThemeSwitcher from '@/components/common/ThemeSwitcher';
 import LiveClock from '@/components/common/LiveClock';
@@ -18,6 +18,7 @@ import { useAuthStore } from '@/stores/auth';
 import { ICON_SIZE } from '@/components/common/iconSize';
 import BrandSeal from '@/components/common/BrandSeal';
 import { ariaKeyshortcuts, useShortcut, withShortcut } from '@/shortcuts';
+import IconButton from '@/components/common/IconButton';
 
 const { Header, Content, Footer } = Layout;
 
@@ -152,8 +153,7 @@ export default function BlogLayout() {
             external
           />
           <Tooltip title={withShortcut('搜索', 'blog.search')}>
-            <Button
-              type="text"
+            <IconButton
               className="jz-nav-search-btn"
               icon={
                 <span className="jz-nav-link-icon" aria-hidden>

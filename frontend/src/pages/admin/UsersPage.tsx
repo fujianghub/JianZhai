@@ -1,19 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Button,
-  Empty,
-  Form,
-  Input,
-  Modal,
-  Popconfirm,
-  Select,
-  Space,
-  Switch,
-  Table,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Form, Input, Modal, Popconfirm, Select, Space, Switch, Table, Tag, Tooltip, Typography } from 'antd';
 import {
   DeleteOutlined,
   EyeOutlined,
@@ -36,6 +22,8 @@ import ReadGrantControl, {
   type GrantSelection,
 } from '@/components/admin/ReadGrantControl';
 import { ShieldIcon } from '@/components/common/actionIcons';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -390,9 +378,7 @@ export default function UsersPage() {
               render: (_, r) => (
                 <Space size={4}>
                   <Tooltip title={canManage(me, r) ? '编辑标签' : '无权操作'}>
-                    <Button
-                      type="text"
-                      size="small"
+                    <IconButton
                       icon={<TagsOutlined />}
                       disabled={!canManage(me, r)}
                       onClick={() => {
@@ -403,9 +389,7 @@ export default function UsersPage() {
                   </Tooltip>
                   {!r.is_staff && (
                     <Tooltip title={canManage(me, r) ? '阅读权限' : '无权操作'}>
-                      <Button
-                        type="text"
-                        size="small"
+                      <IconButton
                         icon={<EyeOutlined />}
                         disabled={!canManage(me, r)}
                         onClick={() => {
@@ -416,9 +400,7 @@ export default function UsersPage() {
                     </Tooltip>
                   )}
                   <Tooltip title={canManage(me, r) ? '重置该用户的密码' : '无权操作'}>
-                    <Button
-                      type="text"
-                      size="small"
+                    <IconButton
                       icon={<KeyOutlined />}
                       disabled={!canManage(me, r)}
                       onClick={() => {
@@ -436,10 +418,8 @@ export default function UsersPage() {
                     disabled={!canManage(me, r) || r.is_root}
                   >
                     <Tooltip title={r.is_root ? '根管理员不能删除' : ''}>
-                      <Button
-                        type="text"
+                      <IconButton
                         danger
-                        size="small"
                         icon={<DeleteOutlined />}
                         disabled={!canManage(me, r) || r.is_root}
                       />
@@ -679,7 +659,7 @@ function TagManagerModal({ open, tags, onClose, onChanged }: TagManagerProps) {
         </Button>
       </Space>
       {tags.length === 0 ? (
-        <Empty description="还没有标签" />
+        <JzEmpty description="还没有标签"  />
       ) : (
         <Space direction="vertical" style={{ width: '100%' }} size={8}>
           {tags.map((t) => (

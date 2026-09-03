@@ -7,20 +7,7 @@
  * 后端接口：/api/v1/ai/templates/ + /<id>/
  */
 import { useEffect, useState } from 'react';
-import {
-  Button,
-  Card,
-  Empty,
-  Form,
-  Input,
-  Modal,
-  Popconfirm,
-  Select,
-  Space,
-  Table,
-  Tag,
-  Typography,
-} from 'antd';
+import { Button, Card, Form, Input, Modal, Popconfirm, Select, Space, Table, Tag, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import { DeleteOutlined, EditOutlined, PlusOutlined } from '@ant-design/icons';
 import {
@@ -30,6 +17,8 @@ import {
   listPromptTemplates,
   updatePromptTemplate,
 } from '@/api/ai';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text, Paragraph } = Typography;
 
@@ -92,11 +81,11 @@ export default function PromptsSection() {
         自定义模板会出现在编辑器 AI 菜单、选区浮按钮与右下抽屉里，与内置的 8 种操作并列。指令越具体，AI 输出越稳定。
       </Paragraph>
       {items.length === 0 && !loading ? (
-        <Empty description="还没有自定义模板" image={Empty.PRESENTED_IMAGE_SIMPLE}>
+        <JzEmpty description="还没有自定义模板" size="sm">
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
             建一个
           </Button>
-        </Empty>
+        </JzEmpty>
       ) : (
         <Table<AIPromptTemplate>
           rowKey="id"
@@ -145,7 +134,7 @@ export default function PromptsSection() {
                 <Space size={2}>
                   <Button size="small" type="text" icon={<EditOutlined />} onClick={() => openEdit(r)}>编辑</Button>
                   <Popconfirm title="删除该模板？" onConfirm={() => handleDelete(r.id)}>
-                    <Button size="small" type="text" danger icon={<DeleteOutlined />} />
+                    <IconButton  danger icon={<DeleteOutlined />} />
                   </Popconfirm>
                 </Space>
               ),

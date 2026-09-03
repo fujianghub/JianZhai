@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Empty } from 'antd';
+
 import type { Editor } from '@tiptap/core';
 import { computeHeadingNumbers } from '@/utils/headingNumber';
+import JzEmpty from '@/components/common/JzEmpty';
 
 interface Heading {
   level: number;
@@ -93,7 +94,7 @@ export default function DocumentOutline({ editor, source, sourceKind = 'markdown
   if (headings.length === 0) {
     return (
       <div style={{ padding: 16 }}>
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="文档暂无标题" />
+        <JzEmpty description="文档暂无标题" size="sm" />
       </div>
     );
   }
@@ -109,9 +110,7 @@ export default function DocumentOutline({ editor, source, sourceKind = 'markdown
           title={h.text}
           aria-current={h.pos === activePos ? 'true' : undefined}
         >
-          <span className="jz-outline-bullet" aria-hidden>
-            {h.level === 1 ? '●' : h.level === 2 ? '○' : '·'}
-          </span>
+          <span className="jz-outline-bullet" aria-hidden />
           <span className="jz-outline-text">
             {numbers[i] ? <span className="jz-outline-num">{numbers[i]} </span> : null}
             {h.text || '(无标题文字)'}

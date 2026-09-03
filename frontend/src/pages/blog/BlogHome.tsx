@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Button, Empty, Space, Tag, Typography } from 'antd';
+import { Button, Space, Tag, Typography } from 'antd';
 import { Link, useNavigate } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { ArrowRightOutlined, PlusOutlined } from '@ant-design/icons';
@@ -10,6 +10,7 @@ import { resolveTagColor } from '@/utils/tagColor';
 import HeroQuoteRotator from '@/components/blog/HeroQuoteRotator';
 import { useRevealOnScroll } from '@/hooks/useRevealOnScroll';
 import { isPlainLeftClick, navigateWithTransition } from '@/utils/routeTransition';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -122,7 +123,7 @@ export default function BlogHome() {
     return (
       <div>
         {homeToolbar}
-        <Empty description="还没有公开的知识库" />
+        <JzEmpty description="还没有公开的知识库"  />
       </div>
     );
   }

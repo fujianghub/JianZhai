@@ -3,6 +3,7 @@ import { Button, Tooltip, Typography } from 'antd';
 import { CloseOutlined } from '@ant-design/icons';
 
 import type { HtmlHeading } from './HtmlPostReader';
+import IconButton from '@/components/common/IconButton';
 
 const { Text } = Typography;
 
@@ -134,9 +135,7 @@ export default function HtmlTocPanel({
         </Text>
         {onClose && (
           <Tooltip title="隐藏目录">
-            <Button
-              type="text"
-              size="small"
+            <IconButton
               icon={<CloseOutlined />}
               onClick={onClose}
               aria-label="隐藏目录"

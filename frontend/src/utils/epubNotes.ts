@@ -22,6 +22,8 @@ export const HIGHLIGHT_SWATCHES: HighlightSwatch[] = [
   { key: 'blue', label: '蓝', hex: '#4da3ff' },
   { key: 'pink', label: '粉', hex: '#ff6b9a' },
   { key: 'purple', label: '紫', hex: '#b07cff' },
+  { key: 'red', label: '红', hex: '#ff5a4e' },
+  { key: 'orange', label: '橙', hex: '#ff9f2e' },
 ];
 
 export function swatchHex(color: string): string {

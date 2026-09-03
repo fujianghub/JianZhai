@@ -17,8 +17,9 @@
  * stutter.
  */
 import { useMemo, type CSSProperties } from 'react';
-import { Empty, Tooltip } from 'antd';
+import { Tooltip } from 'antd';
 import dayjs from 'dayjs';
+import JzEmpty from '@/components/common/JzEmpty';
 
 export interface UsageHeatmapDay {
   day: string;
@@ -120,7 +121,7 @@ export default function UsageHeatmap({ days, windowDays }: Props) {
   );
 
   if (!days.length) {
-    return <Empty description="该窗口内无数据" image={Empty.PRESENTED_IMAGE_SIMPLE} />;
+    return <JzEmpty description="该窗口内无数据" size="sm" />;
   }
 
   // ── Month labels: render the month abbreviation above the column whose

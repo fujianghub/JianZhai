@@ -73,6 +73,7 @@ import { JzCalloutIcon } from '@/components/common/JzIcon';
 import SaveStatusPill from './SaveStatusPill';
 import type { SaveStatus } from './saveStatus';
 import { ariaKeyshortcuts, getChord, matchesChord, openCheatSheet, useShortcut, withShortcut } from '@/shortcuts';
+import { CheckMark } from '@/components/common/symbols';
 
 const { Text } = Typography;
 
@@ -1039,7 +1040,7 @@ export default function MarkdownEditor({
                   <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8, minWidth: 90 }}>
                     {calloutSwatch(t)}
                     {t.label}
-                    {t.slug === lastCallout ? ' ✓' : ''}
+                    {t.slug === lastCallout ? <CheckMark /> : ''}
                   </span>
                   <Typography.Text type="secondary" style={{ fontSize: 12, marginLeft: 8 }}>
                     {t.hint}

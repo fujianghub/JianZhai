@@ -4,6 +4,7 @@ import { DownOutlined } from '@ant-design/icons';
 import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import { FONT_SIZE_PRESETS } from '../FontSize';
+import { CheckMark } from '@/components/common/symbols';
 
 interface Props {
   editor: Editor;
@@ -31,7 +32,7 @@ export default function FontSizeDropdown({ editor }: Props) {
         <span className="jz-toolbar-menu-row">
           <span style={{ fontSize: s.value }}>{s.label}px</span>
           {fontSize === s.value ? (
-            <span className="jz-toolbar-menu-check">✓</span>
+            <span className="jz-toolbar-menu-check"><CheckMark /></span>
           ) : (
             <span />
           )}

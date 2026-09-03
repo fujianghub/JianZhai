@@ -1028,17 +1028,15 @@
 /* 色块菜单色点（与阅读端 .jz-callout::before 同色同字形，2026-09-02） */
 .jz-callout-swatch {
   display: inline-flex;
-  align-items: center;
-  justify-content: center;
   width: 20px;
   height: 20px;
   border-radius: 6px;
   flex: none;
-  background: var(--c, var(--jz-accent));
+  background-color: var(--c, var(--jz-accent));
+  background-size: 14px 14px;
+  background-position: center;
+  background-repeat: no-repeat;
   color: #fff;
-  font-family: var(--jz-font-emoji);
-  font-size: var(--jz-fs-xs);
-  font-weight: 700;
   line-height: 1;
 }
 .jz-callout-editor-label .jz-callout-swatch {

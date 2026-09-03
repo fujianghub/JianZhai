@@ -1,23 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import {
-  Button,
-  Drawer,
-  Empty,
-  Input,
-  List,
-  Modal,
-  Popconfirm,
-  Space,
-  Spin,
-  Tag,
-  Typography,
-} from 'antd';
+import { Button, Drawer, Input, List, Modal, Popconfirm, Space, Spin, Tag, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import { HistoryOutlined, RollbackOutlined, SaveOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import * as versionsApi from '@/api/versions';
 import type { VersionDetail, VersionSummary } from '@/api/versions';
 import DiffView from '@/components/diff/DiffView';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -135,7 +124,7 @@ export default function VersionsDrawer({ open, onClose, documentId, onRestored }
           <Spin />
         </div>
       ) : versions.length === 0 ? (
-        <Empty description="还没有保存过版本" />
+        <JzEmpty description="还没有保存过版本"  />
       ) : (
         <List
           itemLayout="vertical"

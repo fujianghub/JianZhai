@@ -155,6 +155,20 @@ export function JzProfileIcon(p: KitIconProps) {
 }
 
 
+/** 目录设置 — 树状目录：主干 + 两级分支（纯描边，2026-09-03） */
+export function JzTocIcon(p: KitIconProps) {
+  return (
+    <WrapStroke {...p}>
+      <path d="M6.5 4.5v14" />
+      <path d="M6.5 7.5h11" />
+      <path d="M6.5 12h3.2M11.5 12h6" />
+      <path d="M6.5 16.5h3.2M11.5 16.5h6" />
+      <circle cx="11.5" cy="12" r="0.9" fill="currentColor" stroke="none" />
+      <circle cx="11.5" cy="16.5" r="0.9" fill="currentColor" stroke="none" />
+    </WrapStroke>
+  );
+}
+
 /** 标签 — 双签牌（纯描边） */
 export function JzTagIcon(p: KitIconProps) {
   return (

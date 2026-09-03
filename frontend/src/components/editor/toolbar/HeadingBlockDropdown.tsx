@@ -11,6 +11,7 @@ import {
   type HeadingLevel,
 } from './headingBlock';
 import { altModShortcut } from './shortcutLabels';
+import { CheckMark } from '@/components/common/symbols';
 
 const HEADING_PREVIEW: Record<HeadingLevel, { fontSize: number; fontWeight: number }> = {
   1: { fontSize: 22, fontWeight: 700 },
@@ -43,7 +44,7 @@ export default function HeadingBlockDropdown({ editor, compact = false }: Props)
         key: 'paragraph',
         label: (
           <span className="jz-toolbar-menu-row">
-            <span className="jz-toolbar-menu-check">{activeLevel === null ? '✓' : ''}</span>
+            <span className="jz-toolbar-menu-check">{activeLevel === null ? <CheckMark /> : ''}</span>
             <span className="jz-toolbar-heading-item" style={{ fontSize: 15 }}>
               正文
             </span>
@@ -59,7 +60,7 @@ export default function HeadingBlockDropdown({ editor, compact = false }: Props)
         key: String(level),
         label: (
           <span className="jz-toolbar-menu-row">
-            <span className="jz-toolbar-menu-check">{activeLevel === lv ? '✓' : ''}</span>
+            <span className="jz-toolbar-menu-check">{activeLevel === lv ? <CheckMark /> : ''}</span>
             <span
               className="jz-toolbar-heading-item"
               style={{ fontSize: preview.fontSize, fontWeight: preview.fontWeight }}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Empty, Input, List, Popconfirm, Space, Spin, Tag, Typography } from 'antd';
+import { Button, Input, List, Popconfirm, Space, Spin, Tag, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import { DeleteOutlined } from '@ant-design/icons';
 import { CommentIcon } from '@/components/common/actionIcons';
@@ -7,6 +7,8 @@ import dayjs from 'dayjs';
 import * as commentsApi from '@/api/comments';
 import type { Comment } from '@/api/comments';
 import { renderMarkdown } from '@/utils/markdown';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Title, Text } = Typography;
 const { TextArea } = Input;
@@ -71,7 +73,7 @@ export default function CommentsPanel({ documentId, compact = false }: Props) {
       {comments === null ? (
         <Spin />
       ) : comments.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有评论" />
+        <JzEmpty description="还没有评论" size="sm" />
       ) : (
         <List
           dataSource={comments}
@@ -79,7 +81,7 @@ export default function CommentsPanel({ documentId, compact = false }: Props) {
             <List.Item
               actions={[
                 <Popconfirm key="del" title="删除该评论？" onConfirm={() => handleDelete(c.id)}>
-                  <Button size="small" type="text" icon={<DeleteOutlined />} aria-label="删除评论" title="删除评论" />
+                  <IconButton  icon={<DeleteOutlined />} aria-label="删除评论" title="删除评论" />
                 </Popconfirm>,
               ]}
             >

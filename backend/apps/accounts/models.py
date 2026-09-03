@@ -281,3 +281,85 @@ class HeroSettings(models.Model):
             obj.quotes = list(DEFAULT_HERO_QUOTES)
             obj.save(update_fields=["quotes"])
         return obj
+
+
+# ── Global TOC (目录) presentation defaults ──────────────────────────────
+# Keys mirror the frontend ``TocPrefs`` shape (utils/tocPrefs.ts). Readers can
+# still override any key locally; the server value is the site-wide default.
+TOC_PREF_CHOICES: dict[str, tuple] = {
+    "density": ("compact", "normal", "loose"),
+    "size": ("s", "m", "l"),
+    "font": ("ui", "serif", "kai", "wenkai", "sans", "xiaowei", "brush", "mono", "reader"),
+    "color": ("text", "muted", "layered"),
+    "weight": ("light", "normal", "bold"),
+    # Heading depth shown in article TOCs; 6 = every level.
+    "depth": (2, 3, 4, 6),
+}
+TOC_PREF_BOOLS = ("wrap", "counts", "numbers")
+DEFAULT_TOC_PREFS: dict = {
+    "density": "normal",
+    "size": "m",
+    "font": "ui",
+    "color": "text",
+    "weight": "normal",
+    "depth": 6,
+    "wrap": False,
+    "counts": True,
+    "numbers": True,
+}
+
+
+def repair_toc_prefs(raw) -> dict:
+    """Coerce any stored/incoming blob to a full, valid prefs dict (invalid or
+    missing keys fall back to ``DEFAULT_TOC_PREFS``). Mirrors the frontend
+    ``repairTocPrefs`` so both ends agree on what a valid blob looks like."""
+    src = raw if isinstance(raw, dict) else {}
+    out = dict(DEFAULT_TOC_PREFS)
+    for key, choices in TOC_PREF_CHOICES.items():
+        v = src.get(key)
+        if key == "depth":
+            try:
+                v = int(v)
+            except (TypeError, ValueError):
+                continue
+        if v in choices:
+            out[key] = v
+    for key in TOC_PREF_BOOLS:
+        v = src.get(key)
+        if isinstance(v, bool):
+            out[key] = v
+    return out
+
+
+class TocSettings(models.Model):
+    """Singleton row (pk forced to 1) holding the site-wide 目录 defaults —
+    article right rail (MD / Docx / PDF) and the KB directory tree.
+
+    Managed from ``/admin/toc``; readers merge their own local overrides on
+    top of the public shape served by ``/api/v1/public/toc-settings/``."""
+
+    prefs = models.JSONField(default=dict, blank=True, help_text="目录展示默认值（见 DEFAULT_TOC_PREFS）。")
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "目录设置"
+        verbose_name_plural = "目录设置"
+
+    def __str__(self) -> str:
+        return "目录设置"
+
+    PUBLIC_CACHE_KEY = "toc:public:v1"
+    PUBLIC_CACHE_TTL = 300
+
+    def save(self, *args, **kwargs) -> None:
+        self.pk = 1
+        self.prefs = repair_toc_prefs(self.prefs)
+        super().save(*args, **kwargs)
+        from django.core.cache import cache
+
+        cache.delete(self.PUBLIC_CACHE_KEY)
+
+    @classmethod
+    def load(cls) -> "TocSettings":
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={"prefs": dict(DEFAULT_TOC_PREFS)})
+        return obj

@@ -6,6 +6,7 @@
  * per-KB fold state for the landing page's folder sections, and grouping the
  * KB list by 大类 (category).
  */
+import { TOC_FONT_OPTIONS, type TocFont } from './tocPrefs';
 import type { PublicFolder, PublicKB, PublicPost } from '@/types';
 
 export interface KbTocEntry {
@@ -58,68 +59,18 @@ export function flattenKbTree(folders: PublicFolder[], rootDocuments: PublicPost
   return out;
 }
 
-/* ── TOC presentation prefs (single global blob, EPUB-style) ───────────── */
+/* TOC presentation prefs moved to ``utils/tocPrefs.ts`` (shared with the
+   article rail + EPUB sidebar; site defaults from /admin/toc). */
 
-export interface KbTocPrefs {
-  density: 'compact' | 'normal' | 'loose';
-  size: 's' | 'm' | 'l';
-  wrap: boolean;
-  /** Show doc-count badges on folder rows (the EPUB "页码" slot). */
-  counts: boolean;
-  font: 'ui' | 'serif' | 'kai' | 'wenkai';
-  color: 'text' | 'muted' | 'layered';
-}
-
-export const DEFAULT_KB_TOC_PREFS: KbTocPrefs = {
-  density: 'normal',
-  size: 'm',
-  wrap: false,
-  counts: true,
-  font: 'ui',
-  color: 'text',
-};
-
-const KB_TOC_PREFS_KEY = 'jz-kb-toc-prefs:v1';
-const FONTS = new Set(['ui', 'serif', 'kai', 'wenkai']);
-const COLORS = new Set(['text', 'muted', 'layered']);
-
-export function repairKbTocPrefs(p: unknown): KbTocPrefs {
-  const o = (p && typeof p === 'object' ? p : {}) as Partial<KbTocPrefs>;
-  return {
-    density: o.density === 'compact' || o.density === 'loose' ? o.density : 'normal',
-    size: o.size === 's' || o.size === 'l' ? o.size : 'm',
-    wrap: o.wrap === true,
-    counts: o.counts !== false,
-    font: typeof o.font === 'string' && FONTS.has(o.font) ? (o.font as KbTocPrefs['font']) : 'ui',
-    color: typeof o.color === 'string' && COLORS.has(o.color) ? (o.color as KbTocPrefs['color']) : 'text',
-  };
-}
-
-export function loadKbTocPrefs(): KbTocPrefs {
-  try {
-    const raw = localStorage.getItem(KB_TOC_PREFS_KEY);
-    return repairKbTocPrefs(raw ? JSON.parse(raw) : null);
-  } catch {
-    return { ...DEFAULT_KB_TOC_PREFS };
-  }
-}
-
-/** Written only on explicit settings changes (never on mount — the frozen-
- * default trap, see CLAUDE.md). */
-export function saveKbTocPrefs(p: KbTocPrefs): void {
-  try {
-    localStorage.setItem(KB_TOC_PREFS_KEY, JSON.stringify(p));
-  } catch {
-    /* ignore */
-  }
-}
+const TOC_FONT_KEYS = new Set<string>(TOC_FONT_OPTIONS.map((o) => o.key));
 
 /* ── KB *list* presentation prefs (the rail's 知识库 section) ──────────── */
 
 export interface KbListPrefs {
   density: 'compact' | 'normal' | 'loose';
   size: 's' | 'm' | 'l';
-  font: 'ui' | 'serif' | 'kai' | 'wenkai';
+  /** Shared TOC font list (utils/tocPrefs.ts). */
+  font: TocFont;
   color: 'text' | 'muted';
   /** Show the per-KB post count badge. */
   counts: boolean;
@@ -143,7 +94,7 @@ export function repairKbListPrefs(p: unknown): KbListPrefs {
   return {
     density: o.density === 'compact' || o.density === 'loose' ? o.density : 'normal',
     size: o.size === 's' || o.size === 'l' ? o.size : 'm',
-    font: typeof o.font === 'string' && FONTS.has(o.font) ? (o.font as KbListPrefs['font']) : 'ui',
+    font: typeof o.font === 'string' && TOC_FONT_KEYS.has(o.font) ? (o.font as TocFont) : 'ui',
     color: o.color === 'muted' ? 'muted' : 'text',
     counts: o.counts !== false,
     grouped: o.grouped !== false,

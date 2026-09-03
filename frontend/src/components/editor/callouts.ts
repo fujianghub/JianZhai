@@ -1,4 +1,5 @@
 import { createElement, type CSSProperties, type ReactNode } from 'react';
+import { calloutGlyphUrl } from './calloutGlyphs';
 /**
  * Shared catalogue of callout (色块) presets — the same metadata drives both
  * editor flavors (Markdown source and Tiptap rich-text) plus the slash menu.
@@ -30,13 +31,13 @@ export const CALLOUT_TEMPLATES: CalloutPreset[] = [
   { slug: 'color5', label: '关键要点', hint: '红色：核心结论', color: '#ef4444', icon: '⑤' },
 ];
 
-/** 菜单里的色点：与阅读端 `.jz-callout::before` 同色同字形，24px 圆角实心块。 */
-export function calloutSwatch(preset: Pick<CalloutPreset, 'color' | 'icon'>): ReactNode {
-  return createElement(
-    'span',
-    { className: 'jz-callout-swatch', style: { '--c': preset.color } as CSSProperties, 'aria-hidden': true },
-    preset.icon,
-  );
+/** 菜单里的色点：与阅读端 `.jz-callout::before` 同色同字形（calloutGlyphs 白色线稿），20px 圆角实心块。 */
+export function calloutSwatch(preset: Pick<CalloutPreset, 'color' | 'icon' | 'slug'>): ReactNode {
+  return createElement('span', {
+    className: 'jz-callout-swatch',
+    style: { '--c': preset.color, backgroundImage: calloutGlyphUrl(preset.slug) } as CSSProperties,
+    'aria-hidden': true,
+  });
 }
 
 /** Markdown body shipped when the user inserts a fresh empty callout. */

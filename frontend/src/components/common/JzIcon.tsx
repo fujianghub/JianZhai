@@ -493,6 +493,137 @@ export function JzBookIcon(p: IconProps) {
   );
 }
 
+/** 收藏 — 五角星（圆角相接，1.75 描边）：静态淡染底；点亮实心 + 右上星芒 */
+export function JzStarIcon({ on, ...p }: IconProps & { on?: boolean }) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M12 4l2.35 5.36 5.83.58-4.38 3.9 1.25 5.72L12 16.6l-5.05 2.96 1.25-5.72-4.38-3.9 5.83-.58z"
+        fill={on ? 'currentColor' : ICON_FILL}
+        strokeWidth={on ? 1.3 : 1.75}
+        strokeLinejoin="round"
+      />
+      {on && <path d="M19.6 2.6v2.2M18.5 3.7h2.2" strokeWidth={1.5} opacity={0.9} />}
+    </Wrap>
+  );
+}
+
+/** 置顶 — 图钉（圆角钉帽 + 收腰 + 针，1.75 描边）：静态淡染底；点亮实心（按钮层再倾斜） */
+export function JzPinIcon({ on, ...p }: IconProps & { on?: boolean }) {
+  return (
+    <Wrap {...p}>
+      <path
+        d="M9 4.2h6v5.3l2 3.6v1.9H7v-1.9l2-3.6z"
+        fill={on ? 'currentColor' : ICON_FILL}
+        strokeWidth={on ? 1.3 : 1.75}
+        strokeLinejoin="round"
+      />
+      <path d="M12 15v5.3" strokeWidth={on ? 2.2 : 1.9} />
+      <path d="M8.2 4.2h7.6" strokeWidth={on ? 2.2 : 1.9} />
+    </Wrap>
+  );
+}
+
+/** 全部展开 — 三行 + 左侧向下的披露三角（与 Disclosure 同形） */
+export function JzExpandAllIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M4.6 7.6 8 11.2l3.4-3.6z" fill="currentColor" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" />
+      <path d="M13.5 8h6M8.5 13h11M8.5 18h11" strokeWidth={1.7} />
+    </Wrap>
+  );
+}
+
+/** 全部折叠 — 三行 + 左侧向右的披露三角 */
+export function JzCollapseAllIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M5.6 6.4 9.2 10 5.6 13.6z" fill="currentColor" stroke="currentColor" strokeWidth={1.4} strokeLinejoin="round" />
+      <path d="M12.5 8h7M12.5 13h7M6 18h13.5" strokeWidth={1.7} />
+    </Wrap>
+  );
+}
+
+/** 按文件夹分组 — 文件夹 + 其下缩进两行 */
+export function JzGroupViewIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M4 6.5a1.5 1.5 0 0 1 1.5-1.5H9l1.6 1.6H18.5A1.5 1.5 0 0 1 20 8.1V10H4z" fill="currentColor" fillOpacity={HIER_OPACITY} />
+      <path d="M4 10h16M8.5 14.5H20M8.5 18.5H20" strokeWidth={1.7} />
+    </Wrap>
+  );
+}
+
+/** 平铺 — 四宫格 */
+export function JzFlatViewIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <rect x="4" y="4" width="7" height="7" rx="1.8" fill="currentColor" fillOpacity={HIER_OPACITY} />
+      <rect x="13" y="4" width="7" height="7" rx="1.8" />
+      <rect x="4" y="13" width="7" height="7" rx="1.8" />
+      <rect x="13" y="13" width="7" height="7" rx="1.8" fill="currentColor" fillOpacity={HIER_OPACITY} />
+    </Wrap>
+  );
+}
+
+/** 摘要卡片视图 — 卡片 + 标题行 + 两行摘要 */
+export function JzCardViewIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <rect x="4" y="4.5" width="16" height="15" rx="2.4" fill="currentColor" fillOpacity={HIER_OPACITY} />
+      <path d="M7.5 9h6M7.5 12.5h9M7.5 15.5h7" strokeWidth={1.7} />
+    </Wrap>
+  );
+}
+
+/** 列表视图 — 三条带圆点的行 */
+export function JzRowsViewIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <circle cx="6" cy="7" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="12" r="1.4" fill="currentColor" stroke="none" />
+      <circle cx="6" cy="17" r="1.4" fill="currentColor" stroke="none" />
+      <path d="M10 7h10M10 12h10M10 17h10" strokeWidth={1.7} />
+    </Wrap>
+  );
+}
+
+/** 正文字体 — 「A」大写 + 小「a」 */
+export function JzFontIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M3.5 18.5 8.6 5.5h1.2l5.1 13M5.7 13.4h6.7" strokeWidth={1.8} />
+      <circle cx="17.2" cy="15.3" r="2.9" fill="currentColor" fillOpacity={HIER_OPACITY} strokeWidth={1.6} />
+      <path d="M20.1 12.4v6.1" strokeWidth={1.6} />
+    </Wrap>
+  );
+}
+
+/** 纸张 — 折角纸 + 两道纹理 */
+export function JzPaperIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <path d="M6 4.5h8.5L19 9v10.5A1.5 1.5 0 0 1 17.5 21h-11A1.5 1.5 0 0 1 5 19.5V5.5A1 1 0 0 1 6 4.5z" fill="currentColor" fillOpacity={HIER_OPACITY} />
+      <path d="M14.5 4.5V9H19" />
+      <path d="M8.5 13h7M8.5 16.5h5" strokeWidth={1.6} />
+    </Wrap>
+  );
+}
+
+/** 专注阅读 — 四角括弧聚焦框；on = 中心亮点 */
+export function JzFocusIcon({ on, ...p }: IconProps & { on?: boolean }) {
+  return (
+    <Wrap {...p}>
+      <path d="M4 9V6.5A2.5 2.5 0 0 1 6.5 4H9M15 4h2.5A2.5 2.5 0 0 1 20 6.5V9M20 15v2.5a2.5 2.5 0 0 1-2.5 2.5H15M9 20H6.5A2.5 2.5 0 0 1 4 17.5V15" strokeWidth={1.7} />
+      {on ? (
+        <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+      ) : (
+        <circle cx="12" cy="12" r="2.6" fill="currentColor" fillOpacity={HIER_OPACITY} />
+      )}
+    </Wrap>
+  );
+}
+
 /** 时钟 — 发布时间：表盘填充 + 粗指针 */
 export function JzClockIcon(p: IconProps) {
   return (

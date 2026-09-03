@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Empty, Spin, Typography } from 'antd';
+import { Spin, Typography } from 'antd';
 import TransitionLink from '@/components/common/TransitionLink';
 import dayjs from 'dayjs';
 import { getArchive, type ArchiveBucket } from '@/api/archive';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -47,7 +48,7 @@ export default function ArchivePage() {
   }
 
   if (buckets.length === 0) {
-    return <Empty description="还没有发布的文章" />;
+    return <JzEmpty description="还没有发布的文章"  />;
   }
 
   // Group buckets by year so we can render a year header once.

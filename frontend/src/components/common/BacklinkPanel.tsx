@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Empty, List, Spin, Tag, Typography } from 'antd';
+import { List, Spin, Tag, Typography } from 'antd';
 import { Link } from 'react-router-dom';
 import { getBacklinks, getPublicBacklinks, type Backlink } from '@/api/linking';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Title, Text } = Typography;
 
@@ -46,7 +47,7 @@ export default function BacklinkPanel({ documentId, variant = 'admin', compact =
         </Title>
       )}
       {visible.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有其他文档引用本文" />
+        <JzEmpty description="还没有其他文档引用本文" size="sm" />
       ) : (
         <List
           size="small"

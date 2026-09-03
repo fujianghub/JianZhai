@@ -7,17 +7,19 @@
  *   post's ancestors auto-expand, the active row auto-scrolls into the rail;
  * - a tools row: filter (shown past 12 entries), expand/collapse-all, and a
  *   目录设置 popover — density / size / font / colour / wrap / doc counts,
- *   persisted globally under ``jz-kb-toc-prefs:v1`` (written only on explicit
- *   changes; frozen-default trap, see CLAUDE.md);
+ *   site defaults from /admin/toc + this device's overrides
+ *   (``useTocPrefs('kb')``; written only on explicit changes);
  * - rows reuse the ``.jz-epub-toc-*`` CSS wholesale (numbering split via
  *   ``splitTocTitle``, weight-only hierarchy, soft active fill), with doc
  *   format tags and the pin/favorite buttons carried over.
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Input, Popover, Segmented, Switch, Tag, Tooltip } from 'antd';
-import { MinusSquareOutlined, PlusSquareOutlined, RightOutlined, SearchOutlined, SettingOutlined } from '@ant-design/icons';
+import { Input, Tag, Tooltip } from 'antd';
+import { SearchOutlined } from '@ant-design/icons';
+import { JzCollapseAllIcon, JzExpandAllIcon } from './JzIcon';
 import type { PublicFolder, PublicPost } from '@/types';
+import Disclosure from './Disclosure';
 import DocFormatTag from './DocFormatTag';
 import DocPinFavoriteButtons from './DocPinFavoriteButtons';
 import { resolveTagColor } from '@/utils/tagColor';
@@ -29,7 +31,11 @@ import {
   tocHasChildren,
   visibleTocEntries,
 } from '@/utils/treeToc';
-import { flattenKbTree, loadKbTocPrefs, saveKbTocPrefs, type KbTocPrefs } from '@/utils/kbToc';
+import { flattenKbTree } from '@/utils/kbToc';
+import { tocFontFamily } from '@/utils/tocPrefs';
+import { useTocPrefs } from '@/stores/tocSettings';
+import TocSettingsPopover from './TocSettingsPopover';
+import IconButton from '@/components/common/IconButton';
 
 interface Props {
   /** Top-level folders in this KB (already pruned of empty subtrees). */
@@ -71,14 +77,7 @@ export default function PublicKbFolderTree({
     [entries, currentSlug],
   );
 
-  const [prefs, setPrefs] = useState<KbTocPrefs>(() => loadKbTocPrefs());
-  const updatePrefs = (patch: Partial<KbTocPrefs>) => {
-    setPrefs((p) => {
-      const next = { ...p, ...patch };
-      saveKbTocPrefs(next);
-      return next;
-    });
-  };
+  const { prefs, update: updatePrefs, reset: resetPrefs, overridden } = useTocPrefs('kb');
 
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
@@ -140,78 +139,6 @@ export default function PublicKbFolderTree({
 
   if (entries.length === 0) return null;
 
-  const settings = (
-    <div className="jz-reader-layout-pop jz-epub-toc-settings" style={{ width: 232 }}>
-      <div className="jz-rl-section">
-        <div className="jz-rl-label">间距</div>
-        <Segmented
-          block
-          size="small"
-          value={prefs.density}
-          onChange={(v) => updatePrefs({ density: v as KbTocPrefs['density'] })}
-          options={[
-            { label: '紧凑', value: 'compact' },
-            { label: '标准', value: 'normal' },
-            { label: '宽松', value: 'loose' },
-          ]}
-        />
-      </div>
-      <div className="jz-rl-section">
-        <div className="jz-rl-label">字号</div>
-        <Segmented
-          block
-          size="small"
-          value={prefs.size}
-          onChange={(v) => updatePrefs({ size: v as KbTocPrefs['size'] })}
-          options={[
-            { label: '小', value: 's' },
-            { label: '中', value: 'm' },
-            { label: '大', value: 'l' },
-          ]}
-        />
-      </div>
-      <div className="jz-rl-section">
-        <div className="jz-rl-label">字体</div>
-        <Segmented
-          block
-          size="small"
-          value={prefs.font}
-          onChange={(v) => updatePrefs({ font: v as KbTocPrefs['font'] })}
-          options={[
-            { label: <span style={{ fontFamily: 'var(--jz-font-ui)' }}>界面</span>, value: 'ui', title: '站内界面字体' },
-            { label: <span style={{ fontFamily: 'var(--jz-font-serif)' }}>衬线</span>, value: 'serif', title: '宋体 / 衬线' },
-            { label: <span style={{ fontFamily: 'var(--jz-font-kai)' }}>楷体</span>, value: 'kai', title: '楷体' },
-            { label: <span style={{ fontFamily: 'var(--jz-font-display)' }}>文楷</span>, value: 'wenkai', title: '霞鹜文楷' },
-          ]}
-        />
-      </div>
-      <div className="jz-rl-section">
-        <div className="jz-rl-label">颜色</div>
-        <Segmented
-          block
-          size="small"
-          value={prefs.color}
-          onChange={(v) => updatePrefs({ color: v as KbTocPrefs['color'] })}
-          options={[
-            { label: '正文色', value: 'text', title: '所有层级同正文色' },
-            { label: '淡显', value: 'muted', title: '全部淡色，当前文档高亮' },
-            { label: '分层', value: 'layered', title: '文件夹层淡显，文档正常' },
-          ]}
-        />
-      </div>
-      <div className="jz-rl-section jz-epub-toc-switches">
-        <label>
-          <span>长标题换行</span>
-          <Switch size="small" checked={prefs.wrap} onChange={(v) => updatePrefs({ wrap: v })} />
-        </label>
-        <label>
-          <span>显示篇数</span>
-          <Switch size="small" checked={prefs.counts} onChange={(v) => updatePrefs({ counts: v })} />
-        </label>
-      </div>
-    </div>
-  );
-
   return (
     <nav
       className="jz-epub-toc jz-kb-toc"
@@ -221,6 +148,8 @@ export default function PublicKbFolderTree({
       data-wrap={prefs.wrap ? 'on' : 'off'}
       data-font={prefs.font}
       data-color={prefs.color}
+      data-weight={prefs.weight}
+      style={{ ['--jz-font-toc' as string]: tocFontFamily(prefs.font) } as React.CSSProperties}
     >
       <div className="jz-epub-toc-tools">
         {entries.length > 12 ? (
@@ -240,22 +169,23 @@ export default function PublicKbFolderTree({
         )}
         {allFolderKeys.length > 0 && (
           <Tooltip title={allExpanded ? '全部折叠' : '全部展开'}>
-            <Button
-              type="text"
-              size="small"
+            <IconButton
               className="jz-epub-toc-tool"
-              icon={allExpanded ? <MinusSquareOutlined /> : <PlusSquareOutlined />}
+              icon={allExpanded ? <JzCollapseAllIcon /> : <JzExpandAllIcon />}
               onClick={() => setExpanded(allExpanded ? new Set() : new Set(allFolderKeys))}
               aria-label={allExpanded ? '全部折叠' : '全部展开'}
               disabled={filtering}
             />
           </Tooltip>
         )}
-        <Popover content={settings} trigger="click" placement="bottomRight">
-          <Tooltip title="目录设置：间距 / 字号 / 字体 / 颜色 / 换行 / 篇数">
-            <Button type="text" size="small" className="jz-epub-toc-tool" icon={<SettingOutlined />} aria-label="目录设置" />
-          </Tooltip>
-        </Popover>
+        <TocSettingsPopover
+          prefs={prefs}
+          onChange={updatePrefs}
+          onReset={resetPrefs}
+          overridden={overridden}
+          features={{ counts: true }}
+          tooltip="目录设置：间距 / 字号 / 字体 / 颜色 / 换行 / 篇数"
+        />
       </div>
       <ul className="jz-epub-toc-list">
         {visible.map((entry) => {
@@ -280,7 +210,7 @@ export default function PublicKbFolderTree({
                   aria-label={open ? '折叠' : '展开'}
                   aria-expanded={open}
                 >
-                  <RightOutlined />
+                  <Disclosure open={open} />
                 </button>
               ) : (
                 <span className="jz-epub-toc-chevron is-leaf" aria-hidden />
@@ -313,16 +243,6 @@ export default function PublicKbFolderTree({
                 </button>
               ) : (
                 <>
-                  {showActions && entry.doc && (
-                    <span className="jz-kb-toc-actions">
-                      <DocPinFavoriteButtons
-                        doc={entry.doc}
-                        compact
-                        onTogglePin={onTogglePin ? () => onTogglePin(entry.doc!) : undefined}
-                        onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(entry.doc!) : undefined}
-                      />
-                    </span>
-                  )}
                   <Link
                     to={`/posts/${encodeURIComponent(entry.doc!.slug)}`}
                     className={'jz-epub-toc-link' + (active ? ' is-active' : '')}
@@ -336,6 +256,16 @@ export default function PublicKbFolderTree({
                       <DocFormatTag format={entry.doc!.doc_format} size="default" />
                     </span>
                   </Link>
+                  {showActions && entry.doc && (
+                    <span className="jz-kb-toc-actions">
+                      <DocPinFavoriteButtons
+                        doc={entry.doc}
+                        compact
+                        onTogglePin={onTogglePin ? () => onTogglePin(entry.doc!) : undefined}
+                        onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(entry.doc!) : undefined}
+                      />
+                    </span>
+                  )}
                 </>
               )}
             </li>

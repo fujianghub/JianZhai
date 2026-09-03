@@ -1,20 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import {
-  Button,
-  Card,
-  Collapse,
-  Empty,
-  Form,
-  Input,
-  Modal,
-  Popconfirm,
-  Select,
-  Skeleton,
-  Space,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Button, Card, Collapse, Form, Input, Modal, Popconfirm, Select, Skeleton, Space, Tag, Tooltip, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import {
   BookOutlined,
@@ -44,6 +29,8 @@ import AudienceControl from '@/components/admin/AudienceControl';
 import { resolveTagColor } from '@/utils/tagColor';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import { useAuthStore } from '@/stores/auth';
+import JzEmpty from '@/components/common/JzEmpty';
+import { SepDot } from '@/components/common/symbols';
 
 const { Paragraph, Text } = Typography;
 
@@ -274,7 +261,7 @@ export default function KBListPage() {
             </Tag>
           ))}
         </Space>
-        <Space split={<span style={{ opacity: 0.4 }}>·</span>}>
+        <Space split={<SepDot />}>
           <Tag
             color={kb.visibility === 'public' ? 'green' : 'default'}
             style={{ cursor: 'pointer' }}
@@ -317,14 +304,14 @@ export default function KBListPage() {
           ))}
         </div>
       ) : !loading && items.length === 0 ? (
-        <Empty
+        <JzEmpty
           description="还没有知识库，先建一个吧"
           style={{ padding: '48px 0' }}
         >
           <Button type="primary" icon={<PlusOutlined />} onClick={() => setCreating(true)}>
             立即创建
           </Button>
-        </Empty>
+        </JzEmpty>
       ) : grouped.length > 0 ? (
         <Collapse
           defaultActiveKey={grouped.map((s) => s.key)}

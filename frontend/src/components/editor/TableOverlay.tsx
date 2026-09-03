@@ -16,6 +16,7 @@ import { message } from '@/utils/notify';
 import { CELL_BG_PRESETS } from './TableCellColor';
 import { TEXT_COLOR_PRESETS } from './callouts';
 import { DENSITY_PRESETS } from '@/utils/tableDensity';
+import { CaretIcon } from '@/components/common/actionIcons';
 
 const MAX_ROWS_OPTIONS = [0, 10, 20, 30]; // 0 = 不限
 
@@ -364,7 +365,7 @@ export default function TableOverlay({ editor }: { editor: Editor | null }) {
                 })),
               }}
             >
-              <Tooltip title="最多显示行数"><button className="jz-table-tb-btn jz-table-tb-text" aria-label="最多显示行数">行数<span aria-hidden>▾</span></button></Tooltip>
+              <Tooltip title="最多显示行数"><button className="jz-table-tb-btn jz-table-tb-text" aria-label="最多显示行数">行数<CaretIcon /></button></Tooltip>
             </Dropdown>
           </div>
           <span className="jz-table-tb-divider" />

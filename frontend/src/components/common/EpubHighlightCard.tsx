@@ -12,6 +12,7 @@ import { HIGHLIGHT_SWATCHES } from '@/utils/epubNotes';
 import type { Highlight, HighlightColor, HighlightStyle } from '@/api/reading';
 import type { SelectionAnchor } from './EpubSelectionBar';
 import { formatShortcut, getChord, matchesChord } from '@/shortcuts';
+import IconButton from '@/components/common/IconButton';
 
 const { Text } = Typography;
 
@@ -118,7 +119,7 @@ export default function EpubHighlightCard({
             </Tooltip>
           ))}
         </div>
-        <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClose} aria-label="关闭" />
+        <IconButton icon={<CloseOutlined />} onClick={onClose} aria-label="关闭" />
       </div>
       {highlight.text && (
         <Text type="secondary" className="jz-epub-hlcard-quote" title={highlight.text}>
@@ -144,14 +145,14 @@ export default function EpubHighlightCard({
       <div className="jz-epub-hlcard-foot">
         <Space size={2}>
           <Tooltip {...tip('复制引文')}>
-            <Button type="text" size="small" icon={<CopyOutlined />} onClick={onCopy} aria-label="复制引文" />
+            <IconButton icon={<CopyOutlined />} onClick={onCopy} aria-label="复制引文" />
           </Tooltip>
           <Tooltip {...tip('引用为 Markdown')}>
-            <Button type="text" size="small" icon={<LinkOutlined />} onClick={onQuote} aria-label="引用为 Markdown" />
+            <IconButton icon={<LinkOutlined />} onClick={onQuote} aria-label="引用为 Markdown" />
           </Tooltip>
           {onComment && (
             <Tooltip {...tip('发到本书评论')}>
-              <Button type="text" size="small" icon={<CommentOutlined />} onClick={onComment} aria-label="发到评论" />
+              <IconButton icon={<CommentOutlined />} onClick={onComment} aria-label="发到评论" />
             </Tooltip>
           )}
           <Popconfirm
@@ -164,7 +165,7 @@ export default function EpubHighlightCard({
             getPopupContainer={popupContainer}
           >
             <Tooltip {...tip('删除划线')}>
-              <Button type="text" size="small" danger icon={<DeleteOutlined />} aria-label="删除划线" />
+              <IconButton danger icon={<DeleteOutlined />} aria-label="删除划线" />
             </Tooltip>
           </Popconfirm>
         </Space>

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Avatar, Drawer, Empty, Skeleton, Tag, Tooltip, Typography } from 'antd';
+import { Avatar, Drawer, Skeleton, Tag, Tooltip, Typography } from 'antd';
 import dayjs from 'dayjs';
 import {
   getDocumentStats,
@@ -7,6 +7,7 @@ import {
   type DocumentContributor,
 } from '@/api/docs';
 import { resolveTagCssColor } from '@/utils/tagColor';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -158,7 +159,7 @@ export default function DocStatsDrawer({ open, onClose, documentId }: Props) {
       className="jz-stats-drawer"
     >
       {err ? (
-        <Empty description="加载统计失败" />
+        <JzEmpty description="加载统计失败"  />
       ) : !stats ? (
         <Skeleton active paragraph={{ rows: 8 }} />
       ) : (

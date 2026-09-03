@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import { SepDot } from '@/components/common/symbols';
 
 const TIANGAN = ['甲', '乙', '丙', '丁', '戊', '己', '庚', '辛', '壬', '癸'];
 const DIZHI = ['子', '丑', '寅', '卯', '辰', '巳', '午', '未', '申', '酉', '戌', '亥'];
@@ -78,7 +79,7 @@ export default function LiveClock({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <>
           <span style={{ color: 'var(--jz-text-muted)' }}>{year}年</span>
-          <span style={{ opacity: 0.4 }}>·</span>
+          <SepDot />
         </>
       )}
       <span style={{ color: 'var(--jz-text)', fontWeight: 600 }}>{shichen}</span>

@@ -147,7 +147,7 @@ def test_update_and_delete_only_own_rows():
     [
         {"cfi": "not-a-cfi"},
         {"cfi": ""},
-        {"cfi": CFI, "color": "red"},
+        {"cfi": CFI, "color": "chartreuse"},
         {"cfi": CFI, "style": "dotted"},
         {"cfi": CFI, "text": "x" * 2001},
     ],

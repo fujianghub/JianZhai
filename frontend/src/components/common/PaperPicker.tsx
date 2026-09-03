@@ -1,5 +1,5 @@
 import { Popover, Space, Tooltip } from 'antd';
-import { FileOutlined } from '@ant-design/icons';
+import { JzPaperIcon } from './JzIcon';
 import { PAPER_STYLES } from '@/utils/paper';
 
 interface Props {
@@ -57,7 +57,7 @@ export default function PaperPicker({ value, onChange, hiddenKeys }: Props) {
           className="jz-reader-control-btn paper-picker-btn"
           aria-label="纸张样式"
         >
-          <FileOutlined />
+          <JzPaperIcon />
         </button>
       </Tooltip>
     </Popover>

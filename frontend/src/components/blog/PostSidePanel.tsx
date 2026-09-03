@@ -4,12 +4,14 @@
  * highlights (mirrors the EPUB sidebar's notes tab; same list styling).
  */
 import { useMemo, useState } from 'react';
-import { Button, Empty, Input, Segmented, Spin, Tag, Tooltip } from 'antd';
+import { Input, Segmented, Spin, Tag, Tooltip } from 'antd';
 import { CloseOutlined, ExportOutlined, SearchOutlined } from '@ant-design/icons';
 import TocPanel from '@/components/common/TocPanel';
 import { groupByChapter, swatchHex } from '@/utils/epubNotes';
 import type { MdAnnotationsApi } from '@/components/blog/MdAnnotator';
 import type { TocEntry } from '@/utils/markdown';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 interface Props {
   toc: TocEntry[];
@@ -50,9 +52,7 @@ export default function PostSidePanel({ toc, notes, onClose }: Props) {
         <span style={{ flex: 1 }} />
         {tab === 'notes' && (
           <Tooltip title="导出为 Markdown 笔记">
-            <Button
-              type="text"
-              size="small"
+            <IconButton
               icon={<ExportOutlined />}
               onClick={notes.openExport}
               disabled={count === 0}
@@ -62,7 +62,7 @@ export default function PostSidePanel({ toc, notes, onClose }: Props) {
         )}
         {onClose && (
           <Tooltip title="隐藏侧栏">
-            <Button type="text" size="small" icon={<CloseOutlined />} onClick={onClose} aria-label="隐藏侧栏" />
+            <IconButton icon={<CloseOutlined />} onClick={onClose} aria-label="隐藏侧栏" />
           </Tooltip>
         )}
       </div>
@@ -73,7 +73,7 @@ export default function PostSidePanel({ toc, notes, onClose }: Props) {
           <Spin size="small" />
         </div>
       ) : count === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="选中正文文字即可划线、写笔记" style={{ marginTop: 16 }} />
+        <JzEmpty description="选中正文文字即可划线、写笔记" style={{ marginTop: 16 }} size="sm" />
       ) : (
         <div className="jz-epub-notes jz-post-notes">
           {count > 8 && (
@@ -90,7 +90,7 @@ export default function PostSidePanel({ toc, notes, onClose }: Props) {
             />
           )}
           {groups.length === 0 ? (
-            <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="没有匹配的笔记" />
+            <JzEmpty description="没有匹配的笔记" size="sm" />
           ) : (
             groups.map((g, gi) => (
               <div key={gi} className="jz-epub-search-group">

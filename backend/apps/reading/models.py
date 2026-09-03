@@ -13,7 +13,7 @@ from django.db import models
 
 from apps.knowledge.models import Document
 
-HIGHLIGHT_COLORS = ("yellow", "green", "blue", "pink", "purple")
+HIGHLIGHT_COLORS = ("yellow", "green", "blue", "pink", "purple", "red", "orange")
 HIGHLIGHT_STYLES = ("highlight", "underline", "squiggly")
 CFI_MAX_LENGTH = 1000
 

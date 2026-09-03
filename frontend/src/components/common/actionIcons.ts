@@ -42,3 +42,5 @@ export {
   SafetyOutlined as ShieldIcon,
   WarningOutlined as WarningIcon,
 } from '@ant-design/icons';
+/** 当前选中 / 已完成 记号（菜单、标签）。 */
+export { CheckOutlined as CheckIcon } from '@ant-design/icons';

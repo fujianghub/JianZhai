@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, Empty, Popover, Segmented, Select, Spin, Switch, Tooltip, Typography } from 'antd';
+import { Popover, Segmented, Select, Spin, Switch, Tooltip, Typography } from 'antd';
 import { CloseOutlined, SettingOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import { burstAtPointer } from '@/utils/inkBurst';
@@ -11,6 +11,10 @@ import type { DocSortMode, PublicKB, PublicKBTree, PublicPost } from '@/types';
 import { useAuthStore } from '@/stores/auth';
 import { groupKbsByCategory, loadKbListPrefs, saveKbListPrefs, type KbListPrefs } from '@/utils/kbToc';
 import PublicKbFolderTree from './PublicKbFolderTree';
+import { TocFontSelect } from './TocSettingsPopover';
+import { tocFontFamily } from '@/utils/tocPrefs';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 
@@ -143,7 +147,7 @@ export default function BlogKbNavPanel({
     if (!tree) return null;
     if (docCount === 0) {
       return (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="无文档" style={{ margin: '8px 0' }} />
+        <JzEmpty description="无文档" style={{ margin: '8px 0' }} size="sm" />
       );
     }
     const hasFolders = folders.length > 0;
@@ -182,9 +186,7 @@ export default function BlogKbNavPanel({
       <div className="jz-kb-nav-top">
         {onClose ? (
           <Tooltip title="隐藏导航">
-            <Button
-              type="text"
-              size="small"
+            <IconButton
               icon={<CloseOutlined />}
               onClick={onClose}
               aria-label="隐藏导航"
@@ -208,6 +210,7 @@ export default function BlogKbNavPanel({
             data-font={listPrefs.font}
             data-color={listPrefs.color}
             data-counts={listPrefs.counts ? 'on' : 'off'}
+            style={{ ['--jz-font-toc' as string]: tocFontFamily(listPrefs.font) } as React.CSSProperties}
           >
             <div className="jz-kb-nav-section-head">
               <h3 id="jz-kb-nav-kb-list-title" className="jz-kb-nav-section-title">
@@ -248,18 +251,7 @@ export default function BlogKbNavPanel({
                     </div>
                     <div className="jz-rl-section">
                       <div className="jz-rl-label">字体</div>
-                      <Segmented
-                        block
-                        size="small"
-                        value={listPrefs.font}
-                        onChange={(v) => updateListPrefs({ font: v as KbListPrefs['font'] })}
-                        options={[
-                          { label: <span style={{ fontFamily: 'var(--jz-font-ui)' }}>界面</span>, value: 'ui', title: '站内界面字体' },
-                          { label: <span style={{ fontFamily: 'var(--jz-font-serif)' }}>衬线</span>, value: 'serif', title: '宋体 / 衬线' },
-                          { label: <span style={{ fontFamily: 'var(--jz-font-kai)' }}>楷体</span>, value: 'kai', title: '楷体' },
-                          { label: <span style={{ fontFamily: 'var(--jz-font-display)' }}>文楷</span>, value: 'wenkai', title: '霞鹜文楷' },
-                        ]}
-                      />
+                      <TocFontSelect value={listPrefs.font} onChange={(font) => updateListPrefs({ font })} />
                     </div>
                     <div className="jz-rl-section">
                       <div className="jz-rl-label">颜色</div>
@@ -288,7 +280,7 @@ export default function BlogKbNavPanel({
                 }
               >
                 <Tooltip title="列表设置：间距 / 字号 / 字体 / 颜色 / 分组 / 篇数">
-                  <Button type="text" size="small" className="jz-epub-toc-tool" icon={<SettingOutlined />} aria-label="知识库列表设置" />
+                  <IconButton className="jz-epub-toc-tool" icon={<SettingOutlined />} aria-label="知识库列表设置" />
                 </Tooltip>
               </Popover>
             </div>

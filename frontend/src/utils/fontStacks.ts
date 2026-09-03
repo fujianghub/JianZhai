@@ -52,6 +52,10 @@ export const FONT_STACK_NOTO_SANS_READER =
 export const FONT_STACK_XIAOWEI_READER =
   "'ZCOOL XiaoWei', 'Noto Serif SC', 'Songti SC', 'STSong', serif";
 
+/** 马善政毛笔书法领衔（目录「书法」项专用，自托管 @fontsource/ma-shan-zheng）。 */
+export const FONT_STACK_MASHAN_READER =
+  "'Ma Shan Zheng', 'Kaiti SC', 'STKaiti', 'KaiTi', 'LXGW WenKai Screen', serif";
+
 export const FONT_STACK_GEORGIA_READER =
   'Georgia, "Cormorant Garamond", "EB Garamond", "Noto Serif SC", "Songti SC", serif';
 

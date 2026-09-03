@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Button, Empty, List, Popconfirm, Space, Tag, Typography, Upload } from 'antd';
+import { Button, List, Popconfirm, Space, Tag, Typography, Upload } from 'antd';
 import { message } from '@/utils/notify';
 import { DeleteOutlined, EyeOutlined, FileOutlined, FilePdfOutlined, FileTextOutlined, FileWordOutlined, PaperClipOutlined, PictureOutlined, ReadOutlined, UploadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -8,6 +8,8 @@ import { previewKind, type Attachment } from '@/api/attachments';
 import FilePreview from './FilePreview';
 import { UPLOAD_ACCEPT } from '@/utils/uploadBatch';
 import { formatApiError } from '@/api/client';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Title, Text } = Typography;
 
@@ -74,7 +76,7 @@ export default function AttachmentPanel({ documentId, compact = false }: Props) 
       </div>
 
       {items === null ? null : items.length === 0 ? (
-        <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="还没有附件" />
+        <JzEmpty description="还没有附件" size="sm" />
       ) : (
         <List
           dataSource={items}
@@ -95,7 +97,7 @@ export default function AttachmentPanel({ documentId, compact = false }: Props) 
                   title="删除该附件？"
                   onConfirm={() => handleDelete(a.id)}
                 >
-                  <Button size="small" type="text" icon={<DeleteOutlined />} aria-label="删除附件" title="删除附件" />
+                  <IconButton  icon={<DeleteOutlined />} aria-label="删除附件" title="删除附件" />
                 </Popconfirm>,
               ]}
             >

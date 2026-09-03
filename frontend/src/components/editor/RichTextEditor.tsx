@@ -48,26 +48,7 @@ import { Footnote } from './Footnote';
 import { MathInline, MathBlock } from './MathNode';
 import { CALLOUT_TEMPLATES, calloutSwatch } from './callouts';
 import { Button, Checkbox, Dropdown, Input, Modal, Popover, Space, Tag, Tooltip, Typography } from 'antd';
-import {
-  AlignCenterOutlined,
-  AlignLeftOutlined,
-  AlignRightOutlined,
-  BoldOutlined,
-  CheckSquareOutlined,
-  CodeOutlined,
-  CommentOutlined,
-  ClearOutlined,
-  FormatPainterOutlined,
-  ItalicOutlined,
-  LinkOutlined,
-  OrderedListOutlined,
-  RedoOutlined,
-  SaveOutlined,
-  StrikethroughOutlined,
-  UnderlineOutlined,
-  UndoOutlined,
-  UnorderedListOutlined,
-} from '@ant-design/icons';
+import { AlignCenterOutlined, AlignLeftOutlined, AlignRightOutlined, BoldOutlined, CheckSquareOutlined, CodeOutlined, CommentOutlined, ClearOutlined, FormatPainterOutlined, ItalicOutlined, LinkOutlined, OrderedListOutlined, RedoOutlined, SaveOutlined, StrikethroughOutlined, UnderlineOutlined, UndoOutlined, UnorderedListOutlined, MenuFoldOutlined } from '@ant-design/icons';
 import { SlashCommand } from './slashCommand';
 import { FindReplace } from './findReplace';
 import MentionPicker from './MentionPicker';
@@ -1269,7 +1250,7 @@ export default function RichTextEditor({
               <div style={{ marginBottom: 8, fontWeight: 600, fontSize: 12, color: 'var(--jz-text-muted)' }}>缩进</div>
               <Space.Compact style={{ marginBottom: 12 }}>
                 <Tooltip title="减少缩进 (Shift+Tab)">
-                  <Button aria-label="减少缩进" size="small" onClick={() => editor.commands.outdent()}>← 减少</Button>
+                  <Button aria-label="减少缩进" size="small" icon={<MenuFoldOutlined />} onClick={() => editor.commands.outdent()}>减少</Button>
                 </Tooltip>
                 <Tooltip title="增加缩进 (Tab)">
                   <Button aria-label="增加缩进" size="small" onClick={() => editor.commands.indent()}>增加 →</Button>

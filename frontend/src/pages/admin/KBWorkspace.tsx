@@ -1,24 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import {
-  Alert,
-  Button,
-  Checkbox,
-  Dropdown,
-  Empty,
-  Form,
-  Input,
-  Modal,
-  Progress,
-  Radio,
-  Popconfirm,
-  Segmented,
-  Select,
-  Space,
-  Spin,
-  Tag,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Alert, Button, Checkbox, Dropdown, Form, Input, Modal, Progress, Radio, Popconfirm, Segmented, Select, Space, Spin, Tag, Tooltip, Typography } from 'antd';
 import { message } from '@/utils/notify';
 import { burstAtPointer } from '@/utils/inkBurst';
 import {
@@ -66,6 +47,8 @@ import {
   type NewDocContentKind,
 } from '@/utils/htmlTemplate';
 import { CaretIcon } from '@/components/common/actionIcons';
+import JzEmpty from '@/components/common/JzEmpty';
+import { SepDot } from '@/components/common/symbols';
 
 const { Text } = Typography;
 
@@ -565,7 +548,7 @@ export default function KBWorkspace() {
         title={kb.name}
         accentColor={kb.accent_color}
         meta={
-          <Space split={<span style={{ opacity: 0.4 }}>·</span>} size={4}>
+          <Space split={<SepDot />} size={4}>
             <Tag color={kb.visibility === 'public' ? 'green' : 'default'}>
               {kb.visibility === 'public' ? '公开' : '私密'}
             </Tag>
@@ -953,11 +936,9 @@ export default function KBWorkspace() {
         }
       >
         {tree.folders.length === 0 && tree.documents.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
+          <JzEmpty
             description="空知识库 — 新建文档、上传，或直接拖入文件 / 文件夹"
-            style={{ padding: '48px 0' }}
-          >
+            style={{ padding: '48px 0' }} size="sm">
             <Space>
               <Button type="primary" icon={<FileAddOutlined />} onClick={() => setNewDocModal(true)}>
                 新建文档
@@ -966,7 +947,7 @@ export default function KBWorkspace() {
                 上传文件
               </Button>
             </Space>
-          </Empty>
+          </JzEmpty>
         ) : (
           <KBTreeNav
             tree={tree}

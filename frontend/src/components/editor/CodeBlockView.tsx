@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Disclosure from '@/components/common/Disclosure';
 import { Button, Dropdown, Input, Select, Tooltip } from 'antd';
 import {
-  CaretDownOutlined,
-  CaretRightOutlined,
   CheckOutlined,
   CopyOutlined,
   FileImageOutlined,
@@ -57,6 +56,7 @@ import CodeBlockThemeSelect from './CodeBlockThemeSelect';
 import { openDiagramFullscreenFromHtml } from '@/utils/diagramFullscreen';
 import { FullscreenIcon } from '@/components/common/actionIcons';
 import { getChord, matchesChord } from '@/shortcuts';
+import IconButton from '@/components/common/IconButton';
 
 export default function CodeBlockView({ node, updateAttributes, editor, getPos }: NodeViewProps) {
   const lang = normalizeLanguage((node.attrs.language as string | null) ?? '');
@@ -306,7 +306,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
           aria-label={collapsed ? '展开' : '折叠'}
           onClick={() => updateAttributes({ collapsed: !collapsed })}
         >
-          {collapsed ? <CaretRightOutlined /> : <CaretDownOutlined />}
+          <Disclosure open={!collapsed} />
         </button>
 
         <div className="jz-code-title-area">
@@ -371,9 +371,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
             )}
             <span className="jz-diagram-zoom-group">
               <Tooltip title="缩小">
-                <Button
-                  size="small"
-                  type="text"
+                <IconButton
                   aria-label="缩小"
                   icon={<MinusOutlined />}
                   onClick={() => adjustZoom(-1)}
@@ -381,9 +379,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
               </Tooltip>
               <span className="jz-diagram-zoom-label">{Math.round(diagramZoom * 100)}%</span>
               <Tooltip title="放大">
-                <Button
-                  size="small"
-                  type="text"
+                <IconButton
                   aria-label="放大"
                   icon={<PlusOutlined />}
                   onClick={() => adjustZoom(1)}
@@ -392,9 +388,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
             </span>
             {previewHtml && (
               <Tooltip title="复制 SVG">
-                <Button
-                  size="small"
-                  type="text"
+                <IconButton
                   className="jz-diagram-icon-btn"
                   aria-label="复制 SVG"
                   icon={<FileImageOutlined />}
@@ -403,9 +397,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
               </Tooltip>
             )}
             <Tooltip title="全屏查看（Esc 退出，滚轮缩放，拖拽平移）">
-              <Button
-                size="small"
-                type="text"
+              <IconButton
                 className="jz-diagram-icon-btn"
                 aria-label="全屏查看图表"
                 disabled={!previewHtml}
@@ -448,9 +440,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
 
         <div className="jz-code-toolbar-actions">
           <Tooltip title={copied === 'ok' ? '已复制' : copied === 'fail' ? '失败' : '复制'}>
-            <Button
-              size="small"
-              type="text"
+            <IconButton
               aria-label="复制代码"
               className="jz-code-toolbar-icon"
               icon={copied === 'ok' ? <CheckOutlined /> : <CopyOutlined />}
@@ -478,9 +468,7 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
               />
             )}
           >
-            <Button
-              size="small"
-              type="text"
+            <IconButton
               className="jz-code-toolbar-icon"
               icon={<MoreOutlined />}
               aria-label="更多"

@@ -1,5 +1,5 @@
 import { Popover, Tooltip } from 'antd';
-import { FontColorsOutlined } from '@ant-design/icons';
+import { JzFontIcon } from './JzIcon';
 import { useArticleFontPresets } from '@/utils/articleFont';
 
 interface Props {
@@ -54,7 +54,7 @@ export default function ReaderFontPicker({ value, onChange }: Props) {
           className="jz-reader-control-btn paper-picker-btn"
           aria-label="正文字体"
         >
-          <FontColorsOutlined />
+          <JzFontIcon />
         </button>
       </Tooltip>
     </Popover>

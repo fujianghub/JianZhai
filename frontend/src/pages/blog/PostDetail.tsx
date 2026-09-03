@@ -10,7 +10,7 @@ import {
 } from 'react';
 import type { AdjacentPosts, RelatedPost } from '@/api/blog';
 import { Alert, Breadcrumb, Button, Drawer, Result, Spin, Tag, Tooltip, Typography } from 'antd';
-import { EyeOutlined } from '@ant-design/icons';
+import { LeftOutlined, RightOutlined } from '@ant-design/icons';
 import { isAxiosError } from 'axios';
 import { useParams, useSearchParams } from 'react-router-dom';
 import TransitionLink from '@/components/common/TransitionLink';
@@ -26,9 +26,13 @@ import {
   JzHomeIcon,
   JzOutlineIcon,
   JzTagIcon,
+  JzFocusIcon,
 } from '@/components/common/JzIcon';
 import * as blogApi from '@/api/blog';
+import { formatApiError } from '@/api/client';
 import * as docsApi from '@/api/docs';
+import DocPinFavoriteButtons from '@/components/common/DocPinFavoriteButtons';
+import { burstAtPointer } from '@/utils/inkBurst';
 import {
   loadReadingPosition,
   saveReadingPosition,
@@ -614,6 +618,28 @@ export default function PostDetail() {
   const isMarkdownReadPath = pageMode === 'read' && !isHtmlDoc && !hasInlineFile;
   // Whether the author-action cluster (edit / full-edit / open-original) is
   // present — drives the hairline separator after the reading toolbar.
+  /* 收藏（任何登录读者）/ 置顶（作者）——与目录树、KB 页同一组件；
+     结果直接写回本地 post，不重拉详情（详情序列化器已带两旗标）。 */
+  const togglePin = async () => {
+    if (!post) return;
+    try {
+      await docsApi.toggleDocumentPin(post.id, !post.is_pinned);
+      setPost((p) => (p ? { ...p, is_pinned: !p.is_pinned } : p));
+    } catch (err) {
+      message.error(formatApiError(err, '置顶操作失败'));
+    }
+  };
+  const toggleFavorite = async () => {
+    if (!post) return;
+    try {
+      const { is_favorited } = await docsApi.toggleDocumentFavorite(post.id);
+      if (is_favorited) burstAtPointer();
+      setPost((p) => (p ? { ...p, is_favorited } : p));
+    } catch (err) {
+      message.error(formatApiError(err, '收藏操作失败'));
+    }
+  };
+
   const hasAuthorActions =
     canEdit || !!(isHtmlDoc && htmlOriginalUrl) || !!(isPdfDoc && pdfOriginalUrl);
 
@@ -856,11 +882,19 @@ export default function PostDetail() {
                         aria-pressed={focusMode}
                         onClick={() => setFocusMode((v) => !v)}
                       >
-                        <EyeOutlined />
+                        <JzFocusIcon on={focusMode} />
                       </button>
                     </Tooltip>
                   )}
                 </span>
+                {authUser && post && pageMode === 'read' && (
+                  <DocPinFavoriteButtons
+                    doc={post}
+                    reveal={false}
+                    onTogglePin={canEdit ? togglePin : undefined}
+                    onToggleFavorite={toggleFavorite}
+                  />
+                )}
                 {hasAuthorActions && <span className="jz-meta-vsep" aria-hidden />}
                 {/* HTML-only: link to the original .html attachment for
                     a true "browser tab" experience (some pages depend on
@@ -1070,7 +1104,7 @@ export default function PostDetail() {
                     className="jz-post-nav-card jz-post-nav-card--prev"
                   >
                     <span className="jz-post-nav-dir">
-                      <span className="jz-post-nav-arrow">←</span> 上一篇
+                      <span className="jz-post-nav-arrow"><LeftOutlined /></span> 上一篇
                     </span>
                     <span className="jz-post-nav-title">{adjacent.prev.title}</span>
                   </TransitionLink>
@@ -1084,7 +1118,7 @@ export default function PostDetail() {
                     className="jz-post-nav-card jz-post-nav-card--next"
                   >
                     <span className="jz-post-nav-dir">
-                      下一篇 <span className="jz-post-nav-arrow">→</span>
+                      下一篇 <span className="jz-post-nav-arrow"><RightOutlined /></span>
                     </span>
                     <span className="jz-post-nav-title">{adjacent.next.title}</span>
                   </TransitionLink>
@@ -1213,7 +1247,7 @@ export default function PostDetail() {
             type="default"
             shape="circle"
             size="large"
-            icon={<EyeOutlined />}
+            icon={<JzFocusIcon on />}
             aria-label="退出专注阅读"
             onClick={() => setFocusMode(false)}
             className="jz-focus-exit-fab"

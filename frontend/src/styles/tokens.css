@@ -115,6 +115,28 @@
        ease-spring   = 位移弹簧（下方 @supports 升级为 linear() 真弹簧采样）
        ease-vt       = 主题 View Transition 溶解专用
      新动效一律引用令牌；改档位值 = 全站同步换挡。 */
+  /* ── 圆角 / 交互底色令牌（2026-09-03 按钮体系收编）──
+     此前圆角散落 2/4/6/7/8/9/10/12/14px 六七种，hover 底色 accent 6–12% 五种；
+     新按钮/图标钮一律引用这里。--jz-radius-pill 此前只有 fallback 从未定义。 */
+  /* 文档格式胶囊七色（跨主题固定，DocFormatTag 消费） */
+  --jz-fmt-markdown: #3b82f6;
+  --jz-fmt-html: #f97316;
+  --jz-fmt-pdf: #ef4444;
+  --jz-fmt-docx: #6366f1;
+  --jz-fmt-pptx: #f59e0b;
+  --jz-fmt-epub: #10b981;
+  --jz-fmt-image: #a78bfa;
+  --jz-radius-xs: 4px;
+  --jz-radius-sm: 6px;
+  --jz-radius-md: 8px;
+  --jz-radius-lg: 12px;
+  --jz-radius-xl: 16px;
+  --jz-radius-pill: 999px;
+  --jz-hover-bg: color-mix(in srgb, var(--jz-text) 7%, transparent);
+  --jz-hover-accent-bg: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  --jz-active-bg: color-mix(in srgb, var(--jz-text) 12%, transparent);
+  --jz-active-accent-bg: color-mix(in srgb, var(--jz-accent) 16%, transparent);
+  --jz-focus-ring: 0 0 0 2px color-mix(in srgb, var(--jz-accent) 55%, transparent);
   --jz-dur-fast: 120ms;
   --jz-dur-base: 200ms;
   --jz-dur-slow: 350ms;

@@ -19,24 +19,7 @@
  * click, row focus-out, drag drop) calls PATCH /auth/hero/.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import {
-  Alert,
-  AutoComplete,
-  Button,
-  Card,
-  DatePicker,
-  Empty,
-  Input,
-  Modal,
-  Popconfirm,
-  Radio,
-  Slider,
-  Space,
-  Switch,
-  Table,
-  Tooltip,
-  Typography,
-} from 'antd';
+import { Alert, AutoComplete, Button, Card, DatePicker, Input, Modal, Popconfirm, Radio, Slider, Space, Switch, Table, Tooltip, Typography } from 'antd';
 import dayjs from 'dayjs';
 import {
   CheckOutlined,
@@ -84,6 +67,8 @@ import { message } from '@/utils/notify';
 import { quotesToBatchText } from '@/utils/heroPlayback';
 import { HeroQuoteCard } from '@/components/blog/HeroQuoteRotator';
 import { formatShortcut, getChord, matchesChord } from '@/shortcuts';
+import IconButton from '@/components/common/IconButton';
+import JzEmpty from '@/components/common/JzEmpty';
 
 const { Text } = Typography;
 const { TextArea } = Input;
@@ -155,9 +140,7 @@ const RowContext = createContext<RowContextProps>({});
 function DragHandle({ disabled }: { disabled: boolean }) {
   const { setActivatorNodeRef, listeners } = useContext(RowContext);
   return (
-    <Button
-      type="text"
-      size="small"
+    <IconButton
       className="jz-hero-drag-handle"
       icon={<HolderOutlined />}
       disabled={disabled}
@@ -459,9 +442,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
         extra={
           <Space size={4}>
             <Tooltip title="上一条">
-              <Button
-                type="text"
-                size="small"
+              <IconButton
                 icon={<LeftOutlined />}
                 disabled={quoteCount <= 1}
                 onClick={() => stepPreview(-1)}
@@ -473,18 +454,14 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                 : `第 ${((previewIdx % quoteCount) + quoteCount) % quoteCount + 1} / ${quoteCount} 条`}
             </Text>
             <Tooltip title="下一条">
-              <Button
-                type="text"
-                size="small"
+              <IconButton
                 icon={<RightOutlined />}
                 disabled={quoteCount <= 1}
                 onClick={() => stepPreview(1)}
               />
             </Tooltip>
             <Tooltip title="重播预览动画">
-              <Button
-                type="text"
-                size="small"
+              <IconButton
                 icon={<ReloadOutlined />}
                 onClick={() => setPreviewTick((n) => n + 1)}
               />
@@ -497,7 +474,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             <HeroQuoteCard quote={previewQuote} animation={data.animation} animationKey={previewTick} />
           </div>
         ) : (
-          <Empty description="没有题记，先添加一条或批量导入" image={Empty.PRESENTED_IMAGE_SIMPLE} />
+          <JzEmpty description="没有题记，先添加一条或批量导入" size="sm" />
         )}
       </Card>
 
@@ -782,9 +759,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                     <Space size={0}>
                       {editingId === r.id ? (
                         <Tooltip title="完成">
-                          <Button
-                            size="small"
-                            type="text"
+                          <IconButton
                             icon={<CheckOutlined />}
                             aria-label="完成"
                             onClick={() => {
@@ -801,9 +776,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                         </Tooltip>
                       ) : (
                         <Tooltip title="编辑">
-                          <Button
-                            size="small"
-                            type="text"
+                          <IconButton
                             icon={<EditOutlined />}
                             aria-label="编辑"
                             disabled={!canEdit}
@@ -812,9 +785,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                         </Tooltip>
                       )}
                       {r.id === draft?.id ? (
-                        <Button
-                          size="small"
-                          type="text"
+                        <IconButton
                           danger
                           icon={<DeleteOutlined />}
                           onClick={() => onDelete(r.id)}
@@ -828,9 +799,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
                           onConfirm={() => onDelete(r.id)}
                           disabled={!canEdit}
                         >
-                          <Button
-                            size="small"
-                            type="text"
+                          <IconButton
                             danger
                             icon={<DeleteOutlined />}
                             disabled={!canEdit}

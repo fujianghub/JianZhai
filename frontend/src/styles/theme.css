@@ -249,8 +249,12 @@ a:hover { opacity: 0.85; }
 .ant-card.jz-post-card {
   border: 1px solid var(--jz-border);
 }
+.ant-card.jz-post-card {
+  transition: border-color var(--jz-dur-fast) var(--jz-ease-standard), background-color var(--jz-dur-fast) var(--jz-ease-standard), box-shadow var(--jz-dur-base) var(--jz-ease-standard);
+}
 .ant-card.jz-post-card:hover {
   border-color: color-mix(in srgb, var(--jz-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 3%, var(--jz-surface));
 }
 
 /* Paper-style swatch buttons in PaperPicker */
@@ -400,13 +404,11 @@ a:hover { opacity: 0.85; }
 }
 .jz-kb-folder-count {
   margin-left: auto;
-  font-family: var(--jz-font-mono);
-  font-size: var(--jz-fs-xs);
+  font-size: var(--jz-fs-2xs);
   font-weight: 400;
+  font-variant-numeric: tabular-nums;
   color: var(--jz-text-muted);
-  padding: 1px 8px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--jz-surface-2) 70%, transparent);
+  opacity: 0.8;
   letter-spacing: 0;
 }
 
@@ -516,10 +518,10 @@ a:hover { opacity: 0.85; }
   padding: 10px 14px;
   color: var(--jz-text);
   text-decoration: none;
-  transition: background-color 120ms ease;
+  transition: background-color var(--jz-dur-fast) var(--jz-ease-standard);
 }
 .jz-post-row-link:hover {
-  background: color-mix(in srgb, var(--jz-accent) 8%, transparent);
+  background: var(--jz-hover-accent-bg);
 }
 .jz-post-row-title {
   flex: 1;
@@ -851,13 +853,35 @@ a.jz-meta-full-edit-btn:focus-visible {
 /* Card list still uses the legacy ``.jz-post-tag`` class on antd Tag.
    Keep a compatibility rule so KBPostsPage's flat list inherits the same
    look as the meta-bar chips. */
-.ant-tag.jz-post-tag {
+/* Same chip skeleton as .jz-format-pill (22px / 11px radius / xs) so a tag
+   and a format pill on one row read as one family. */
+.ant-tag.jz-post-tag,
+.ant-tag.jz-folder-tag {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 11px;
+  font-size: var(--jz-fs-xs);
+  line-height: 1;
+  letter-spacing: var(--jz-ls-xs);
+  margin-inline-end: 0;
   border-color: color-mix(in srgb, currentColor 25%, var(--jz-border));
   background: color-mix(in srgb, currentColor 8%, var(--jz-surface)) !important;
 }
+.ant-tag.jz-folder-tag {
+  height: 18px;
+  padding: 0 7px;
+  border-radius: 9px;
+  font-size: var(--jz-fs-3xs);
+  font-weight: 400;
+}
 [data-theme='dark'] .ant-tag.jz-post-tag,
 [data-theme='starry'] .ant-tag.jz-post-tag,
-[data-theme='deepsea'] .ant-tag.jz-post-tag {
+[data-theme='deepsea'] .ant-tag.jz-post-tag,
+[data-theme='dark'] .ant-tag.jz-folder-tag,
+[data-theme='starry'] .ant-tag.jz-folder-tag,
+[data-theme='deepsea'] .ant-tag.jz-folder-tag {
   background: color-mix(in srgb, currentColor 22%, var(--jz-surface-2)) !important;
   border-color: color-mix(in srgb, currentColor 45%, transparent);
 }
@@ -920,6 +944,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   letter-spacing: var(--jz-ls-sm);
   color: var(--glass-text-muted, var(--jz-text-muted));
 }
+.jz-post-nav-arrow .anticon { font-size: 0.85em; vertical-align: -0.1em; }
 .jz-post-nav-arrow {
   display: inline-block;
   transition: transform var(--jz-dur-base) var(--jz-ease-spring);
@@ -1758,7 +1783,7 @@ a.jz-meta-full-edit-btn:focus-visible {
    so the tree doesn't feel snap-y. Drag-over rows get an emerald ring + bg
    tint that fades in, matching the rest of the glass aesthetic. */
 .jz-kb-tree-panel .ant-tree-node-content-wrapper {
-  transition: background-color 0.15s ease, color 0.15s ease;
+  transition: background-color var(--jz-dur-fast) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard);
 }
 .jz-kb-tree-panel .ant-tree-switcher {
   transition: background-color 0.15s ease;
@@ -1771,9 +1796,59 @@ a.jz-meta-full-edit-btn:focus-visible {
   border-radius: 6px;
   transition: background-color 0.15s ease, box-shadow 0.15s ease;
 }
-.jz-kb-tree-panel .ant-tree-treenode-draggable .ant-tree-node-content-wrapper:hover {
-  background: color-mix(in srgb, var(--jz-kb-accent, var(--jz-accent)) 8%, transparent);
+.jz-kb-tree-panel .ant-tree-node-content-wrapper {
+  border-radius: var(--jz-radius-sm);
 }
+.jz-kb-tree-panel .ant-tree-treenode-draggable .ant-tree-node-content-wrapper:hover,
+.jz-kb-tree-panel .ant-tree-node-content-wrapper:hover {
+  background: var(--jz-hover-accent-bg);
+}
+/* Selected row: the same soft accent fill as the blog tree's active row (was
+   AntD's default blue). */
+.jz-kb-tree-panel .ant-tree .ant-tree-node-content-wrapper.ant-tree-node-selected {
+  background: color-mix(in srgb, var(--jz-kb-accent, var(--jz-accent)) 13%, transparent);
+  color: var(--jz-kb-accent, var(--jz-accent));
+}
+/* Leaf rows: a soft dot in the switcher slot (mirrors .jz-epub-toc-chevron.is-leaf). */
+.jz-kb-tree-panel .ant-tree-switcher-noop {
+  display: inline-grid;
+  place-items: center;
+}
+.jz-kb-tree-panel .ant-tree-switcher-noop::before {
+  content: '';
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--jz-text) 28%, transparent);
+}
+.jz-kb-tree-panel .ant-tree-node-selected ~ * .ant-tree-switcher-noop::before,
+.jz-kb-tree-panel .ant-tree-treenode-selected .ant-tree-switcher-noop::before {
+  background: var(--jz-kb-accent, var(--jz-accent));
+}
+/* Folder row tools (upload / export / tags) reveal on row hover; the pin /
+   star pair keeps its own rest opacity. */
+.jz-tree-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  opacity: 0;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.ant-tree-treenode:hover .jz-tree-row-actions,
+.jz-tree-row-actions:focus-within { opacity: 1; }
+@media (hover: none) { .jz-tree-row-actions { opacity: 0.7; } }
+/* Published marker: a 6px jade dot after the title (was a typed ✓). */
+.jz-doc-status {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  margin-left: 6px;
+  vertical-align: middle;
+  background: var(--jz-text-muted);
+  opacity: 0.5;
+}
+.jz-doc-status.is-published { background: var(--jz-accent); opacity: 1; }
 /* Active dragover target — emerald ring + subtle accent tint */
 .jz-kb-tree-panel .ant-tree-treenode-drag-over,
 .jz-kb-tree-panel .ant-tree-treenode-drag-over-gap-top,
@@ -2121,7 +2196,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 
 /* ── 按钮 ────────────────────────────────────────────────────────────── */
-.jz-admin-glass .ant-btn {
+.jz-admin-glass .ant-btn:not(.jz-icon-btn):not(.jz-toolbar-icon-btn) {
   border-radius: 10px !important;
   height: 36px !important;
   padding-inline: 16px !important;
@@ -2131,12 +2206,12 @@ a.jz-meta-full-edit-btn:focus-visible {
   font-weight: 500;
   transition: all 0.2s ease !important;
 }
-.jz-admin-glass .ant-btn:hover {
+.jz-admin-glass .ant-btn:not(.jz-icon-btn):not(.jz-toolbar-icon-btn):hover {
   background: var(--glass-surface-strong) !important;
   border-color: color-mix(in srgb, var(--jz-accent) 40%, transparent) !important;
   color: var(--jz-accent) !important;
 }
-.jz-admin-glass .ant-btn-sm { height: 28px !important; padding-inline: 10px !important; }
+.jz-admin-glass .ant-btn-sm:not(.jz-icon-btn) { height: 28px !important; padding-inline: 10px !important; }
 .jz-admin-glass .ant-btn-primary {
   background: linear-gradient(135deg, var(--jz-accent) 0%, var(--jz-accent-soft) 100%) !important;
   border-color: transparent !important;
@@ -3795,6 +3870,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-ico-tone-overview  { --jz-ico-c: #65a30d; }  /* 草绿（双叶幼苗） */
 .jz-ico-tone-hero      { --jz-ico-c: #a16207; }  /* 缃黄（题记落款印泥；原朱砂与 tags 撞色，2026-09-02 改） */
 .jz-ico-tone-profile   { --jz-ico-c: #0d9488; }  /* 松石 */
+.jz-ico-tone-toc       { --jz-ico-c: #4338ca; }  /* 靛蓝（目录设置） */
 [data-theme='dark'] .jz-ico-tone-dashboard, [data-theme='starry'] .jz-ico-tone-dashboard, [data-theme='deepsea'] .jz-ico-tone-dashboard { --jz-ico-c: #22d3ee; }
 [data-theme='dark'] .jz-ico-tone-kb,        [data-theme='starry'] .jz-ico-tone-kb,        [data-theme='deepsea'] .jz-ico-tone-kb        { --jz-ico-c: #34d399; }
 [data-theme='dark'] .jz-ico-tone-graph,     [data-theme='starry'] .jz-ico-tone-graph,     [data-theme='deepsea'] .jz-ico-tone-graph     { --jz-ico-c: #60a5fa; }
@@ -3805,6 +3881,7 @@ a.jz-meta-full-edit-btn:focus-visible {
 [data-theme='dark'] .jz-ico-tone-overview,  [data-theme='starry'] .jz-ico-tone-overview,  [data-theme='deepsea'] .jz-ico-tone-overview  { --jz-ico-c: #a3e635; }
 [data-theme='dark'] .jz-ico-tone-hero,      [data-theme='starry'] .jz-ico-tone-hero,      [data-theme='deepsea'] .jz-ico-tone-hero      { --jz-ico-c: #d9a441; }
 [data-theme='dark'] .jz-ico-tone-profile,   [data-theme='starry'] .jz-ico-tone-profile,   [data-theme='deepsea'] .jz-ico-tone-profile   { --jz-ico-c: #2dd4bf; }
+[data-theme='dark'] .jz-ico-tone-toc,       [data-theme='starry'] .jz-ico-tone-toc,       [data-theme='deepsea'] .jz-ico-tone-toc       { --jz-ico-c: #a5b4fc; }
 
 /* 主题环境光校准：starry 的银河是紫粉雾（紫藤会融进去）、
    deepsea 的水光是青蓝系（冷色图标会沉底）——同色相再提亮一档跳出环境。 */
@@ -4713,6 +4790,517 @@ a.jz-meta-full-edit-btn:focus-visible {
   .jz-ink-burst { display: none; }
 }
 
+/* ══════════════════════════════════════════════════════════════════════
+   按钮体系收编（2026-09-03）—— IconButton / Chevron / 收藏·置顶
+   · .jz-icon-btn：全站唯一图标钮（AntD text 钮 + 稳定类名），四档方形热区，
+     圆角/hover/按下/focus 全走 tokens.css 令牌；后台 .jz-admin-glass .ant-btn
+     的 !important 刷白已对它豁免。
+   · .jz-chevron：唯一折叠尖角号（细线 RightOutlined 旋转 90°）。
+   · .jz-doc-actions：收藏/置顶容器，行内 hover 显现、激活态常驻兼作徽标。
+   ══════════════════════════════════════════════════════════════════════ */
+.ant-btn.jz-icon-btn {
+  --jz-ib-size: 26px;
+  --jz-ib-icon: 15px;
+  --jz-ib-tone: var(--jz-accent);
+  width: var(--jz-ib-size) !important;
+  min-width: var(--jz-ib-size) !important;
+  height: var(--jz-ib-size) !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: var(--jz-radius-sm) !important;
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: var(--jz-text-muted) !important;
+  box-shadow: none !important;
+  font-size: var(--jz-ib-icon) !important;
+  line-height: 1 !important;
+  transition:
+    background-color var(--jz-dur-fast) var(--jz-ease-standard),
+    color var(--jz-dur-fast) var(--jz-ease-standard),
+    transform var(--jz-dur-fast) var(--jz-ease-standard),
+    box-shadow var(--jz-dur-fast) var(--jz-ease-standard) !important;
+}
+.ant-btn.jz-icon-btn .anticon,
+.ant-btn.jz-icon-btn .jz-icon {
+  font-size: var(--jz-ib-icon);
+  line-height: 1;
+}
+.ant-btn.jz-icon-btn > span:not(.ant-btn-icon):not(.anticon):not(.jz-icon) {
+  /* Icon-only: AntD's label span must not add width (icon lives in .ant-btn-icon). */
+  display: none;
+}
+.ant-btn.jz-icon-btn > .ant-btn-icon {
+  display: inline-flex;
+  line-height: 1;
+}
+.ant-btn.jz-icon-btn.is-xs { --jz-ib-size: 22px; --jz-ib-icon: 13px; border-radius: var(--jz-radius-xs) !important; }
+.ant-btn.jz-icon-btn.is-md { --jz-ib-size: 30px; --jz-ib-icon: 16px; border-radius: var(--jz-radius-md) !important; }
+.ant-btn.jz-icon-btn.is-lg { --jz-ib-size: 36px; --jz-ib-icon: 18px; border-radius: var(--jz-radius-md) !important; }
+.ant-btn.jz-icon-btn[data-tone='gold'] { --jz-ib-tone: var(--jz-gold); }
+.ant-btn.jz-icon-btn[data-tone='danger'] { --jz-ib-tone: var(--jz-danger, #dc2626); }
+.ant-btn.jz-icon-btn:not(:disabled):hover {
+  background: var(--jz-hover-bg) !important;
+  color: var(--jz-text) !important;
+}
+.ant-btn.jz-icon-btn:not(:disabled):active {
+  background: var(--jz-active-bg) !important;
+  transform: scale(0.92);
+}
+.ant-btn.jz-icon-btn.is-on {
+  color: var(--jz-ib-tone) !important;
+  background: color-mix(in srgb, var(--jz-ib-tone) 12%, transparent) !important;
+}
+.ant-btn.jz-icon-btn.is-on:not(:disabled):hover {
+  color: var(--jz-ib-tone) !important;
+  background: color-mix(in srgb, var(--jz-ib-tone) 18%, transparent) !important;
+}
+.ant-btn.jz-icon-btn:focus-visible {
+  outline: none !important;
+  box-shadow: var(--jz-focus-ring) !important;
+}
+.ant-btn.jz-icon-btn:disabled,
+.ant-btn.jz-icon-btn.ant-btn-disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* Danger buttons keep AntD's red text but our box. */
+.ant-btn.jz-icon-btn.ant-btn-dangerous { color: var(--jz-danger, #dc2626) !important; }
+.ant-btn.jz-icon-btn.ant-btn-dangerous:not(:disabled):hover {
+  background: color-mix(in srgb, var(--jz-danger, #dc2626) 10%, transparent) !important;
+}
+
+/* Chevron — one glyph, one rotation. */
+/* Chevron = direction / navigation only (breadcrumb, prev-next, dropdown). */
+.jz-chevron {
+  display: inline-block;
+  vertical-align: middle;
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring), color var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-chevron.is-open { transform: rotate(90deg); }
+/* Disclosure = solid rounded triangle for "more below" (trees, folds, Collapse,
+   AntD Tree switcher). Rotates on the spring; hover swells 10% — a triangle has
+   no direction to nudge along. Chevron and Disclosure never mix (user decision). */
+.jz-disclosure {
+  display: inline-block;
+  vertical-align: middle;
+  transform: rotate(0deg);
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring), color var(--jz-dur-fast) var(--jz-ease-standard), opacity var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-disclosure.is-open { transform: rotate(90deg); }
+.jz-epub-toc-chevron:hover .jz-disclosure { transform: scale(1.12); }
+.jz-epub-toc-chevron:hover .jz-disclosure.is-open { transform: rotate(90deg) scale(1.12); }
+/* AntD Tree clones the glyph with .ant-tree-switcher-icon and rotates its
+   *inner* svg when closed; our triangle is the svg itself, nothing to undo. */
+.ant-tree .ant-tree-switcher .jz-disclosure {
+  font-size: 9px;
+  width: 9px;
+  height: 9px;
+  color: var(--jz-text-muted);
+  opacity: 0.7;
+}
+.ant-tree .ant-tree-switcher:hover .jz-disclosure {
+  color: var(--jz-accent);
+  opacity: 1;
+}
+.ant-collapse .ant-collapse-expand-icon .jz-disclosure {
+  font-size: 10px;
+  width: 10px;
+  height: 10px;
+  color: var(--jz-text-muted);
+}
+/* Bare tree-row chevron buttons (.jz-epub-toc-chevron / .jz-code-collapse-btn
+   / .jz-kb-fold-chevron) get the pressed + focus states IconButton has. */
+.jz-epub-toc-chevron:active,
+.jz-code-collapse-btn:active {
+  transform: scale(0.9);
+}
+.jz-epub-toc-chevron:focus-visible,
+.jz-code-collapse-btn:focus-visible,
+.jz-kb-folder-heading.is-foldable:focus-visible {
+  outline: none;
+  box-shadow: var(--jz-focus-ring);
+}
+.jz-code-collapse-btn {
+  border-radius: var(--jz-radius-xs);
+  color: var(--jz-text-muted);
+  transition: background-color var(--jz-dur-fast) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard), transform var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-code-collapse-btn:hover {
+  background: var(--jz-hover-accent-bg);
+  color: var(--jz-accent);
+}
+.jz-kb-fold-chevron .jz-disclosure { font-size: 11px; width: 11px; height: 11px; }
+.jz-kb-folder-heading.is-foldable:hover .jz-disclosure { transform: scale(1.12); }
+.jz-kb-folder-heading.is-foldable:hover .jz-disclosure.is-open { transform: rotate(90deg) scale(1.12); }
+
+/* 收藏 / 置顶 */
+.jz-doc-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-standard);
+}
+@media (hover: hover) {
+  .jz-doc-actions.is-reveal:not(.has-on) { opacity: 0; }
+  .jz-doc-actions.is-reveal:focus-within,
+  .jz-epub-toc-item:hover .jz-doc-actions.is-reveal,
+  .ant-tree-treenode:hover .jz-doc-actions.is-reveal,
+  .jz-post-row:hover .jz-doc-actions.is-reveal,
+  .ant-card.jz-post-card:hover .jz-doc-actions.is-reveal { opacity: 1; }
+}
+/* Pinned = tilted pin; star pops in with the spring when it lights up. */
+/* Round discs (the two live in rows next to round chevrons) and spring hover. */
+.ant-btn.jz-icon-btn.jz-pin-btn,
+.ant-btn.jz-icon-btn.jz-fav-btn { border-radius: 50% !important; }
+.jz-pin-btn .jz-icon {
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring);
+}
+.jz-pin-btn.is-on .jz-icon { transform: rotate(-35deg); }
+.jz-pin-btn:not(.is-on):hover .jz-icon { transform: rotate(-18deg) translateY(-1px); }
+.jz-pin-btn.is-on:hover .jz-icon { transform: rotate(-28deg) scale(1.08); }
+.jz-fav-btn.is-on .jz-icon {
+  animation: jz-star-pop var(--jz-dur-slow) var(--jz-ease-spring);
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-gold) 45%, transparent));
+}
+.jz-fav-btn:not(.is-on):hover .jz-icon { transform: scale(1.18) rotate(-12deg); }
+.jz-fav-btn.is-on:hover .jz-icon { transform: scale(1.1); }
+.jz-fav-btn .jz-icon { transition: transform var(--jz-dur-base) var(--jz-ease-spring); }
+/* Rows: rest a touch quieter, full on row hover — present but not shouting. */
+.jz-kb-toc-actions .jz-doc-actions,
+.ant-tree-title .jz-doc-actions { opacity: 0.78; transition: opacity var(--jz-dur-fast) var(--jz-ease-standard); }
+.jz-epub-toc-item:hover .jz-doc-actions,
+.ant-tree-treenode:hover .jz-doc-actions,
+.jz-doc-actions.has-on { opacity: 1; }
+/* At rest the glyphs already carry their meaning's colour, softened
+   (gold star / ink pin with a tinted fill); hover previews the lit colour. */
+.ant-btn.jz-icon-btn.jz-fav-btn:not(.is-on) { color: color-mix(in srgb, var(--jz-gold) 78%, var(--jz-text)) !important; }
+.ant-btn.jz-icon-btn.jz-pin-btn:not(.is-on) { color: color-mix(in srgb, var(--jz-text) 72%, var(--jz-text-muted)) !important; }
+.jz-fav-btn:not(.is-on):hover { color: var(--jz-gold) !important; }
+.jz-pin-btn:not(.is-on):hover { color: var(--jz-accent) !important; }
+.jz-fav-btn:not(.is-on) .jz-icon path:first-child,
+.jz-pin-btn:not(.is-on) .jz-icon path:first-child { fill: currentColor; fill-opacity: 0.16; }
+.ant-btn.jz-icon-btn.jz-fav-btn .jz-icon,
+.ant-btn.jz-icon-btn.jz-pin-btn .jz-icon { font-size: calc(var(--jz-ib-icon) + 2px); }
+@keyframes jz-star-pop {
+  0% { transform: scale(0.5) rotate(-30deg); }
+  60% { transform: scale(1.25) rotate(8deg); }
+  100% { transform: scale(1) rotate(0); }
+}
+/* KB page rows / cards + reading-page toolbar hosts. */
+.jz-post-row .jz-doc-actions { margin-left: 4px; }
+.jz-post-card-actions {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.ant-card.jz-post-card { position: relative; }
+/* Keep the title clear of the absolutely-positioned pin / star cluster. */
+.ant-card.jz-post-card .jz-post-card-title { padding-right: 64px; }
+.jz-reader-controls .jz-doc-actions { gap: 4px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ant-btn.jz-icon-btn,
+  .jz-chevron,
+  .jz-disclosure,
+  .jz-code-collapse-btn,
+  .jz-doc-actions,
+  .jz-pin-btn .jz-icon,
+  .jz-fav-btn .jz-icon { transition: none !important; }
+  .ant-btn.jz-icon-btn:not(:disabled):active,
+  .jz-epub-toc-chevron:active,
+  .jz-code-collapse-btn:active,
+  .jz-fav-btn:not(.is-on):hover .jz-icon,
+  .jz-pin-btn:not(.is-on):hover .jz-icon { transform: none; }
+  .jz-fav-btn.is-on .jz-icon { animation: none; filter: none; }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   目录设置页 /admin/toc（2026-09-03）
+   header 作用范围芯片 · 三张分区卡（排版 / 字体画廊 / 颜色与显示）· 右侧
+   粘性「仿真右栏」预览（文章目录 / 知识库目录两页）。
+   ══════════════════════════════════════════════════════════════════════ */
+.jz-toc-admin-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+.jz-toc-admin-title-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--jz-radius-md);
+  color: var(--jz-ico-c, var(--jz-accent));
+  background: color-mix(in srgb, var(--jz-ico-c, var(--jz-accent)) 12%, transparent);
+}
+.jz-toc-admin-scope {
+  display: inline-flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.jz-toc-admin-scope-label {
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  font-size: var(--jz-fs-xs);
+  margin-right: 2px;
+}
+.jz-toc-admin-chip {
+  font-size: var(--jz-fs-xs);
+  line-height: 20px;
+  padding: 0 9px;
+  border-radius: var(--jz-radius-pill);
+  color: var(--jz-text);
+  background: color-mix(in srgb, var(--jz-accent) 9%, transparent);
+  border: 1px solid color-mix(in srgb, var(--jz-accent) 22%, transparent);
+}
+.jz-toc-admin-stamp { font-size: var(--jz-fs-xs); }
+.jz-toc-admin-loading { padding: 48px; text-align: center; }
+.jz-toc-admin-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 1100px) {
+  .jz-toc-admin-grid { grid-template-columns: minmax(0, 1fr); }
+  .jz-toc-admin-preview { position: static !important; }
+}
+.jz-toc-admin-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+}
+.jz-toc-admin-card {
+  border-radius: var(--glass-radius, 14px);
+  background: var(--glass-surface, var(--jz-surface));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  padding: 18px 20px 16px;
+}
+.jz-toc-admin-card-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px dashed color-mix(in srgb, var(--jz-text) 12%, transparent);
+}
+.jz-toc-admin-card-head h3 {
+  margin: 0;
+  font-family: var(--jz-font-serif);
+  font-size: var(--jz-fs-lg);
+  letter-spacing: var(--jz-ls-md);
+  font-weight: 600;
+}
+.jz-toc-admin-card-head p {
+  margin: 0;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  font-size: var(--jz-fs-xs);
+}
+.jz-toc-admin-row {
+  display: grid;
+  grid-template-columns: 132px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 9px 0;
+}
+.jz-toc-admin-row + .jz-toc-admin-row {
+  border-top: 1px solid color-mix(in srgb, var(--jz-text) 6%, transparent);
+}
+.jz-toc-admin-row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-weight: 500;
+}
+.jz-toc-admin-row-label small,
+.jz-toc-admin-toggle-text small {
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  font-size: var(--jz-fs-2xs);
+  font-weight: 400;
+}
+.jz-toc-admin-row-control { min-width: 0; }
+.jz-toc-admin-row-control .ant-segmented { max-width: 420px; }
+/* 字体画廊 */
+.jz-toc-admin-fonts {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 10px;
+}
+.jz-toc-admin-font {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  text-align: left;
+  padding: 12px 14px 10px;
+  border-radius: var(--jz-radius-lg);
+  border: 1px solid color-mix(in srgb, var(--jz-text) 10%, transparent);
+  background: color-mix(in srgb, var(--jz-text) 2.5%, transparent);
+  color: var(--jz-text);
+  cursor: pointer;
+  transition:
+    border-color var(--jz-dur-fast) var(--jz-ease-standard),
+    background-color var(--jz-dur-fast) var(--jz-ease-standard),
+    transform var(--jz-dur-fast) var(--jz-ease-standard),
+    box-shadow var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-toc-admin-font:hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 40%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 5%, transparent);
+  transform: translateY(-1px);
+}
+.jz-toc-admin-font:focus-visible {
+  outline: none;
+  box-shadow: var(--jz-focus-ring);
+}
+.jz-toc-admin-font.is-on {
+  border-color: var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-accent) 10%, transparent);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--jz-accent) 40%, transparent) inset;
+}
+.jz-toc-admin-font-specimen {
+  font-size: var(--jz-fs-md);
+  line-height: 1.5;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.jz-toc-admin-font-name {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--jz-font-ui);
+}
+.jz-toc-admin-font-name b { font-size: var(--jz-fs-sm); font-weight: 600; }
+.jz-toc-admin-font-name small { color: var(--glass-text-muted, var(--jz-text-muted)); font-size: var(--jz-fs-2xs); }
+.jz-toc-admin-font-check {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 12px;
+  color: var(--jz-accent);
+}
+/* 开关行 */
+.jz-toc-admin-toggles { display: flex; flex-direction: column; margin-top: 4px; }
+.jz-toc-admin-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  cursor: pointer;
+}
+.jz-toc-admin-toggle + .jz-toc-admin-toggle {
+  border-top: 1px solid color-mix(in srgb, var(--jz-text) 6%, transparent);
+}
+.jz-toc-admin-toggle-text { display: flex; flex-direction: column; gap: 2px; font-weight: 500; }
+.jz-toc-admin-note {
+  margin: 0 4px;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  font-size: var(--jz-fs-xs);
+  line-height: 1.7;
+}
+/* 预览 */
+.jz-toc-admin-preview {
+  position: sticky;
+  top: 84px;
+  border-radius: var(--glass-radius, 14px);
+  background: var(--glass-surface, var(--jz-surface));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  padding: 14px 14px 10px;
+}
+.jz-toc-admin-preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.jz-toc-admin-preview-title {
+  font-family: var(--jz-font-serif);
+  font-weight: 600;
+  letter-spacing: var(--jz-ls-md);
+}
+.jz-toc-preview-rail {
+  border-radius: 12px;
+  border: 1px solid color-mix(in srgb, var(--jz-text) 10%, transparent);
+  border-left: 3px solid var(--jz-accent);
+  background: color-mix(in srgb, var(--jz-surface) 70%, transparent);
+  padding: 10px 8px 8px 10px;
+}
+.jz-toc-preview-tabs {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  margin-bottom: 8px;
+  border-radius: var(--jz-radius-sm);
+  background: color-mix(in srgb, var(--jz-text) 6%, transparent);
+  font-size: var(--jz-fs-2xs);
+}
+.jz-toc-preview-tabs span {
+  padding: 2px 8px;
+  border-radius: 4px;
+  color: var(--jz-text-muted);
+}
+.jz-toc-preview-tabs span.is-on {
+  background: var(--jz-accent);
+  color: var(--jz-on-accent, #fff);
+  font-weight: 600;
+}
+.jz-toc-admin-preview-foot {
+  margin-top: 10px;
+  font-size: var(--jz-fs-2xs);
+  color: var(--glass-text-muted, var(--jz-text-muted));
+}
+.jz-toc-admin-preview-foot .is-dirty { color: var(--jz-gold); }
+:root[data-motion='min'] .jz-toc-admin-font { transition: none; }
+:root[data-motion='min'] .jz-toc-admin-font:hover { transform: none; }
+
+/* ══ 符号层 / 空态 / KB 页视图切换（2026-09-03 第三档）═══════════════ */
+.jz-sep-dot,
+.jz-brand-sep,
+.jz-blog-footer-dot {
+  display: inline-block;
+  padding: 0 0.35em;
+  color: var(--jz-text-muted);
+  opacity: 0.55;
+  user-select: none;
+}
+.jz-check-mark { color: var(--jz-accent); font-size: 0.9em; }
+.jz-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 36px 16px;
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  text-align: center;
+}
+.jz-empty.is-sm { padding: 18px 8px; gap: 6px; }
+.jz-empty-glyph {
+  font-size: 44px;
+  line-height: 1;
+  color: var(--jz-text-muted);
+  opacity: 0.55;
+}
+.jz-empty.is-sm .jz-empty-glyph { font-size: 30px; }
+.jz-empty-text { font-size: var(--jz-fs-sm); line-height: 1.6; max-width: 32em; }
+.jz-empty.is-sm .jz-empty-text { font-size: var(--jz-fs-xs); }
+.jz-empty-action { margin-top: 4px; }
+.jz-kb-toolbar-seg.ant-segmented .ant-segmented-item-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.jz-kb-toolbar-seg.ant-segmented .ant-segmented-item-icon { display: inline-flex; }
+.jz-kb-toolbar .ant-segmented + .ant-segmented,
+.jz-kb-toolbar .jz-icon-btn + .ant-segmented { margin-left: 8px; }
+.jz-kb-toolbar .jz-icon-btn { margin-left: 4px; }
+
 /* ── 动效档位「精简」的 CSS 伴生（2026-08-03）──
    JS 检查点（主题 VT / canvas 静帧 / 滚动显现 / 光斑 / 粒子）由 motionPref
    统一裁决；此块承接纯 CSS 动画，与上方各 reduce 块语义一一对齐——
@@ -4765,6 +5353,21 @@ a.jz-meta-full-edit-btn:focus-visible {
 :root[data-motion='min'] .jz-meta-pill-kb:hover .jz-meta-icon,
 :root[data-motion='min'] .jz-post-meta .jz-meta-tags:hover .jz-meta-icon,
 :root[data-motion='min'] .jz-post-meta .jz-meta-date:hover .jz-meta-icon { transform: none; }
+/* 按钮体系（2026-09-03）：图标钮 / 尖角号 / 星标 pop / 图钉倾斜 / 行内显现 */
+:root[data-motion='min'] .ant-btn.jz-icon-btn,
+:root[data-motion='min'] .jz-chevron,
+:root[data-motion='min'] .jz-disclosure,
+:root[data-motion='min'] .jz-code-collapse-btn,
+:root[data-motion='min'] .jz-doc-actions,
+:root[data-motion='min'] .jz-pin-btn .jz-icon,
+:root[data-motion='min'] .jz-fav-btn .jz-icon { transition: none !important; }
+:root[data-motion='min'] .ant-btn.jz-icon-btn:not(:disabled):active,
+:root[data-motion='min'] .jz-epub-toc-chevron:hover .jz-disclosure,
+:root[data-motion='min'] .jz-epub-toc-chevron:active,
+:root[data-motion='min'] .jz-code-collapse-btn:active,
+:root[data-motion='min'] .jz-fav-btn:not(.is-on):hover .jz-icon,
+:root[data-motion='min'] .jz-pin-btn:not(.is-on):hover .jz-icon { transform: none; }
+:root[data-motion='min'] .jz-fav-btn.is-on .jz-icon { animation: none; filter: none; }
 :root[data-motion='min'][data-theme='light'] .jz-admin-glass.ant-layout,
 :root[data-motion='min'][data-theme='light'] .jz-blog-glass.ant-layout,
 :root[data-motion='min'][data-theme='dark'] .jz-admin-glass.ant-layout,

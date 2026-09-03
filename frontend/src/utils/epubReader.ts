@@ -30,6 +30,8 @@ export interface EpubTocEntry {
   id: number | null;
 }
 
+import { TOC_FONT_OPTIONS, type TocFont } from './tocPrefs';
+
 // Generic tree helpers live in ``treeToc.ts`` (shared with the KB directory
 // trees); re-exported so existing imports keep working unchanged.
 export {
@@ -147,13 +149,13 @@ export interface EpubTocPrefs {
   /** Show the estimated page number of each entry. */
   pages: boolean;
   /** Typeface: site UI face, serif, 楷体, 文楷, or whatever the body text uses. */
-  font: 'ui' | 'serif' | 'kai' | 'wenkai' | 'reader';
+  font: TocFont;
   /** Colour scheme: uniform body colour, all muted, or layered (Parts and
    * sections muted, chapters full). */
   color: 'text' | 'muted' | 'layered';
 }
 export const DEFAULT_TOC_PREFS: EpubTocPrefs = { density: 'normal', size: 'm', wrap: false, pages: true, font: 'ui', color: 'text' };
-const TOC_FONTS = new Set(['ui', 'serif', 'kai', 'wenkai', 'reader']);
+const TOC_FONTS = new Set<string>(TOC_FONT_OPTIONS.map((o) => o.key));
 const TOC_COLORS = new Set(['text', 'muted', 'layered']);
 export function repairTocPrefs(p: unknown): EpubTocPrefs {
   const o = (p && typeof p === 'object' ? p : {}) as Partial<EpubTocPrefs>;
@@ -162,7 +164,7 @@ export function repairTocPrefs(p: unknown): EpubTocPrefs {
     size: o.size === 's' || o.size === 'l' ? o.size : 'm',
     wrap: o.wrap === true,
     pages: o.pages !== false,
-    font: typeof o.font === 'string' && TOC_FONTS.has(o.font) ? o.font : 'ui',
+    font: typeof o.font === 'string' && TOC_FONTS.has(o.font) ? (o.font as TocFont) : 'ui',
     color: typeof o.color === 'string' && TOC_COLORS.has(o.color) ? o.color : 'text',
   };
 }

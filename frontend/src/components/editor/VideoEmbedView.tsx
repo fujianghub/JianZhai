@@ -5,6 +5,7 @@ import { Button, Input, Tooltip } from 'antd';
 import { DeleteOutlined, EditOutlined, VideoCameraOutlined } from '@ant-design/icons';
 import { parseVideoUrl } from './VideoEmbed';
 import type { VideoAttrs } from './VideoEmbed';
+import IconButton from '@/components/common/IconButton';
 
 export default function VideoEmbedView({ node, updateAttributes, deleteNode, selected }: NodeViewProps) {
   const { src, platform, videoId, title } = node.attrs as VideoAttrs;
@@ -72,17 +73,13 @@ export default function VideoEmbedView({ node, updateAttributes, deleteNode, sel
           {videoId && <code className="jz-video-id">{videoId}</code>}
           <span style={{ flex: 1 }} />
           <Tooltip title="修改链接">
-            <Button
-              size="small"
-              type="text"
+            <IconButton
               icon={<EditOutlined />}
               onClick={() => { setInputUrl(src); setEditing(true); }}
             />
           </Tooltip>
           <Tooltip title="删除">
-            <Button
-              size="small"
-              type="text"
+            <IconButton
               danger
               icon={<DeleteOutlined />}
               onClick={deleteNode}
