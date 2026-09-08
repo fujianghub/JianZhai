@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   convertBacktickedStyledCode,
+  mapInlineCodeSpans,
+  normalizeBoldWithInteriorParens,
+  unwrapBacktickedEmphasis,
   convertGfmPipeTables,
   normalizeItalicWrappingInlineHtml,
   recoverYuqueDiagramComments,
@@ -675,5 +678,92 @@ describe('rescueSpacePaddedDollarMath', () => {
   it('does not fire mid-line (real row-break \\\\ untouched elsewhere)', () => {
     const src = '价格 $ \\alpha $ 收尾还有字';
     expect(preprocessMarkdown(src)).toContain('$ \\alpha $');
+  });
+});
+
+/**
+ * 2026-09-08 线上 doc 1046（Juniper Route Preference）两条实况：
+ *  (1) 两段行内代码夹一段彩色文本 `` `preference`<span>…</span>`preference` ``
+ *      ——旧 unwrapBacktickedHtml 正则在第 1 个反引号处配不上就跳到第 2 个
+ *      重新起配，把 `` `<span>…</span>` ``（第 2、3 个反引号）当成一对剥掉，
+ *      两段代码与 span 合并进一个 code_inline 转义成字面 ``<span>`` 垃圾；
+ *      允许跨行的变体还把相邻两行的代码段连成一段。
+ *  (2) 表格 ``<span>***A***</span> | <span>***B***</span>``——旧
+ *      normalizeBoldWithInteriorParens 被 ``rgb(51, 51, 51)`` 里的括号命中，
+ *      从 A 的闭合 ``**`` 跨单元格配到 B 的开启 ``**`` 改成 ``<strong>``。
+ */
+describe('mapInlineCodeSpans pairs backticks in CommonMark order', () => {
+  const COLOR = '<span style="color: rgb(77, 82, 89);">';
+
+  it('adjacent code spans with a colored span between stay two chips (doc 1046 L160)', () => {
+    const src = `${COLOR}包含 </span>\`preference\`${COLOR} 该语句。请包含该 </span>\`preference\`${COLOR} 语句。</span>`;
+    const pre = preprocessMarkdown(src);
+    expect(pre).toBe(src);
+    const html = renderMarkdown(src);
+    expect(html.match(/<code>preference<\/code>/g)).toHaveLength(2);
+    expect(html).not.toContain('&lt;span');
+    expect(html).not.toContain('&lt;/span');
+  });
+
+  it('does not pair a backtick with one on a following line (doc 1046 L240/242)', () => {
+    const src = [
+      `- \`external distance-value\`${COLOR} – 指定外部路由的管理距离。</span>`,
+      '',
+      `${COLOR}使用</span>\`no distance ospf\`${COLOR}命令恢复默认值。</span>`,
+    ].join('\n');
+    expect(preprocessMarkdown(src)).toBe(src);
+    const html = renderMarkdown(src);
+    expect(html).toContain('<code>external distance-value</code>');
+    expect(html).toContain('<code>no distance ospf</code>');
+    expect(html).not.toContain('\\`');
+  });
+
+  it('still unwraps a genuinely backticked presentational tag / bold', () => {
+    // ``**<u>y</u>**`` 剥反引号后由下游 normalizeBoldWrappingInlineHtml 转 <strong>。
+    expect(preprocessMarkdown('`<u>x</u>` and `**<u>y</u>**`')).toBe('<u>x</u> and <strong><u>y</u></strong>');
+    expect(unwrapBacktickedEmphasis('`**ORM**` `*x*` `a` `__b__`')).toBe('**ORM** *x* `a` __b__');
+  });
+
+  it('respects backtick run length and leaves unclosed runs literal', () => {
+    const seen: string[] = [];
+    const out = mapInlineCodeSpans('``a`b`` `c` d` e', (body, ticks) => {
+      seen.push(`${ticks}|${body}`);
+      return null;
+    });
+    expect(out).toBe('``a`b`` `c` d` e');
+    expect(seen).toEqual(['``|a`b', '`|c']);
+  });
+
+  it('styled code chips are still converted per span, not across spans', () => {
+    const src = `\`<font style="color:red">a</font>\` x \`<font style="color:red">b</font>\``;
+    expect(convertBacktickedStyledCode(src)).toBe('<code>a</code> x <code>b</code>');
+  });
+});
+
+describe('normalizeBoldWithInteriorParens ignores parens inside tag attributes', () => {
+  const C = '<span style="color: rgb(51, 51, 51);">';
+
+  it('keeps ***A*** | ***B*** table cells independent (doc 1046 L22)', () => {
+    const row = `| ${C}***路由协议或路由种类***</span> | ${C}***相应路由的优先级***</span> |`;
+    expect(normalizeBoldWithInteriorParens(row)).toBe(row);
+    const html = renderMarkdown(`${row}\n| --- | --- |\n| ${C}*DIRECT*</span> | ${C}*0*</span> |`);
+    expect(html).toContain('<th><span style="color: rgb(51, 51, 51);"><em><strong>路由协议或路由种类</strong></em></span></th>');
+    expect(html).toContain('<th><span style="color: rgb(51, 51, 51);"><em><strong>相应路由的优先级</strong></em></span></th>');
+    expect(html).not.toContain('**');
+  });
+
+  it('keeps bold cells with a plain cell between independent (doc 1046 L106)', () => {
+    const row = `| ${C}**如何学习路由**</span> | ${C}默认首选项</span> | ${C}**用于修改默认 优先级的语句**</span> |`;
+    expect(preprocessMarkdown(row)).toBe(row);
+  });
+
+  it('still converts bold text with interior parens, with or without a colour wrapper', () => {
+    expect(normalizeBoldWithInteriorParens('**ORM（对象关系映射）**')).toBe('<strong>ORM（对象关系映射）</strong>');
+    expect(normalizeBoldWithInteriorParens('**<span style="color: rgb(1, 2, 3)">foo (bar)</span>**')).toBe(
+      '<strong><span style="color: rgb(1, 2, 3)">foo (bar)</span></strong>',
+    );
+    expect(normalizeBoldWithInteriorParens('**<span style="color: rgb(1, 2, 3)">plain</span>**')).toBe(
+      '**<span style="color: rgb(1, 2, 3)">plain</span>**',
+    );
   });
 });

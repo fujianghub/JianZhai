@@ -7,6 +7,7 @@ line, breaking the table and opening a runaway container.
 from __future__ import annotations
 
 from apps.exporter.services.markdown_preprocess import (
+    apply_yuque_compat_mode,
     convert_backticked_styled_code,
     normalize_italic_wrapping_inline_html,
     preprocess_markdown,
@@ -237,3 +238,56 @@ def test_italic_twin_never_touches_urls_snake_case_bare_cjk():
 def test_italic_twin_not_inside_fences():
     src = '```\n_<span style="color:red">x</span>_\n```'
     assert preprocess_markdown(src) == src
+
+
+# ── 2026-09-08 doc 1046：反引号顺序配对（镜像前端 mapInlineCodeSpans） ──
+_COLOR = '<span style="color: rgb(77, 82, 89);">'
+
+
+def test_adjacent_code_spans_with_colored_span_between_stay_separate():
+    src = (
+        f"{_COLOR}包含 </span>`preference`{_COLOR} 该语句。请包含该 </span>"
+        f"`preference`{_COLOR} 语句。</span>"
+    )
+    assert apply_yuque_compat_mode(src) == src
+
+
+def test_backticks_never_pair_across_lines():
+    src = (
+        f"- `external distance-value`{_COLOR} – 指定外部路由的管理距离。</span>\n\n"
+        f"{_COLOR}使用</span>`no distance ospf`{_COLOR}命令恢复默认值。</span>"
+    )
+    assert apply_yuque_compat_mode(src) == src
+
+
+def test_backticked_presentational_tag_unwrapped_with_and_without_marker():
+    # 旧版 ``(\*\*|__)?…\1`` 在 Python 里无标记形态永不匹配——现与前端对齐。
+    assert apply_yuque_compat_mode("`<u>x</u>` and `**<u>y</u>**`") == "<u>x</u> and **<u>y</u>**"
+    assert apply_yuque_compat_mode("`**<u>y</u>__`") == "`**<u>y</u>__`"
+
+
+def test_unwrap_backticked_emphasis_per_span():
+    from apps.exporter.services.markdown_preprocess import unwrap_backticked_emphasis
+
+    assert unwrap_backticked_emphasis("`**ORM**` `*x*` `a` `__b__`") == "**ORM** *x* `a` __b__"
+    # 两段代码之间的 ``**…**`` 不再被当成一段反引号内容。
+    assert unwrap_backticked_emphasis("`a`**b**`c`") == "`a`**b**`c`"
+
+
+def test_map_inline_code_spans_run_length_and_unclosed():
+    from apps.exporter.services.markdown_preprocess import _map_inline_code_spans
+
+    seen = []
+
+    def _fn(body, ticks):
+        seen.append(f"{ticks}|{body}")
+        return None
+
+    src = "``a`b`` `c` d` e"
+    assert _map_inline_code_spans(src, _fn) == src
+    assert seen == ["``|a`b", "`|c"]
+
+
+def test_styled_code_chips_converted_per_span():
+    src = '`<font style="color:red">a</font>` x `<font style="color:red">b</font>`'
+    assert convert_backticked_styled_code(src) == "<code>a</code> x <code>b</code>"

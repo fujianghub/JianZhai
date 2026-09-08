@@ -1433,12 +1433,75 @@ function unglueContainerFences(src: string): string {
 const STYLED_CODE_DROP_TAG = /<\/?(?:font|span)\b[^<>`]*>/gi;
 const STYLED_CODE_KEEP_TAG = /<\/?(?:u|mark|kbd|sub|sup)\b[^<>`]*>|<br\s*\/?>/gi;
 
+/**
+ * 按 CommonMark 语义顺序配对行内代码段，对每一段调用 ``fn(body, ticks)``：
+ * 返回字符串即整段（含反引号）替换，返回 ``null`` 原样保留。
+ *
+ * 三个「反引号内 …」兼容函数此前各自用独立正则（`` `<span…>…` `` /
+ * `` `**…**` ``）扫描：正则在某个反引号处配不上就**跳到下一个反引号重新起配**，
+ * 于是 `` `preference`<span>…</span>`preference` `` 这种「两段代码夹一段彩色
+ * 文本」会把中间的 `` `<span>…</span>` ``（第 2、3 个反引号）当成一对剥掉，
+ * 两段代码和 span 标签合并进一个 code_inline 转义成字面 ``<span>`` 垃圾；
+ * 允许跨行的变体还会把相邻两行的代码段连成一段（线上 doc 1046 实况，编辑器
+ * 往返后把破碎结构写回 ``raw_content``）。这里统一按「从左到右、长度 n 的
+ * 反引号串只能由同长度串闭合、不跨行」配对——与 markdown-it 最终的分段一致，
+ * 所以兼容层看到的"段"就是渲染器看到的"段"。镜像后端
+ * ``markdown_preprocess._map_inline_code_spans``，改动须两端同步。
+ */
+export function mapInlineCodeSpans(
+  src: string,
+  fn: (body: string, ticks: string) => string | null,
+): string {
+  if (!src.includes('`')) return src;
+  let out = '';
+  let i = 0;
+  const n = src.length;
+  while (i < n) {
+    const ch = src[i];
+    if (ch !== '`') {
+      out += ch;
+      i++;
+      continue;
+    }
+    let j = i;
+    while (j < n && src[j] === '`') j++;
+    const ticks = src.slice(i, j);
+    const lineEnd = src.indexOf('\n', j);
+    const limit = lineEnd === -1 ? n : lineEnd;
+    let k = j;
+    let close = -1;
+    while (k < limit) {
+      if (src[k] !== '`') {
+        k++;
+        continue;
+      }
+      let m = k;
+      while (m < limit && src[m] === '`') m++;
+      if (m - k === ticks.length) {
+        close = k;
+        break;
+      }
+      k = m;
+    }
+    if (close === -1 || close === j) {
+      out += ticks;
+      i = j;
+      continue;
+    }
+    const body = src.slice(j, close);
+    const replaced = fn(body, ticks);
+    out += replaced ?? `${ticks}${body}${ticks}`;
+    i = close + ticks.length;
+  }
+  return out;
+}
+
 export function convertBacktickedStyledCode(src: string): string {
   if (!src.includes('`')) return src;
-  return src.replace(/`([^`\n]+)`/g, (match, body: string) => {
-    if (!/<(?:font|span)\b/i.test(body)) return match;
+  return mapInlineCodeSpans(src, (body) => {
+    if (!/<(?:font|span)\b/i.test(body)) return null;
     const residue = body.replace(STYLED_CODE_DROP_TAG, '').replace(STYLED_CODE_KEEP_TAG, '');
-    if (/[<>]/.test(residue)) return match;
+    if (/[<>]/.test(residue)) return null;
     let inner = body.replace(STYLED_CODE_DROP_TAG, '');
     inner = inner.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
     inner = inner.replace(/__([^_]+?)__/g, '<strong>$1</strong>');
@@ -1464,13 +1527,17 @@ export function convertBacktickedStyledCode(src: string): string {
  * {@link unwrapBacktickedHtml} so `` `**<font>…</font>**` `` chains cleanly.
  */
 export function unwrapBacktickedEmphasis(src: string): string {
-  let out = src;
-  // **…** and __…__ — symmetric strong markers.
-  out = out.replace(/`(\*\*)([^`]+?)\1`/g, '$1$2$1');
-  out = out.replace(/`(__)([^`]+?)\1`/g, '$1$2$1');
-  // *…* italic — body must not contain * to avoid greedy false positives.
-  out = out.replace(/`(\*)([^*`]+?)\1`/g, '$1$2$1');
-  return out;
+  // 经 mapInlineCodeSpans 顺序配对（勿改回独立正则：正则配不上会跳到下一个
+  // 反引号重新起配，把两段相邻代码之间的 ``**…**`` 误当成一段）。
+  return mapInlineCodeSpans(src, (body) => {
+    // **…** and __…__ — symmetric strong markers.
+    let m = /^(\*\*|__)(.+?)\1$/.exec(body);
+    if (m) return `${m[1]}${m[2]}${m[1]}`;
+    // *…* italic — body must not contain * to avoid greedy false positives.
+    m = /^\*([^*]+?)\*$/.exec(body);
+    if (m) return `*${m[1]}*`;
+    return null;
+  });
 }
 
 /**
@@ -1500,15 +1567,20 @@ function unwrapBacktickedHtml(src: string): string {
   // of <font>, and Yuque exports increasingly include backticked spans too.
   const tags = '(?:font|span|u|mark|kbd|sub|sup|br)';
   // Allow the same marker around both sides (matched via a backreference so
-  // ``**X**`` works but ``**X__`` wouldn't accidentally collapse).
-  const marker = '(\\*\\*|__)?';
-  const closingMarker = '\\1'; // backref to whichever opener matched
+  // ``**X**`` works but ``**X__`` wouldn't accidentally collapse). Body is one
+  // properly paired code span (see mapInlineCodeSpans) — the old free-standing
+  // regex could pair the closing backtick of one code span with the opening
+  // backtick of the next (`` `a`<span>…</span>`b` ``) and even cross lines.
   const re = new RegExp(
-    '`' + marker + '(<' + tags + '\\b[^`<>]*?(?:/>|>[^`]*?</' + tags + '>))' + closingMarker + '`',
-    'gi',
+    '^(\\*\\*|__)?(<' + tags + '\\b[^<>]*?(?:/>|>.*?</' + tags + '>))\\1$',
+    'i',
   );
-  // ``$1`` is the optional bold marker (may be empty); ``$2`` is the tag.
-  return src.replace(re, '$1$2$1');
+  return mapInlineCodeSpans(src, (body) => {
+    const m = re.exec(body);
+    if (!m) return null;
+    const marker = m[1] ?? '';
+    return `${marker}${m[2]}${marker}`;
+  });
 }
 
 /** Yuque inline whitespace inside emphasis (NBSP, ideographic space). */
@@ -1673,10 +1745,34 @@ function normalizeYuqueEmphasis(src: string): string {
  * many such terms — convert to ``<strong>`` HTML (``html: true``).
  */
 export function normalizeBoldWithInteriorParens(src: string): string {
-  return src.replace(
-    /\*\*([^*\n]+?[(\uFF08][^*\n]*?[)\uFF09][^*\n]*?)\*\*/g,
-    '<strong>$1</strong>',
-  );
+  // 括号必须出现在**剥掉标签后的文本**里，且正文里的标签成对配平。旧版直接对
+  // 原文匹配 ``**…(…)…**``，会被 ``style="color: rgb(51, 51, 51)"`` 属性里的
+  // 括号命中：表格 ``<span>***A***</span> | <span>***B***</span>`` 从 A 的闭合
+  // ``**`` 起跨单元格配到 B 的开启 ``**``，整段改成 ``<strong></span> | <span…>
+  // </strong>`` 把两格加粗全撕碎（doc 1046 实况）。
+  return src.replace(/\*\*((?:[^*\n<]|<[^<>\n]*>)+?)\*\*/g, (match, body: string) => {
+    const text = body.replace(/<[^<>\n]*>/g, '');
+    if (!/[^\n][(\uFF08][^\n]*?[)\uFF09]/.test(text)) return match;
+    if (!inlineTagsBalanced(body)) return match;
+    return `<strong>${body}</strong>`;
+  });
+}
+
+/** 正文片段里的 HTML 标签是否成对配平（自闭合与 void 标签忽略）。 */
+function inlineTagsBalanced(fragment: string): boolean {
+  const stack: string[] = [];
+  const re = /<(\/?)([a-zA-Z][\w-]*)(?:\s[^<>]*?)?(\/?)>/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(fragment))) {
+    const name = m[2]!.toLowerCase();
+    if (m[3] === '/' || name === 'br' || name === 'img' || name === 'hr') continue;
+    if (m[1] === '/') {
+      if (stack.pop() !== name) return false;
+    } else {
+      stack.push(name);
+    }
+  }
+  return stack.length === 0;
 }
 
 const YUQUE_INLINE_HTML_TAG = '(?:font|span|u|mark|kbd|sub|sup)';
@@ -1696,8 +1792,14 @@ export function normalizeBoldWrappingInlineHtml(src: string): string {
   );
   out = out.replace(reWhole, '<strong>$1</strong>');
 
+  // 前导文本只允许「纯文本 | 完整成对的标签」（``lead``），禁止以 ``</span>``
+  // 之类的裸闭合标签起头——否则表格里 ``<span>***A***</span> | <span>***B***</span>``
+  // 会从 A 的闭合 ``**`` 起、跨过单元格边界配到 B 的开启 ``**``，改写成
+  // ``<strong></span> | <span></strong>`` 把两个单元格的加粗全撕碎（doc 1046
+  // 实况，隔一格的 ``**A**</span> | <span>x</span> | <span>**B**`` 同样中招）。
+  const lead = `(?:[^*\\n<]|<(?:${tag})\\b[^>]*>[^*\\n<]*</(?:${tag})>)*`;
   const reInner = new RegExp(
-    `\\*\\*([^*\\n]*<(?:${tag})\\b[^>]*>[^*\\n]*)\\*\\*`,
+    `\\*\\*(${lead}<(?:${tag})\\b[^>]*>[^*\\n]*)\\*\\*`,
     'gi',
   );
   out = out.replace(reInner, '<strong>$1</strong>');
@@ -1705,7 +1807,8 @@ export function normalizeBoldWrappingInlineHtml(src: string): string {
   const reWholeAlt = new RegExp(`__(<(${tag})\\b[^>]*>[^_\\n]*?</\\2>)__`, 'gi');
   out = out.replace(reWholeAlt, '<strong>$1</strong>');
 
-  const reInnerAlt = new RegExp(`__([^_\\n]*<(?:${tag})\\b[^>]*>[^_\\n]*)__`, 'gi');
+  const leadAlt = `(?:[^_\\n<]|<(?:${tag})\\b[^>]*>[^_\\n<]*</(?:${tag})>)*`;
+  const reInnerAlt = new RegExp(`__(${leadAlt}<(?:${tag})\\b[^>]*>[^_\\n]*)__`, 'gi');
   out = out.replace(reInnerAlt, '<strong>$1</strong>');
 
   return out;

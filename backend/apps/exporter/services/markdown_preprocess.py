@@ -126,23 +126,74 @@ def unglue_container_fences(src: str) -> str:
 # <strong>、_/* → <em> 保留，残余 markdown 活性字符转 HTML 实体。必须先于
 # unwrap_backticked_emphasis 执行。镜像 frontend
 # ``markdown.ts convertBacktickedStyledCode``，改动须两端同步。
-_STYLED_CODE_SPAN = re.compile(r"`([^`\n]+)`")
 _STYLED_CODE_HAS_COLOR_TAG = re.compile(r"<(?:font|span)\b", re.I)
 _STYLED_CODE_DROP_TAG = re.compile(r"</?(?:font|span)\b[^<>`]*>", re.I)
 _STYLED_CODE_KEEP_TAG = re.compile(r"</?(?:u|mark|kbd|sub|sup)\b[^<>`]*>|<br\s*/?>", re.I)
+
+
+def _map_inline_code_spans(src: str, fn) -> str:
+    """按 CommonMark 语义顺序配对行内代码段，对每段调用 ``fn(body, ticks)``：
+    返回字符串即整段（含反引号）替换，返回 ``None`` 原样保留。
+
+    三个「反引号内 …」兼容函数此前各自用独立正则扫描：正则在某个反引号处配
+    不上就跳到下一个反引号重新起配，``\`preference\`<span>…</span>\`preference\```
+    这种「两段代码夹一段彩色文本」会把中间的 ``\`<span>…</span>\``` 当成一对剥
+    掉，两段代码与 span 合并进一个 code_inline 转义成字面标签垃圾；允许跨行的
+    变体还会把相邻两行的代码段连成一段（线上 doc 1046 实况）。这里统一按
+    「从左到右、长度 n 的反引号串只能由同长度串闭合、不跨行」配对——与
+    markdown-it 最终分段一致。镜像 frontend ``markdown.ts mapInlineCodeSpans``。
+    """
+    if "`" not in src:
+        return src
+    out: list[str] = []
+    i = 0
+    n = len(src)
+    while i < n:
+        ch = src[i]
+        if ch != "`":
+            out.append(ch)
+            i += 1
+            continue
+        j = i
+        while j < n and src[j] == "`":
+            j += 1
+        ticks = src[i:j]
+        line_end = src.find("\n", j)
+        limit = n if line_end == -1 else line_end
+        k = j
+        close = -1
+        while k < limit:
+            if src[k] != "`":
+                k += 1
+                continue
+            m = k
+            while m < limit and src[m] == "`":
+                m += 1
+            if m - k == len(ticks):
+                close = k
+                break
+            k = m
+        if close == -1 or close == j:
+            out.append(ticks)
+            i = j
+            continue
+        body = src[j:close]
+        replaced = fn(body, ticks)
+        out.append(replaced if replaced is not None else f"{ticks}{body}{ticks}")
+        i = close + len(ticks)
+    return "".join(out)
 
 
 def convert_backticked_styled_code(src: str) -> str:
     if "`" not in src:
         return src
 
-    def _repl(m: re.Match) -> str:
-        body = m.group(1)
+    def _repl(body: str, _ticks: str):
         if not _STYLED_CODE_HAS_COLOR_TAG.search(body):
-            return m.group(0)
+            return None
         residue = _STYLED_CODE_KEEP_TAG.sub("", _STYLED_CODE_DROP_TAG.sub("", body))
         if "<" in residue or ">" in residue:
-            return m.group(0)
+            return None
         inner = _STYLED_CODE_DROP_TAG.sub("", body)
         inner = re.sub(r"\*\*([^*]+?)\*\*", r"<strong>\1</strong>", inner)
         inner = re.sub(r"__([^_]+?)__", r"<strong>\1</strong>", inner)
@@ -157,26 +208,49 @@ def convert_backticked_styled_code(src: str) -> str:
         )
         return f"<code>{inner}</code>"
 
-    return _STYLED_CODE_SPAN.sub(_repl, src)
+    return _map_inline_code_spans(src, _repl)
+
+
+_BACKTICKED_STRONG = re.compile(r"^(\*\*|__)(.+?)\1$")
+_BACKTICKED_ITALIC = re.compile(r"^\*([^*]+?)\*$")
 
 
 def unwrap_backticked_emphasis(src: str) -> str:
-    out = src
-    out = re.sub(r"`(\*\*)([^`]+?)\1`", r"\1\2\1", out)
-    out = re.sub(r"`(__)([^`]+?)\1`", r"\1\2\1", out)
-    out = re.sub(r"`(\*)([^*`]+?)\1`", r"\1\2\1", out)
-    return out
+    # 经 _map_inline_code_spans 顺序配对（勿改回独立正则，见其 docstring）。
+    def _repl(body: str, _ticks: str):
+        m = _BACKTICKED_STRONG.match(body)
+        if m:
+            return f"{m.group(1)}{m.group(2)}{m.group(1)}"
+        m = _BACKTICKED_ITALIC.match(body)
+        if m:
+            return f"*{m.group(1)}*"
+        return None
+
+    return _map_inline_code_spans(src, _repl)
+
+
+_BACKTICKED_HTML_TAGS = r"(?:font|span|u|mark|kbd|sub|sup|br)"
+# 注意：Python ``re`` 对未参与匹配的分组回引 ``\1`` 直接判失败（JS 视为空串），
+# 旧版把可选 ``(\*\*|__)?`` 与 ``\1`` 写在一条正则里，无标记形态在后端从未生效
+# ——这里显式处理标记，与前端行为真正对齐。
+_BACKTICKED_HTML_BODY = re.compile(
+    r"^(\*\*|__)?(<" + _BACKTICKED_HTML_TAGS + r"\b[^<>]*?(?:/>|>.*?</"
+    + _BACKTICKED_HTML_TAGS + r">))(\*\*|__)?$",
+    re.I,
+)
 
 
 def unwrap_backticked_html(src: str) -> str:
-    tags = r"(?:font|span|u|mark|kbd|sub|sup|br)"
-    marker = r"(\*\*|__)?"
-    closing = r"\1"
-    pattern = (
-        r"`" + marker + r"(<" + tags + r"\b[^`<>]*?(?:/>|>[^`]*?</" + tags + r">))"
-        + closing + r"`"
-    )
-    return re.sub(pattern, r"\1\2\1", src, flags=re.I)
+    def _repl(body: str, _ticks: str):
+        m = _BACKTICKED_HTML_BODY.match(body)
+        if not m:
+            return None
+        opener, tag, closer = m.group(1) or "", m.group(2), m.group(3) or ""
+        if opener != closer:
+            return None
+        return f"{opener}{tag}{opener}"
+
+    return _map_inline_code_spans(src, _repl)
 
 
 # LaTeX 反斜杠定界符 → 美元定界符归一化。
