@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { PublicFolder, PublicKB, PublicPost } from '@/types';
-import { flattenKbTree, groupKbsByCategory, repairKbListPrefs } from './kbToc';
+import { flattenKbTree, groupKbsByCategory } from './kbToc';
 
 const doc = (id: number, title: string): PublicPost => ({ id, title, slug: `d${id}` } as PublicPost);
 const folder = (id: number, name: string, documents: PublicPost[] = [], children: PublicFolder[] = []): PublicFolder =>
@@ -40,19 +40,5 @@ describe('groupKbsByCategory', () => {
       ['网络', ['x', 'w']],
       [null, ['y']],
     ]);
-  });
-});
-
-describe('repairKbListPrefs', () => {
-  it('falls back field-by-field and keeps switches', () => {
-    expect(repairKbListPrefs({ density: 'loose', color: 'muted', grouped: false, font: 'bogus' })).toEqual({
-      density: 'loose',
-      size: 'm',
-      font: 'ui',
-      color: 'muted',
-      counts: true,
-      grouped: false,
-    });
-    expect(repairKbListPrefs(undefined).grouped).toBe(true);
   });
 });

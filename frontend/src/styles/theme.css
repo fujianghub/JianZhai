@@ -5057,6 +5057,96 @@ a.jz-meta-full-edit-btn:focus-visible {
   border: 1px solid color-mix(in srgb, var(--jz-accent) 22%, transparent);
 }
 .jz-toc-admin-stamp { font-size: var(--jz-fs-xs); }
+/* 类型切换（2026-09-08：大类知识库目录 / 知识库文档目录 / 文档内容目录） */
+.jz-toc-admin-scopes {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0 0 18px;
+}
+@media (max-width: 760px) {
+  .jz-toc-admin-scopes { grid-template-columns: minmax(0, 1fr); }
+}
+.jz-toc-admin-scope-tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  padding: 12px 14px;
+  text-align: left;
+  cursor: pointer;
+  border-radius: var(--glass-radius, 14px);
+  background: var(--glass-surface, var(--jz-surface));
+  border: 1px solid var(--glass-border, var(--jz-border));
+  color: var(--jz-text);
+  font: inherit;
+  transition:
+    border-color var(--jz-dur-fast) var(--jz-ease-standard),
+    background-color var(--jz-dur-fast) var(--jz-ease-standard),
+    box-shadow var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-toc-admin-scope-tab:hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 40%, var(--glass-border, var(--jz-border)));
+  background: var(--jz-hover-bg);
+}
+.jz-toc-admin-scope-tab:focus-visible {
+  outline: none;
+  box-shadow: var(--jz-focus-ring);
+}
+.jz-toc-admin-scope-tab.is-on {
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, transparent);
+  background: color-mix(in srgb, var(--jz-accent) 9%, var(--glass-surface, var(--jz-surface)));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--jz-accent) 35%, transparent);
+}
+.jz-toc-admin-scope-idx {
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  font-family: var(--jz-font-serif);
+  font-size: var(--jz-fs-sm);
+  font-weight: 600;
+  color: var(--jz-text-muted);
+  background: color-mix(in srgb, var(--jz-text) 6%, transparent);
+}
+.jz-toc-admin-scope-tab.is-on .jz-toc-admin-scope-idx {
+  color: var(--jz-on-accent, #fff);
+  background: var(--jz-accent);
+}
+.jz-toc-admin-scope-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.jz-toc-admin-scope-text b {
+  font-family: var(--jz-font-serif);
+  font-size: var(--jz-fs-md);
+  font-weight: 600;
+  letter-spacing: var(--jz-ls-sm);
+  white-space: nowrap;
+}
+.jz-toc-admin-scope-text small {
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  font-size: var(--jz-fs-2xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-toc-admin-scope-state {
+  flex: 0 0 auto;
+  font-size: var(--jz-fs-2xs);
+  color: var(--glass-text-muted, var(--jz-text-muted));
+  font-variant-numeric: tabular-nums;
+}
+.jz-toc-admin-scope-tab.is-dirty .jz-toc-admin-scope-state { color: var(--jz-gold); font-weight: 600; }
+.jz-toc-admin-card-head .jz-toc-admin-spread { margin-left: auto; padding: 0; flex: 0 0 auto; }
+/* KB list preview reuses the rail's .jz-kb-nav-kbs rules (reader.css). */
+.jz-toc-preview.jz-kb-nav-kbs .jz-kb-nav-kb-item { cursor: default; }
+:root[data-motion='min'] .jz-toc-admin-scope-tab { transition: none; }
 .jz-toc-admin-loading { padding: 48px; text-align: center; }
 .jz-toc-admin-grid {
   display: grid;

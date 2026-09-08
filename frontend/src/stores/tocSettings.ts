@@ -1,50 +1,52 @@
 /**
- * Site 目录 defaults (server) + the ``useTocPrefs`` hook that merges a
- * surface's local overrides on top. Fetched once per page load; a failed
- * fetch (offline, anonymous on a gated site) leaves the code defaults.
+ * Site 目录 defaults (server, one prefs blob per scope) + the ``useTocPrefs``
+ * hook that merges a surface's local overrides on top. Fetched once per page
+ * load; a failed fetch (offline, anonymous on a gated site) leaves the code
+ * defaults.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { create } from 'zustand';
 import { getPublicTocSettings } from '@/api/tocSettings';
 import {
-  DEFAULT_TOC_PREFS,
+  DEFAULT_TOC_SITE,
   loadTocOverrides,
-  repairTocPrefs,
+  repairTocSite,
   saveTocOverrides,
   type TocPrefs,
   type TocScope,
+  type TocSiteDefaults,
 } from '@/utils/tocPrefs';
 
 interface TocSettingsState {
-  defaults: TocPrefs;
+  defaults: TocSiteDefaults;
   status: 'idle' | 'loading' | 'ready' | 'error';
   load: () => void;
   /** Called by the admin page after a successful save so the same session
    * sees the new defaults without a reload. */
-  setDefaults: (prefs: TocPrefs) => void;
+  setDefaults: (site: unknown) => void;
 }
 
 let inflight: Promise<void> | null = null;
 
 export const useTocSettingsStore = create<TocSettingsState>((set, get) => ({
-  defaults: DEFAULT_TOC_PREFS,
+  defaults: DEFAULT_TOC_SITE,
   status: 'idle',
   load: () => {
     if (get().status !== 'idle' || inflight) return;
     set({ status: 'loading' });
     inflight = getPublicTocSettings()
-      .then((res) => set({ defaults: repairTocPrefs(res.prefs), status: 'ready' }))
+      .then((res) => set({ defaults: repairTocSite(res.prefs), status: 'ready' }))
       .catch(() => set({ status: 'error' }))
       .finally(() => {
         inflight = null;
       });
   },
-  setDefaults: (prefs) => set({ defaults: repairTocPrefs(prefs), status: 'ready' }),
+  setDefaults: (site) => set({ defaults: repairTocSite(site), status: 'ready' }),
 }));
 
 export interface TocPrefsApi {
   prefs: TocPrefs;
-  /** Site defaults (for「跟随站点设置」comparisons). */
+  /** This scope's site defaults (for「跟随站点设置」comparisons). */
   defaults: TocPrefs;
   update: (patch: Partial<TocPrefs>) => void;
   /** Drop every local override → follow the site defaults again. */
@@ -53,7 +55,7 @@ export interface TocPrefsApi {
 }
 
 export function useTocPrefs(scope: TocScope): TocPrefsApi {
-  const defaults = useTocSettingsStore((s) => s.defaults);
+  const defaults = useTocSettingsStore((s) => s.defaults[scope]);
   const load = useTocSettingsStore((s) => s.load);
   useEffect(() => {
     load();

@@ -1,12 +1,9 @@
 /**
  * Knowledge-base directory helpers for the blog side (2026-09-02, 批次 B):
  * flattening the public KB tree into the shared dot-path shape the tree
- * helpers in ``treeToc.ts`` operate on, the TOC presentation prefs (same
- * knobs as the EPUB sidebar: density / size / font / colour / wrap / counts),
- * per-KB fold state for the landing page's folder sections, and grouping the
+ * helpers in ``treeToc.ts`` operate on, per-KB fold state for the landing page's folder sections, and grouping the
  * KB list by 大类 (category).
  */
-import { TOC_FONT_OPTIONS, type TocFont } from './tocPrefs';
 import type { PublicFolder, PublicKB, PublicPost } from '@/types';
 
 export interface KbTocEntry {
@@ -59,65 +56,9 @@ export function flattenKbTree(folders: PublicFolder[], rootDocuments: PublicPost
   return out;
 }
 
-/* TOC presentation prefs moved to ``utils/tocPrefs.ts`` (shared with the
-   article rail + EPUB sidebar; site defaults from /admin/toc). */
-
-const TOC_FONT_KEYS = new Set<string>(TOC_FONT_OPTIONS.map((o) => o.key));
-
-/* ── KB *list* presentation prefs (the rail's 知识库 section) ──────────── */
-
-export interface KbListPrefs {
-  density: 'compact' | 'normal' | 'loose';
-  size: 's' | 'm' | 'l';
-  /** Shared TOC font list (utils/tocPrefs.ts). */
-  font: TocFont;
-  color: 'text' | 'muted';
-  /** Show the per-KB post count badge. */
-  counts: boolean;
-  /** Group the list by 大类 (off = one flat alphabetical list). */
-  grouped: boolean;
-}
-
-export const DEFAULT_KB_LIST_PREFS: KbListPrefs = {
-  density: 'normal',
-  size: 'm',
-  font: 'ui',
-  color: 'text',
-  counts: true,
-  grouped: true,
-};
-
-const KB_LIST_PREFS_KEY = 'jz-kb-list-prefs:v1';
-
-export function repairKbListPrefs(p: unknown): KbListPrefs {
-  const o = (p && typeof p === 'object' ? p : {}) as Partial<KbListPrefs>;
-  return {
-    density: o.density === 'compact' || o.density === 'loose' ? o.density : 'normal',
-    size: o.size === 's' || o.size === 'l' ? o.size : 'm',
-    font: typeof o.font === 'string' && TOC_FONT_KEYS.has(o.font) ? (o.font as TocFont) : 'ui',
-    color: o.color === 'muted' ? 'muted' : 'text',
-    counts: o.counts !== false,
-    grouped: o.grouped !== false,
-  };
-}
-
-export function loadKbListPrefs(): KbListPrefs {
-  try {
-    const raw = localStorage.getItem(KB_LIST_PREFS_KEY);
-    return repairKbListPrefs(raw ? JSON.parse(raw) : null);
-  } catch {
-    return { ...DEFAULT_KB_LIST_PREFS };
-  }
-}
-
-/** Written only on explicit settings changes (frozen-default trap). */
-export function saveKbListPrefs(p: KbListPrefs): void {
-  try {
-    localStorage.setItem(KB_LIST_PREFS_KEY, JSON.stringify(p));
-  } catch {
-    /* ignore */
-  }
-}
+/* TOC presentation prefs (KB tree = scope ``kb``, the rail's 知识库 list =
+   scope ``kblist``) live in ``utils/tocPrefs.ts`` — site defaults from
+   /admin/toc + local overrides via ``useTocPrefs(scope)``. */
 
 /* ── Landing-page folder-section folds (per KB) ────────────────────────── */
 

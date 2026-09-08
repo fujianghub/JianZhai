@@ -1,6 +1,8 @@
 /**
  * 目录设置 — the one settings form for every TOC surface (article right
- * rail, PDF outline, KB tree, EPUB sidebar) and the admin defaults page.
+ * rail, PDF outline, KB tree, the rail's KB list, EPUB sidebar) and the
+ * admin defaults page; ``TOC_SCOPE_META[scope].features`` says which rows a
+ * scope shows.
  *
  * ``TocPrefsControls`` is the bare form (Segmented rows + switches);
  * ``TocSettingsPopover`` wraps it in the gear button used inside the rails
@@ -13,11 +15,15 @@ import { TOC_FONT_OPTIONS, type TocDepth, type TocFont, type TocPrefs } from '@/
 import IconButton from '@/components/common/IconButton';
 
 export interface TocPrefsFeatures {
-  /** KB tree: doc-count badges. */
+  /** KB tree / KB list: count badges. */
   counts?: boolean;
   /** Article TOC: heading depth + numbering. */
   depth?: boolean;
   numbers?: boolean;
+  /** KB list: 大类 grouping switch. */
+  grouped?: boolean;
+  /** Offer the「分层」colour scheme (default true; flat lists hide it). */
+  colorLayered?: boolean;
   /** EPUB: estimated page numbers (owned by the EPUB prefs blob). */
   pages?: boolean;
   /** Caption for the `reader` font option's preview span. */
@@ -127,7 +133,7 @@ export function TocPrefsControls({ prefs, onChange, features = {}, extra }: Cont
           options={[
             { label: '正文色', value: 'text', title: '所有层级同正文色' },
             { label: '淡显', value: 'muted', title: '全部淡色，当前项高亮' },
-            { label: '分层', value: 'layered', title: '上层淡显，下层正文色' },
+            ...(features.colorLayered === false ? [] : [{ label: '分层', value: 'layered', title: '上层淡显，下层正文色' }]),
           ]}
         />
       </div>
@@ -157,6 +163,12 @@ export function TocPrefsControls({ prefs, onChange, features = {}, extra }: Cont
           <label>
             <span>显示章节编号</span>
             <Switch size="small" checked={prefs.numbers} onChange={(v) => onChange({ numbers: v })} />
+          </label>
+        )}
+        {features.grouped && (
+          <label>
+            <span>大类分组</span>
+            <Switch size="small" checked={prefs.grouped} onChange={(v) => onChange({ grouped: v })} />
           </label>
         )}
         {features.counts && (

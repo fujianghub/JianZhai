@@ -284,8 +284,12 @@ class HeroSettings(models.Model):
 
 
 # ── Global TOC (目录) presentation defaults ──────────────────────────────
-# Keys mirror the frontend ``TocPrefs`` shape (utils/tocPrefs.ts). Readers can
-# still override any key locally; the server value is the site-wide default.
+# One prefs dict per surface ("scope"): the blog rail's 大类/知识库 list
+# (``kblist``), a knowledge base's document tree (``kb``) and an article's
+# heading outline (``article``; MD / Docx / PDF). Keys mirror the frontend
+# ``TocPrefs`` shape (utils/tocPrefs.ts). Readers can still override any key
+# locally; the server value is the site-wide default for that surface.
+TOC_SCOPES = ("kblist", "kb", "article")
 TOC_PREF_CHOICES: dict[str, tuple] = {
     "density": ("compact", "normal", "loose"),
     "size": ("s", "m", "l"),
@@ -295,22 +299,31 @@ TOC_PREF_CHOICES: dict[str, tuple] = {
     # Heading depth shown in article TOCs; 6 = every level.
     "depth": (2, 3, 4, 6),
 }
-TOC_PREF_BOOLS = ("wrap", "counts", "numbers")
+# wrap: long titles wrap · counts: KB tree / KB list count badges ·
+# numbers: article chapter numbering prefix · grouped: KB list grouped by 大类.
+TOC_PREF_BOOLS = ("wrap", "counts", "numbers", "grouped")
+# Factory defaults (2026-09-08): 紧凑 / 中 / 细 / 宋体 / 淡显 for every surface.
 DEFAULT_TOC_PREFS: dict = {
-    "density": "normal",
+    "density": "compact",
     "size": "m",
-    "font": "ui",
-    "color": "text",
-    "weight": "normal",
+    "font": "serif",
+    "color": "muted",
+    "weight": "light",
     "depth": 6,
     "wrap": False,
     "counts": True,
     "numbers": True,
+    "grouped": True,
 }
 
 
+def default_toc_site() -> dict:
+    """Fresh ``{scope: prefs}`` factory blob (each scope its own copy)."""
+    return {scope: dict(DEFAULT_TOC_PREFS) for scope in TOC_SCOPES}
+
+
 def repair_toc_prefs(raw) -> dict:
-    """Coerce any stored/incoming blob to a full, valid prefs dict (invalid or
+    """Coerce one scope's blob to a full, valid prefs dict (invalid or
     missing keys fall back to ``DEFAULT_TOC_PREFS``). Mirrors the frontend
     ``repairTocPrefs`` so both ends agree on what a valid blob looks like."""
     src = raw if isinstance(raw, dict) else {}
@@ -331,14 +344,32 @@ def repair_toc_prefs(raw) -> dict:
     return out
 
 
+def is_legacy_flat_toc(raw) -> bool:
+    """Pre-``accounts 0010`` rows stored ONE flat prefs dict for every
+    surface (``{"density": …}``) instead of ``{scope: prefs}``."""
+    return isinstance(raw, dict) and bool(raw) and not any(scope in raw for scope in TOC_SCOPES)
+
+
+def repair_toc_site(raw) -> dict:
+    """Coerce the stored/incoming blob to a full ``{scope: prefs}`` dict. A
+    legacy flat blob is spread to every scope (what it effectively meant).
+    Mirrors the frontend ``repairTocSite``."""
+    if is_legacy_flat_toc(raw):
+        flat = repair_toc_prefs(raw)
+        return {scope: dict(flat) for scope in TOC_SCOPES}
+    src = raw if isinstance(raw, dict) else {}
+    return {scope: repair_toc_prefs(src.get(scope)) for scope in TOC_SCOPES}
+
+
 class TocSettings(models.Model):
-    """Singleton row (pk forced to 1) holding the site-wide 目录 defaults —
-    article right rail (MD / Docx / PDF) and the KB directory tree.
+    """Singleton row (pk forced to 1) holding the site-wide 目录 defaults,
+    one prefs dict per surface (``TOC_SCOPES``): the rail's 大类/知识库 list,
+    the KB document tree and the article outline (MD / Docx / PDF).
 
     Managed from ``/admin/toc``; readers merge their own local overrides on
     top of the public shape served by ``/api/v1/public/toc-settings/``."""
 
-    prefs = models.JSONField(default=dict, blank=True, help_text="目录展示默认值（见 DEFAULT_TOC_PREFS）。")
+    prefs = models.JSONField(default=dict, blank=True, help_text="目录展示默认值，按类型分三份（见 TOC_SCOPES / DEFAULT_TOC_PREFS）。")
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -348,12 +379,12 @@ class TocSettings(models.Model):
     def __str__(self) -> str:
         return "目录设置"
 
-    PUBLIC_CACHE_KEY = "toc:public:v1"
+    PUBLIC_CACHE_KEY = "toc:public:v2"
     PUBLIC_CACHE_TTL = 300
 
     def save(self, *args, **kwargs) -> None:
         self.pk = 1
-        self.prefs = repair_toc_prefs(self.prefs)
+        self.prefs = repair_toc_site(self.prefs)
         super().save(*args, **kwargs)
         from django.core.cache import cache
 
@@ -361,5 +392,8 @@ class TocSettings(models.Model):
 
     @classmethod
     def load(cls) -> "TocSettings":
-        obj, _ = cls.objects.get_or_create(pk=1, defaults={"prefs": dict(DEFAULT_TOC_PREFS)})
+        obj, _ = cls.objects.get_or_create(pk=1, defaults={"prefs": default_toc_site()})
+        # Normalise in memory (rows migrated from the flat shape lack newer
+        # keys); persisted on the next save().
+        obj.prefs = repair_toc_site(obj.prefs)
         return obj

@@ -1,16 +1,21 @@
-/** Site-wide 目录 defaults — see ``utils/tocPrefs.ts`` for the shape. */
+/** Site-wide 目录 defaults, one prefs blob per scope — see ``utils/tocPrefs.ts``. */
 import { apiClient, ensureCsrf } from './client';
-import type { TocPrefs } from '@/utils/tocPrefs';
+import type { TocPrefs, TocScope, TocSiteDefaults } from '@/utils/tocPrefs';
 
 export interface TocSettingsPublic {
-  prefs: TocPrefs;
+  prefs: TocSiteDefaults;
 }
 
 export interface TocSettingsAdmin extends TocSettingsPublic {
-  /** Factory defaults (what「恢复出厂」restores). */
-  defaults: TocPrefs;
+  /** Factory defaults per scope (what「恢复出厂」restores). */
+  defaults: TocSiteDefaults;
+  scopes: TocScope[];
   updated_at: string | null;
 }
+
+/** ``{scope: subset}`` for any scopes (others untouched), or a reset of
+ * every scope (``true``) / one scope. */
+export type TocSettingsPatch = Partial<Record<TocScope, Partial<TocPrefs>>> | { reset: true | TocScope };
 
 /** Reader-facing (login-gated like every /public/* route). */
 export async function getPublicTocSettings(): Promise<TocSettingsPublic> {
@@ -23,8 +28,8 @@ export async function getTocSettings(): Promise<TocSettingsAdmin> {
   return data;
 }
 
-/** Staff-only. Any subset of TocPrefs, or ``{reset: true}``. */
-export async function patchTocSettings(patch: Partial<TocPrefs> | { reset: true }): Promise<TocSettingsAdmin> {
+/** Staff-only. */
+export async function patchTocSettings(patch: TocSettingsPatch): Promise<TocSettingsAdmin> {
   await ensureCsrf();
   const { data } = await apiClient.patch<TocSettingsAdmin>('/auth/toc/', patch);
   return data;

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Popover, Segmented, Select, Spin, Switch, Tooltip, Typography } from 'antd';
-import { CloseOutlined, SettingOutlined } from '@ant-design/icons';
+import { Select, Spin, Tooltip, Typography } from 'antd';
+import { CloseOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
 import { burstAtPointer } from '@/utils/inkBurst';
 import * as kbsApi from '@/api/kbs';
@@ -9,10 +9,11 @@ import * as docsApi from '@/api/docs';
 import { formatApiError } from '@/api/client';
 import type { DocSortMode, PublicKB, PublicKBTree, PublicPost } from '@/types';
 import { useAuthStore } from '@/stores/auth';
-import { groupKbsByCategory, loadKbListPrefs, saveKbListPrefs, type KbListPrefs } from '@/utils/kbToc';
+import { groupKbsByCategory } from '@/utils/kbToc';
 import PublicKbFolderTree from './PublicKbFolderTree';
-import { TocFontSelect } from './TocSettingsPopover';
-import { tocFontFamily } from '@/utils/tocPrefs';
+import TocSettingsPopover from './TocSettingsPopover';
+import { useTocPrefs } from '@/stores/tocSettings';
+import { TOC_SCOPE_META, tocFontFamily } from '@/utils/tocPrefs';
 import IconButton from '@/components/common/IconButton';
 import JzEmpty from '@/components/common/JzEmpty';
 
@@ -48,16 +49,10 @@ export default function BlogKbNavPanel({
 }: Props) {
   const sessionUser = useAuthStore((s) => s.user);
   const [kbs, setKbs] = useState<PublicKB[] | null>(null);
-  /** 知识库 list presentation (间距/字号/字体/颜色/篇数/大类分组) — its own
-   * 目录设置 popover, persisted only on explicit changes. */
-  const [listPrefs, setListPrefs] = useState<KbListPrefs>(() => loadKbListPrefs());
-  const updateListPrefs = (patch: Partial<KbListPrefs>) => {
-    setListPrefs((p) => {
-      const next = { ...p, ...patch };
-      saveKbListPrefs(next);
-      return next;
-    });
-  };
+  /** 知识库 list presentation (间距/字号/字重/字体/颜色/换行/篇数/大类分组) —
+   * scope ``kblist``: site defaults from /admin/toc + this device's overrides
+   * (written only on explicit changes). */
+  const { prefs: listPrefs, update: updateListPrefs, reset: resetListPrefs, overridden: listOverridden } = useTocPrefs('kblist');
   const [localTree, setLocalTree] = useState<PublicKBTree | null>(null);
 
   const tree = controlledTree !== undefined ? controlledTree : localTree;
@@ -209,6 +204,8 @@ export default function BlogKbNavPanel({
             data-size={listPrefs.size}
             data-font={listPrefs.font}
             data-color={listPrefs.color}
+            data-weight={listPrefs.weight}
+            data-wrap={listPrefs.wrap ? 'on' : 'off'}
             data-counts={listPrefs.counts ? 'on' : 'off'}
             style={{ ['--jz-font-toc' as string]: tocFontFamily(listPrefs.font) } as React.CSSProperties}
           >
@@ -216,73 +213,14 @@ export default function BlogKbNavPanel({
               <h3 id="jz-kb-nav-kb-list-title" className="jz-kb-nav-section-title">
                 知识库
               </h3>
-              <Popover
-                trigger="click"
-                placement="bottomRight"
-                content={
-                  <div className="jz-reader-layout-pop jz-epub-toc-settings" style={{ width: 232 }}>
-                    <div className="jz-rl-section">
-                      <div className="jz-rl-label">间距</div>
-                      <Segmented
-                        block
-                        size="small"
-                        value={listPrefs.density}
-                        onChange={(v) => updateListPrefs({ density: v as KbListPrefs['density'] })}
-                        options={[
-                          { label: '紧凑', value: 'compact' },
-                          { label: '标准', value: 'normal' },
-                          { label: '宽松', value: 'loose' },
-                        ]}
-                      />
-                    </div>
-                    <div className="jz-rl-section">
-                      <div className="jz-rl-label">字号</div>
-                      <Segmented
-                        block
-                        size="small"
-                        value={listPrefs.size}
-                        onChange={(v) => updateListPrefs({ size: v as KbListPrefs['size'] })}
-                        options={[
-                          { label: '小', value: 's' },
-                          { label: '中', value: 'm' },
-                          { label: '大', value: 'l' },
-                        ]}
-                      />
-                    </div>
-                    <div className="jz-rl-section">
-                      <div className="jz-rl-label">字体</div>
-                      <TocFontSelect value={listPrefs.font} onChange={(font) => updateListPrefs({ font })} />
-                    </div>
-                    <div className="jz-rl-section">
-                      <div className="jz-rl-label">颜色</div>
-                      <Segmented
-                        block
-                        size="small"
-                        value={listPrefs.color}
-                        onChange={(v) => updateListPrefs({ color: v as KbListPrefs['color'] })}
-                        options={[
-                          { label: '正文色', value: 'text', title: '库名用正文色' },
-                          { label: '淡显', value: 'muted', title: '全部淡色，当前库高亮' },
-                        ]}
-                      />
-                    </div>
-                    <div className="jz-rl-section jz-epub-toc-switches">
-                      <label>
-                        <span>大类分组</span>
-                        <Switch size="small" checked={listPrefs.grouped} onChange={(v) => updateListPrefs({ grouped: v })} />
-                      </label>
-                      <label>
-                        <span>显示篇数</span>
-                        <Switch size="small" checked={listPrefs.counts} onChange={(v) => updateListPrefs({ counts: v })} />
-                      </label>
-                    </div>
-                  </div>
-                }
-              >
-                <Tooltip title="列表设置：间距 / 字号 / 字体 / 颜色 / 分组 / 篇数">
-                  <IconButton className="jz-epub-toc-tool" icon={<SettingOutlined />} aria-label="知识库列表设置" />
-                </Tooltip>
-              </Popover>
+              <TocSettingsPopover
+                prefs={listPrefs}
+                onChange={updateListPrefs}
+                features={TOC_SCOPE_META.kblist.features}
+                onReset={resetListPrefs}
+                overridden={listOverridden}
+                tooltip="列表设置：间距 / 字号 / 字重 / 字体 / 颜色 / 换行 / 分组 / 篇数"
+              />
             </div>
             <ul className="jz-kb-nav-kb-list">
               {/* 大类分组（`/public/kbs/` 自带 category，纯前端）——组头小字 +
