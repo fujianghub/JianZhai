@@ -11,7 +11,8 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { Button, Dropdown, Segmented, Space, Spin, Switch, Tooltip, Typography } from 'antd';
-import { CheckOutlined, DownOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import { CheckOutlined, ReloadOutlined, SaveOutlined } from '@ant-design/icons';
+import Chevron from '../../components/common/Chevron';
 import AdminPageHeader from '@/components/admin/AdminPageHeader';
 import { JzTocIcon } from '@/components/common/JzIconKit';
 import Disclosure from '@/components/common/Disclosure';
@@ -316,7 +317,7 @@ export default function TocSettingsPage() {
               }}
             >
               <Button icon={<ReloadOutlined />} disabled={!canEdit || allFactory} loading={busy}>
-                恢复出厂默认 <DownOutlined style={{ fontSize: 10 }} />
+                恢复出厂默认 <Chevron direction="down" size={12} className="jz-btn-caret" />
               </Button>
             </Dropdown>
             <Button type="primary" icon={dirty ? <SaveOutlined /> : <CheckOutlined />} onClick={save} disabled={!canEdit || !dirty} loading={busy}>

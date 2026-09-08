@@ -1,9 +1,9 @@
 import { Dropdown } from 'antd';
+import Chevron from './Chevron';
 import type { MenuProps } from 'antd';
 import {
   CheckOutlined,
   ClockCircleOutlined,
-  DownOutlined,
   MoonOutlined,
   StarOutlined,
   SunOutlined,
@@ -151,7 +151,7 @@ export default function ThemeSwitcher() {
           {current.icon}
         </span>
         <span className="jz-theme-switch__txt">主题</span>
-        <DownOutlined className="jz-theme-switch__caret" />
+        <Chevron direction="down" size={12} className="jz-theme-switch__caret" />
       </button>
     </Dropdown>
   );

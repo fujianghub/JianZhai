@@ -12,6 +12,7 @@
  * freely and see multiple pages at once when zoomed out.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Chevron from './Chevron';
 import { Alert, Button, Drawer, Input, Modal, Progress, Space, Spin, Tooltip, Typography } from 'antd';
 import {
   BookFilled,
@@ -21,8 +22,6 @@ import {
   DownloadOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
-  LeftOutlined,
-  RightOutlined,
   SearchOutlined,
   UnorderedListOutlined,
   ZoomInOutlined,
@@ -1071,7 +1070,7 @@ export default function PdfCanvas({
         )}
         <Button
           size="small"
-          icon={<LeftOutlined />}
+          icon={<Chevron direction="left" />}
           aria-label="上一页"
           title="上一页"
           disabled={page <= 1}
@@ -1082,7 +1081,7 @@ export default function PdfCanvas({
         </Typography.Text>
         <Button
           size="small"
-          icon={<RightOutlined />}
+          icon={<Chevron direction="right" />}
           aria-label="下一页"
           title="下一页"
           disabled={page >= pageCount}

@@ -11,6 +11,7 @@ import {
   type CodeBlockPrefs,
 } from './codeBlockPrefs';
 import { kbdHtml } from '@/shortcuts/format';
+import { actionIconSvg } from './actionIconSvg';
 
 let openPanel: HTMLElement | null = null;
 let openAnchor: HTMLElement | null = null;
@@ -35,7 +36,7 @@ if (typeof document !== 'undefined') {
 function submenu(label: string, inner: string): string {
   return (
     `<div class="jz-code-settings-submenu">` +
-    `<div class="jz-code-settings-item jz-code-settings-submenu-trigger"><span>${label}</span><span class="jz-code-settings-chevron">›</span></div>` +
+    `<div class="jz-code-settings-item jz-code-settings-submenu-trigger"><span>${label}</span><span class="jz-code-settings-chevron">${actionIconSvg('chevron-right', { size: 12, strokeWidth: 2 })}</span></div>` +
     `<div class="jz-code-settings-sub">${inner}</div>` +
     `</div>`
   );

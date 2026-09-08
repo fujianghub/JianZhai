@@ -10,7 +10,7 @@ import {
 } from 'react';
 import type { AdjacentPosts, RelatedPost } from '@/api/blog';
 import { Alert, Breadcrumb, Button, Drawer, Result, Spin, Tag, Tooltip, Typography } from 'antd';
-import { LeftOutlined, RightOutlined } from '@ant-design/icons';
+import Chevron from '../../components/common/Chevron';
 import { isAxiosError } from 'axios';
 import { useParams, useSearchParams } from 'react-router-dom';
 import TransitionLink from '@/components/common/TransitionLink';
@@ -1161,7 +1161,7 @@ export default function PostDetail() {
                     className="jz-post-nav-card jz-post-nav-card--prev"
                   >
                     <span className="jz-post-nav-dir">
-                      <span className="jz-post-nav-arrow"><LeftOutlined /></span> 上一篇
+                      <span className="jz-post-nav-arrow"><Chevron direction="left" /></span> 上一篇
                     </span>
                     <span className="jz-post-nav-title">{adjacent.prev.title}</span>
                   </TransitionLink>
@@ -1175,7 +1175,7 @@ export default function PostDetail() {
                     className="jz-post-nav-card jz-post-nav-card--next"
                   >
                     <span className="jz-post-nav-dir">
-                      下一篇 <span className="jz-post-nav-arrow"><RightOutlined /></span>
+                      下一篇 <span className="jz-post-nav-arrow"><Chevron direction="right" /></span>
                     </span>
                     <span className="jz-post-nav-title">{adjacent.next.title}</span>
                   </TransitionLink>

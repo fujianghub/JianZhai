@@ -1301,10 +1301,10 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   border: 0;
   background: none;
   padding: 0;
-  color: var(--jz-text-muted);
+  color: var(--jz-text);
   cursor: pointer;
-  font-size: 9px;
-  opacity: 0.6;
+  font-size: var(--jz-disclosure-size);
+  opacity: 0.85;
   border-radius: 50%;
   margin-left: -2px;
   transition: background-color var(--jz-dur-fast) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard), opacity var(--jz-dur-fast) var(--jz-ease-standard), transform var(--jz-dur-fast) var(--jz-ease-standard);

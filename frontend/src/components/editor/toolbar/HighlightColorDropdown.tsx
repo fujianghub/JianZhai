@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Popover, Tooltip } from 'antd';
-import { DownOutlined, HighlightOutlined } from '@ant-design/icons';
+import { HighlightOutlined } from '@ant-design/icons';
+import Chevron from '../../common/Chevron';
 import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import { HIGHLIGHT_COLOR_PRESETS } from './highlightPresets';
@@ -64,7 +65,7 @@ export default function HighlightColorDropdown({ editor }: Props) {
           icon={<HighlightOutlined />}
           className="jz-toolbar-dropdown-btn"
         >
-          <DownOutlined style={{ fontSize: 10, marginLeft: 2 }} />
+          <Chevron direction="down" size={12} className="jz-toolbar-caret jz-toolbar-caret--tight" />
         </Button>
       </Tooltip>
     </Popover>

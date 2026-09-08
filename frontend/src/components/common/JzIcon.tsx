@@ -493,33 +493,35 @@ export function JzBookIcon(p: IconProps) {
   );
 }
 
-/** 收藏 — 五角星（圆角相接，1.75 描边）：静态淡染底；点亮实心 + 右上星芒 */
+/** 收藏 — 五角星（圆角相接）：静息 = Jz 默认语法（1.5 线稿 + accent 浅填）；点亮实心
+ *  （按钮层给金色 tone + jz-star-pop 弹簧）。2026-09-09 删去右上星芒——15px 下约 1.4px 不可见。 */
 export function JzStarIcon({ on, ...p }: IconProps & { on?: boolean }) {
   return (
     <Wrap {...p}>
       <path
         d="M12 4l2.35 5.36 5.83.58-4.38 3.9 1.25 5.72L12 16.6l-5.05 2.96 1.25-5.72-4.38-3.9 5.83-.58z"
         fill={on ? 'currentColor' : ICON_FILL}
-        strokeWidth={on ? 1.3 : 1.75}
+        strokeWidth={on ? 1.3 : 1.5}
         strokeLinejoin="round"
       />
-      {on && <path d="M19.6 2.6v2.2M18.5 3.7h2.2" strokeWidth={1.5} opacity={0.9} />}
     </Wrap>
   );
 }
 
-/** 置顶 — 图钉（圆角钉帽 + 收腰 + 针，1.75 描边）：静态淡染底；点亮实心（按钮层再倾斜） */
+/** 置顶 — 斜钉（Tabler `pin` 语汇，2026-09-09 替换正视钉）：钉身 + 钉帽斜线 + 斜针。
+ *  斜向本身即「钉住」语义，9px 起可读，不再靠按钮层 CSS rotate；静息 1.5 线稿 + accent
+ *  浅填，点亮实心（按钮层给 accent tone）。 */
 export function JzPinIcon({ on, ...p }: IconProps & { on?: boolean }) {
   return (
     <Wrap {...p}>
       <path
-        d="M9 4.2h6v5.3l2 3.6v1.9H7v-1.9l2-3.6z"
+        d="M15 4.5l-4 4-4 1.5-1.5 1.5 7 7 1.5-1.5 1.5-4 4-4z"
         fill={on ? 'currentColor' : ICON_FILL}
-        strokeWidth={on ? 1.3 : 1.75}
+        strokeWidth={on ? 1.3 : 1.5}
         strokeLinejoin="round"
       />
-      <path d="M12 15v5.3" strokeWidth={on ? 2.2 : 1.9} />
-      <path d="M8.2 4.2h7.6" strokeWidth={on ? 2.2 : 1.9} />
+      <path d="M9 15l-4.5 4.5" strokeWidth={on ? 2.2 : 1.5} />
+      <path d="M14.5 4l5.5 5.5" strokeWidth={on ? 2.2 : 1.5} />
     </Wrap>
   );
 }

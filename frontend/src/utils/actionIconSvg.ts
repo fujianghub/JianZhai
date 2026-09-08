@@ -22,7 +22,10 @@ export const ACTION_ICON_PATHS = {
   fit:
     '<path d="M4.5 9V4.5H9"/><path d="M19.5 9V4.5H15"/>' +
     '<path d="M4.5 15v4.5H9"/><path d="M19.5 15v4.5H15"/><path d="m4.5 4.5 5 5M19.5 4.5l-5 5M4.5 19.5l5-5M19.5 19.5l-5-5"/>',
-  caret: '<path d="m6.5 9.5 5.5 5.5 5.5-5.5"/>',
+  /** 下拉 caret / 折叠占位：与 common/Chevron 同一 Lucide 几何（direction=down） */
+  caret: '<path d="m6 9 6 6 6-6"/>',
+  /** 子菜单尖角：Chevron direction=right */
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',
   more: '<circle cx="6" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="18" cy="12" r="1.2" fill="currentColor" stroke="none"/>',
   close: '<path d="M6 6l12 12"/><path d="M18 6 6 18"/>',
   'zoom-in': '<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4"/><path d="M11 8v6M8 11h6"/>',

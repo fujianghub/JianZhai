@@ -13,6 +13,7 @@
  * a "转换中" placeholder and poll until slides appear.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Chevron from './Chevron';
 import { flushSync } from 'react-dom';
 import { Button, Popover, Space, Spin, Tooltip, Typography } from 'antd';
 import {
@@ -21,8 +22,6 @@ import {
   FullscreenExitOutlined,
   FullscreenOutlined,
   PlaySquareOutlined,
-  LeftOutlined,
-  RightOutlined,
   SearchOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
@@ -382,11 +381,11 @@ export default function PptxReader({
   const toolbar = (
     <Space className="jz-pptx-toolbar">
       <Space>
-        <Button size="small" icon={<LeftOutlined />} aria-label="上一页" title="上一页 (←)" disabled={active <= 0} onClick={() => go(active - 1)} />
+        <Button size="small" icon={<Chevron direction="left" />} aria-label="上一页" title="上一页 (←)" disabled={active <= 0} onClick={() => go(active - 1)} />
         <Typography.Text style={{ minWidth: 60, textAlign: 'center', display: 'inline-block' }}>
           {active + 1} / {total}
         </Typography.Text>
-        <Button size="small" icon={<RightOutlined />} aria-label="下一页" title="下一页 (→)" disabled={active >= total - 1} onClick={() => go(active + 1)} />
+        <Button size="small" icon={<Chevron direction="right" />} aria-label="下一页" title="下一页 (→)" disabled={active >= total - 1} onClick={() => go(active + 1)} />
       </Space>
       <Space>
         <Tooltip title="缩小">

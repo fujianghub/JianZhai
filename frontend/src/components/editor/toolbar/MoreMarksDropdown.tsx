@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Popover, Tooltip } from 'antd';
-import { CodeOutlined, DownOutlined, FontSizeOutlined } from '@ant-design/icons';
+import { CodeOutlined, FontSizeOutlined } from '@ant-design/icons';
+import Chevron from '../../common/Chevron';
 import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import { modKey } from './shortcutLabels';
@@ -80,7 +81,7 @@ export default function MoreMarksDropdown({ editor }: Props) {
       <Tooltip title="更多样式（上标 / 下标 / 行内代码）">
         <Button aria-label="更多样式" size="small" className="jz-toolbar-dropdown-btn">
           <FontSizeOutlined />
-          <DownOutlined style={{ fontSize: 10, marginLeft: 4 }} />
+          <Chevron direction="down" size={12} className="jz-toolbar-caret" />
         </Button>
       </Tooltip>
     </Popover>

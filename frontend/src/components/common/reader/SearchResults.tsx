@@ -9,7 +9,7 @@
  */
 import { useRef, useState, type ReactNode } from 'react';
 import { Input, Spin, Tooltip, Typography } from 'antd';
-import { DownOutlined, UpOutlined } from '@ant-design/icons';
+import Chevron from '../Chevron';
 import IconButton from '@/components/common/IconButton';
 import JzEmpty from '@/components/common/JzEmpty';
 
@@ -112,14 +112,14 @@ export default function SearchResults<T>(props: SearchResultsProps<T>) {
             <span className="jz-epub-search-nav-btns">
               <Tooltip title="上一处">
                 <IconButton
-                  icon={<UpOutlined />}
+                  icon={<Chevron direction="up" />}
                   onClick={() => s.jump(cursor == null ? total - 1 : (cursor - 1 + total) % total)}
                   aria-label="上一处"
                 />
               </Tooltip>
               <Tooltip title="下一处">
                 <IconButton
-                  icon={<DownOutlined />}
+                  icon={<Chevron direction="down" />}
                   onClick={() => s.jump(cursor == null ? 0 : (cursor + 1) % total)}
                   aria-label="下一处"
                 />

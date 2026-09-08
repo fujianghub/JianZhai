@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Alert, Button, Select, Space, Spin, Tag, Tree, Typography } from 'antd';
 import * as kbsApi from '@/api/kbs';
 import { message } from '@/utils/notify';
+import Disclosure from '@/components/common/Disclosure';
 import type {
   KBCategory,
   KBTree,
@@ -374,6 +375,7 @@ export default function ReadGrantControl({ value, onChange, disabled }: ReadGran
                   checkable
                   checkStrictly
                   selectable={false}
+                  switcherIcon={({ expanded }: { expanded?: boolean }) => <Disclosure open={!!expanded} />}
                   treeData={treeData}
                   checkedKeys={{ checked: checkedKeys, halfChecked: [] }}
                   onCheck={onTreeCheck as never}

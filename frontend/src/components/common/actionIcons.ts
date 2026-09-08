@@ -20,7 +20,6 @@
 export {
   CloseOutlined as CloseIcon,
   CopyOutlined as CopyIcon,
-  DownOutlined as CaretIcon,
   EllipsisOutlined as MoreIcon,
   HolderOutlined as DragHandleIcon,
   FullscreenOutlined as FullscreenIcon,
@@ -42,5 +41,8 @@ export {
   SafetyOutlined as ShieldIcon,
   WarningOutlined as WarningIcon,
 } from '@ant-design/icons';
+/** 下拉 caret（按钮文字后的小尖角号）= common/Chevron direction=down，12px；
+ *  AntD DownOutlined 发丝线已于 2026-09-09 退役。 */
+export { CaretIcon } from './Chevron';
 /** 当前选中 / 已完成 记号（菜单、标签）。 */
 export { CheckOutlined as CheckIcon } from '@ant-design/icons';

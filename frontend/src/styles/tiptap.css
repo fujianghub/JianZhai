@@ -1124,13 +1124,13 @@
   /* Disclosure triangle (same path as common/Disclosure.tsx) via mask. */
   content: '';
   display: inline-block;
-  width: 10px;
-  height: 10px;
+  width: var(--jz-disclosure-size);
+  height: var(--jz-disclosure-size);
   margin-right: 6px;
   vertical-align: -1px;
   background: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.5 6.2 17 12l-8.5 5.8z' fill='%23000' stroke='%23000' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.5 6.2 17 12l-8.5 5.8z' fill='%23000' stroke='%23000' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") center / contain no-repeat;
+  -webkit-mask: var(--jz-disclosure-mask) center / contain no-repeat;
+  mask: var(--jz-disclosure-mask) center / contain no-repeat;
   transition: transform var(--jz-dur-base) var(--jz-ease-spring);
 }
 .jz-details-block[open] > summary::before { transform: rotate(90deg); }
@@ -2205,8 +2205,8 @@ a.jz-link-card-static .jz-link-card-title {
   /* Disclosure triangle via mask (same path as common/Disclosure.tsx),
      rotated when unfolded — same motion as every tree. */
   background-color: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.5 6.2 17 12l-8.5 5.8z' fill='%23000' stroke='%23000' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") center / 10px 10px no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.5 6.2 17 12l-8.5 5.8z' fill='%23000' stroke='%23000' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") center / 10px 10px no-repeat;
+  -webkit-mask: var(--jz-disclosure-mask) center / var(--jz-disclosure-size) var(--jz-disclosure-size) no-repeat;
+  mask: var(--jz-disclosure-mask) center / var(--jz-disclosure-size) var(--jz-disclosure-size) no-repeat;
   transform: translateY(-50%) rotate(90deg);
   width: 20px;
   height: 20px;

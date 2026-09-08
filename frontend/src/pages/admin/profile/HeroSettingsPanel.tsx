@@ -19,6 +19,7 @@
  * click, row focus-out, drag drop) calls PATCH /auth/hero/.
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import Chevron from '../../../components/common/Chevron';
 import { Alert, AutoComplete, Button, Card, DatePicker, Input, Modal, Popconfirm, Radio, Slider, Space, Switch, Table, Tooltip, Typography } from 'antd';
 import dayjs from 'dayjs';
 import {
@@ -30,10 +31,8 @@ import {
   ExportOutlined,
   HolderOutlined,
   ImportOutlined,
-  LeftOutlined,
   PlusOutlined,
   ReloadOutlined,
-  RightOutlined,
   SearchOutlined,
 } from '@ant-design/icons';
 import {
@@ -443,7 +442,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
           <Space size={4}>
             <Tooltip title="上一条">
               <IconButton
-                icon={<LeftOutlined />}
+                icon={<Chevron direction="left" />}
                 disabled={quoteCount <= 1}
                 onClick={() => stepPreview(-1)}
               />
@@ -455,7 +454,7 @@ export default function HeroSettingsPanel({ canEdit }: { canEdit: boolean }) {
             </Text>
             <Tooltip title="下一条">
               <IconButton
-                icon={<RightOutlined />}
+                icon={<Chevron direction="right" />}
                 disabled={quoteCount <= 1}
                 onClick={() => stepPreview(1)}
               />

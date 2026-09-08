@@ -37,6 +37,7 @@
  * wrapper — anything portalled to ``body`` is invisible while full-screen.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
+import Chevron from './Chevron';
 import { Link } from 'react-router-dom';
 import {
   Alert,
@@ -64,14 +65,10 @@ import {
   DownloadOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
-  LeftOutlined,
   MinusOutlined,
   PlusOutlined,
   RedoOutlined,
   ReloadOutlined,
-  RightOutlined,
-  StepBackwardOutlined,
-  StepForwardOutlined,
   UndoOutlined,
   UnorderedListOutlined,
 } from '@ant-design/icons';
@@ -1976,21 +1973,21 @@ export default function EpubReader({
         <Tooltip {...tip(withShortcut('上一章', 'reader.epub.prev-chapter'))}>
           <Button
             size="small"
-            icon={<StepBackwardOutlined />}
+            icon={<Chevron direction="left" double />}
             onClick={() => withTurn('jump', () => viewRef.current?.renderer?.prevSection?.())}
             aria-label="上一章"
           />
         </Tooltip>
         <Tooltip {...tip(withShortcut('上一页', 'reader.epub.prev'))}>
-          <Button size="small" icon={<LeftOutlined />} onClick={turnPrev} aria-label="上一页" />
+          <Button size="small" icon={<Chevron direction="left" />} onClick={turnPrev} aria-label="上一页" />
         </Tooltip>
         <Tooltip {...tip(withShortcut('下一页', 'reader.epub.next'))}>
-          <Button size="small" icon={<RightOutlined />} onClick={turnNext} aria-label="下一页" />
+          <Button size="small" icon={<Chevron direction="right" />} onClick={turnNext} aria-label="下一页" />
         </Tooltip>
         <Tooltip {...tip(withShortcut('下一章', 'reader.epub.next-chapter'))}>
           <Button
             size="small"
-            icon={<StepForwardOutlined />}
+            icon={<Chevron direction="right" double />}
             onClick={() => withTurn('jump', () => viewRef.current?.renderer?.nextSection?.())}
             aria-label="下一章"
           />

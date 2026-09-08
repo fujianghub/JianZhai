@@ -455,7 +455,7 @@ function renderYuqueToolbar(opts: {
 }): string {
   return (
     `<div class="jz-code-toolbar" contenteditable="false">` +
-    `<span class="jz-code-collapse-placeholder" aria-hidden="true">${actionIconSvg('caret', { size: 14 })}</span>` +
+    `<span class="jz-code-collapse-placeholder" aria-hidden="true">${actionIconSvg('caret', { size: 14, strokeWidth: 2 })}</span>` +
     `<span class="jz-code-title-area"><span class="jz-code-title-text">${escape(opts.titleText)}</span></span>` +
     `<span class="jz-code-toolbar-spacer"></span>` +
     `<span class="jz-code-lang">${escape(opts.label)}</span>` +

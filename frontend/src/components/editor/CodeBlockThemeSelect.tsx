@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Dropdown } from 'antd';
-import { CaretDownOutlined, CheckOutlined } from '@ant-design/icons';
+import { CheckOutlined } from '@ant-design/icons';
+import Chevron from '../common/Chevron';
 import { CODE_THEMES, themeLabel, type CodeThemeId } from '@/utils/codeBlockPrefs';
 
 export interface CodeBlockThemeSelectProps {
@@ -57,7 +58,7 @@ export default function CodeBlockThemeSelect({
         aria-expanded={open}
       >
         <span className="jz-code-theme-trigger-label">{themeLabel(value)}</span>
-        <CaretDownOutlined />
+        <Chevron direction="down" size={12} />
       </button>
     </Dropdown>
   );

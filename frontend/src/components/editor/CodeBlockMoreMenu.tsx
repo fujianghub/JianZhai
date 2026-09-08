@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { Switch } from 'antd';
-import { RightOutlined } from '@ant-design/icons';
+import Chevron from '../common/Chevron';
 import {
   FONT_PRESETS,
   INDENT_WIDTHS,
@@ -160,7 +160,7 @@ function SubMenuRow({ label, children }: { label: string; children: ReactNode })
     <div className="jz-code-settings-submenu">
       <div className="jz-code-settings-item jz-code-settings-submenu-trigger">
         <span>{label}</span>
-        <RightOutlined className="jz-code-settings-chevron" />
+        <Chevron direction="right" size={12} className="jz-code-settings-chevron" />
       </div>
       {children}
     </div>

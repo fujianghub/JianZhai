@@ -944,7 +944,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   letter-spacing: var(--jz-ls-sm);
   color: var(--glass-text-muted, var(--jz-text-muted));
 }
-.jz-post-nav-arrow .anticon { font-size: 0.85em; vertical-align: -0.1em; }
+.jz-post-nav-arrow .jz-chevron { font-size: 0.95em; vertical-align: -0.12em; }
 .jz-post-nav-arrow {
   display: inline-block;
   transition: transform var(--jz-dur-base) var(--jz-ease-spring);
@@ -1786,11 +1786,10 @@ a.jz-meta-full-edit-btn:focus-visible {
   transition: background-color var(--jz-dur-fast) var(--jz-ease-standard), color var(--jz-dur-fast) var(--jz-ease-standard);
 }
 .jz-kb-tree-panel .ant-tree-switcher {
-  transition: background-color 0.15s ease;
+  transition: background-color var(--jz-dur-fast) var(--jz-ease-standard);
 }
-.jz-kb-tree-panel .ant-tree-switcher-icon,
-.jz-kb-tree-panel .ant-tree-switcher .anticon-caret-down {
-  transition: transform 0.18s ease;
+.jz-kb-tree-panel .ant-tree-switcher-icon {
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring);
 }
 .jz-kb-tree-panel .ant-tree-treenode {
   border-radius: 6px;
@@ -4439,9 +4438,9 @@ a.jz-meta-full-edit-btn:focus-visible {
   transform: rotate(-12deg) scale(1.08);
 }
 .jz-theme-switch__caret {
-  font-size: var(--jz-fs-3xs);
-  opacity: 0.5;
-  transition: opacity 0.2s ease;
+  margin-left: 2px;
+  opacity: 0.55;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-standard);
 }
 .jz-theme-switch:hover .jz-theme-switch__caret {
   opacity: 0.85;
@@ -4795,8 +4794,12 @@ a.jz-meta-full-edit-btn:focus-visible {
    · .jz-icon-btn：全站唯一图标钮（AntD text 钮 + 稳定类名），四档方形热区，
      圆角/hover/按下/focus 全走 tokens.css 令牌；后台 .jz-admin-glass .ant-btn
      的 !important 刷白已对它豁免。
-   · .jz-chevron：唯一折叠尖角号（细线 RightOutlined 旋转 90°）。
-   · .jz-doc-actions：收藏/置顶容器，行内 hover 显现、激活态常驻兼作徽标。
+   · .jz-chevron：唯一方向尖角号（common/Chevron，2.0 圆头，四向 + 双尖角），
+     翻页/上下篇/下拉 caret/子菜单/搜索上下处全走它；AntD Select 与 Dropdown
+     子菜单的内建箭头经 --jz-chevron-mask 换成同一字形（2026-09-09）。
+   · .jz-disclosure：唯一披露三角（common/Disclosure），统一 11px 实墨色。
+   · .jz-doc-actions：收藏/置顶容器，常驻兼作徽标；静息 = Jz 默认语法（muted
+     线稿 + accent 浅填），点亮才借 --jz-gold（星）/ --jz-accent（斜钉）。
    ══════════════════════════════════════════════════════════════════════ */
 .ant-btn.jz-icon-btn {
   --jz-ib-size: 26px;
@@ -4872,13 +4875,45 @@ a.jz-meta-full-edit-btn:focus-visible {
 }
 
 /* Chevron — one glyph, one rotation. */
-/* Chevron = direction / navigation only (breadcrumb, prev-next, dropdown). */
+/* Chevron = direction / navigation only (prev-next, dropdown caret, submenu). */
 .jz-chevron {
   display: inline-block;
   vertical-align: middle;
+  flex-shrink: 0;
   transition: transform var(--jz-dur-base) var(--jz-ease-spring), color var(--jz-dur-fast) var(--jz-ease-standard);
 }
 .jz-chevron.is-open { transform: rotate(90deg); }
+/* Carets that trail a button label / toolbar dropdown: a little breathing room. */
+.jz-btn-caret,
+.jz-toolbar-caret { margin-left: 4px; opacity: 0.8; }
+.jz-toolbar-caret--tight { margin-left: 2px; }
+.ant-btn:hover .jz-btn-caret,
+.ant-btn:hover .jz-toolbar-caret,
+.jz-code-theme-trigger:hover .jz-chevron { opacity: 1; }
+/* AntD's own arrows re-skinned to the same glyph: Select suffix (16 files never
+   pass suffixIcon) and Dropdown submenu arrow. Mask keeps currentColor / hover
+   behaviour; the svg itself is hidden, the box stays for hit-testing. */
+.ant-select .ant-select-arrow .anticon-down,
+.ant-dropdown-menu-submenu-arrow .anticon-right {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+}
+.ant-select .ant-select-arrow .anticon-down svg,
+.ant-dropdown-menu-submenu-arrow .anticon-right svg { display: none; }
+.ant-select .ant-select-arrow .anticon-down::before,
+.ant-dropdown-menu-submenu-arrow .anticon-right::before {
+  content: '';
+  display: block;
+  width: 12px;
+  height: 12px;
+  background: currentColor;
+  -webkit-mask: var(--jz-chevron-mask) center / contain no-repeat;
+  mask: var(--jz-chevron-mask) center / contain no-repeat;
+  transition: transform var(--jz-dur-base) var(--jz-ease-spring);
+}
+.ant-select .ant-select-arrow .anticon-down::before { transform: rotate(90deg); }
+.ant-select.ant-select-open .ant-select-arrow .anticon-down::before { transform: rotate(-90deg); }
 /* Disclosure = solid rounded triangle for "more below" (trees, folds, Collapse,
    AntD Tree switcher). Rotates on the spring; hover swells 10% — a triangle has
    no direction to nudge along. Chevron and Disclosure never mix (user decision). */
@@ -4893,22 +4928,25 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-epub-toc-chevron:hover .jz-disclosure.is-open { transform: rotate(90deg) scale(1.12); }
 /* AntD Tree clones the glyph with .ant-tree-switcher-icon and rotates its
    *inner* svg when closed; our triangle is the svg itself, nothing to undo. */
+/* 2026-09-09: one size (11px) and ink colour everywhere — 9px at muted 0.7 read
+   as a slightly larger leaf dot, so hierarchy came from indent alone. */
 .ant-tree .ant-tree-switcher .jz-disclosure {
-  font-size: 9px;
-  width: 9px;
-  height: 9px;
-  color: var(--jz-text-muted);
-  opacity: 0.7;
+  font-size: var(--jz-disclosure-size);
+  width: var(--jz-disclosure-size);
+  height: var(--jz-disclosure-size);
+  color: var(--jz-text);
+  opacity: 0.85;
 }
 .ant-tree .ant-tree-switcher:hover .jz-disclosure {
   color: var(--jz-accent);
   opacity: 1;
 }
 .ant-collapse .ant-collapse-expand-icon .jz-disclosure {
-  font-size: 10px;
-  width: 10px;
-  height: 10px;
-  color: var(--jz-text-muted);
+  font-size: var(--jz-disclosure-size);
+  width: var(--jz-disclosure-size);
+  height: var(--jz-disclosure-size);
+  color: var(--jz-text);
+  opacity: 0.85;
 }
 /* Bare tree-row chevron buttons (.jz-epub-toc-chevron / .jz-code-collapse-btn
    / .jz-kb-fold-chevron) get the pressed + focus states IconButton has. */
@@ -4931,7 +4969,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   background: var(--jz-hover-accent-bg);
   color: var(--jz-accent);
 }
-.jz-kb-fold-chevron .jz-disclosure { font-size: 11px; width: 11px; height: 11px; }
+.jz-kb-fold-chevron .jz-disclosure { font-size: var(--jz-disclosure-size); width: var(--jz-disclosure-size); height: var(--jz-disclosure-size); }
 .jz-kb-folder-heading.is-foldable:hover .jz-disclosure { transform: scale(1.12); }
 .jz-kb-folder-heading.is-foldable:hover .jz-disclosure.is-open { transform: rotate(90deg) scale(1.12); }
 
@@ -4951,16 +4989,16 @@ a.jz-meta-full-edit-btn:focus-visible {
   .jz-post-row:hover .jz-doc-actions.is-reveal,
   .ant-card.jz-post-card:hover .jz-doc-actions.is-reveal { opacity: 1; }
 }
-/* Pinned = tilted pin; star pops in with the spring when it lights up. */
+/* Pin glyph is already tilted (Tabler `pin`, 2026-09-09) — no CSS rotation;
+   star pops in with the spring when it lights up. */
 /* Round discs (the two live in rows next to round chevrons) and spring hover. */
 .ant-btn.jz-icon-btn.jz-pin-btn,
 .ant-btn.jz-icon-btn.jz-fav-btn { border-radius: 50% !important; }
 .jz-pin-btn .jz-icon {
   transition: transform var(--jz-dur-base) var(--jz-ease-spring);
 }
-.jz-pin-btn.is-on .jz-icon { transform: rotate(-35deg); }
-.jz-pin-btn:not(.is-on):hover .jz-icon { transform: rotate(-18deg) translateY(-1px); }
-.jz-pin-btn.is-on:hover .jz-icon { transform: rotate(-28deg) scale(1.08); }
+.jz-pin-btn:not(.is-on):hover .jz-icon { transform: translateY(-1px) scale(1.08); }
+.jz-pin-btn.is-on:hover .jz-icon { transform: scale(1.08); }
 .jz-fav-btn.is-on .jz-icon {
   animation: jz-star-pop var(--jz-dur-slow) var(--jz-ease-spring);
   filter: drop-shadow(0 0 3px color-mix(in srgb, var(--jz-gold) 45%, transparent));
@@ -4974,14 +5012,13 @@ a.jz-meta-full-edit-btn:focus-visible {
 .jz-epub-toc-item:hover .jz-doc-actions,
 .ant-tree-treenode:hover .jz-doc-actions,
 .jz-doc-actions.has-on { opacity: 1; }
-/* At rest the glyphs already carry their meaning's colour, softened
-   (gold star / ink pin with a tinted fill); hover previews the lit colour. */
-.ant-btn.jz-icon-btn.jz-fav-btn:not(.is-on) { color: color-mix(in srgb, var(--jz-gold) 78%, var(--jz-text)) !important; }
-.ant-btn.jz-icon-btn.jz-pin-btn:not(.is-on) { color: color-mix(in srgb, var(--jz-text) 72%, var(--jz-text-muted)) !important; }
+/* At rest both glyphs use the Jz icon default (muted stroke + accent 14% tint
+   from the svg itself) so a column of them stays quiet and follows every theme;
+   only the lit one borrows the ornament colour (--jz-gold is 紫/青/梅红 in
+   starry / deepsea / wintersnow — a gold-mixed rest state became a coloured
+   column there). Hover previews the lit colour. 2026-09-09. */
 .jz-fav-btn:not(.is-on):hover { color: var(--jz-gold) !important; }
 .jz-pin-btn:not(.is-on):hover { color: var(--jz-accent) !important; }
-.jz-fav-btn:not(.is-on) .jz-icon path:first-child,
-.jz-pin-btn:not(.is-on) .jz-icon path:first-child { fill: currentColor; fill-opacity: 0.16; }
 .ant-btn.jz-icon-btn.jz-fav-btn .jz-icon,
 .ant-btn.jz-icon-btn.jz-pin-btn .jz-icon { font-size: calc(var(--jz-ib-icon) + 2px); }
 @keyframes jz-star-pop {

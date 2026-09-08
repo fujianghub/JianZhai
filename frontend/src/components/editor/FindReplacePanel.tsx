@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Chevron from '../common/Chevron';
 import { Button, Input, Space, Tooltip } from 'antd';
 import {
-  ArrowDownOutlined,
-  ArrowUpOutlined,
   CloseOutlined,
   RetweetOutlined,
 } from '@ant-design/icons';
@@ -235,7 +234,7 @@ export default function FindReplacePanel({
         <Tooltip title={withShortcut('上一个', 'find.prev')}>
           <Button aria-label="上一个"
             size="small"
-            icon={<ArrowUpOutlined />}
+            icon={<Chevron direction="up" />}
             disabled={total === 0}
             onClick={handleFindPrev}
           />
@@ -243,7 +242,7 @@ export default function FindReplacePanel({
         <Tooltip title="下一个 (Enter)">
           <Button aria-label="下一个"
             size="small"
-            icon={<ArrowDownOutlined />}
+            icon={<Chevron direction="down" />}
             disabled={total === 0}
             onClick={handleFindNext}
           />

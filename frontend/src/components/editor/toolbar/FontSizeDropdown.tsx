@@ -1,6 +1,6 @@
 import { Button, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
+import Chevron from '../../common/Chevron';
 import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import { FONT_SIZE_PRESETS } from '../FontSize';
@@ -59,7 +59,7 @@ export default function FontSizeDropdown({ editor }: Props) {
     >
       <Button size="small" className="jz-toolbar-dropdown-btn" style={{ minWidth: 56 }}>
         {label}
-        <DownOutlined style={{ fontSize: 10, marginLeft: 4 }} />
+        <Chevron direction="down" size={12} className="jz-toolbar-caret" />
       </Button>
     </Dropdown>
   );

@@ -44,6 +44,14 @@
   --jz-icon-fill: color-mix(in srgb, var(--jz-accent) 14%, transparent);
   --jz-icon-fill-strong: color-mix(in srgb, var(--jz-accent) 22%, transparent);
   --jz-icon-spot: var(--jz-accent);
+  /* ── 标记字形 mask 单源（2026-09-09）──
+     披露三角 = common/Disclosure.tsx 同一 path；尖角号 = common/Chevron.tsx 同一
+     path。CSS 侧要画这两个字形（Tiptap 标题折叠 ::after、<details> summary、
+     AntD Select / Dropdown 子菜单内建箭头）一律引用这里，勿再内联 data URI。
+     改字形只改 tsx + 这两行。 */
+  --jz-disclosure-size: 11px;
+  --jz-disclosure-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M8.5 6.2 17 12l-8.5 5.8z' fill='%23000' stroke='%23000' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E");
+  --jz-chevron-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='m9 18 6-6-6-6' fill='none' stroke='%23000' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   /* AI 面板识别色（刻意的页面识别色，非 accent；此前散落 #6366f1/#4f46e5） */
   --jz-ai-accent: #6366f1;
   /* 插入/斜杠菜单瓷砖激活环混色比例（editor-ui.css 与 tiptap.css 共用，曾 28%/30% 不一） */

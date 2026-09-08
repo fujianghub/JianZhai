@@ -1,4 +1,5 @@
 import { tocFontFamily } from '@/utils/tocPrefs';
+import Chevron from './Chevron';
 import Disclosure from './Disclosure';
 import { JzCollapseAllIcon, JzExpandAllIcon } from './JzIcon';
 import { TocFontSelect } from './TocSettingsPopover';
@@ -8,12 +9,10 @@ import {
   BookOutlined,
   CloseOutlined,
   DeleteOutlined,
-  DownOutlined,
   ExportOutlined,
   SearchOutlined,
   SettingOutlined,
-  UpOutlined,
-} from '@ant-design/icons';
+  } from '@ant-design/icons';
 import type { Bookmark, Highlight } from '@/api/reading';
 import { groupByChapter, sortHighlights, swatchHex } from '@/utils/epubNotes';
 import {
@@ -583,7 +582,7 @@ export default function EpubSidebar({
                   <span className="jz-epub-search-nav-btns">
                     <Tooltip title="上一处">
                       <IconButton
-                        icon={<UpOutlined />}
+                        icon={<Chevron direction="up" />}
                         disabled={total === 0}
                         onClick={() => jumpHit(hitCursor == null ? total - 1 : (hitCursor - 1 + total) % total)}
                         aria-label="上一处"
@@ -591,7 +590,7 @@ export default function EpubSidebar({
                     </Tooltip>
                     <Tooltip title="下一处">
                       <IconButton
-                        icon={<DownOutlined />}
+                        icon={<Chevron direction="down" />}
                         disabled={total === 0}
                         onClick={() => jumpHit(hitCursor == null ? 0 : (hitCursor + 1) % total)}
                         aria-label="下一处"

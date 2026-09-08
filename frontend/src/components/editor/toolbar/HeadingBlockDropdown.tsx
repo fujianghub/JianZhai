@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Button, Dropdown } from 'antd';
 import type { MenuProps } from 'antd';
-import { DownOutlined } from '@ant-design/icons';
+import Chevron from '../../common/Chevron';
 import { useEditorState } from '@tiptap/react';
 import type { Editor } from '@tiptap/core';
 import {
@@ -88,7 +88,7 @@ export default function HeadingBlockDropdown({ editor, compact = false }: Props)
     >
       <Button size="small" className="jz-toolbar-dropdown-btn">
         {compact ? '段落' : label}
-        <DownOutlined style={{ fontSize: 10, marginLeft: 4 }} />
+        <Chevron direction="down" size={12} className="jz-toolbar-caret" />
       </Button>
     </Dropdown>
   );

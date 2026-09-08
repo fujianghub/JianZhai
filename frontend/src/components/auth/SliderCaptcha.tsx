@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Spin } from 'antd';
-import { CheckCircleFilled, ReloadOutlined, RightOutlined } from '@ant-design/icons';
+import { CheckCircleFilled, ReloadOutlined } from '@ant-design/icons';
+import Chevron from '../common/Chevron';
 import { getCaptcha, type CaptchaPuzzle } from '@/api/auth';
 import { message } from '@/utils/notify';
 import { formatApiError } from '@/api/client';
@@ -153,7 +154,7 @@ export default function SliderCaptcha({ onSolved, onReset, resetSignal = 0 }: Pr
             boxShadow: '0 2px 8px var(--jz-accent-glow, rgba(0,0,0,0.25))',
           }}
         >
-          {solved ? <CheckCircleFilled /> : <RightOutlined />}
+          {solved ? <CheckCircleFilled /> : <Chevron direction="right" double />}
         </div>
       </div>
     </div>
