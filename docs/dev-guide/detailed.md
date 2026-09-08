@@ -2,7 +2,7 @@
 
 > **简斋·开发指南**  ·  当前 **v0.9.10 + 四角色权限体系 RBAC**  ·  最后更新 2026-06-21
 >
-> 本文是**实现向**说明：四层架构、11 个 app、数据模型、请求时序、KaTeX/Mermaid/AI 全链路与扩展入口。
+> 本文是**实现向**说明：四层架构、12 个 app、数据模型、请求时序、KaTeX/Mermaid/AI 全链路与扩展入口。
 > 第一次接触请先读 → [简单版](./simple/)。
 >
 > 超级管理员还可在后台 **架构总览** 查看**可交互 SVG**（与下文四层图信息一致，含 hover tooltip）。
@@ -14,7 +14,7 @@
 | 章节 | 主题 | 你能拿走什么 |
 |------|------|--------------|
 | 1 | 四层架构 | 看清整个请求链路 |
-| 2 | 11 个 Django app | 每个 app 的职责 + 关键代码路径 |
+| 2 | 12 个 Django app | 每个 app 的职责 + 关键代码路径 |
 | 3 | 数据模型 | Document / DocumentLink / AIUsageLog 字段 |
 | 4 | URL 总览 | 看哪个 URL 走哪个 viewset |
 | 5 | 双内容形态与乐观并发 | 保存→冲突→搜索索引刷新时序 |
@@ -45,7 +45,7 @@
 - **图表**：Mermaid 11 动态导入 + PlantUML（`plantuml-encoder`）→ 自定义 Tiptap 节点
 - **博客前台**（匿名 / 友邻可见）：首页（KB 网格 + **题记轮播**）、KB 浏览、文章详情、`HtmlPostReader`、收藏页、归档、标签云、RSS
 - **AI 入口**：工具栏 `AIAssistantMenu`（含模型切换）、选区 `SelectionAI` ✨、`DocAIPanel` 右下抽屉、斜杠 `/ai`、顶栏 `AIModelBadge`
-- **图标**：100% 自制 — `JzIcon`（50 枚，24×24 / 1.5px / 印泥色彩点）+ `JzIconKit`（15 枚设计稿系列，个人空间侧栏专用）
+- **图标**：三层——动作类以 AntD 为底经 `components/common/actionIcons.ts` 语义别名引用；自制线稿 `JzIcon`（59 枚，24×24 / 1.5px / 印泥色彩点）；`JzIconKit`（14 枚：设计稿填充族供侧栏 + 描边族供主题切换）
 
 ### 1.2 边缘 / 代理
 
@@ -59,7 +59,7 @@
 ### 1.3 应用层（`:8002`）
 
 - **Django 5.2 + DRF 3.15**，Python 3.12
-- **11 个本地 app**（见 §2）
+- **12 个本地 app**（见 §2）
 - 文档保存后用 `transaction.on_commit(lambda: task.delay())` 排队，避免 worker 读到未提交数据
 - **apps.ai** 通过 SDK 代理 Anthropic Claude / DashScope（Qwen）；API Key 仅存后端 `.env`
 
@@ -70,17 +70,18 @@
 | **PostgreSQL 14+** | 主数据；`search_vector` GIN 全文索引；slug 在 KB 内未删除时唯一 |
 | **Redis DB0** | `django-redis` 缓存（页面片段、Session、TTL） |
 | **Redis DB1/2** | Celery broker / result backend |
-| **MEDIA_ROOT** | `uploads/YYYY/MM/<uuid>.<ext>`；导出产物 zip/pdf/docx 等 |
+| **MEDIA_ROOT** | `uploads/YYYY/MM/<uuid>.<ext>`（附件）· `slides/`（PPT 页图）· `derived/`（派生 PDF/海报/封面）· `avatars/`；生产经 Caddy `forward_auth` 鉴权。**导出产物在同级 `exports/`，刻意不在 media 下** |
 
 ---
 
-## 2. 十一个 Django app
+## 2. 十二个 Django app
 
 | App | 关键文件 | 职责一句话 |
 |-----|----------|----------|
 | `accounts` | `scoping.py` `permissions.py` `hero.py` `views.py` | 登录 / Session / 用户 CRUD / **scope_queryset 多租户** / **根管理员分级** / **友邻闸门** / 账号自服务 / **题记（HeroSettings）** |
-| `knowledge` | `models.py` `views.py` `tree.py` | `KnowledgeBaseCategory` / `KnowledgeBase` / `Folder` / `Document`（置顶/收藏/排序）核心 CRUD、`tree/reorder` 批量调序 |
-| `editor` | `views.py` `import_word.py` | 附件上传、Word / Markdown 导入、HTML 正文解析 |
+| `knowledge` | `models.py` `views.py` `structure.py` `audience.py` `trash_views.py` | `KnowledgeBaseCategory` / `KnowledgeBase` / `Folder` / `Document`（置顶/收藏/排序）核心 CRUD、`tree/reorder` 批量调序、回收站；`audience.py` 读者可见性唯一收口 |
+| `editor` | `views.py` `tasks.py` `media_auth.py` `services/{docx_import,slides,derived,text_extract,ocr,media_gc}.py` | 附件上传（按类型上限）、Word / MD / ZIP / PPT / PDF / EPUB 导入、派生文件 `DerivedFile` + `ConversionJob` + `DocumentExtract`、`/media/*` 字节层鉴权、永久删除清盘 |
+| `reading` | `models.py` `serializers.py` `views.py` | 划线 `Highlight`（EPUB CFI / MD TextQuote / PDF quads 三锚）、书签 `Bookmark`、服务端阅读位置 `ReadingPosition`；每用户私有、读者可写 |
 | `versioning` | `services.py` `diff.py` | `DocumentVersion` 快照 + 行级/字符级 diff + 回滚 |
 | `linking` | `parser.py` `tasks.py` | 解析 `@[title](doc:N)` → `DocumentLink`；反链 API；图谱节点 + 边 |
 | `search` | `services.py` `tasks.py` | jieba 切词 → `tsvector`；`/search/` 接口；`reindex_search` 命令 |
@@ -201,15 +202,19 @@ class HeroSettings(models.Model):
 ## 4. URL 总览
 
 ```
-/admin/                               Django admin
+/django-admin/                        Django admin（`/admin/` 是 SPA 后台路由）
 /api/v1/auth/                         登录 / 登出 / CSRF / session(含 require_login) / me / system-info / UserViewSet
 /api/v1/auth/me/avatar|change-password|change-email|change-username/   账号自服务
 /api/v1/auth/hero/  /hero/batch/      题记：员工读写 + 批量导入
-/api/v1/kbs|folders|documents/        knowledge CRUD（DRF Router）
+/api/v1/auth/captcha/  /auth/toc/     滑块验证码取题 / 目录站点默认（{scope:{…}} / {reset}）
+/api/v1/kbs|folders|documents|kb-categories/   knowledge CRUD（DRF Router）
+/api/v1/document-templates/  /trash/…  文档模板 / 回收站（purge/empty = IsRoot）
 /api/v1/tree/reorder/                 批量调序与父子关系
-/api/v1/uploads/                      附件上传
-/api/v1/imports/                      Word / Markdown 单/批量导入
+/api/v1/uploads/                      附件上传（按类型上限）
+/api/v1/imports/  /imports/batch/  /imports/zip/   Word / MD / PPT / PDF / EPUB / ZIP 导入
 /api/v1/attachments/                  媒体库
+/api/v1/media-auth/                   /media/* 字节层鉴权（生产 Caddy forward_auth 目标）
+/api/v1/documents/{id}/{highlights,bookmarks,position}/   划线 / 书签 / 服务端阅读位置（reading）
 /api/v1/documents/{id}/preview/       hover 卡 / doc-card 嵌入用
 /api/v1/documents/{id}/backlinks/
 /api/v1/documents/{id}/versions/      含 diff / restore 子路径
@@ -233,6 +238,7 @@ class HeroSettings(models.Model):
 /api/v1/public/tags/                  公开标签云
 /api/v1/public/archive/               归档
 /api/v1/public/hero/                  首页题记（匿名精简形态）
+/api/v1/public/toc-settings/          目录站点默认（按 scope 下发）
 /feed.xml                             RSS
 ```
 
@@ -309,7 +315,7 @@ class HeroSettings(models.Model):
 | 块 hover 菜单 | 左侧 `+ / ⋯` | `BlockHoverMenu.tsx` |
 | 块拖拽 | 抓 handle 拖动 | `tiptap-extension-global-drag-handle` |
 | `@` 提及 | `@文档名` | `MentionPicker.tsx` |
-| 斜杠命令 | `/` 触发 | `slashCommandRegistry.tsx` |
+| 斜杠命令 | `/` 触发 | `slashCommandRegistry.ts` |
 
 ---
 
@@ -450,7 +456,7 @@ CSS 在 `styles/markdown.css → .jz-diagram-fullscreen-toolbar`，深色玻璃�
 - `provider_configured()` 独立检查两把 Key；`/ai/capabilities` 回传各供应商配置状态，前端卡片分别显示；任一未配置时该供应商优雅降级
 - Admin 在 `/admin/ai` 设全局默认 + 主开关 + `max_tokens` + 扩展思考 + 每用户日预算 + 失败降级开关
 
-### 9.2 操作集：8 内置 + 自定义模板
+### 9.2 操作集：9 内置 + 自定义模板
 
 | operation | 语义 | Prompt 模板 |
 |-----------|------|------------|
@@ -459,6 +465,7 @@ CSS 在 `styles/markdown.css → .jz-diagram-fullscreen-toolbar`，深色玻璃�
 | `expand` | 扩写 | "把要点展开为完整段落" |
 | `fix` | 纠错 | "修正语病、错字、不通顺处" |
 | `summarize` | 总结 | "为内容生成简洁的摘要" |
+| `explain` | 解释（阅读页划线浮条，2026-09-02） | "通俗地解释以下内容：含义、关键术语与背景，必要时举例" |
 | `outline` | 大纲 | "为内容生成层级化标题大纲" |
 | `translate_en` | 中→英 | "把内容翻译为自然的英语" |
 | `translate_zh` | 英→中 | "把内容翻译为自然的中文" |
@@ -650,11 +657,11 @@ Mermaid / 代码块 / KaTeX / heatmap 全部读 CSS 变量，主题切换不需�
 
 | 区域 | 实现 | 语言 |
 |------|------|------|
-| **个人空间侧栏** | `JzIconKit.tsx`（15 枚，用户设计稿 SVG 生成） | 全员 0.72 淡染填充、**无底座裸放**（40px 占位 + 悬停微放大）；**同明度多彩 tone**（`jz-ico-tone-*` 十色「简斋雅色」+ 暗主题提亮 + starry/deepsea 环境光校准）；尺寸逐枚微调（常规 23 / AI 25 / 用户管理 31 / 个人资料 28 / 回收站 21 + viewBox 裁框）；含「收藏」入口（缃金星形）。工作台快捷入口与最近知识库卡同语言 |
+| **个人空间侧栏** | `JzIconKit.tsx`（14 枚：11 枚设计稿填充族 + 3 枚主题描边族） | 全员 0.72 淡染填充、**无底座裸放**（40px 占位 + 悬停微放大）；**同明度多彩 tone**（`jz-ico-tone-*` 十色「简斋雅色」+ 暗主题提亮 + starry/deepsea 环境光校准）；尺寸逐枚微调（常规 23 / AI 25 / 用户管理 31 / 个人资料 28 / 回收站 21 + viewBox 裁框）；含「收藏」入口（缃金星形）。工作台快捷入口与最近知识库卡同语言 |
 | **博客顶栏** | `JzIcon.tsx` 最初版 v0.9 浅染族 | 归档/标签/搜索/RSS 走 `--jz-icon-fill/spot` 主题变量 + 翡翠 hover；保留圆角方块底座 + 光泽扫过；登录 JzUserIcon 玄青 tone |
-| **主题切换四枚** | AntD Sun/Moon/Star + 手写 WaveIcon | 初始风格（设计稿版已否决回退） |
+| **主题切换六枚** | AntD Sun/Moon/Star（亮/暗/星空）+ `JzIconKit` 描边族 Wave/Drop/Snow（深海/春水/冬雪） | 初始风格（设计稿填充版已否决回退）；描边族 16 网格 strokeWidth 1 与 24 网格线稿视觉等宽 |
 
-`JzIcon.tsx` 共 **50 枚**：24×24 viewBox / 1.5px stroke / `currentColor` / linecap round；专属「印泥色」彩点 + CSS 变量 `--jz-icon-accent-active` hover/选中态统一染色 + drop-shadow 发光；覆盖首页 / AI Tab / 编辑器 sidebar / PostDetail 等。
+`JzIcon.tsx` 共 **59 枚**：24×24 viewBox / 1.5px stroke / `currentColor` / linecap round；专属「印泥色」彩点 + CSS 变量 `--jz-icon-accent-active` hover/选中态统一染色 + drop-shadow 发光；覆盖首页 / AI Tab / 编辑器 sidebar / PostDetail 等。
 
 ### 12.4 题记（首页名句轮播，v0.9.5 / v0.9.10 增强）
 
@@ -714,7 +721,7 @@ def scope_queryset(qs, user, field="knowledge_base__owner"):
 | CSRF | `CSRF_COOKIE_HTTPONLY=False`，SPA 读 cookie 写 `X-CSRFToken` |
 | DOMPurify | 公开端 HTML 净化，所有 `<img>` 加 `loading="lazy" decoding="async"` |
 | iframe | `X_FRAME_OPTIONS=SAMEORIGIN`，便于博客内嵌 PDF/HTML；`sandbox="allow-scripts allow-popups allow-forms"` |
-| 上传 | 单文件 2GB；类型区分 image/document/other；`MEDIA_ROOT/uploads/YYYY/MM/uuid.ext` |
+| 上传 | 按类型上限（图片 20 MB / PDF 500 MB / PPT 300 MB / EPUB 200 MB / DOC 100 MB / 其它 2 GB，`max_upload_size_for` 唯一入口）；类型区分 image/document/other；`MEDIA_ROOT/uploads/YYYY/MM/uuid.ext` |
 | AI 限流 | `30/min/user`（`UserRateThrottle scope=ai_write`）+ 每用户日预算（超额 429） |
 | 友邻闸门 | `PublicOrLoginGated` 逐请求判定；`SITE_REQUIRE_LOGIN=true` 时匿名访问 `/public/*` 返回 403 |
 | 导出权限 | owner 自己 / superuser；跨租户访问写审计日志 |
@@ -745,7 +752,7 @@ SITE_PUBLIC_URL=https://172.16.x.x:3001
 git clone <repo> jianzhai && cd jianzhai
 
 # 1. 依赖服务
-docker compose up -d                              # postgres 14 + redis 7
+docker compose up -d                              # postgres 16 + redis 7
 
 # 2. 后端
 cd backend
@@ -791,14 +798,16 @@ python manage.py reindex_search                   # 全量重建 tsvector
 ```bash
 cd infra
 cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SITE_REQUIRE_LOGIN 等
-./deploy.sh                     # 构建并启动 6 容器
+./deploy.sh                     # 构建并启动 8 容器
 ```
 
 | 容器 | 作用 |
 |------|------|
-| caddy | 自动签发 HTTPS 证书、反代后端、SPA 路由 fallback（`Caddyfile`） |
-| backend | Gunicorn 跑 Django（`backend.Dockerfile`） |
-| celery | 异步任务 worker |
+| caddy | 自动签发 HTTPS 证书、反代后端、SPA 路由 fallback、`/media/*` forward_auth（`Caddyfile`） |
+| backend | Gunicorn 跑 Django（`backend.Dockerfile`，含 LibreOffice / poppler / Playwright / ocrmypdf 层） |
+| celery | 异步任务 worker + beat（队列 `celery,export`） |
+| celery-convert | 文档转换 worker（队列 `convert`） |
+| celery-ocr | 扫描件 OCR worker（队列 `ocr`） |
 | postgres / redis | 数据与队列 |
 | backup | `backup.sh` 每日 `pg_dump` |
 
@@ -811,7 +820,7 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 | 目标 | 起手处 |
 |------|--------|
 | **新编辑器块** | `frontend/src/components/editor/MathNode.tsx`（参考自定义 Tiptap 节点 + Markdown 序列化） |
-| **新斜杠命令** | `frontend/src/components/editor/slashCommandRegistry.tsx` |
+| **新斜杠命令** | `frontend/src/components/editor/slashCommandRegistry.ts` |
 | **新 AI 操作** | 内置：`backend/apps/ai/prompts.py` 加模板 + `services.py` 暴露 + 前端 `AIAssistant.tsx` 加菜单项；或直接在 UI 建**自定义模板**（`AIPromptTemplate`，零代码） |
 | **新 AI 模型** | `apps/ai/services.AVAILABLE_MODELS` 注册（带 provider/vision/thinking）+ `apps/ai/pricing.py` 加价 + 视需要补 `FALLBACK_CHAIN` |
 | **新导出格式** | `backend/apps/exporter/services/` 加 `<format>_export.py`，注册到 `tasks.run_export` |

@@ -1,7 +1,7 @@
 # 简斋 · AI 助手（多供应商）
 
 > 前端永不持 API key，所有调用走 `apps/ai/` 后端代理。
-> 架构见 [architecture.md](./architecture.md)。基于源码核对（2026-06-21）。
+> 架构见 [architecture.md](./architecture.md)。基于源码核对（2026-09-08）。
 
 ---
 
@@ -53,7 +53,7 @@ class AISettings(models.Model):
 
 ---
 
-## 4. 操作集：8 内置 + 自定义模板
+## 4. 操作集：9 内置 + 自定义模板
 
 | operation | 语义 |
 |-----------|------|

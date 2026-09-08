@@ -1,6 +1,6 @@
 # 简斋 · 简单版
 
-> **简斋·开发指南**  ·  当前 **v0.9.10**  ·  最后更新 2026-06-06
+> **简斋·开发指南**  ·  当前 **v0.9.10+**  ·  最后更新 2026-09-08
 >
 > 第一次来？看这一篇。深入细节请到 → [详细版](./detailed/)
 
@@ -66,9 +66,9 @@ Monorepo 结构：`backend/`（Django 5.2）+ `frontend/`（React 18 + Vite 5）
 | 📤 导出 | MD / HTML / PDF / Word / 整站 zip；多文档合订本（fixed-toc 单文件 anthology） |
 | 🌐 博客 | 匿名 / **友邻可见**两形态、**6 套主题**（亮/暗 + 星空/深海/春水/冬雪 4 个环境氛围层）、5 套纸张、归档、标签云、RSS |
 | 📜 题记 | 首页名句轮播：朝代/作者/篇名三色单行 + 4 种动画；**随机播放**（每次开页洗牌）；悬停暂停、点击切换；管理页拖拽排序 + 批量导入 / 导出备份 |
-| 🤖 AI 助手 | **双供应商**（Claude Opus/Sonnet/Haiku + 通义千问 Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；视觉图片输入、扩展思考、每用户**日预算**、失败自动降级；用量**日历热图** + CSV |
+| 🤖 AI 助手 | **双供应商**（Claude Opus/Sonnet/Haiku + 通义千问 Max/Plus/Turbo/VL）；9 内置操作 + **自定义模板** + **多轮对话**；视觉图片输入、扩展思考、每用户**日预算**、失败自动降级；用量**日历热图** + CSV |
 | 👥 多用户 | **四角色 RBAC**（根 / 管理员=作者 / 普通用户=读者 / 匿名）：作者**共享单一内容池**（不再按 owner 隔离），读者只读博客 + 收藏 + 评论 + 改资料；删 KB/大类/永久删/清空回收站=仅根；自助改密码/邮箱/用户名/头像（`/admin/profile`） |
-| 🎨 视觉 | 博客宣纸朱砂风；后台玄黑玻璃风；**100% 自制图标**（JzIcon 50 枚 + 侧栏设计稿 JzIconKit 15 枚，专属 tone 色随主题联动）；印章 favicon；PWA |
+| 🎨 视觉 | 博客宣纸朱砂风；后台玄黑玻璃风；图标三层（动作类 AntD 语义别名 + 自制线稿 JzIcon 59 枚 + 侧栏设计稿/主题描边族 JzIconKit 14 枚，专属 tone 色随主题联动）；印章 favicon；PWA |
 
 ---
 
@@ -146,12 +146,12 @@ SITE_PUBLIC_URL=https://172.16.x.x:3001
 
 ## 生产部署（腾讯云）
 
-完整套件在 `infra/`：`deploy.sh` 一键构建并启动 6 容器（caddy + backend/gunicorn + celery + postgres + redis + backup），Caddy 自动签发 HTTPS 证书并反代后端，`backup.sh` 每日 `pg_dump`。详见 `infra/README.md`（含域名 / ICP 备案 / DNS 指南）。
+完整套件在 `infra/`：`deploy.sh` 一键构建并启动 8 容器（caddy + backend/gunicorn + celery + celery-convert + celery-ocr + postgres + redis + backup），Caddy 自动签发 HTTPS 证书并反代后端，`backup.sh` 每日 `pg_dump`。详见 `infra/README.md`（含域名 / ICP 备案 / DNS 指南）。
 
 ---
 
 ## 下一步
 
-- 🔬 **实现细节、四层架构、11 个后端 app、数据表与时序、扩展开发索引** → [详细版](./detailed/)
+- 🔬 **实现细节、四层架构、12 个后端 app、数据表与时序、扩展开发索引** → [详细版](./detailed/)
 - 🎯 **可交互的详细架构 SVG**（含悬停说明）→ 超级管理员登录后台 → 架构总览 →「详细版」
 - 📦 **仓库 README 与环境变量** → 项目根目录 `README.md`

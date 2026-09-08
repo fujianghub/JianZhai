@@ -49,14 +49,16 @@ cd frontend && pnpm install && pnpm dev           # :3001（host 0.0.0.0）
 ```bash
 cd infra
 cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SITE_REQUIRE_LOGIN …
-./deploy.sh                     # 构建并启动 6 容器
+./deploy.sh                     # 构建并启动 8 容器
 ```
 
 | 容器 | 作用 |
 |------|------|
 | caddy | 自动签发 HTTPS、反代后端、SPA fallback（`Caddyfile`） |
 | backend | Gunicorn 跑 Django（`backend.Dockerfile`） |
-| celery | 异步任务 worker |
+| celery | 异步任务 worker + beat（队列 `celery,export`） |
+| celery-convert | 文档转换 worker（队列 `convert`：PPT→图/派生 PDF、文本抽取、海报封面；`concurrency=1`） |
+| celery-ocr | 扫描件 OCR worker（队列 `ocr`：`ocrmypdf`/tesseract 产出 `DerivedFile(ocr_pdf)`；镜像含 tesseract 层） |
 | postgres / redis | 数据与队列 |
 | backup | `backup.sh` 每日 `pg_dump` |
 
@@ -83,6 +85,7 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 - 生产 compose：`celery` 服务改 `-Q celery,export`（仍带 `-B` beat），新增 `celery-convert`（`-Q convert --concurrency=1 --prefetch-multiplier=1`，`mem_limit 3g`）与 **`celery-ocr`（2026-09-08 批 13，`-Q ocr --concurrency=1`，ocrmypdf 一本书可跑数小时故独占）**。部署命令追加这两个服务：`up -d --no-deps backend celery celery-convert celery-ocr caddy`。
 - **OCR（批 13）需重建 backend 镜像**：`infra/backend.Dockerfile` 新增 `ocrmypdf tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-eng ghostscript` 层（≈300 MB）；环境变量 `OCR_ENABLED / OCR_AUTO / OCR_LANGS / OCR_JOBS / OCR_MAX_PAGES / OCR_SECONDS_PER_PAGE / OCR_MAX_SECONDS`（默认开 / 自动 / `chi_sim+eng` / 2 / 1000 / 20 / 4h）。部署后 `manage.py backfill_ocr --all --dry-run` 看清单，再 `--all`（排队到 `ocr` worker）或挑 `--ids … --max-pages 300`；线上 883 页那本建议 `--max-pages` 分段并在夜间跑。
 - Beat 新增 `editor.sweep_stuck_conversions`（15 分钟）与 `editor.cleanup_media_report`（每周）。`ConversionJob` 在 django-admin 可查（kind/status 筛选、耗时）。
+- **2026-09-08 系列上线后回填顺序**（均在 backend 容器内）：`manage.py migrate`（editor 0005–0007 / knowledge 0010 / reading 0004–0006 / accounts 0009–0010）→ `backfill_pptx_pdf --all`（存量 deck 补中间 PDF，PPT 文字层依赖）→ `backfill_document_text --all --missing-posters`（附件文本入 `DocumentExtract` + 海报/封面）→ `reindex_search` → `backfill_ocr --all --dry-run` 看清单再排队。
 
 ### 媒体清理（2026-09-08 批 3）
 
@@ -99,9 +102,9 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 | CSRF | `CSRF_COOKIE_HTTPONLY=False`，SPA 读 cookie 写 `X-CSRFToken` |
 | DOMPurify | 公开端 HTML 净化，所有 `<img>` 加 `loading="lazy" decoding="async"` |
 | iframe | `X_FRAME_OPTIONS=SAMEORIGIN`；导出 srcdoc `sandbox="allow-scripts allow-popups allow-forms"` |
-| 上传 | 单文件 2GB；类型区分 image/document/other；`MEDIA_ROOT/uploads/YYYY/MM/uuid.ext` |
+| 上传 | **按类型上限**（`editor/views.py MAX_UPLOAD_SIZE_BY_EXT` + `max_upload_size_for`，env 可调）：图片 20 MB / PDF 500 MB / PPT 300 MB / EPUB 200 MB / DOC(X) 100 MB / 其它兜底 2 GB；`DATA_UPLOAD_MAX_MEMORY_SIZE` 10 MB 只约束非文件字段；类型区分 image/document/other；`MEDIA_ROOT/uploads/YYYY/MM/uuid.ext`（另有 `slides/` `derived/` `avatars/`） |
 | AI | key 仅后端 `.env`；30/min/user + 每用户日预算（超额 429） |
-| 导出 | `exports/` 刻意不在 `media/` 下；owner/superuser 可下载，跨租户访问写审计日志 |
+| 导出 | `exports/` 刻意不在 `media/` 下；作者共享池内任一 `is_staff` 可下载，跨 owner 下载写审计日志 |
 | DRF 节流 | 匿名 120/min；AI 写 30/min/user；登录 `login` 10/min；验证码取题 `captcha` 30/min |
 
 > 主机层加固（SSH 仅密钥 + 新端口 + fail2ban + dnf 自动安全更新 + sysctl）见 memory `project_host_hardening`。

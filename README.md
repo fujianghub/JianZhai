@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml)
 
-个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10+**，编辑器已追平语雀 · 含**四角色权限体系 RBAC** / 安全复审 / 性能优化 9 Phase / Mermaid 离线导出 SVG）。
+个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10+**，最近批次 2026-09-08，见下方「阶段」表与 `docs/CHANGELOG.md`；编辑器已追平语雀 · 含**四角色权限体系 RBAC** / PDF·PPT·EPUB 阅读器 / 划线笔记 / 安全复审 / 性能优化 / Mermaid·KaTeX 离线导出）。
 
 一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。采用**四角色权限体系（RBAC）**：根 root / 管理员 admin（作者）/ 普通用户 user（读者）/ 匿名 anon —— **作者共享单一内容池**，读者只读博客 + 收藏 + 评论 + 改资料（无创作权），根独占不可逆销毁与全量用户管理。博客可切「全开放 / 友邻可见（需登录）」两种形态。附带**腾讯云生产部署套件**（见 [`infra/`](infra/)）。
 
@@ -38,11 +38,11 @@
 | **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG** 与 **KaTeX 公式离线预渲染**（HTML/PDF/静态站，headless Chromium + vendored mermaid/katex，字体内嵌离线可显，缺失时降级源码）；PlantUML 仍为代码块 |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；**6 套主题**（含 4 个环境氛围层：星空/深海暗色 Canvas 粒子 + 春水 WebGL 水面 / 冬雪飘雪亮色）+ 纸张样式，切换器为**单按钮下拉**（调色全交 CSS token，无用户自选 accent）；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
 | **阅读器定制** | 读者侧分组工具条（字体/纸张/排版/专注，等高 28px）；**排版三件套**字号缩放 / 行距 / 版心宽度 + 一键重置（落 localStorage、CSS 变量 scope 到 `<article>`、不触碰文档；默认宋体 + 860px 版心）；**专注/沉浸模式**隐藏导航与侧栏、Esc 退出（保留目录抽屉入口）；**移动端 TOC/KB 抽屉** + **阅读位置记忆**（回访「继续上次阅读」）；阅读进度条带百分比；**PDF 阅读**内嵌书签解析为目录侧栏 + 整页连续滚动（IntersectionObserver 懒渲染）+ 在新标签用浏览器原生阅读器打开 |
-| **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；8 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
+| **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；9 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
 | **账号 / 权限** | **四角色 RBAC**：根（唯一、不可禁用/删除、独占删 KB/大类/永久删/清空回收站）/ 管理员（作者，共享内容池）/ 普通用户（读者，无创作权）/ 匿名；用户管理可见范围按角色收口；新建账号**邮箱必填**；自助改密码/邮箱/用户名/头像。**登录三因子**：密码 + 邮箱匹配 + 服务端拼图滑块验证码。**用户级阅读授权白名单**：可限定某读者只读 某KB（多选）/ 某大类 / 某文件夹（含子树）/ 某篇文档，与 KB/大类受众可见性取 AND。详见 [docs/permissions.md](docs/permissions.md) |
 | **组织** | KB **大类**分组、文档置顶、收藏夹（博客 `/favorites` + 后台侧栏「收藏」入口）、多种排序、回收站 UI |
 | **题记管理** | `/admin/hero`：dnd-kit **整行拖拽排序**、批量导入 / **导出备份**、预览翻看、播放顺序（随机洗牌 / 顺序） |
-| **视觉** | 博客：宣纸朱砂古风；后台：玄黑·玻璃拟态 + 翡翠重音；**100% 自制图标**（`JzIcon` 50 枚 + 侧栏设计稿 `JzIconKit` 15 枚，tone 十色三主题联动）；PWA + 印章 favicon |
+| **视觉** | 博客：宣纸朱砂古风；后台：玄黑·玻璃拟态 + 翡翠重音；图标三层：动作类 AntD 经 `actionIcons` 语义别名、自制线稿 `JzIcon` 59 枚、侧栏设计稿 + 主题描边族 `JzIconKit` 14 枚（tone 十色三主题联动）；PWA + 「簡」字形 favicon/OG 全套；快捷键注册表 + `Mod+/` 速查表 |
 
 ## 技术栈（摘要）
 
@@ -63,14 +63,15 @@ jianzhai/
 │       ├── accounts/       # 多用户 · 根管理员 · 自助改密/邮箱/用户名 · Hero 名句 · 友邻闸门
 │       ├── ai/             # 多供应商代理（Claude + 通义千问）· 模板 · 对话 · 预算 · 用量日志
 │       ├── knowledge/      # KB · 大类 · Folder · Document · 置顶/收藏/排序
-│       ├── editor/         # 附件 · Word/MD 导入 · HTML 正文处理
+│       ├── editor/         # 附件 · Word/MD/PPT/PDF/EPUB 导入 · 派生文件 · 转换/OCR 队列 · 媒体鉴权
 │       ├── versioning/     # 快照 · diff · 回滚
 │       ├── linking/        # 双向链接 · 反链 · 图谱 API
 │       ├── search/         # tsvector · jieba
 │       ├── tags/           # 标签（KB / Folder / Document）
 │       ├── comments/       # 文档级 + 段落级评论
 │       ├── exporter/       # 异步导出
-│       └── blog/           # 公开 API · RSS · slug 安全解析 · 友邻闸门
+│       ├── blog/           # 公开 API · RSS · slug 安全解析 · 友邻闸门
+│       └── reading/        # 划线 · 笔记 · 书签 · 阅读位置（每用户私有）
 ├── frontend/               # Vite + React 18 + TS + AntD 5 + Tiptap 3（:3001）
 ├── infra/                  # 腾讯云部署套件：Dockerfile · docker-compose.prod · Caddyfile · deploy/backup.sh
 └── docker-compose.yml      # PostgreSQL 16 + Redis 7（本地开发）
@@ -165,6 +166,7 @@ cd backend && python manage.py seed_architecture_kb
 - **后端**：每个 Django app 独立 `models.py` / `serializers.py` / `views.py` / `urls.py`；内容访问用 `apps.accounts.scoping.scope_queryset`（**角色制共享池**：作者 `is_staff` 看全部、读者/匿名空集，不再按 owner 隔离）
 - **前端**：公共逻辑放在 `src/api`、`src/components/common`、`src/utils`；后台菜单与博客导航优先使用 `JzIcon`
 - **格式化**：Ruff + Black（Python），Prettier + ESLint（TS）
+- **测试**：后端 `cd backend && pytest`（勿用 `manage.py test`）；前端 `cd frontend && pnpm test`（vitest）+ `pnpm tsc`
 - **文档 slug**：库内按 KB 唯一；公开详情 API 支持 `?kb=<kb_slug>`，全局重复时按发布时间取最新一篇
 
 ## 阶段
@@ -221,11 +223,16 @@ cd backend && python manage.py seed_architecture_kb
 | **Mermaid note 列表崩溃修复** | stateDiagram note 内 markdown 列表≥2项+自动折行触发 mermaid 上游 `splitLineToFitWidth` 崩溃整图不渲染（11.17.2 仍未修；Typora 用 `htmlLabels:true` 不走此路径，简斋 false 为安全加固不可改）——渲染时 `neutralizeNoteListMarkers` 前后端镜像在列表标记后插 U+2060 word joiner 破坏列表识别，像素级无损、存量即生效。2026-09-01，待部署 |
 | **PDF 阅读器原地缩放修复** | 缩放不再跳转：比例锚定让正在看的内容点保持视口原位（可连点 +/- 微调）；根治 `scrollIntoView` 连窗口一起滚致工具条消失（inner 模式只滚容器）；阅读页工具条 sticky 避开吸顶顶栏不再被盖；页面容器 `overflow-anchor:none` 防浏览器滚动锚定干扰。2026-09-01，待部署 |
 | **博客字体样式统一批次** | 三个可感知断层根治：卡片/列表条目标题统一衬线（h4-h6 纳入规则）、markdown 渲染面五处五样收口到 `.markdown-preview` 基类单源（评论/附件预览与正文同排版，阅读三件套通道保留）、题记跨页字号回归单源；文楷/小魏伪加粗归 400；Tiptap 与阅读端字号基准对齐（16→16.5px）；`--jz-fs-*` 扩至十二档 + `--jz-ls-*` 字距六档，博客侧约 210 处硬编码字号/行高/字距全量令牌化（碎片值就近归档）；新增 typographyTokens 双守卫测试。前端 576 测试 + build + Playwright 14/14 全绿。2026-09-01，待部署 |
-| v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 | **EPUB 二期 ①：划线 · 笔记** | 新 app `apps.reading`（`Highlight`/`Bookmark`，每用户私有、读者可写、经 `visible_documents` 两道闸）；选区浮条（复制 / 五色划线 / 下划线 / 写笔记 / 搜本书 / 引用为 Markdown 含 `/d/<id>?cfi=` 回链）+ 划线卡（换色 / 笔记 / 发到评论 / 删除）+ 侧栏「笔记」tab + 导出读书笔记（下载 .md / 作者存为文档）；foliate overlayer SVG 绘制零 DOM 注入、翻章回放、深链闪烁。pytest 18 + vitest 11 + Playwright 27×2。2026-09-02 |
 | **划线批次 A：MD 阅读页划线 · 笔记** | 波浪线三态划线（EPUB+MD）；MD 侧 TextQuote 锚（quote+上下文+标题节，失效保留标记）+ CSS Custom Highlight API 零 DOM 绘制 + 右栏目录/笔记双 tab + `?hl=` 深链闪烁 + 导出/引用回链；浮条与 SelectionAI 合并（AI 仅作者，新增 `explain`）。textAnchor 12 单测 + 冒烟 25/26 两账号。2026-09-02 |
 | **批次 B：KB 目录 EPUB 范式 + 大类标识** | 通用树工具抽出（treeToc/kbToc）；博客左栏目录树重写为 EPUB 目录语言（两级默认展开/筛选/全展折/设置弹层全套/活动行自动滚动）；知识库列表按大类分组（组头色点，零后端改动）；KB 页文件夹分组可折叠持久化。冒烟 19 项。2026-09-02 |
 | **批次 C：EPUB 导航** | 搜索上一处/下一处（游标计数+命中闪烁+accent 描边）、书签（工具条切换+侧栏 tab）、章末「下一章」卡、读完页（完成时间/笔记计数/导出/同书架书目 `?doc_format=epub`）。冒烟 12+14 项。2026-09-02 |
+| **EPUB 全屏「自己向上跳」修复** | 三层根因全修：全屏工具条改纯覆盖不再改 stage 盒子（此前 padding 过渡触发 foliate 3 次重排/8 次 relocate）；vendor `paginator.js` 无文字视口（封面/整页图）改元素+偏移锚/分数锚；`#justAnchored` 只在真会滚动时置位。Playwright 13/13。2026-09-02，已部署（3cba61e） |
+| **图标与快捷键体系收编 B0–B5** | 图标：`--jz-icon-*` 令牌提升 `:root`（portal 弹层 68 节点失色根治）、AntD 为底的动作图标语义别名 `actionIcons` + innerHTML 面 `actionIconSvg`、`ICON_SIZE` 八档、`SaveStatusPill` 五态、`BrandSeal` 方印、favicon/PWA/OG 全套字形 path 资产；快捷键：`src/shortcuts/registry.ts` 唯一键位源（86 条 / 15 scope）+ `useShortcut` + 平台化 `<Kbd>`（mac 按 HIG `⇧⌘X`）+ `Mod+/` / `?` 速查表 + 速记 `Mod+Shift+Space`，`kbdDiscipline` 纪律测试。tsc/vitest 832/build。2026-09-02/03 |
+| **UI 三项优化四轮收编** | 划线七色（补红/橙，`HIGHLIGHT_SWATCHES` 单源，迁移 `reading 0004`）；目录设置站点默认 `TocSettings`（`/admin/toc`，迁移 `accounts 0009`）+ 本地覆盖只存改动键；按钮体系：`IconButton` 收编 62 处图标钮、`Disclosure`（披露三角）vs `Chevron`（方向）分工、`JzEmpty` 空态、收藏/置顶 `DocPinFavoriteButtons` 常驻双色图标、callout 线稿角标。冒烟 50 项。2026-09-03 |
+| **PDF/PPT 文字层 + P0–P3 全系列 13 批** | 文字层：pdf.js 三层栈（canvas + TextLayer + 链接层）可选字/复制/跨页拖选、目录与内链精确到页内位置，PPT 主区叠 LibreOffice 派生 PDF（`DerivedFile(deck_pdf)`，迁移 `editor 0005`）；批 1 URL + Range 流式加载（dev `serve_media` 支持 206）；批 2 二进制文档导出补附件；批 3 永久删除经 `media_gc` 清盘 + `cleanup_media`；批 4 `ConversionJob`（迁移 `editor 0006`/`knowledge 0010`）+ Celery 队列拆分 `celery-convert`；批 5 `/media/*` forward_auth 鉴权（受众/ReadGrant 对附件字节生效）；批 6 `DocumentExtract` 附件文本进搜索（迁移 `editor 0007`）；批 7 阅读器快捷键收编/续读/`?page=`·`?slide=` 深链/a11y；批 8 五档纸色/PPT 样式搬迁/移动端捏合缩放/PDF 目录接入站点右栏；批 9 客户端全文查找 + PDF 页级书签（迁移 `reading 0005`）；批 10 首页海报/EPUB 封面/加密提示/按类型上传上限；批 11 PDF 划线笔记（quads 锚）+ Fullscreen API；批 12 服务端阅读位置（迁移 `reading 0006`）+ PPT 演示模式/翻页动画；批 13 扫描件 OCR（`ocrmypdf` 队列 `celery-ocr`，`DerivedFile(ocr_pdf)`）。2026-09-08，待部署（需重建镜像 + caddy + 6 迁移 + 回填命令） |
+| **目录设置三类集中管理 + 出厂默认** | `TocSettings.prefs` 拆 `{kblist, kb, article}` 三份（大类知识库目录 / 知识库文档目录 / 文档内容目录，迁移 `accounts 0010` 扁平摊三份），`/admin/toc` 三类卡切换 + 实时预览 + 多类保存 + 恢复出厂 + 套用到其余两类；出厂默认 紧凑/中/细/宋体/淡显。冒烟 43/43。2026-09-08，待部署 |
+| v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）
 
@@ -234,7 +241,7 @@ cd backend && python manage.py seed_architecture_kb
 ```bash
 cd infra
 cp .env.example.prod .env          # 填 SECRET_KEY / 数据库 / 域名 / AI Key 等
-./deploy.sh                        # 构建并启动 6 容器：caddy · backend(gunicorn) · celery · postgres · redis · backup
+./deploy.sh                        # 构建并启动 8 容器：caddy · backend(gunicorn) · celery · celery-convert · celery-ocr · postgres · redis · backup
 ```
 
 - **Caddy** 自动签发 HTTPS 证书、反代后端、SPA 路由 fallback

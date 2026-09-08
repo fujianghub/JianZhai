@@ -8,10 +8,12 @@
 ```
 你的腾讯云轻量服务器 (2核2G, 香港或上海)
   ↓
-Docker Compose 起 6 个容器：
-  • caddy      ─ HTTPS 反代 + SPA 静态 (端口 80/443)
+Docker Compose 起 8 个容器：
+  • caddy      ─ HTTPS 反代 + SPA 静态 + /media 转发鉴权 (端口 80/443)
   • backend    ─ Django + Gunicorn (内部 :8002)
-  • celery     ─ 异步任务 (无端口)
+  • celery     ─ 异步任务 + beat (队列 celery,export；无端口)
+  • celery-convert ─ 文档转换 (PPT/PDF/EPUB 派生与文本抽取，队列 convert)
+  • celery-ocr ─ 扫描件 OCR (ocrmypdf/tesseract，队列 ocr)
   • postgres   ─ 主数据 (内部 :5432)
   • redis      ─ 缓存 + broker (内部 :6379)
   • backup     ─ 每天 03:00 自动 pg_dump
