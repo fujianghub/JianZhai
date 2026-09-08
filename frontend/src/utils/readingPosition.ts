@@ -88,6 +88,13 @@ export function saveReadingPosition(slug: string, percent: number, now = Date.no
   writeMap(pruneOldest(map, MAX_ENTRIES));
 }
 
+/** The stored record with its stamp — for merging with the server copy. */
+export function loadReadingPositionRecord(slug: string): { p: number; t: number } | null {
+  if (!slug) return null;
+  const entry = readMap()[slug];
+  return entry && Number.isFinite(entry.p) ? { p: entry.p, t: entry.t || 0 } : null;
+}
+
 export function loadReadingPosition(slug: string): number | null {
   if (!slug) return null;
   const entry = readMap()[slug];

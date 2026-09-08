@@ -398,3 +398,218 @@ def test_convert_pptx_more_pages_than_notes_leaves_blank(owner, kb, settings, tm
     assert n == 3
     slides = list(SlideImage.objects.filter(document=doc).order_by("index"))
     assert [s.notes for s in slides] == ["only one", "", ""]
+
+
+# --------------------------------------------------------------------------- #
+# deck PDF (text-layer source) retention + backfill
+# --------------------------------------------------------------------------- #
+
+
+def _fake_convert_with_pdf(pages: int):
+    """Stand-in for soffice+pdftoppm that also leaves a PDF in the workdir."""
+
+    def fake_convert(pptx_path, workdir):
+        (Path(workdir) / "deck.pdf").write_bytes(b"%PDF-1.4 fake deck")
+        return [
+            _png_file(Path(workdir) / f"slide-{i}.png", size=(300 + i, 200))
+            for i in range(1, pages + 1)
+        ]
+
+    return fake_convert
+
+
+@pytest.mark.django_db
+def test_convert_pptx_keeps_deck_pdf(owner, kb, settings, tmp_path, monkeypatch):
+    from apps.editor.models import DerivedFile
+
+    doc, att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+    monkeypatch.setattr(pptx_tasks, "_convert", _fake_convert_with_pdf(2))
+    assert pptx_tasks.convert_pptx_to_slides(doc.id, att.id) == 2
+    deck = DerivedFile.objects.get(document=doc, kind="deck_pdf")
+    assert deck.page_count == 2
+    assert deck.source_id == att.id
+    assert deck.size == len(b"%PDF-1.4 fake deck")
+    assert deck.file.name.startswith("derived/") and deck.file.name.endswith(".pdf")
+    assert (Path(settings.MEDIA_ROOT) / deck.file.name).read_bytes() == b"%PDF-1.4 fake deck"
+    # The derived PDF must never leak into attachments / format detection.
+    assert Attachment.objects.filter(document=doc).count() == 1
+    assert detect_doc_format(doc) == "pptx"
+
+
+@pytest.mark.django_db
+def test_convert_pptx_rerun_backfills_missing_deck(owner, kb, settings, tmp_path, monkeypatch):
+    """A deck converted before the PDF was kept gets only the PDF on re-run."""
+    from apps.editor.models import DerivedFile
+
+    doc, att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+    SlideImage.objects.create(document=doc, source=att, index=0, width=1, height=1,
+                              image=ContentFile(b"x", name="s0.png"))
+    called = {"convert": 0, "render": 0}
+
+    def fake_render(pptx_path, workdir):
+        called["render"] += 1
+        p = Path(workdir) / "deck.pdf"
+        p.write_bytes(b"%PDF-1.4 backfilled")
+        return p
+
+    monkeypatch.setattr(pptx_tasks, "_convert", lambda *a: called.__setitem__("convert", 1))
+    monkeypatch.setattr(pptx_tasks, "render_deck_pdf", fake_render)
+    assert pptx_tasks.convert_pptx_to_slides(doc.id, att.id) == 0
+    assert called == {"convert": 0, "render": 1}
+    assert SlideImage.objects.filter(document=doc).count() == 1  # untouched
+    deck = DerivedFile.objects.get(document=doc, kind="deck_pdf")
+    assert deck.page_count == 1
+    doc.refresh_from_db()
+    assert doc.slide_status == "done"
+    # Second re-run: deck present → nothing rendered again.
+    assert pptx_tasks.convert_pptx_to_slides(doc.id, att.id) == 0
+    assert called["render"] == 1
+
+
+@pytest.mark.django_db
+def test_deck_pdf_storage_failure_is_soft(owner, kb, settings, tmp_path, monkeypatch):
+    from apps.editor.models import DerivedFile
+
+    doc, att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+    monkeypatch.setattr(pptx_tasks, "_convert", _fake_convert_with_pdf(1))
+    monkeypatch.setattr(DerivedFile.objects, "get_or_create", lambda **kw: (_ for _ in ()).throw(RuntimeError("disk")))
+    assert pptx_tasks.convert_pptx_to_slides(doc.id, att.id) == 1
+    doc.refresh_from_db()
+    assert doc.slide_status == "done"
+    assert not DerivedFile.objects.filter(document=doc, kind="deck_pdf").exists()
+
+
+@pytest.mark.django_db
+def test_slide_pdf_url_in_public_endpoints(api_client, owner, kb, settings, tmp_path, monkeypatch):
+    from apps.editor.models import DerivedFile
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    settings.SITE_REQUIRE_LOGIN = False
+    doc = Document.objects.create(
+        knowledge_base=kb, title="Deck", status="published", visibility="public",
+    )
+    att = Attachment.objects.create(
+        document=doc, uploaded_by=owner,
+        file=ContentFile(b"x", name="deck.pptx"), original_filename="deck.pptx",
+        kind=Attachment.KIND_DOCUMENT, mime_type=PPTX_CT, size=1,
+    )
+    SlideImage.objects.create(document=doc, source=att, index=0, width=10, height=20,
+                              image=ContentFile(b"x", name="s0.png"))
+    # No deck yet → empty url (reader falls back to the image).
+    resp = api_client.get(reverse("api_v1:public-post-slides", args=[doc.id]))
+    assert resp.status_code == 200 and resp.data["slide_pdf_url"] == ""
+    deck = DerivedFile.objects.create(document=doc, source=att, kind="deck_pdf", page_count=1, size=3,
+                                      file=ContentFile(b"pdf", name="deck.pdf"))
+    resp = api_client.get(reverse("api_v1:public-post-slides", args=[doc.id]))
+    assert resp.data["slide_pdf_url"] == deck.url and deck.url.endswith(".pdf")
+    # Post detail carries it too (list shape does not).
+    detail = api_client.get(reverse("api_v1:public-post-detail", args=[doc.slug]))
+    assert detail.status_code == 200, detail.content
+    assert detail.data["slide_pdf_url"] == deck.url
+    # Author-side document serializer.
+    api_client.force_authenticate(owner)
+    d = api_client.get(reverse("api_v1:document-detail", args=[doc.id]))
+    assert d.status_code == 200, d.content
+    assert d.data["slide_pdf_url"] == deck.url
+
+
+@pytest.mark.django_db
+def test_backfill_pptx_pdf_command(owner, kb, settings, tmp_path, monkeypatch):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from apps.editor.models import DerivedFile
+
+    doc, att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+    SlideImage.objects.create(document=doc, source=att, index=0, width=1, height=1,
+                              image=ContentFile(b"x", name="s0.png"))
+    done_doc, done_att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+    DerivedFile.objects.create(document=done_doc, source=done_att, kind="deck_pdf", page_count=1,
+                               file=ContentFile(b"pdf", name="deck.pdf"))
+    rendered = []
+
+    def fake_render(pptx_path, workdir):
+        rendered.append(pptx_path.name)
+        p = Path(workdir) / "deck.pdf"
+        p.write_bytes(b"%PDF-1.4 backfilled")
+        return p
+
+    monkeypatch.setattr(pptx_tasks, "render_deck_pdf", fake_render)
+    out = StringIO()
+    call_command("backfill_pptx_pdf", "--all", "--dry-run", stdout=out)
+    assert "1 candidate" in out.getvalue() and rendered == []
+    out = StringIO()
+    call_command("backfill_pptx_pdf", "--all", stdout=out)
+    assert rendered == [att.original_filename]
+    assert DerivedFile.objects.get(document=doc, kind="deck_pdf").page_count == 1
+    assert "1 ok" in out.getvalue()
+    # Already-backfilled decks are skipped unless --force.
+    call_command("backfill_pptx_pdf", "--all", stdout=StringIO())
+    assert len(rendered) == 1
+    call_command("backfill_pptx_pdf", "--ids", str(done_doc.id), "--force", stdout=StringIO())
+    assert len(rendered) == 2
+
+
+@pytest.mark.django_db
+def test_reconvert_pptx_replaces_deck(owner, kb, settings, tmp_path, monkeypatch):
+    from io import StringIO
+
+    from django.core.management import call_command
+
+    from apps.editor.models import DerivedFile
+
+    doc, att = _make_doc_with_pptx(owner, kb, tmp_path, settings)
+    SlideImage.objects.create(document=doc, source=att, index=0, width=1, height=1,
+                              image=ContentFile(b"x", name="s0.png"))
+    old = DerivedFile.objects.create(document=doc, source=att, kind="deck_pdf", page_count=1,
+                                     file=ContentFile(b"old", name="deck.pdf"))
+    old_name = old.file.name
+    monkeypatch.setattr(pptx_tasks, "_convert", _fake_convert_with_pdf(3))
+    call_command("reconvert_pptx", "--ids", str(doc.id), stdout=StringIO())
+    deck = DerivedFile.objects.get(document=doc, kind="deck_pdf")
+    assert deck.page_count == 3 and deck.file.name != old_name
+    assert not (Path(settings.MEDIA_ROOT) / old_name).exists()
+
+
+@pytest.mark.django_db
+def test_detail_and_slides_endpoints_query_count_is_flat(api_client, owner, kb, settings, tmp_path):
+    """Slides + derived files are prefetched: query count must not grow with
+    the number of slides (the old ``prefetched_slides`` branch was dead code)."""
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    from apps.editor.models import DerivedFile
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    settings.SITE_REQUIRE_LOGIN = False
+
+    def make(n_slides: int):
+        doc = Document.objects.create(knowledge_base=kb, title=f"Deck{n_slides}", status="published", visibility="public")
+        att = Attachment.objects.create(
+            document=doc, uploaded_by=owner, file=ContentFile(b"x", name="d.pptx"),
+            original_filename="d.pptx", kind=Attachment.KIND_DOCUMENT, mime_type=PPTX_CT, size=1,
+        )
+        for i in range(n_slides):
+            SlideImage.objects.create(document=doc, source=att, index=i, width=1, height=1,
+                                      image=ContentFile(b"x", name=f"s{i}.png"))
+        DerivedFile.objects.create(document=doc, source=att, kind="deck_pdf", page_count=n_slides,
+                                   file=ContentFile(b"pdf", name="deck.pdf"))
+        return doc
+
+    small, big = make(1), make(6)
+
+    def count(url):
+        with CaptureQueriesContext(connection) as ctx:
+            resp = api_client.get(url)
+            assert resp.status_code == 200, resp.content
+        return len(ctx.captured_queries)
+
+    for name, args in (("api_v1:public-post-detail", "slug"), ("api_v1:public-post-slides", "id")):
+        a = count(reverse(name, args=[getattr(small, args)]))
+        b = count(reverse(name, args=[getattr(big, args)]))
+        assert a == b, f"{name}: {a} vs {b} queries"
+    api_client.force_authenticate(owner)
+    a = count(reverse("api_v1:document-detail", args=[small.id]))
+    b = count(reverse("api_v1:document-detail", args=[big.id]))
+    assert a == b

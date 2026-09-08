@@ -29,6 +29,10 @@ def refresh_search_vector(doc):
 
 ---
 
+### 附件文本入索引（2026-09-08 批 6）
+
+PDF / PPT / EPUB 文档的 `raw_content` 为空（文件即文章），此前站内搜索只能命中标题/标签/评论。现在 `editor.DocumentExtract`（O2O Document，迁移 `editor 0007`）保存**索引专用**文本：`text`（上限 400k 字符，超限 `truncated=True`——tsvector 单值 1 MB 上限 + jieba 成本）、`source`（pdf / deck_pdf / ocr_pdf / epub / none）、`chars`、`page_count`、`encrypted`、`is_scanned`（每页平均 < 20 字符即判扫描件）、`meta`（pdfinfo 的 Title/Author/Producer/Page size）。**刻意不复用 `raw_content`**——它会进编辑器、导出与摘要。抽取由 Celery 任务 `editor.extract_document_text`（convert 队列，`ConversionJob kind=pdf_extract`）完成：PDF `pdfinfo`+`pdftotext -layout`；PPT 复用 `DerivedFile(deck_pdf)` 免二次 LibreOffice；EPUB 读 zip 内 xhtml 剥标签；OCR 副本存在时优先（批 13）。派发点：上传 `.pdf/.epub`（`_create_doc_from_upload`）、pptx 转换完成后（`_queue_text_extract`）、OCR 完成后；任务末尾同步 `update_search_vector`。`collect_search_text` 追加 `extract.text` 与 `slides.notes`（讲者备注此前从不进索引），`signals.py` 对 `DocumentExtract`/`SlideImage(notes)` 保存触发重建，`_document_snippet` 的来源加 extract 与 notes，`reindex_search` 支持 `--kb/--ids` 并 `select_related("extract")`。存量回填 `manage.py backfill_document_text [--all|--kb|--ids] [--force]`（扫描件也落行，避免每次重扫）。
+
 ## 2. 导出
 
 ### 格式与服务
@@ -47,7 +51,7 @@ def refresh_search_vector(doc):
 
 **默认文件名**（2026-07-27，`common.build_export_filename` 唯一枢纽）：`大类-知识库-[文档标题|文件夹-N篇|N篇]-YYYY-MM-DD-HH-mm(-site).ext`——单篇（含 selection 恰 1 篇）带文档标题、folder 带文件夹名+篇数、selection 多篇带篇数、kb 只到库名；大类为空省略该段；每段截 60 字符（`ExportTask.filename` 上限 255）。磁盘路径始终是 UUID，与下载名无关。
 
-**正文策略**：各格式默认 `doc_export_body()` —— 优先 `published_content`，空则回落 `raw_content`（作者私人归档的有意设计）。两个例外：① **整站 zip fail-closed**——仅收 `published_content` 非空的文档，**绝不回落 raw**（与博客端 `resolve_published_html_body` 同规矩；全库无已发布则产出 stub 首页），feed.xml 摘要同样只取已发布正文；② 创建任务可传 **`only_published: true`**（存 `selection` JSON，免迁移）——过滤 `status=published`，缺省沿用历史行为，site 无论传什么服务端恒强制 true。
+**正文策略**：各格式默认 `doc_export_body()` —— 优先 `published_content`，空则回落 `raw_content`（作者私人归档的有意设计）。两个例外：① **整站 zip fail-closed**——仅收 `published_content` 非空的文档，**绝不回落 raw**（与博客端 `resolve_published_html_body` 同规矩；全库无已发布则产出 stub 首页），feed.xml 摘要同样只取已发布正文；② 创建任务可传 **`only_published: true`**（存 `selection` JSON，免迁移）——过滤 `status=published`，缺省沿用历史行为，site 无论传什么服务端恒强制 true。③ **二进制文档（PDF / PPT / EPUB / 图片，2026-09-08）**——此前五格式静默产出「只有标题的空正文」；现 `doc_export_body` 对 `detect_doc_format ∈ BINARY_EXPORT_FORMATS` 走 `doc_export_binary` → `binary_export_markdown` 合成 Markdown 正文：引用块「{PDF} 原件《文件名》（体积）… `<a href="/media/uploads/…">下载原件</a>` + 站点绝对地址纯文本」，PPT 追加 `![第 N 页](/media/slides/…jpg)` 与 `> 备注：…`，图片文档就是 `![name](/media/…)`。**刻意复用既有媒体管线**：zip 类格式（多篇 md / 静态站）由 `collect_markdown_media` + `rewrite_markdown_media_paths` 把原件与页图打进 `assets/`（受 `EXPORT_MAX_ASSET_BYTES` 约束，超限只留站点链接并在正文标注），HTML/PDF 由 `rewrite_html_media(embed=True)` 内嵌 data URI（原件 ≤ `MAX_EMBED_BYTES` 10 MB 也会内嵌），docx 经 `_add_picture` 逐页插图。静态站不再把二进制文档过滤掉（`published_content` 为空但有原件即纳入）；docx 遍历改 `iter_tree_documents` 与 HTML/PDF 树序一致。`EXPORT_MAX_ASSET_BYTES` 正式进 settings（env 可调，默认 200 MB）。测试 `test_binary_docs_export.py`（8 项覆盖五格式）。
 
 ### HTML Anthology（多文档合订本）
 

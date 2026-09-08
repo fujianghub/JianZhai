@@ -16,6 +16,7 @@ from rest_framework.decorators import (
     throttle_classes,
 )
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 
@@ -30,8 +31,32 @@ from .services.link_preview import LinkPreviewError, fetch_link_preview
 
 logger = logging.getLogger(__name__)
 
-# 2 GiB hard limit per single file
-MAX_UPLOAD_SIZE = 2 * 1024 * 1024 * 1024
+# Per-type single-file caps (2026-09-08). The old blanket 2 GiB let a 1.4 GB
+# scanned book in; readers stream it now, but converters / extractors still
+# copy it around. Env override: JZ_MAX_UPLOAD_<EXT>_MB (e.g. JZ_MAX_UPLOAD_PDF_MB).
+import os as _os
+
+def _cap(kind: str, default_mb: int) -> int:
+    try:
+        return int(_os.environ.get(f"JZ_MAX_UPLOAD_{kind}_MB", default_mb)) * 1024 * 1024
+    except ValueError:
+        return default_mb * 1024 * 1024
+
+
+MAX_UPLOAD_SIZE = _cap("DEFAULT", 2048)  # other / archives
+MAX_UPLOAD_SIZE_BY_EXT = {
+    **{e: _cap("IMAGE", 20) for e in (".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg")},
+    ".pdf": _cap("PDF", 500),
+    ".ppt": _cap("PPTX", 300),
+    ".pptx": _cap("PPTX", 300),
+    ".epub": _cap("EPUB", 200),
+    ".doc": _cap("DOCX", 100),
+    ".docx": _cap("DOCX", 100),
+}
+
+
+def max_upload_size_for(name: str) -> int:
+    return MAX_UPLOAD_SIZE_BY_EXT.get(Path(name).suffix.lower(), MAX_UPLOAD_SIZE)
 ALLOWED_IMAGE_EXT = {".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg"}
 ALLOWED_DOC_EXT = {
     ".pdf", ".doc", ".docx", ".ppt", ".pptx",
@@ -99,9 +124,9 @@ def upload(request):
     f = request.FILES.get("file")
     if not f:
         return Response({"detail": "missing file"}, status=status.HTTP_400_BAD_REQUEST)
-    if f.size > MAX_UPLOAD_SIZE:
+    if f.size > max_upload_size_for(f.name):
         return Response(
-            {"detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限"},
+            {"detail": f"文件超过 {max_upload_size_for(f.name) // (1024*1024)} MB 上限（{Path(f.name).suffix.lower() or '该类型'}）"},
             status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
         )
 
@@ -208,9 +233,9 @@ def _create_doc_from_upload(
     insert_toc: bool = False,
 ) -> Document | Response:
     """Shared logic for turning one uploaded file into a Document + Attachment."""
-    if f.size > MAX_UPLOAD_SIZE:
+    if f.size > max_upload_size_for(f.name):
         return Response(
-            {"detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限: {f.name}"},
+            {"detail": f"文件超过 {max_upload_size_for(f.name) // (1024*1024)} MB 上限: {f.name}"},
             status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
         )
     ext = Path(f.name).suffix.lower()
@@ -305,6 +330,15 @@ def _create_doc_from_upload(
 
         if materialize_docx_images(doc, docx_images, uploaded_by=request.user):
             doc.save(update_fields=["raw_content", "published_content", "updated_at"])
+    if ext in {".pdf", ".epub"}:
+        # Index-only text extraction (pdftotext / EPUB chapters) so the file's
+        # content is searchable; pptx queues it after its slide conversion.
+        from apps.editor.tasks import extract_document_text
+
+        try:
+            extract_document_text.delay(doc.id)
+        except Exception:  # noqa: BLE001 — broker down → backfill_document_text later
+            logger.warning("could not queue text extract for %s", doc.id)
     if ext in {".ppt", ".pptx"}:
         # Slides render asynchronously (LibreOffice is slow); the reader shows a
         # "转换中" placeholder and polls until slides appear. Body stays empty —
@@ -425,9 +459,9 @@ def _bundle_import_entries(
         for rel, f in entries:
             if Path(f.name).suffix.lower() not in IMAGE_EXTS:
                 continue
-            if f.size > MAX_UPLOAD_SIZE:
+            if f.size > max_upload_size_for(f.name):
                 errors.append(
-                    {"name": f.name, "detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限"}
+                    {"name": f.name, "detail": f"文件超过 {max_upload_size_for(f.name) // (1024*1024)} MB 上限"}
                 )
                 continue
             mime = getattr(f, "content_type", None) or mimetypes.guess_type(f.name)[0] or ""
@@ -586,9 +620,9 @@ def import_zip(request):
         return Response({"detail": "missing file"}, status=status.HTTP_400_BAD_REQUEST)
     if Path(f.name).suffix.lower() != ".zip":
         return Response({"detail": "仅支持 .zip 文件"}, status=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE)
-    if f.size > MAX_UPLOAD_SIZE:
+    if f.size > max_upload_size_for(f.name):
         return Response(
-            {"detail": f"文件超过 {MAX_UPLOAD_SIZE // (1024*1024)} MB 上限"},
+            {"detail": f"文件超过 {max_upload_size_for(f.name) // (1024*1024)} MB 上限（{Path(f.name).suffix.lower() or '该类型'}）"},
             status=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
         )
 
@@ -631,7 +665,7 @@ def import_zip(request):
         if ext not in ALLOWED_EXT:
             skipped.append(f"{norm}（不支持的类型）")
             continue
-        if info.file_size > MAX_UPLOAD_SIZE:
+        if info.file_size > max_upload_size_for(info.filename):
             skipped.append(f"{norm}（超过 2GB）")
             continue
         total += info.file_size
@@ -708,3 +742,54 @@ def link_preview(request):
     except LinkPreviewError as e:
         return Response({"detail": e.detail}, status=e.status)
     return Response(data)
+
+
+@api_view(["POST"])
+@permission_classes([IsContentAuthor])
+def reconvert_slides(request, doc_id: int):
+    """Author-triggered re-run of the PPT → slides conversion (after a
+    transient failure, a LibreOffice upgrade, …). Clears the old slides and
+    deck PDF, flags the doc ``pending`` and queues the task."""
+    from apps.editor.services.slides import reset_slides
+    from apps.editor.tasks import convert_pptx_to_slides
+    from apps.knowledge.serializers import detect_doc_format
+
+    doc = get_object_or_404(scope_queryset(Document.objects.all(), request.user), pk=doc_id)
+    if detect_doc_format(doc) != "pptx":
+        return Response({"detail": "该文档不是 PPT/PPTX"}, status=status.HTTP_400_BAD_REQUEST)
+    att = (
+        Attachment.objects.filter(document=doc, original_filename__iregex=r"\.pptx?$")
+        .order_by("-created_at")
+        .first()
+    )
+    if att is None:
+        return Response({"detail": "缺少 PPT 附件"}, status=status.HTTP_400_BAD_REQUEST)
+    reset_slides(doc.id)
+    Document.all_objects.filter(pk=doc.id).update(slide_status=Document.SLIDE_PENDING, slide_error="")
+    convert_pptx_to_slides.delay(doc.id, att.id)
+    return Response({"id": doc.id, "slide_status": Document.SLIDE_PENDING}, status=status.HTTP_202_ACCEPTED)
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+@throttle_classes([])
+def media_auth(request):
+    """Caddy ``forward_auth`` target for ``/media/*`` (production).
+
+    Caddy sends the original request's method/URI in ``X-Forwarded-Uri`` and
+    forwards the browser's cookies, so the session user is resolved the normal
+    way. 200 lets ``file_server`` answer; 401/403/404 are relayed to the
+    client. The decision itself (and its 60 s cache) lives in
+    :mod:`apps.editor.media_auth`, shared with the dev media server.
+    """
+    from urllib.parse import unquote, urlsplit
+
+    from .media_auth import media_access_status
+
+    forwarded = request.headers.get("X-Forwarded-Uri", "")
+    path = unquote(urlsplit(forwarded).path)
+    if not path.startswith("/media/"):
+        return Response(status=status.HTTP_404_NOT_FOUND)
+    code = media_access_status(request.user, path[len("/media/") :])
+    return Response(status=code)
+

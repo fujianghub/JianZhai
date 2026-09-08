@@ -130,11 +130,23 @@ def collect_search_text(document) -> str:
     comment_text = " ".join(
         document.comments.values_list("content", flat=True)
     )
+    # Binary attachments: index-only text (pdftotext / deck PDF / EPUB) plus
+    # PPT speaker notes. Neither lives in raw_content by design.
+    extract_text = _extract_text(document)
+    notes_text = " ".join(
+        n for n in document.slides.values_list("notes", flat=True) if n
+    )
     return " ".join(
         part
-        for part in (document.title or "", body, tag_names, comment_text)
+        for part in (document.title or "", body, extract_text, notes_text, tag_names, comment_text)
         if part
     )
+
+
+def _extract_text(document) -> str:
+    """``DocumentExtract.text`` when present (reverse O2O raises otherwise)."""
+    extract = getattr(document, "extract", None)
+    return (extract.text or "") if extract else ""
 
 
 def update_search_vector(document) -> None:

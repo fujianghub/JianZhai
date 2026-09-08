@@ -147,6 +147,9 @@ export function DocHoverCard({
             )}
           </div>
           <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>{data.title}</div>
+          {data.poster_url && (
+            <img src={data.poster_url} alt="" className="jz-doc-poster" loading="lazy" decoding="async" />
+          )}
           <div
             style={{
               color: 'var(--jz-text-muted)',
@@ -163,6 +166,8 @@ export function DocHoverCard({
           </div>
           <div style={{ marginTop: 8, fontSize: 11, color: 'var(--jz-text-muted)' }}>
             更新于 {dayjs(data.updated_at).format('YYYY-MM-DD HH:mm')}
+            {data.page_count ? ` · ${data.page_count} 页` : ''}
+            {data.encrypted ? ' · 已加密' : ''}
           </div>
         </>
       )}

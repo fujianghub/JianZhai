@@ -134,7 +134,7 @@
 | 权限类 | 含义 | 挂载端点 |
 |---|---|---|
 | `PublicOrLoginGated` | 匿名或登录（友邻闸门） | `/public/*`、`feed.xml`、`link-preview/`（2026-07-20 自 `IsContentAuthor` 放宽，供阅读端链接卡片水合；独立限流 `link_preview` 30/min 防外呼滥用，SSRF 守卫不变） |
-| `IsAuthenticated` | 任意登录用户 | 收藏、评论、`/auth/me/*` 自服务、EPUB 划线/书签（`documents/<id>/{highlights,bookmarks}/`、`highlights/<pk>/`、`bookmarks/<pk>/`；文档可读性同收藏/评论走 `_readable_doc`→`visible_documents`，行级 `user=request.user` 过滤、他人行 404） |
+| `IsAuthenticated` | 任意登录用户 | 收藏、评论、`/auth/me/*` 自服务、附件字节（`/media/*`，2026-09-08 批 5）走 `media_access_status`，同两道闸（见 §六.1）。EPUB/PDF/PPT 划线/书签（`documents/<id>/{highlights,bookmarks}/`；书签 2026-09-08 起 `cfi` XOR `page`、`highlights/<pk>/`、`bookmarks/<pk>/`；文档可读性同收藏/评论走 `_readable_doc`→`visible_documents`，行级 `user=request.user` 过滤、他人行 404）。阅读位置 `GET/PUT documents/<id>/position/`（2026-09-08 批 12，`ReadingPosition` 每用户 × 文档一行 upsert，同 `_readable_doc`，他人位置不可见） |
 | `IsContentAuthor`（=`is_staff`） | 作者(admin+root) | KB/folder/doc 建改、软删 doc/folder、上传/导入、标签、导出、版本、链接、图谱、搜索、AI 使用、`trash/`、`trash/*/restore`、题记管理、AI 设置、全员用量、用户管理入口 |
 | `IsRoot`（=`is_root_admin`） | 仅根 | `kbs DELETE`、`categories DELETE`、`trash/*/purge`、`trash/empty`、`system-info` |
 | 行级规则 | 端点内判定 | `can_manage_user`（用户管理动作）、`UserViewSet.get_queryset`（可见范围）、评论删除（本人 / 版主） |
@@ -142,6 +142,7 @@
 ## 六、防御纵深
 
 1. **后端是唯一安全边界**：每条限制都靠权限类 / 行级校验返回 403，普通用户直接打 API 也越不过。
+   **附件字节层同样受控（2026-09-08）**：`/media/*` 此前由 Caddy `file_server` / Django `static()` 无鉴权直发（能力型 uuid URL 是唯一防线，泄露即永久有效），受众/ReadGrant 只管 API。现在生产 Caddy 对每个媒体请求先 `forward_auth` 到 `GET /api/v1/media-auth/`（转发 Cookie，读 `X-Forwarded-Uri`），dev 由 `apps/editor/media_views.serve_media` 内联判定，两者共用 `apps/editor/media_auth.media_access_status`：staff 全放行；文件按 `Attachment/SlideImage/DerivedFile` 反查所属文档，走与 `apps.reading` 相同的 `visible_documents(public+published+KB public+未删)`；无所属文档的附件（编辑器图片）任何登录用户可读；`avatars/` 公开；匿名仅在 `SITE_REQUIRE_LOGIN=false` 时按同一规则判定，否则 401；未知路径 404。判定按 (user, path) 在 Redis 缓存 60 s（可见性变更最长 60 s 到达文件层）。`Cache-Control` 改为 `private, immutable`（响应因人而异，禁共享缓存）。
 2. **前端按 `role` 收口**（仅体验）：`me` 接口加 `role` 字段；`AdminLayout` 普通用户**只渲染「收藏」「个人资料」**两项；作者专属路由加 `RequireAuthor` 守卫；删除按钮（KB / 大类 / 清空回收站）对非根隐藏。
 
 ## 七、迁移 / 运维

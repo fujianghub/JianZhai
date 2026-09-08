@@ -62,8 +62,11 @@ class Bookmark(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="epub_bookmarks"
     )
     document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="bookmarks")
-    # Point (collapsed) CFI of the page top.
-    cfi = models.CharField(max_length=CFI_MAX_LENGTH)
+    # EPUB: point (collapsed) CFI of the page top. Blank for PDF bookmarks.
+    cfi = models.CharField(max_length=CFI_MAX_LENGTH, blank=True, default="")
+    # PDF / PPT: 1-based page (2026-09-08). Exactly one of cfi / page is set
+    # (serializer-enforced, mirrors Highlight's cfi XOR selector).
+    page = models.PositiveIntegerField(null=True, blank=True)
     chapter = models.CharField(max_length=200, blank=True)
     excerpt = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -72,8 +75,48 @@ class Bookmark(models.Model):
         ordering = ["created_at"]
         indexes = [models.Index(fields=["user", "document"])]
         constraints = [
-            models.UniqueConstraint(fields=["user", "document", "cfi"], name="reading_bookmark_unique_cfi"),
+            models.UniqueConstraint(
+                fields=["user", "document", "cfi"],
+                condition=models.Q(page__isnull=True),
+                name="reading_bookmark_unique_cfi",
+            ),
+            models.UniqueConstraint(
+                fields=["user", "document", "page"],
+                condition=models.Q(page__isnull=False),
+                name="reading_bookmark_unique_page",
+            ),
         ]
 
     def __str__(self) -> str:
         return f"bookmark#{self.id} on {self.document_id} by {self.user_id}"
+
+
+class ReadingPosition(models.Model):
+    """Where a reader last was in a document — one row per (user, document),
+    synced across devices (2026-09-08). Each reader writes the anchor it
+    understands: EPUB ``cfi`` + ``fraction``, PDF ``page`` + ``offset``
+    (0–1 inside the page), PPT ``slide`` (0-based), Markdown ``fraction``.
+    Clients keep their localStorage memory as the fast path and merge by
+    ``updated_at`` — the newer of the two wins.
+    """
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="reading_positions"
+    )
+    document = models.ForeignKey(Document, on_delete=models.CASCADE, related_name="reading_positions")
+    cfi = models.CharField(max_length=CFI_MAX_LENGTH, blank=True, default="")
+    fraction = models.FloatField(null=True, blank=True)
+    page = models.PositiveIntegerField(null=True, blank=True)
+    offset = models.FloatField(null=True, blank=True)
+    slide = models.PositiveIntegerField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=["user", "document"], name="reading_position_unique_user_doc"),
+        ]
+        indexes = [models.Index(fields=["user", "-updated_at"])]
+
+    def __str__(self) -> str:
+        return f"{self.user_id}@{self.document_id}"
+

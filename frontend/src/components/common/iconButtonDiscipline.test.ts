@@ -69,4 +69,19 @@ describe('图标钮纪律', () => {
   it('ALLOWLIST 不含已干净文件', () => {
     expect(stale).toEqual([]);
   });
+
+  // 2026-09-08：图标-only 的 <Button icon={…} /> 若无文字子节点，必须带 aria-label
+  // （antd Tooltip 不会给子元素加可访问名，屏幕阅读器读到的是空按钮）。
+  const unlabeled: string[] = [];
+  for (const file of walk(srcDir)) {
+    const rel = relative(srcDir, file);
+    if (rel.endsWith('IconButton.tsx')) continue;
+    const bad = selfClosingButtons(readFileSync(file, 'utf8')).filter(
+      (t) => /\bicon=/.test(t) && !/aria-label=/.test(t) && !/\baria-labelledby=/.test(t) && !t.includes('jz-toolbar-icon-btn'),
+    );
+    if (bad.length) unlabeled.push(`${rel} ×${bad.length}`);
+  }
+  it('图标-only <Button icon /> 都带 aria-label', () => {
+    expect(unlabeled).toEqual([]);
+  });
 });

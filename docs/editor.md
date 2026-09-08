@@ -222,17 +222,33 @@
 
 1. `soffice --headless --convert-to pdf` 转 PDF（soffice 加载坏源仍退 0，故靠 B1 前置拦截）；
 2. `pdftoppm -jpeg -jpegopt quality=82` 逐页光栅化为 **JPEG**（非 PNG——94 页 deck 从 ~24MB 降到几 MB，批次 3fa9ba9），每页额外生成 **~320px 导轨缩略图**（`SlideImage.thumbnail`，缩略图轨用它、主图才用全分辨率，避免每个缩略图都拉全图致 850MB 解码）；
-3. `extract_pptx_notes(pptx_path)` 用 **python-pptx** 抽讲者备注（`slide.notes_slide.notes_text_frame`），**best-effort**：失败不拖垮转换，按 `index` 与渲染页对齐（隐藏页漂移则该页留空、不越界）。
+3. `extract_pptx_notes(pptx_path)` 用 **python-pptx** 抽讲者备注（`slide.notes_slide.notes_text_frame`），**best-effort**：失败不拖垮转换，按 `index` 与渲染页对齐（隐藏页漂移则该页留空、不越界）；
+4. **保留第 1 步的中间 PDF**（2026-09-08，`_store_deck_pdf` → `DerivedFile(kind=deck_pdf)`，迁移 `editor 0005_derivedfile`；`DerivedFile` 是通用「服务端派生文件」表——FK Document + `unique(document, kind)`，kind ∈ deck_pdf / ocr_pdf / poster / cover，文件落 `media/derived/YYYY/MM/<uuid>.<ext>`（Caddy 对 `/slides/*` `/derived/*` 同样 immutable），查询经 `apps/editor/services/derived.py derived_of/derived_url`，详情端点用 `prefetched_derived` 缓存）：它含全部文字与超链接，前端用 pdf.js 在每张幻灯图上叠文字层/链接层（保真度与 JPEG 一致——图就是从它栅格化的）。落盘 best-effort（失败只 log 不影响 slides）；幂等守卫升级为「有 slides 无 deck → 只跑 `render_deck_pdf`（soffice 一步）补 PDF」自愈。**刻意不用 `Attachment` 承载**：`_primary_attachment`/`detect_doc_format` 按附件挑主件，派生 `.pdf` 混入会把 pptx 误判成 pdf 且出现在附件列表。
 
 **数据模型** `SlideImage`（`unique_together (document, index)` 使重转幂等，`ordering = ["index"]`）：`index`(0-based 稳定序) / `image`(全分辨率 JPEG) / `thumbnail`(320px，legacy 行空 → `thumb_url` 回退全图) / `notes`(TextField，无备注/legacy 行为空)。`as_dict()` 带出 `notes`，blog + knowledge 两序列化器自动生效。
 
 **转换状态可见**（批次 B2）：`Document.slide_status`(pending/failed…) + `slide_error`（迁移 `knowledge 0009`）持久化转换态，`_set_slide_state` 写入、`_failure_reason` 把异常翻成人话（须匹配 `pdftoppm` 的 JPEG 输出串，勿留 “no PNG” 死分支）。前端 `PptxReader` 据此区分 pending/failed、显示真实原因、**失败即停轮询**（详见 [frontend.md §5](./frontend.md#5-博客阅读器体验)）。
 
-**存量维护命令**：`manage.py reconvert_pptx`（回填旧 PNG/无缩略图 deck，重新光栅化）；`manage.py backfill_pptx_notes [--all]`（**只读源文件补 `notes`、不重新光栅化**，回填备注上线前转好的 deck）。
+**任务健壮性与可观测（2026-09-08 批 4）**：`convert_pptx_to_slides` 改为 `bind=True, base=ConvertTask, acks_late, reject_on_worker_lost, soft_time_limit=520, time_limit=560`（显式小于全局 540/600，软限先触发才能落状态）；瞬时错误（`TimeoutExpired`/非 `FileNotFoundError` 的 `OSError`）在 worker 下最多重试 2 次（`_should_retry`，**直接调用/测试永不重试**，保持同步语义），`ConvertTask.on_failure` 兜底写 `failed`；源文件 `shutil.copyfileobj` 流式落盘不再整份读内存。每次运行落一行 **`ConversionJob`**（`kind/status/task_id/attempt/pages/src_bytes/out_bytes/duration_ms/error`，admin 可按 kind/status 筛，`SlideImage`/`DerivedFile` 同时注册 admin）；`Document.slide_status` 加 `choices`+`db_index`（常量 `Document.SLIDE_PENDING/DONE/FAILED`，迁移 `knowledge 0010`）。Beat `editor.sweep_stuck_conversions` 每 15 分钟把「pending 超 20 分钟且无 running 作业」的 deck 置 failed（硬超时 SIGKILL 跑不到 on_failure 的兜底）。作者可在阅读器失败态点「重新转换」→ `POST /api/v1/documents/<id>/reconvert-slides/`（`IsContentAuthor` + 共享池 scope，`services/slides.reset_slides` 清 slides/deck 后 `.delay()`）。**队列拆分**：`CELERY_TASK_QUEUES = celery/convert/export/ocr`，路由 `editor.convert_pptx`→convert、`exporter.run_export`→export、`editor.ocr_pdf`→ocr；不带 `-Q` 启动的 worker（dev systemd）自动消费全部队列，生产 compose 拆成 `celery`（`-Q celery,export` + beat）与 `celery-convert`（`-Q convert,ocr --concurrency=1`）。
 
-**部署**：线上镜像须含 `libreoffice` + `poppler-utils`（系统包）+ `python-pptx`（新依赖）；改依赖后需重建镜像 + `migrate` + `backfill_pptx_notes --all` 才有备注。
+**PDF/EPUB 服务端元数据与海报（2026-09-08 批 10）**：`extract_document_text` 任务顺带产出 `DerivedFile(poster)`（`services/posters.py make_pdf_poster`：`pdftoppm -jpeg -f 1 -l 1 -scale-to-x 480`，`page_count` 写在 poster 行上）与 `DerivedFile(cover)`（`extract_epub_cover`：读 `META-INF/container.xml` → OPF `properties="cover-image"` / `<meta name="cover">` / 兜底 id·href 含 cover 的图片项，零新依赖）；加密 PDF 跳过海报。序列化：blog 列表/详情与 knowledge 列表/详情多 `poster_url`（PPT 回落首张缩略图）与 `page_count`，`_published_qs` 与 knowledge list 查询集加 `derived_prefetch()`（`services/derived.derived_visual` 单次遍历取 poster/cover；`test_defer_body_perf` 期望 3 条查询）；`preview` 端点增 `doc_format/page_count/poster_url/size/encrypted`，正文为空时摘要取抽取文本前 160 字。**上传上限按类型**：`MAX_UPLOAD_SIZE_BY_EXT`（图片 20 MB / PDF 500 / PPT 300 / EPUB 200 / DOCX 100 / 其它 2 GiB，env `JZ_MAX_UPLOAD_<TYPE>_MB` 覆盖），四个上传入口与 zip 导入统一 `max_upload_size_for`；`DATA_UPLOAD_MAX_MEMORY_SIZE` 由误设的 2 GiB 改回 10 MB（Django 该项只约束非文件表单字段，测试 `test_data_upload_memory_size_only_caps_form_fields` 锁定语义）。回填：`backfill_document_text --all --missing-posters`（本地 465 篇已生成）。
+
+**存量维护命令**：`manage.py reconvert_pptx`（回填旧 PNG/无缩略图 deck，重新光栅化，同时删旧 deck PDF 由任务重建）；`manage.py backfill_pptx_notes [--all]`（**只读源文件补 `notes`、不重新光栅化**，回填备注上线前转好的 deck）；`manage.py backfill_pptx_pdf [--all|--ids|--kb] [--force] [--dry-run]`（**只跑 soffice 补 deck PDF、不动 slides**，默认跳过已有 deck 的文档；本地 24 个 deck 已回填）。
+
+**部署**：线上镜像须含 `libreoffice` + `poppler-utils`（系统包）+ `python-pptx`（新依赖）；改依赖后需重建镜像 + `migrate` + `backfill_pptx_notes --all` 才有备注；2026-09-08 批次上线后再跑 `backfill_pptx_pdf --all` 存量 deck 才有文字层（无 deck 的自动回退纯图）。
 
 ---
+
+### 扫描件 OCR（2026-09-08，批 13）
+
+本地库 26 个扫描 PDF 占 1.77 GB，文字层/查找/划线/搜索对它们全部无效——只有 OCR 有意义。实现（`apps/editor/services/ocr.py` + `tasks.ocr_pdf`）：
+
+- **产物 = `DerivedFile(kind=ocr_pdf)`**：`ocrmypdf --skip-text --optimize 0 --jobs N -l chi_sim+eng --output-type pdf` 给原件加一层不可见文字，原件不动仍是下载对象；阅读器改渲染副本（序列化器 `reader_pdf_url`，`PublicAttachmentPreview` / `DocEditorPage` 优先取它），`extract_document_text` 已优先读副本（`source=ocr_pdf`）→ 站内搜索可搜。**`--skip-text` 使任务幂等**（已有文字的页原样复制）。
+- **队列 `ocr` + 按页数定时限**：`queue_ocr(document_id, pages)` 用 `apply_async(soft_time_limit=min(OCR_MAX_SECONDS, max(120, pages × OCR_SECONDS_PER_PAGE)))`；大书按 `OCR_MAX_PAGES`（默认 1000）只做前 N 页并在 `DerivedFile.meta.partial` 记录，`backfill_ocr --max-pages` 可再收紧。生产单独 `celery-ocr` 容器（`-Q ocr --concurrency=1`），一本几小时的书不会挡住 PPT 转换。
+- **触发**：`extract_document_text` 判定 `is_scanned && source=="pdf" && !encrypted` 且 `OCR_AUTO` 时自动排队（`source=="pdf"` 守卫防止副本仍被判扫描件时死循环）；存量 `manage.py backfill_ocr [--all|--kb|--ids] [--max-pages N] [--force] [--inline] [--dry-run]`（只选 `extract.is_scanned` 且无副本的 PDF）。
+- **可观测**：`ConversionJob(kind=ocr)` 记录 pages/耗时/错误（`_ocr_failure_reason`：超时 / 未装 / ocrmypdf 退出码 + stderr 末行）；序列化器 `ocr_status`（`scanned` 未识别 / `queued` / `running` / `failed` / `done` / `''` 文字 PDF），前端 `PdfScanHint` 在阅读器上方提示「图片型 PDF：…」。加密 PDF 跳过（job 记 failed 说明）。
+- **环境**：镜像层 `ocrmypdf tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-eng ghostscript`；dev 宿主机 `dnf install tesseract tesseract-langpack-chi_sim` + venv `pip install ocrmypdf`（`ocr_binary()` 会在解释器同目录找 venv 里的可执行文件，systemd 的 PATH 不含 `.venv/bin` 也能跑）。`OCR_ENABLED=false` 整体关闭。
+- **已知限制**：tesseract 4.1 对中文会在字间插空格、偶有错字（`text_extract` 不做后处理，搜索用 jieba 分词受影响有限）；OCR 副本的 URL 与原件不同，PDF 阅读器的本地位置记忆按 URL 分叉（服务端位置按文档不受影响）。冒烟 `Test/scripts/ocr_smoke.py`（Pillow 现造两页图片型 PDF → 抽取判扫描 → 提示 → 真跑 ocrmypdf → 文字层/搜索/下载三断言，13 项）。
 
 ## 9. 语雀式链接三形态（2026-07-20）
 

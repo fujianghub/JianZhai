@@ -167,9 +167,23 @@ class DocumentViewSet(viewsets.ModelViewSet):
         # annotate a truncated head so ``detect_doc_format`` stays query-free.
         # retrieve/update keep the full content via the default queryset.
         if self.action == "list":
-            qs = qs.defer(
-                "raw_content", "published_content", "search_vector"
-            ).annotate(_fmt_head=_FMT_HEAD_EXPR)
+            from apps.editor.services.derived import derived_prefetch
+
+            qs = (
+                qs.defer("raw_content", "published_content", "search_vector")
+                .annotate(_fmt_head=_FMT_HEAD_EXPR)
+                .prefetch_related(derived_prefetch())
+            )
+        else:
+            # Detail shapes emit slides + derived-file urls; prefetch so the
+            # serializer reads caches instead of two extra queries per doc.
+            from apps.editor.models import SlideImage
+            from apps.editor.services.derived import derived_prefetch
+
+            qs = qs.prefetch_related(
+                Prefetch("slides", queryset=SlideImage.objects.order_by("index"), to_attr="prefetched_slides"),
+                derived_prefetch(),
+            )
         kb = self.request.query_params.get("knowledge_base")
         folder = self.request.query_params.get("folder")
         if kb:
@@ -571,12 +585,28 @@ class DocumentViewSet(viewsets.ModelViewSet):
         snippet = _re.sub(r"[*_`>\[\]()!]", "", snippet)
         snippet = _re.sub(r"\s+", " ", snippet).strip()
         excerpt = snippet[:160] + ("…" if len(snippet) > 160 else "")
+        # Binary docs: format, page count, poster and size for the card.
+        from apps.editor.services.derived import derived_visual
+        from apps.knowledge.serializers import _primary_attachment, detect_doc_format
+
+        fmt = detect_doc_format(doc)
+        poster = derived_visual(doc)
+        extract = getattr(doc, "extract", None)
+        att = _primary_attachment(doc)
+        if not excerpt and extract and extract.text:
+            head = _re.sub(r"\s+", " ", extract.text[:400]).strip()
+            excerpt = head[:160] + ("…" if len(head) > 160 else "")
         return Response(
             {
                 "id": doc.id,
                 "title": doc.title,
                 "slug": doc.slug,
                 "excerpt": excerpt,
+                "doc_format": fmt,
+                "page_count": (extract.page_count if extract and extract.page_count else (poster.page_count if poster and poster.page_count else None)),
+                "poster_url": poster.url if poster else "",
+                "size": att.size if att else None,
+                "encrypted": bool(extract and extract.encrypted),
                 "status": doc.status,
                 "visibility": doc.visibility,
                 "knowledge_base": {

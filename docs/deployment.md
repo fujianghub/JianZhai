@@ -71,9 +71,23 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 - **服务器专属文件的变更须手工合并**（rsync 排除 ≠ 永不更新）：main 若改了 `backend.Dockerfile` / compose，要把语义变更手工套进服务器版（CN 镜像/concurrency=1 变体保留）。例：2026-07-27 Playwright 层 = `pip install -e .[pdf]` + `PLAYWRIGHT_DOWNLOAD_HOST=https://cdn.npmmirror.com/binaries/playwright playwright install --with-deps chromium`（服务器连不通官方 CDN，浏览器二进制必须走 npmmirror）+ compose celery `-B` + `mem_limit 3g`；改前先 `cp xxx xxx.bak.日期`
 - **知识库内容同步**（DB + media，与代码部署互不干扰）：仓库根 `Local_to_Cloud_Server_kb_sysnc.py`（gitignore 不入库的本地运维工具）。先 `--dry-run` 盘点，自带安全闸门（服务器有本地没有的评论/收藏/用户即中止）+ 服务器兜底备份 + 停机窗口压缩（media 先传、库切换只需几十秒）；`--db-only` / `--media-only` / `--max-size` 见脚本 docstring
 - **部署后验证绿三件**：线上 JS hash == 本地 dist 产物；匿名访问 `/api/v1/public/*` 返 403；`/auth/session/` 返 `require_login: true`
+- **媒体鉴权验证（2026-09-08 批 5 起，Caddy `forward_auth`）**：匿名 `curl -s -o /dev/null -w '%{http_code}' https://<host>/media/uploads/<x>.pdf` → `401`；带登录 Cookie 的读者对可见文档 → `200`（带 `Range` → `206`）、对受众排除/未授权文档 → `403`；`/media/avatars/*` 匿名 `200`；响应头 `Cache-Control: private, max-age=31536000, immutable`；`.pptx/.docx/.zip` 带 `Content-Disposition: attachment`，PDF 无（新标签打开依赖 inline）。改动在 `infra/Caddyfile`，需重建 caddy 镜像；backend 须先于 caddy 起（forward_auth 目标 `backend:8002`）。
+- **PDF 流式加载验证（2026-09-08 批 1 起）**：`curl -sI https://<host>/media/uploads/<x>.pdf` 带 `Accept-Ranges: bytes`；`curl -s -o /dev/null -w '%{http_code}' -H 'Range: bytes=0-1023' <同 URL>` 返 `206`；`/media/slides/*` 与 `/media/derived/*` 返 `Cache-Control: … immutable`（`infra/Caddyfile` 改动需重建 caddy 镜像才生效）。阅读页打开一份大 PDF，DevTools 网络面板应看到多条 206 分片而非一条整份 200。
 - **导出共享卷**（必须）：backend + celery 各挂命名卷 `exports_data:/app/exports`（顶层声明 `name: jianzhai_exports_data`），否则 celery 写、backend 读不到 → 下载返 404 HTML → 浏览器「无法从网站上提取文件」。详见 [export-search.md](./export-search.md) 与 memory `project_export_shared_volume`
 
 ---
+
+### Celery 队列与转换 worker（2026-09-08 批 4）
+
+- 队列：`celery`（默认）/ `convert`（pptx 转换、文本抽取、海报）/ `export`（Chromium 导出）/ `ocr`。路由在 `settings.CELERY_TASK_ROUTES`；`CELERY_TASK_QUEUES` 声明后**不带 `-Q` 的 worker 消费全部队列**（本机 systemd 单 worker 无需改 unit）。
+- 生产 compose：`celery` 服务改 `-Q celery,export`（仍带 `-B` beat），新增 `celery-convert`（`-Q convert --concurrency=1 --prefetch-multiplier=1`，`mem_limit 3g`）与 **`celery-ocr`（2026-09-08 批 13，`-Q ocr --concurrency=1`，ocrmypdf 一本书可跑数小时故独占）**。部署命令追加这两个服务：`up -d --no-deps backend celery celery-convert celery-ocr caddy`。
+- **OCR（批 13）需重建 backend 镜像**：`infra/backend.Dockerfile` 新增 `ocrmypdf tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-eng ghostscript` 层（≈300 MB）；环境变量 `OCR_ENABLED / OCR_AUTO / OCR_LANGS / OCR_JOBS / OCR_MAX_PAGES / OCR_SECONDS_PER_PAGE / OCR_MAX_SECONDS`（默认开 / 自动 / `chi_sim+eng` / 2 / 1000 / 20 / 4h）。部署后 `manage.py backfill_ocr --all --dry-run` 看清单，再 `--all`（排队到 `ocr` worker）或挑 `--ids … --max-pages 300`；线上 883 页那本建议 `--max-pages` 分段并在夜间跑。
+- Beat 新增 `editor.sweep_stuck_conversions`（15 分钟）与 `editor.cleanup_media_report`（每周）。`ConversionJob` 在 django-admin 可查（kind/status 筛选、耗时）。
+
+### 媒体清理（2026-09-08 批 3）
+
+- **彻底删除连带删文件**：回收站 purge / 批量 purge / 清空回收站 / 删 KB 全部经 `apps/editor/services/media_gc.py`（`purge_document` / `purge_knowledge_base`）：先在事务内删行（附件行随文档一起删——`Attachment.document` 虽是 SET_NULL，但附件属于文档，留行只会留下仍可直链的孤儿），再 best-effort 删附件 / 幻灯片 JPEG+缩略图 / 派生文件。PPT 转换若在 `bulk_create` 之后失败，已落盘的 JPEG 会被回滚删除。
+- **孤儿扫描** `manage.py cleanup_media`：默认**只报告**，`--apply` 才删；已知集合 = Attachment/SlideImage/DerivedFile 三表 + **所有文档正文（含回收站）里的 `/media/` 引用**（编辑器上传的图片只被 Markdown 引用、没有 document 外键，不扫正文就会误判）；文件须超过 `--min-age-hours`（24）才算孤儿，无所属文档且未被引用的 `Attachment` 行须超过 `--row-min-age-days`（7）；`avatars/` 永不触碰。Beat `editor.cleanup_media_report` 每周跑一次报告态写日志。本地首扫：163 个孤儿文件 11.4 MB + 575 个无主附件行。
 
 ## 4. 安全控制点
 

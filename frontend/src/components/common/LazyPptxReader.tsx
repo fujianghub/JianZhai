@@ -15,6 +15,11 @@ interface Props {
   status?: SlideStatus;
   error?: string;
   pollInterval?: number;
+  pdfUrl?: string | null;
+  /** 0-based slide to open on (``?slide=`` deep link is 1-based). */
+  initialSlide?: number | null;
+  /** Mirror the active slide into ``?slide=`` (reading page only). */
+  syncUrl?: boolean;
 }
 
 export default function LazyPptxReader(props: Props) {

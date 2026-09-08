@@ -361,6 +361,7 @@ class FavoriteDocumentSerializer(serializers.Serializer):
 class DocumentListSerializer(serializers.ModelSerializer):
     """Light-weight serializer used in list endpoints (omits content)."""
 
+    poster_url = serializers.SerializerMethodField()
     doc_format = serializers.SerializerMethodField()
 
     class Meta:
@@ -375,11 +376,18 @@ class DocumentListSerializer(serializers.ModelSerializer):
             "visibility",
             "order",
             "doc_format",
+            "poster_url",
             "created_at",
             "updated_at",
             "published_at",
         ]
         read_only_fields = fields
+
+    def get_poster_url(self, obj: Document) -> str:
+        from apps.editor.services.derived import derived_visual
+
+        row = derived_visual(obj)
+        return row.url if row else ""
 
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
@@ -389,6 +397,10 @@ class DocumentSerializer(serializers.ModelSerializer):
     doc_format = serializers.SerializerMethodField()
     primary_attachment = serializers.SerializerMethodField()
     slides = serializers.SerializerMethodField()
+    slide_pdf_url = serializers.SerializerMethodField()
+    reader_pdf_url = serializers.SerializerMethodField()
+    ocr_status = serializers.SerializerMethodField()
+    poster_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Document
@@ -413,6 +425,10 @@ class DocumentSerializer(serializers.ModelSerializer):
             "slides",
             "slide_status",
             "slide_error",
+            "slide_pdf_url",
+            "reader_pdf_url",
+            "ocr_status",
+            "poster_url",
             "created_at",
             "updated_at",
             "published_at",
@@ -428,6 +444,10 @@ class DocumentSerializer(serializers.ModelSerializer):
             "slides",
             "slide_status",
             "slide_error",
+            "slide_pdf_url",
+            "reader_pdf_url",
+            "ocr_status",
+            "poster_url",
             "created_at",
             "updated_at",
         ]
@@ -436,7 +456,30 @@ class DocumentSerializer(serializers.ModelSerializer):
         return detect_doc_format(obj)
 
     def get_slides(self, obj: Document) -> list[dict]:
-        return [s.as_dict() for s in obj.slides.all()]
+        cached = getattr(obj, "prefetched_slides", None)
+        rows = cached if cached is not None else obj.slides.all()
+        return [s.as_dict() for s in rows]
+
+    def get_slide_pdf_url(self, obj: Document) -> str:
+        from apps.editor.services.derived import derived_url
+
+        return derived_url(obj, "deck_pdf")
+
+    def get_reader_pdf_url(self, obj: Document) -> str:
+        from apps.editor.services.derived import derived_url
+
+        return derived_url(obj, "ocr_pdf")
+
+    def get_ocr_status(self, obj: Document) -> str:
+        from apps.editor.services.derived import ocr_status
+
+        return ocr_status(obj) if detect_doc_format(obj) == "pdf" else ""
+
+    def get_poster_url(self, obj: Document) -> str:
+        from apps.editor.services.derived import derived_visual
+
+        row = derived_visual(obj)
+        return row.url if row else ""
 
     def validate_knowledge_base(self, value: KnowledgeBase) -> KnowledgeBase:
         return _assert_owned(self, value, value.owner_id)

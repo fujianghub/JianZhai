@@ -41,6 +41,7 @@ def test_list_serializer_defers_body_but_keeps_format():
     )
 
     # Replicate the viewset's list queryset (defer + annotate + attachment prefetch).
+    from apps.editor.services.derived import derived_prefetch
     from apps.knowledge.serializers import _FMT_HEAD_EXPR
     from apps.knowledge.views import _PRIMARY_ATTACHMENT_PREFETCH
 
@@ -48,14 +49,15 @@ def test_list_serializer_defers_body_but_keeps_format():
         Document.objects.filter(knowledge_base=kb)
         .defer("raw_content", "published_content", "search_vector")
         .annotate(_fmt_head=_FMT_HEAD_EXPR)
-        .prefetch_related(_PRIMARY_ATTACHMENT_PREFETCH)
+        .prefetch_related(_PRIMARY_ATTACHMENT_PREFETCH, derived_prefetch())
         .order_by("id")
     )
 
     with CaptureQueriesContext(connection) as ctx:
         data = DocumentListSerializer(qs, many=True).data
-    # Docs SELECT + a single attachment prefetch — no per-row un-defer of the body.
-    assert len(ctx.captured_queries) == 2
+    # Docs SELECT + attachment prefetch + derived-file prefetch (poster_url,
+    # 2026-09-08) — no per-row un-defer of the body, no per-row poster lookup.
+    assert len(ctx.captured_queries) == 3
     main_sql = ctx.captured_queries[0]["sql"]
     # search_vector appears in no annotation, so it's fully absent from the SELECT.
     # (raw_content/published_content appear only wrapped in SUBSTRING/COALESCE for

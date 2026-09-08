@@ -20,8 +20,11 @@ MAX_QUERY_CHARS = 256
 
 def _document_snippet(doc: Document, tokens: list[str]) -> str:
     """Prefer a snippet from body; fall back to tag names or comments when matched."""
+    extract = getattr(doc, "extract", None)
     sources = [
         doc.raw_content or "",
+        (extract.text if extract else "") or "",
+        " ".join(s.notes for s in doc.slides.all() if s.notes),
         " ".join(t.name for t in doc.tags.all()),
         " ".join(c.content for c in doc.comments.all()),
     ]
@@ -66,8 +69,8 @@ def search(request):
         scope_queryset(Document.objects.all(), request.user)
         .filter(search_vector=pg_query)
         .annotate(rank=SearchRank(F("search_vector"), pg_query))
-        .select_related("knowledge_base")
-        .prefetch_related("tags", "comments")
+        .select_related("knowledge_base", "extract")
+        .prefetch_related("tags", "comments", "slides")
         # Snippet uses raw_content; the large published_content + tsvector
         # columns are never read into Python, so stop transferring them.
         .defer("published_content", "search_vector")

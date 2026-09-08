@@ -52,19 +52,24 @@ fujiang.jianzhai.cn {
     # ``static()`` URL helper is disabled when DEBUG=False, so proxying
     # /media/* to the backend would just 404.
     handle_path /media/* {
-        # Uploaded SVGs can embed <script>; opened as a top-level document
-        # they would execute in the site origin (stored XSS — nosniff does
-        # NOT stop a correctly-typed SVG). CSP sandbox neuters scripts in
-        # that case while <img src="...svg"> rendering is unaffected.
+        # Byte-layer gate (2026-09-08): every media request is checked by the
+        # backend first (session cookie is forwarded), so audience / ReadGrant /
+        # SITE_REQUIRE_LOGIN apply to the files, not just the API. Decisions are
+        # cached 60 s per user+path server-side; the browser cache below keeps
+        # repeat views from hitting the backend at all.
+        forward_auth backend:8002 {
+            uri /api/v1/media-auth/
+        }
         @svg path *.svg
         header @svg Content-Security-Policy "sandbox"
-        # uploads/ filenames are uuid-based and immutable (re-uploading
-        # produces a new name), so the browser may cache them forever —
-        # makes HTML-post fetches and inline images instant on revisit.
-        # Avatars (avatars/user_N.webp) keep a fixed name and are mutable;
-        # they get only a short cache so profile changes show up promptly.
-        @uploads path /uploads/*
-        header @uploads Cache-Control "public, max-age=31536000, immutable"
+        # Office/archive uploads download instead of rendering same-origin;
+        # PDF stays inline (the "在新标签打开" native viewer relies on it).
+        @office path *.docx *.pptx *.ppt *.doc *.zip
+        header @office Content-Disposition attachment
+        # uuid-named, never rewritten in place → cache forever, but *private*:
+        # the gate above makes the response user-specific.
+        @immutable path /uploads/* /slides/* /derived/*
+        header @immutable Cache-Control "private, max-age=31536000, immutable"
         @avatars path /avatars/*
         header @avatars Cache-Control "public, max-age=300"
         root * /srv-media
@@ -93,7 +98,7 @@ fujiang.jianzhai.cn {
         # (WebKit bug 218086) — the backend strips them at upload, CSP is
         # the backstop. Verified against the built bundle with Playwright
         # (EPUB / PDF / mermaid+KaTeX posts / home / admin, 2026-09-01).
-        Content-Security-Policy "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'self'"
+        Content-Security-Policy "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; worker-src 'self' blob:"
         X-Content-Type-Options "nosniff"
         Referrer-Policy "strict-origin-when-cross-origin"
         # Permissions-Policy explicitly disables features we don't use.

@@ -95,7 +95,11 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
         _emit_front_matter(docx, scope)
 
     bid_iter = itertools.count(1)  # Word 书签 id 全文档唯一
-    for idx, doc in enumerate(scope.documents):
+    # Same depth-first KB-tree order as the HTML/PDF anthology (was raw
+    # scope order, which diverged from the printed 卷首目录).
+    from apps.exporter.anthology_tree import iter_tree_documents
+
+    for idx, doc in enumerate(iter_tree_documents(scope.kb, scope.documents)):
         if idx > 0 or multi:
             docx.add_page_break()
         title_para = docx.add_paragraph(style="Heading 1")

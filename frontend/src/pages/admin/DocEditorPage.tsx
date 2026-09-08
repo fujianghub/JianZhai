@@ -33,6 +33,7 @@ import DocumentOutline from '@/components/editor/DocumentOutline';
 import FindReplacePanel from '@/components/editor/FindReplacePanel';
 import type { Editor as TiptapEditor } from '@tiptap/core';
 import PdfCanvas from '@/components/common/LazyPdfCanvas';
+import { PdfScanHint } from '@/components/common/PublicAttachmentPreview';
 import LazyPptxReader from '@/components/common/LazyPptxReader';
 import LazyEpubReader from '@/components/common/LazyEpubReader';
 import BacklinkPanel from '@/components/common/BacklinkPanel';
@@ -956,7 +957,7 @@ export default function DocEditorPage({
       </div>
 
       <FindReplacePanel
-        open={findOpen}
+        open={findOpen && textMode}
         onClose={() => setFindOpen(false)}
         editor={mode === 'rich' ? richEditor : null}
         surface={
@@ -1088,7 +1089,12 @@ function EditorSurface({
         />
       );
     }
-    return <PdfCanvas url={primaryUrl} height="min(78vh, 760px)" />;
+    return (
+      <>
+        <PdfScanHint status={doc.ocr_status} />
+        <PdfCanvas url={doc.reader_pdf_url ? attachmentAbsoluteUrl(doc.reader_pdf_url) : primaryUrl} height="min(78vh, 760px)" />
+      </>
+    );
   }
   if (mode === 'epub') {
     if (!primaryUrl || doc.doc_format !== 'epub') {
@@ -1127,6 +1133,7 @@ function EditorSurface({
         downloadUrl={doc.primary_attachment?.url}
         status={doc.slide_status}
         error={doc.slide_error}
+        pdfUrl={doc.slide_pdf_url}
       />
     );
   }

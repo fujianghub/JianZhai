@@ -7,7 +7,9 @@ from .views import (
     import_file,
     import_zip,
     link_preview,
+    media_auth,
     my_attachments,
+    reconvert_slides,
     upload,
 )
 
@@ -19,5 +21,7 @@ urlpatterns = [
     path("attachments/", my_attachments, name="my-attachments"),
     path("attachments/<int:pk>/", delete_attachment, name="delete-attachment"),
     path("documents/<int:doc_id>/attachments/", document_attachments, name="document-attachments"),
+    path("documents/<int:doc_id>/reconvert-slides/", reconvert_slides, name="reconvert-slides"),
     path("link-preview/", link_preview, name="link-preview"),
+    path("media-auth/", media_auth, name="media-auth"),
 ]

@@ -7,6 +7,8 @@ export interface PostSlidesResult {
   status: SlideStatus;
   /** Human-facing reason when status === 'failed'. */
   error: string;
+  /** Derived slide PDF (text layer source); '' until converted / backfilled. */
+  pdfUrl: string;
 }
 
 /** Poll a PPT/PPTX post's rendered slide images (empty while still converting). */
@@ -15,11 +17,13 @@ export async function fetchPostSlides(postId: number): Promise<PostSlidesResult>
     slides: Slide[];
     slide_status?: SlideStatus;
     slide_error?: string;
+    slide_pdf_url?: string | null;
   }>(`/public/posts/by-id/${postId}/slides/`);
   return {
     slides: data.slides,
     status: data.slide_status ?? '',
     error: data.slide_error ?? '',
+    pdfUrl: data.slide_pdf_url ?? '',
   };
 }
 

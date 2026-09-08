@@ -4,6 +4,7 @@ from __future__ import annotations
 import base64
 import mimetypes
 import re
+from dataclasses import dataclass, field
 import uuid
 import zipfile
 from functools import lru_cache
@@ -465,12 +466,106 @@ img { max-width: 100%; height: auto; }
 """
 
 
+# Formats whose "body" is a binary attachment (PDF / PPT / EPUB / image). They
+# used to export as an empty page under the title — silently losing content.
+BINARY_EXPORT_FORMATS = {"pdf", "pptx", "epub", "image"}
+_BINARY_LABELS = {"pdf": "PDF", "pptx": "PPT", "epub": "EPUB", "image": "图片"}
+
+
+@dataclass
+class BinaryExport:
+    """What an export can say/ship about a binary-format document."""
+
+    kind: str
+    url: str  # /media/... (bundled by the zip formats when ≤ EXPORT_MAX_ASSET_BYTES)
+    filename: str
+    size: int
+    bundleable: bool
+    slides: list[tuple[str, str]] = field(default_factory=list)  # (url, notes)
+
+
+def _human_size(n: int) -> str:
+    for unit in ("B", "KB", "MB", "GB"):
+        if n < 1024 or unit == "GB":
+            return f"{n:.1f} {unit}" if unit != "B" else f"{n} B"
+        n /= 1024
+    return f"{n:.1f} GB"
+
+
+def doc_export_binary(doc) -> BinaryExport | None:
+    """Describe the original file (and rendered slides) of a binary-format doc,
+    or None for text documents."""
+    from apps.knowledge.serializers import _primary_attachment, detect_doc_format
+
+    kind = detect_doc_format(doc)
+    if kind not in BINARY_EXPORT_FORMATS:
+        return None
+    att = _primary_attachment(doc)
+    if att is None or not att.file:
+        return None
+    url = att.file.url
+    path = _resolve_media_path(url)
+    size = path.stat().st_size if path else (att.size or 0)
+    slides: list[tuple[str, str]] = []
+    if kind == "pptx":
+        cached = getattr(doc, "prefetched_slides", None)
+        rows = cached if cached is not None else doc.slides.order_by("index")
+        slides = [(s.url, (s.notes or "").strip()) for s in rows if s.url]
+    return BinaryExport(
+        kind=kind,
+        url=url,
+        filename=att.original_filename or Path(url).name,
+        size=size,
+        bundleable=bool(path) and _bundleable(path),
+        slides=slides,
+    )
+
+
+def binary_export_markdown(be: BinaryExport) -> str:
+    """Markdown stand-in body for a binary document.
+
+    Written so the *existing* media pipeline does the heavy lifting: the
+    ``<a href="/media/…">`` original-file link and ``![](/media/slides/…)``
+    slide images are picked up by ``collect_markdown_media`` /
+    ``rewrite_markdown_media_paths`` (zip formats bundle them under assets/)
+    and by ``rewrite_html_media`` (HTML/PDF embed them as data URIs, subject to
+    MAX_EMBED_BYTES). A plain-text absolute URL stays as a fallback for
+    single-file exports where the file is too big to embed.
+    """
+    label = _BINARY_LABELS.get(be.kind, be.kind.upper())
+    if be.kind == "image":
+        return f"![{be.filename}]({be.url})\n"
+    site = (getattr(settings, "SITE_PUBLIC_URL", "") or "").rstrip("/")
+    absolute = f"{site}{be.url}" if site else be.url
+    lines = [
+        f"> **{label} 原件**：《{be.filename}》（{_human_size(be.size)}）。本篇内容以文件形式存在，"
+        f'正文未内嵌；<a href="{be.url}">下载原件</a>'
+        + ("" if be.bundleable else "（文件超过离线包上限，请从站点获取）")
+        + f"。站点地址：{absolute}",
+        "",
+    ]
+    for i, (url, notes) in enumerate(be.slides, 1):
+        lines.append(f"![第 {i} 页]({url})")
+        if notes:
+            lines.append("")
+            lines.extend("> " + ln for ln in ("备注：" + notes).splitlines())
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
 def doc_export_body(doc) -> str:
-    """Document body for export — matches blog HTML resolution when format is html."""
+    """Document body for export — matches blog HTML resolution when format is
+    html; binary formats (PDF/PPT/EPUB/image) get a synthesized Markdown body
+    pointing at the original file (+ rendered slides for PPT)."""
     from apps.knowledge.html_content import resolve_html_body
     from apps.knowledge.serializers import detect_doc_format
 
-    if detect_doc_format(doc) == "html":
+    fmt = detect_doc_format(doc)
+    if fmt in BINARY_EXPORT_FORMATS:
+        be = doc_export_binary(doc)
+        if be is not None:
+            return binary_export_markdown(be)
+    if fmt == "html":
         return resolve_html_body(doc) or ""
     published = (doc.published_content or "").strip()
     if published:

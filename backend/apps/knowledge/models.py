@@ -249,7 +249,18 @@ class Document(models.Model):
     # ``editor.tasks.convert_pptx_to_slides``). Empty for non-pptx docs. Lets the
     # reader distinguish "still converting" (pending) from "permanently failed"
     # (failed, with a human reason in ``slide_error``) instead of polling blindly.
-    slide_status = models.CharField(max_length=10, blank=True, default="")
+    SLIDE_PENDING = "pending"
+    SLIDE_DONE = "done"
+    SLIDE_FAILED = "failed"
+    SLIDE_STATUS_CHOICES = [
+        ("", "—"),
+        (SLIDE_PENDING, "Pending"),
+        (SLIDE_DONE, "Done"),
+        (SLIDE_FAILED, "Failed"),
+    ]
+    slide_status = models.CharField(
+        max_length=10, blank=True, default="", choices=SLIDE_STATUS_CHOICES, db_index=True
+    )
     slide_error = models.CharField(max_length=200, blank=True, default="")
 
     search_vector = SearchVectorField(null=True, blank=True)

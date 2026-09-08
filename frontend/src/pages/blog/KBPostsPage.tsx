@@ -938,8 +938,13 @@ function PostCard({ post: p, kbSlug }: { post: PublicPost; kbSlug?: string }) {
           </Space>
         </Title>
       </TransitionLink>
+      {p.poster_url && (
+        <TransitionLink to={postHref(p.slug, kbSlug)} className="jz-post-poster-link" aria-hidden tabIndex={-1}>
+          <img src={p.poster_url} alt="" className="jz-post-poster" loading="lazy" decoding="async" />
+        </TransitionLink>
+      )}
       <Paragraph type="secondary" ellipsis={{ rows: 2 }} style={{ marginBottom: 8 }}>
-        {p.excerpt || '（无摘要）'}
+        {p.excerpt || (p.page_count ? `${p.page_count} 页` : '（无摘要）')}
       </Paragraph>
       <Space size={8} wrap split={<SepDot />}>
         <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>

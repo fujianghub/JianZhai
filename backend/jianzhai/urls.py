@@ -1,5 +1,4 @@
 from django.conf import settings
-from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 
@@ -39,4 +38,12 @@ urlpatterns = [
 ]
 
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    # Range-capable dev media server (static() ignores Range → pdf.js would
+    # download whole files); production serves /media via Caddy file_server.
+    from django.urls import re_path
+
+    from apps.editor.media_views import serve_media
+
+    urlpatterns += [
+        re_path(r"^media/(?P<path>.+)$", serve_media, name="dev-media"),
+    ]

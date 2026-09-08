@@ -51,6 +51,9 @@ export interface Slide {
  * distinguish "still converting" (pending) from a permanent failure (failed,
  * with a human reason in ``slide_error``) instead of polling blindly.
  */
+/** OCR state of a scanned PDF ('' = text PDF / not applicable). */
+export type OcrStatus = '' | 'scanned' | 'queued' | 'running' | 'done' | 'failed';
+
 export type SlideStatus = '' | 'pending' | 'done' | 'failed';
 export type DocSortMode = 'custom' | 'title' | 'created_at' | 'updated_at' | 'doc_format';
 
@@ -178,6 +181,17 @@ export interface DocumentDetail extends DocumentListItem {
   slides?: Slide[];
   slide_status?: SlideStatus;
   slide_error?: string;
+  /** LibreOffice-rendered PDF the slides were rasterised from (PPT/PPTX only);
+   * lets the reader lay a selectable text layer over each slide. Empty for
+   * decks converted before this existed until ``backfill_pptx_pdf`` runs. */
+  slide_pdf_url?: string | null;
+  /** OCR copy of a scanned PDF (text layer); the reader renders it instead of
+   * the original when present. */
+  reader_pdf_url?: string | null;
+  ocr_status?: OcrStatus;
+  /** First-page poster (PDF) / cover (EPUB) / first slide thumb (PPT). */
+  poster_url?: string;
+  page_count?: number | null;
 }
 
 export interface TreeDocument {
@@ -299,6 +313,8 @@ export interface PublicPost {
   knowledge_base: { id: number; name: string; slug: string };
   tags: PublicTagSummary[];
   doc_format: DocFormat;
+  poster_url?: string;
+  page_count?: number | null;
   is_pinned?: boolean;
   is_favorited?: boolean;
 }
@@ -330,4 +346,7 @@ export interface PublicPostDetail {
   slides?: Slide[];
   slide_status?: SlideStatus;
   slide_error?: string;
+  slide_pdf_url?: string | null;
+  reader_pdf_url?: string | null;
+  ocr_status?: OcrStatus;
 }

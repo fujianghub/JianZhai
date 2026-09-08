@@ -193,7 +193,7 @@ export default function MdAnnotator({
     const collected = collectText(root);
     const map = new Map<number, ResolvedAnchor | null>();
     for (const h of highlightsRef.current) {
-      if (!h.selector) continue;
+      if (!h.selector || !('quote' in h.selector)) continue;
       try {
         map.set(h.id, resolveSelector(root, h.selector, collected));
       } catch {

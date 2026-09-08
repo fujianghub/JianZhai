@@ -8,6 +8,7 @@ from rest_framework.response import Response
 from apps.accounts.permissions import IsContentAuthor, IsRoot
 from apps.accounts.scoping import scope_queryset
 
+from apps.editor.services import media_gc
 from .models import Document, Folder, KnowledgeBase
 
 
@@ -154,7 +155,7 @@ def restore_knowledge_base(request, pk: int):
 @permission_classes([IsRoot])
 def purge_knowledge_base(request, pk: int):
     kb = get_object_or_404(_kb_trash_qs(request.user), pk=pk)
-    kb.delete()
+    media_gc.purge_knowledge_base(kb)
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -172,7 +173,7 @@ def restore_document(request, pk: int):
 @permission_classes([IsRoot])
 def purge_document(request, pk: int):
     doc = get_object_or_404(_doc_trash_qs(request.user), pk=pk)
-    doc.delete()
+    media_gc.purge_document(doc)
     return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -209,7 +210,7 @@ def batch_purge_knowledge_bases(request):
         if not kb:
             failed.append({"id": pk, "detail": "未找到或无权访问"})
             continue
-        kb.delete()
+        media_gc.purge_knowledge_base(kb)
         succeeded.append(pk)
     return Response(_batch_result(succeeded, failed))
 
@@ -248,7 +249,7 @@ def batch_purge_documents(request):
         if not doc:
             failed.append({"id": pk, "detail": "未找到或无权访问"})
             continue
-        doc.delete()
+        media_gc.purge_document(doc)
         succeeded.append(pk)
     return Response(_batch_result(succeeded, failed))
 
@@ -268,12 +269,12 @@ def empty_trash(request):
 
     if scope in ("documents", "all"):
         for doc in _doc_trash_qs(request.user).iterator():
-            doc.delete()
+            media_gc.purge_document(doc)
             purged_docs += 1
 
     if scope in ("knowledge_bases", "all"):
         for kb in _kb_trash_qs(request.user).iterator():
-            kb.delete()
+            media_gc.purge_knowledge_base(kb)
             purged_kbs += 1
 
     return Response(

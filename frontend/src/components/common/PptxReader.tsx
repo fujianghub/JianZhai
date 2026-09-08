@@ -1,7 +1,10 @@
 /**
  * Youdao-style PPT/PPTX reader. Slides are pre-rendered server-side (LibreOffice
- * → PDF → per-page PNG) and delivered as an ordered image list, so this is a
- * pure image viewer — no client-side pptx parsing.
+ * → PDF → per-page JPEG) and delivered as an ordered image list. When the
+ * derived PDF is also available (``pdfUrl``) the main slide is painted by
+ * pdf.js instead (canvas + selectable text layer + clickable links) with the
+ * JPEG as its placeholder; decks converted before the PDF was kept fall back
+ * to the plain image seamlessly. No client-side pptx parsing either way.
  *
  * Layout mirrors the PDF reader's ergonomics: a thumbnail rail on the left, the
  * active slide filling the main column, a sticky toolbar (prev/next, page
@@ -10,21 +13,38 @@
  * a "转换中" placeholder and poll until slides appear.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
-import { Button, Space, Spin, Tooltip, Typography } from 'antd';
+import { flushSync } from 'react-dom';
+import { Button, Popover, Space, Spin, Tooltip, Typography } from 'antd';
 import {
   DownloadOutlined,
   FileTextOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
+  PlaySquareOutlined,
   LeftOutlined,
   RightOutlined,
+  SearchOutlined,
   ZoomInOutlined,
   ZoomOutOutlined,
 } from '@ant-design/icons';
 import { fetchPostSlides } from '@/api/blog';
+import { reconvertSlides } from '@/api/docs';
+import { useAuthStore } from '@/stores/auth';
+import { message } from '@/utils/notify';
 import type { Slide, SlideStatus } from '@/types';
-import { useActiveScopes } from '@/shortcuts';
+import { useActiveScopes, useShortcut, withShortcut } from '@/shortcuts';
+import { loadPptxPosition, savePptxPosition, syncUrlParam } from '@/utils/readerPosition';
+import { pickNewer } from '@/utils/positionSync';
+import { useServerPosition } from '@/hooks/useServerPosition';
+import { runPageTurn, type TurnDir } from '@/utils/pageTurn';
+import Kbd from './Kbd';
+import { usePdfDocument } from '@/hooks/usePdfDocument';
+import PdfPageView from './PdfPageView';
+import ReaderPaperPicker from './ReaderPaperPicker';
+import { useReaderPaper } from '@/utils/readerPaper';
+import { attachPinchZoom } from '@/utils/pinchZoom';
+import SearchResults, { type SearchGroup } from './reader/SearchResults';
+import { buildPdfTextIndex, searchPdfIndex, type PdfTextIndex } from '@/utils/pdfTextIndex';
 
 interface Props {
   slides: Slide[];
@@ -38,6 +58,13 @@ interface Props {
   error?: string;
   /** How often to poll for slides while empty (ms). */
   pollInterval?: number;
+  /** Derived slide PDF (same LibreOffice render the JPEGs came from); enables
+   * the selectable text layer. Absent/empty → image-only reader. */
+  pdfUrl?: string | null;
+  /** 0-based slide to open on (from ``?slide=``); wins over the memory. */
+  initialSlide?: number | null;
+  /** Mirror the active slide into ``?slide=`` (reading page only). */
+  syncUrl?: boolean;
 }
 
 const POLL_MS = 2500;
@@ -53,10 +80,18 @@ export default function PptxReader({
   status,
   error,
   pollInterval = POLL_MS,
+  pdfUrl: initialPdfUrl,
+  initialSlide = null,
+  syncUrl = false,
 }: Props) {
   useActiveScopes(['reader.pptx']);
   const [slides, setSlides] = useState<Slide[]>(initial);
-  const [active, setActive] = useState(0);
+  const [pdfUrl, setPdfUrl] = useState<string>(initialPdfUrl || '');
+  const posKey = `post:${postId}`;
+  const [active, setActive] = useState(() => {
+    if (initialSlide != null && initialSlide >= 0) return initialSlide;
+    return loadPptxPosition(posKey)?.slide ?? 0;
+  });
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
   const [showNotes, setShowNotes] = useState(true);
@@ -66,11 +101,88 @@ export default function PptxReader({
   const [failed, setFailed] = useState<string | null>(
     status === 'failed' ? error || 'PPT 转换失败' : null,
   );
+  const isStaff = useAuthStore((s) => !!s.user?.is_staff);
+  const loggedIn = useAuthStore((s) => !!s.user);
+  // Cross-device position (the post id is the document id).
+  const { remote: serverPos, loaded: serverPosLoaded, push: pushServerPos } = useServerPosition(postId, loggedIn);
+  // Set once the reader navigated on their own — a late server position must
+  // not yank them away from the slide they chose.
+  const navigatedRef = useRef(false);
+  // Set once the server / local merge has been decided — before that no
+  // position is written (a mount-time write would out-date the server row).
+  const mergedRef = useRef(false);
+  const [reconverting, setReconverting] = useState(false);
+  // Author-only manual retry: clears the old render server-side and restarts
+  // polling from a clean `pending` state.
+  const retryConversion = async () => {
+    setReconverting(true);
+    try {
+      await reconvertSlides(postId);
+      setFailed(null);
+      setPollsExhausted(false);
+      setSlides([]);
+      message.success('已重新开始转换，请稍候');
+    } catch (e) {
+      message.error((e as Error)?.message || '重新转换失败');
+    } finally {
+      setReconverting(false);
+    }
+  };
   const mainRef = useRef<HTMLDivElement | null>(null);
+  const [paper] = useReaderPaper();
+  // ── Find in deck: pdf.js text of every slide (via the deck PDF) + notes ──
+  const [findOpen, setFindOpen] = useState(false);
+  const indexRef = useRef<PdfTextIndex | null>(null);
+  const indexDocRef = useRef<typeof pdf.doc>(null);
+  const searchDeck = async (query: string, push: (g: SearchGroup<number>) => void) => {
+    const q = query.trim().toLowerCase();
+    if (!q) return;
+    let textHits: Array<{ page: number; pre: string; match: string; post: string }> = [];
+    if (pdf.doc) {
+      if (!indexRef.current || indexDocRef.current !== pdf.doc) {
+        indexRef.current = await buildPdfTextIndex(pdf.doc);
+        indexDocRef.current = pdf.doc;
+      }
+      textHits = searchPdfIndex(indexRef.current, query, { maxPerPage: 10 });
+    }
+    const byPage = new Map<number, SearchGroup<number>>();
+    const add = (page: number, pre: string, match: string, post: string) => {
+      const g = byPage.get(page) ?? { label: `第 ${page} 页`, hits: [] };
+      g.hits.push({ pre, match, post, target: page });
+      byPage.set(page, g);
+    };
+    for (const h of textHits) add(h.page, h.pre, h.match, h.post);
+    slides.forEach((s) => {
+      const notes = (s.notes || '').trim();
+      const i = notes.toLowerCase().indexOf(q);
+      if (i >= 0) add(s.index + 1, '备注：' + notes.slice(Math.max(0, i - 24), i), notes.slice(i, i + q.length), notes.slice(i + q.length, i + q.length + 32));
+    });
+    for (const page of [...byPage.keys()].sort((a, b) => a - b)) push(byPage.get(page)!);
+  };
+  useShortcut('reader.pptx.find', () => setFindOpen(true), { enabled: slides.length > 0 });
+  const zoomRef = useRef(1);
+  zoomRef.current = zoom;
+  // Pinch / double-tap on the slide area (touch only; mouse dblclick selects text).
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    return attachPinchZoom(el, {
+      getZoom: () => zoomRef.current,
+      setZoom: (z) => setZoom(z),
+      isTextTarget: (t) => t instanceof Element && !!t.closest('.jz-pdf-textlayer, .jz-pdf-link'),
+    });
+  }, [fullscreen, slides.length]);
 
   useEffect(() => {
     setSlides(initial);
   }, [initial]);
+  useEffect(() => {
+    setPdfUrl(initialPdfUrl || '');
+  }, [initialPdfUrl]);
+
+  // The text-layer source. A missing / failing PDF leaves `pdf.doc` null and
+  // the main area keeps rendering the JPEG.
+  const pdf = usePdfDocument(pdfUrl || null);
 
   // Poll for slides while the server-side conversion is still running.
   useEffect(() => {
@@ -86,6 +198,7 @@ export default function PptxReader({
         if (cancelled) return;
         if (next.slides.length > 0) {
           setSlides(next.slides);
+          if (next.pdfUrl) setPdfUrl(next.pdfUrl);
           return;
         }
         if (next.status === 'failed') {
@@ -114,46 +227,118 @@ export default function PptxReader({
 
   const total = slides.length;
   const clamp = useCallback((n: number) => Math.min(Math.max(0, n), Math.max(0, total - 1)), [total]);
+  // Presenter mode (fullscreen + notes / timer / next-slide column) and its
+  // blackout toggle; both end with the fullscreen session.
+  const [presenting, setPresenting] = useState(false);
+  const [blackout, setBlackout] = useState(false);
+  const [presentStart, setPresentStart] = useState<number | null>(null);
+  const [clock, setClock] = useState(0);
+  const activeRef = useRef(active);
+  activeRef.current = active;
+  // Turn = View Transition on the stage (slide for ±1, fade for jumps); the
+  // target image is decoded first so the incoming snapshot is never blank.
   const go = useCallback(
-    (n: number) => {
-      setActive((cur) => {
-        const next = clamp(n);
-        if (next !== cur) mainRef.current?.scrollTo({ top: 0 });
-        return next;
+    (n: number, dirHint?: TurnDir) => {
+      const cur = activeRef.current;
+      const next = clamp(n);
+      if (next === cur) return;
+      navigatedRef.current = true;
+      activeRef.current = next;
+      setBlackout(false);
+      const dir: TurnDir = dirHint ?? (Math.abs(next - cur) === 1 ? (next > cur ? 'next' : 'prev') : 'jump');
+      runPageTurn({
+        stage: mainRef.current,
+        name: 'jz-pptx-slide',
+        dir,
+        preload: slides[next]?.url ?? null,
+        run: () => {
+          flushSync(() => setActive(next));
+          mainRef.current?.scrollTo({ top: 0 });
+        },
       });
     },
-    [clamp],
+    [clamp, slides],
   );
 
-  // Keyboard navigation (scoped to when this reader is mounted).
+  // A server position newer than the local memory wins once — before the
+  // reader has navigated and when no ?slide= deep link asked for a slide.
   useEffect(() => {
-    if (total === 0) return;
-    const onKey = (e: KeyboardEvent) => {
-      const tag = (e.target as HTMLElement)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
-        e.preventDefault();
-        go(active + 1);
-      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
-        e.preventDefault();
-        go(active - 1);
-      } else if (e.key === 'Escape' && fullscreen) {
-        setFullscreen(false);
+    if (!serverPosLoaded || total === 0 || mergedRef.current) return;
+    mergedRef.current = true;
+    if (navigatedRef.current || (initialSlide != null && initialSlide >= 0)) return;
+    const pick = pickNewer(loadPptxPosition(posKey), serverPos && serverPos.slide != null ? serverPos : null);
+    if (pick?.source === 'remote') setActive(clamp(pick.value.slide ?? 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [serverPosLoaded, serverPos, total]);
+
+  // Keyboard navigation — registry shortcuts (IME / contenteditable guarded).
+  const hasSlides = total > 0;
+  useShortcut('reader.pptx.next', () => go(active + 1), { enabled: hasSlides });
+  useShortcut('reader.pptx.next-alt', () => go(active + 1), { enabled: hasSlides });
+  useShortcut('reader.pptx.prev', () => go(active - 1), { enabled: hasSlides });
+  useShortcut('reader.pptx.prev-alt', () => go(active - 1), { enabled: hasSlides });
+  useShortcut('reader.pptx.fullscreen-exit', () => { if (document.fullscreenElement) void document.exitFullscreen?.(); }, { enabled: fullscreen });
+  useShortcut('reader.pptx.present', () => togglePresenting(), { enabled: hasSlides });
+  useShortcut('reader.pptx.blackout', () => setBlackout((v) => !v), { enabled: presenting });
+  useShortcut('reader.pptx.blackout-alt', () => setBlackout((v) => !v), { enabled: presenting });
+
+  // Clamp a remembered / deep-linked slide once the deck is known; remember
+  // the active slide and mirror it into ?slide= (1-based) on the reading page.
+  useEffect(() => {
+    if (total > 0 && active > total - 1) setActive(total - 1);
+  }, [total, active]);
+  useEffect(() => {
+    if (total === 0 || !mergedRef.current) return;
+    savePptxPosition(posKey, active);
+    pushServerPos({ slide: active });
+    if (syncUrl) syncUrlParam('slide', active > 0 ? active + 1 : null);
+  }, [active, total, posKey, syncUrl, serverPosLoaded, pushServerPos]);
+
+  // Fullscreen = the Fullscreen API on the reader wrapper itself (same element,
+  // no portal) so popups / selection bars keep their container and the slide
+  // iframe-free stack never remounts. Escape is handled by the browser too.
+  const wrapRef = useRef<HTMLDivElement | null>(null);
+  const overlayRef = wrapRef;
+  useEffect(() => {
+    const onChange = () => {
+      const fs = document.fullscreenElement === wrapRef.current;
+      setFullscreen(fs);
+      if (!fs) {
+        setPresenting(false);
+        setBlackout(false);
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [active, total, go, fullscreen]);
-
-  // Lock body scroll while fullscreen.
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+  const toggleFullscreen = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    if (document.fullscreenElement === el) void document.exitFullscreen?.();
+    else void el.requestFullscreen?.();
+  };
+  const togglePresenting = () => {
+    const el = wrapRef.current;
+    if (!el) return;
+    if (presenting) {
+      if (document.fullscreenElement === el) void document.exitFullscreen?.();
+      else setPresenting(false);
+      return;
+    }
+    setPresenting(true);
+    setBlackout(false);
+    const now = Date.now();
+    setPresentStart(now);
+    setClock(now);
+    if (document.fullscreenElement !== el) void el.requestFullscreen?.();
+  };
   useEffect(() => {
-    if (!fullscreen) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => {
-      document.body.style.overflow = prev;
-    };
-  }, [fullscreen]);
+    if (!presenting) return;
+    const id = window.setInterval(() => setClock(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [presenting]);
+  const elapsed = presenting && presentStart ? Math.max(0, clock - presentStart) : 0;
+  const elapsedText = `${String(Math.floor(elapsed / 60000)).padStart(2, '0')}:${String(Math.floor((elapsed % 60000) / 1000)).padStart(2, '0')}`;
 
   const current = slides[active];
   const aspect = useMemo(
@@ -172,11 +357,18 @@ export default function PptxReader({
             <Typography.Text type={failed ? 'danger' : 'secondary'} style={{ textAlign: 'center' }}>
               {failed || 'PPT 转换未完成，可下载原文件查看。'}
             </Typography.Text>
-            {downloadUrl && (
-              <Button icon={<DownloadOutlined />} href={downloadUrl} download>
-                下载原文件
-              </Button>
-            )}
+            <Space>
+              {isStaff && (
+                <Button type="primary" loading={reconverting} onClick={() => void retryConversion()}>
+                  重新转换
+                </Button>
+              )}
+              {downloadUrl && (
+                <Button icon={<DownloadOutlined />} href={downloadUrl} download>
+                  下载原文件
+                </Button>
+              )}
+            </Space>
           </>
         ) : (
           <Spin>
@@ -188,22 +380,7 @@ export default function PptxReader({
   }
 
   const toolbar = (
-    <Space
-      style={{
-        marginBottom: 8,
-        padding: '4px 12px',
-        background: 'var(--jz-surface-2)',
-        borderRadius: 6,
-        width: '100%',
-        justifyContent: 'space-between',
-        display: 'flex',
-        flexWrap: 'wrap',
-        gap: 8,
-        position: 'sticky',
-        top: 0,
-        zIndex: 5,
-      }}
-    >
+    <Space className="jz-pptx-toolbar">
       <Space>
         <Button size="small" icon={<LeftOutlined />} aria-label="上一页" title="上一页 (←)" disabled={active <= 0} onClick={() => go(active - 1)} />
         <Typography.Text style={{ minWidth: 60, textAlign: 'center', display: 'inline-block' }}>
@@ -216,21 +393,45 @@ export default function PptxReader({
           <Button
             size="small"
             icon={<ZoomOutOutlined />}
+            aria-label="缩小"
             disabled={zoom <= 0.5}
             onClick={() => setZoom((z) => Math.max(0.5, +(z - 0.1).toFixed(2)))}
           />
         </Tooltip>
-        <Typography.Text style={{ minWidth: 48, textAlign: 'center', display: 'inline-block' }}>
+        <Typography.Text data-testid="pdf-zoom" style={{ minWidth: 48, textAlign: 'center', display: 'inline-block' }}>
           {Math.round(zoom * 100)}%
         </Typography.Text>
         <Tooltip title="放大">
           <Button
             size="small"
             icon={<ZoomInOutlined />}
+            aria-label="放大"
             disabled={zoom >= 3}
             onClick={() => setZoom((z) => Math.min(3, +(z + 0.1).toFixed(2)))}
           />
         </Tooltip>
+        <Popover
+          trigger="click"
+          open={findOpen}
+          onOpenChange={setFindOpen}
+          placement="bottomRight"
+          getPopupContainer={() => overlayRef.current ?? document.body}
+          content={
+            <div style={{ width: 320 }}>
+              <SearchResults<number>
+                placeholder="搜索幻灯片与备注…"
+                scanningLabel="正在读取文字…"
+                onSearch={searchDeck}
+                onJump={(hit) => go(hit.target - 1)}
+              />
+            </div>
+          }
+        >
+          <Tooltip title="在幻灯片中查找 (Mod+F)">
+            <Button size="small" icon={<SearchOutlined />} aria-label="在幻灯片中查找" />
+          </Tooltip>
+        </Popover>
+        <ReaderPaperPicker popupContainer={() => overlayRef.current ?? document.body} />
         {hasAnyNotes && (
           <Tooltip title={showNotes ? '隐藏备注' : '显示备注'}>
             <Button
@@ -243,13 +444,30 @@ export default function PptxReader({
             </Button>
           </Tooltip>
         )}
+        {pdfUrl && pdf.loading && (
+          <Tooltip title={pdf.progress != null ? `文字层加载中 ${pdf.progress}%` : '文字层加载中'}>
+            <Spin size="small" aria-label="文字层加载中" />
+          </Tooltip>
+        )}
+        {pdfUrl && pdf.error && (
+          <Tooltip title={`此 deck 以图片模式显示，无法选字：${pdf.error}`}>
+            <Typography.Text type="secondary" style={{ fontSize: 'var(--jz-fs-xs)' }}>
+              图片模式
+            </Typography.Text>
+          </Tooltip>
+        )}
         <Tooltip title={fullscreen ? '退出全屏 (Esc)' : '全屏阅读'}>
           <Button
             size="small"
             icon={fullscreen ? <FullscreenExitOutlined /> : <FullscreenOutlined />}
-            onClick={() => setFullscreen((v) => !v)}
+            onClick={toggleFullscreen}
           >
             {fullscreen ? '退出全屏' : '全屏'}
+          </Button>
+        </Tooltip>
+        <Tooltip title={withShortcut('演示模式：全屏 + 备注 / 计时 / 下一页预览', 'reader.pptx.present')}>
+          <Button size="small" icon={<PlaySquareOutlined />} onClick={togglePresenting} aria-label="演示模式" data-testid="pptx-present">
+            演示
           </Button>
         </Tooltip>
         {downloadUrl && (
@@ -257,50 +475,25 @@ export default function PptxReader({
             下载原文件
           </Button>
         )}
+        {pdfUrl && (
+          <Tooltip title="下载 LibreOffice 渲染的 PDF 版（含文字层）">
+            <Button size="small" icon={<DownloadOutlined />} href={pdfUrl} download aria-label="下载 PDF 版">
+              PDF 版
+            </Button>
+          </Tooltip>
+        )}
       </Space>
     </Space>
   );
 
   const rail = (
-    <div
-      className="jz-pptx-rail"
-      style={{
-        width: 160,
-        flexShrink: 0,
-        maxHeight: fullscreen ? 'calc(100vh - 80px)' : 'min(80vh, 900px)',
-        overflowY: 'auto',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        paddingRight: 6,
-      }}
-    >
+    <div className="jz-pptx-rail" data-fullscreen={fullscreen ? 'true' : undefined}>
       {slides.map((s) => (
         <button
           key={s.index}
           type="button"
           onClick={() => go(s.index)}
           className={'jz-pptx-thumb' + (s.index === active ? ' jz-pptx-thumb-active' : '')}
-          style={{
-            display: 'block',
-            width: '100%',
-            // The rail is a bounded flex-column; without this the ~90 thumbs get
-            // shrunk to a few px each (flex-shrink defaults to 1) and collapse into
-            // a stack of thin lines instead of scrolling. Keep natural height, let
-            // the rail's overflowY handle the overflow.
-            flexShrink: 0,
-            padding: 0,
-            border:
-              s.index === active
-                ? '2px solid var(--jz-accent, #1677ff)'
-                : '1px solid var(--jz-border)',
-            borderRadius: 6,
-            overflow: 'hidden',
-            cursor: 'pointer',
-            background: '#fff',
-            position: 'relative',
-            lineHeight: 0,
-          }}
           aria-label={`第 ${s.index + 1} 页`}
           aria-current={s.index === active}
         >
@@ -309,101 +502,69 @@ export default function PptxReader({
             alt={`slide ${s.index + 1}`}
             loading="lazy"
             decoding="async"
-            style={{
-              width: '100%',
-              display: 'block',
-              // Reserve height from the slide's aspect so a slow/failed thumb never
-              // collapses the button to a line before the image decodes.
-              aspectRatio: s.width && s.height ? String(s.width / s.height) : '4 / 3',
-              objectFit: 'cover',
-            }}
+            // Reserve height from the slide's aspect so a slow/failed thumb never
+            // collapses the button to a line before the image decodes.
+            style={{ aspectRatio: s.width && s.height ? String(s.width / s.height) : '4 / 3' }}
           />
-          <span
-            style={{
-              position: 'absolute',
-              bottom: 2,
-              right: 4,
-              fontSize: 11,
-              color: '#fff',
-              background: 'rgba(0,0,0,0.55)',
-              borderRadius: 4,
-              padding: '0 5px',
-              lineHeight: '16px',
-            }}
-          >
-            {s.index + 1}
-          </span>
+          <span className="jz-pptx-thumb-num">{s.index + 1}</span>
         </button>
       ))}
     </div>
   );
 
-  const main = (
-    <div
-      ref={mainRef}
+  // Legacy raster of the active slide — the whole main area for decks without
+  // a derived PDF, and the pre-paint placeholder when the PDF text layer is on.
+  const slideImage = current ? (
+    <img
+      src={current.url}
+      alt={`slide ${active + 1}`}
+      // sync: the image is pre-decoded by the turn (utils/pageTurn.ts) and
+      // must paint on the very frame the slide switches.
+      decoding="sync"
+      className="jz-pptx-slide-img"
       style={{
-        flex: 1,
-        minWidth: 0,
-        overflow: 'auto',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'flex-start',
-        background: 'var(--jz-surface-2)',
-        borderRadius: 8,
-        padding: 16,
-        maxHeight: fullscreen ? 'calc(100vh - 80px)' : undefined,
+        width: pdf.doc ? '100%' : `${Math.min(100, 100 * zoom)}%`,
+        maxWidth: pdf.doc ? '100%' : `${100 * zoom}%`,
+        aspectRatio: String(aspect),
       }}
-    >
-      {current && (
-        <img
-          src={current.url}
-          alt={`slide ${active + 1}`}
-          decoding="async"
-          style={{
-            width: `${Math.min(100, 100 * zoom)}%`,
-            maxWidth: `${100 * zoom}%`,
-            aspectRatio: String(aspect),
-            objectFit: 'contain',
-            background: '#fff',
-            boxShadow: '0 2px 12px rgba(0,0,0,0.12)',
-            borderRadius: 4,
+    />
+  ) : null;
+
+  const main = (
+    <div ref={mainRef} className="jz-pptx-main" data-paper={paper.key} data-fullscreen={fullscreen ? 'true' : undefined}>
+      {current && pdf.doc ? (
+        <PdfPageView
+          doc={pdf.doc}
+          pageNumber={active + 1}
+          zoom={zoom}
+          visual="image"
+          placeholder={slideImage}
+          onInternalLink={(dest) => go(dest.page - 1)}
+          onAction={(name) => {
+            if (name === 'FirstPage') go(0);
+            else if (name === 'LastPage') go(total - 1);
+            else if (name === 'NextPage') go(active + 1);
+            else go(active - 1);
           }}
+          className="jz-pptx-main-page"
+          // Auto margins (not justify-content) so an over-zoomed page overflows
+          // to the scrollbar instead of being clipped on the left.
+          style={{ width: `${Math.min(100, 100 * zoom)}%`, margin: '0 auto' }}
         />
+      ) : (
+        current && slideImage
       )}
     </div>
   );
 
   const notesPanel = showNotes && hasAnyNotes && (
-    <div
-      className="jz-pptx-notes"
-      style={{
-        background: 'var(--jz-surface-2)',
-        border: '1px solid var(--jz-border)',
-        borderRadius: 8,
-        padding: '10px 14px',
-        maxHeight: fullscreen ? '28vh' : 260,
-        overflowY: 'auto',
-      }}
-    >
-      <div
-        style={{
-          fontSize: 12,
-          fontWeight: 600,
-          color: 'var(--jz-text-muted)',
-          marginBottom: 6,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}
-      >
+    <div className="jz-pptx-notes" data-fullscreen={fullscreen ? 'true' : undefined}>
+      <div className="jz-pptx-notes-head">
         <FileTextOutlined />
         备注 · 第 {active + 1} 页
       </div>
       {currentNotes ? (
-        <Typography.Paragraph
-          style={{ whiteSpace: 'pre-wrap', margin: 0, lineHeight: 1.7 }}
-          copyable={{ text: currentNotes }}
-        >
+        <Typography.Paragraph className="jz-pptx-notes-body" copyable={{ text: currentNotes }}>
           {currentNotes}
         </Typography.Paragraph>
       ) : (
@@ -412,40 +573,74 @@ export default function PptxReader({
     </div>
   );
 
-  const content = (
-    <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minHeight: 0 }}>
+  const nextSlide = slides[active + 1];
+  const presenterSide = presenting && (
+    <aside className="jz-pptx-present-side" aria-label="演示者视图" data-testid="pptx-presenter">
+      <div className="jz-pptx-present-top">
+        <span className="jz-pptx-present-timer" role="timer" aria-label="已演示时长" data-testid="pptx-timer">
+          {elapsedText}
+        </span>
+        <span className="jz-pptx-present-counter">
+          {active + 1} / {total}
+        </span>
+        <Button size="small" onClick={togglePresenting} aria-label="退出演示">
+          退出
+        </Button>
+      </div>
+      <div className="jz-pptx-present-next">
+        <div className="jz-pptx-notes-head">下一页</div>
+        {nextSlide ? (
+          <button type="button" className="jz-pptx-present-next-thumb" onClick={() => go(active + 1)} aria-label={`第 ${active + 2} 页`}>
+            <img src={nextSlide.thumb || nextSlide.url} alt="" loading="eager" />
+          </button>
+        ) : (
+          <Typography.Text type="secondary">已是最后一页</Typography.Text>
+        )}
+      </div>
+      <div className="jz-pptx-present-notes">
+        <div className="jz-pptx-notes-head">
+          <FileTextOutlined />
+          备注
+        </div>
+        {currentNotes ? <div className="jz-pptx-notes-body">{currentNotes}</div> : <Typography.Text type="secondary">此页无备注</Typography.Text>}
+      </div>
+      <div className="jz-pptx-present-hint">
+        <span>
+          <Kbd id="reader.pptx.prev" /> <Kbd id="reader.pptx.next" /> 翻页
+        </span>
+        <span>
+          <Kbd id="reader.pptx.blackout" /> 黑屏
+        </span>
+        <span>
+          <Kbd id="reader.pptx.fullscreen-exit" /> 退出
+        </span>
+      </div>
+    </aside>
+  );
+
+  const content = presenting ? (
+    <div className="jz-pptx-layout">
+      {main}
+      {presenterSide}
+    </div>
+  ) : (
+    <div className="jz-pptx-layout">
       {rail}
-      <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10, minHeight: 0 }}>
+      <div className="jz-pptx-column">
         {main}
         {notesPanel}
       </div>
     </div>
   );
 
-  if (fullscreen) {
-    return createPortal(
-      <div
-        style={{
-          position: 'fixed',
-          inset: 0,
-          zIndex: 2000,
-          background: 'var(--jz-bg-app, #0b0d11)',
-          padding: 12,
-          display: 'flex',
-          flexDirection: 'column',
-        }}
-      >
-        {toolbar}
-        <div style={{ flex: 1, minHeight: 0 }}>{content}</div>
-      </div>,
-      document.body,
-    );
-  }
-
   return (
-    <div>
+    <div ref={wrapRef} className="jz-pptx-wrap" data-fullscreen={fullscreen ? 'true' : undefined} data-presenting={presenting ? 'true' : undefined}>
       {toolbar}
-      {content}
+      <div className="jz-pptx-body">{content}</div>
+      {presenting && blackout && (
+        // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
+        <div className="jz-pptx-blackout" data-testid="pptx-blackout" onClick={() => setBlackout(false)} aria-hidden="true" />
+      )}
     </div>
   );
 }

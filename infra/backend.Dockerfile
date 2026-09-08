@@ -31,6 +31,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libreoffice-impress poppler-utils fonts-noto-cjk fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
+# OCR for scanned PDFs (2026-09-08 批 13, apps/editor/services/ocr.py):
+# ocrmypdf + tesseract (Simplified Chinese + English) + ghostscript, consumed
+# by the ``ocr`` queue worker (celery-ocr in docker-compose.prod.yml). Its
+# own layer (~300 MB) so a code change never re-downloads it. Set
+# OCR_ENABLED=false in .env.prod to run without it.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ocrmypdf tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-eng ghostscript \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
 
 # Copy only the dependency manifest first so the layer cache survives

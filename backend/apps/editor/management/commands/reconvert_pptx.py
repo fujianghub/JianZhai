@@ -16,7 +16,8 @@ from __future__ import annotations
 
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.editor.models import Attachment, SlideImage
+from apps.editor.models import Attachment
+from apps.editor.services.slides import reset_slides
 from apps.editor.tasks import convert_pptx_to_slides
 from apps.knowledge.models import Document
 
@@ -58,17 +59,9 @@ class Command(BaseCommand):
                 failed += 1
                 self.stdout.write(self.style.WARNING(f"  ✗ id={doc.id} — no pptx attachment"))
                 continue
-            # Drop old slides (files + rows) so conversion isn't short-circuited
-            # by the idempotency guard, then re-render inline.
-            old = SlideImage.objects.filter(document_id=doc.id)
-            for s in old:
-                for f in (s.image, s.thumbnail):
-                    try:
-                        if f:
-                            f.delete(save=False)
-                    except Exception:  # noqa: BLE001
-                        pass
-            old.delete()
+            # Drop old slides + deck PDF (files + rows) so conversion isn't
+            # short-circuited by the idempotency guard, then re-render inline.
+            reset_slides(doc.id)
             n = convert_pptx_to_slides(doc.id, att.id)
             doc.refresh_from_db()
             if doc.slide_status == "done" and n > 0:

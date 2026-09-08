@@ -42,9 +42,9 @@ describe('getPdfOutline', () => {
       pageIndex: (ref) => [refA, refB, refC].indexOf(ref as typeof refA),
     }));
     expect(out).toEqual([
-      { title: 'Chapter 1', level: 1, page: 1, key: '0' },
-      { title: 'Section 1.1', level: 2, page: 2, key: '0.0' },
-      { title: 'Chapter 2', level: 1, page: 3, key: '1' },
+      { title: 'Chapter 1', level: 1, page: 1, top: null, left: null, key: '0' },
+      { title: 'Section 1.1', level: 2, page: 2, top: null, left: null, key: '0.0' },
+      { title: 'Chapter 2', level: 1, page: 3, top: null, left: null, key: '1' },
     ]);
   });
 
@@ -56,7 +56,7 @@ describe('getPdfOutline', () => {
         pageIndex: () => 4,
       },
     ));
-    expect(out).toEqual([{ title: 'Intro', level: 1, page: 5, key: '0' }]);
+    expect(out).toEqual([{ title: 'Intro', level: 1, page: 5, top: null, left: null, key: '0' }]);
   });
 
   it('keeps page=null for unresolvable destinations', async () => {
@@ -67,8 +67,8 @@ describe('getPdfOutline', () => {
       pageIndex: () => { throw new Error('not found'); },
     }));
     expect(out).toEqual([
-      { title: 'No dest', level: 1, page: null, key: '0' },
-      { title: 'Bad ref', level: 1, page: null, key: '1' },
+      { title: 'No dest', level: 1, page: null, top: null, left: null, key: '0' },
+      { title: 'Bad ref', level: 1, page: null, top: null, left: null, key: '1' },
     ]);
   });
 
@@ -76,6 +76,19 @@ describe('getPdfOutline', () => {
     const out = await getPdfOutline(makeDoc([
       { title: '   ', dest: null, items: [{ title: 'Child', dest: [refA] }] },
     ], { pageIndex: () => 0 }));
-    expect(out).toEqual([{ title: 'Child', level: 2, page: 1, key: '0.0' }]);
+    expect(out).toEqual([{ title: 'Child', level: 2, page: 1, top: null, left: null, key: '0.0' }]);
+  });
+
+  it('keeps the in-page position of XYZ / FitH destinations', async () => {
+    const out = await getPdfOutline(makeDoc([
+      { title: 'Exact', dest: [refA, { name: 'XYZ' }, 56, 700, 0] },
+      { title: 'Horizontal', dest: [refB, { name: 'FitH' }, 420] },
+      { title: 'Whole page', dest: [refC, { name: 'Fit' }] },
+    ], { pageIndex: (ref) => [refA, refB, refC].indexOf(ref as typeof refA) }));
+    expect(out).toEqual([
+      { title: 'Exact', level: 1, page: 1, top: 700, left: 56, key: '0' },
+      { title: 'Horizontal', level: 1, page: 2, top: 420, left: null, key: '1' },
+      { title: 'Whole page', level: 1, page: 3, top: null, left: null, key: '2' },
+    ]);
   });
 });

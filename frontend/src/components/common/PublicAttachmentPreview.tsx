@@ -10,7 +10,9 @@ import { DownloadOutlined } from '@ant-design/icons';
 import { renderMarkdown, sanitizeHtml } from '@/utils/markdown';
 import { convertDocxToHtml } from '@/utils/docx';
 import { attachmentAbsoluteUrl, previewKind } from '@/api/attachments';
-import type { PublicAttachment } from '@/types';
+import type { OcrStatus, PublicAttachment } from '@/types';
+import type { PdfTocEntry } from '@/utils/pdfOutline';
+import type { PdfReaderApi, PdfSideTab } from '@/utils/pdfReaderApi';
 import PdfCanvas from './LazyPdfCanvas';
 import EpubReader from './LazyEpubReader';
 import FullscreenableIframe from './FullscreenableIframe';
@@ -22,13 +24,37 @@ export default function PublicAttachmentPreview({
   att,
   documentId,
   initialCfi,
+  initialPage,
   kbSlug,
+  onPdfOutline,
+  onPdfPage,
+  pdfJumpRef,
+  onPdfReader,
+  onPdfTabRequest,
+  initialHlId,
+  canCreateDoc,
+  readerPdfUrl,
+  ocrStatus,
 }: {
   att: PublicAttachment;
+  /** OCR copy of a scanned PDF — rendered in place of the original. */
+  readerPdfUrl?: string | null;
+  ocrStatus?: OcrStatus;
   /** Owning document — lets the EPUB reader persist highlights / notes. */
   documentId?: number | null;
   /** Deep link into an EPUB (``?cfi=``). */
   initialCfi?: string | null;
+  /** Deep link into a PDF (``?page=``, 1-based). */
+  initialPage?: number | null;
+  /** PDF outline → the reading page's own TOC rail / drawer. */
+  onPdfOutline?: (entries: PdfTocEntry[]) => void;
+  onPdfPage?: (page: number, pageCount: number) => void;
+  pdfJumpRef?: React.MutableRefObject<((entry: PdfTocEntry) => void) | null>;
+  onPdfReader?: (api: PdfReaderApi) => void;
+  onPdfTabRequest?: (tab: PdfSideTab) => void;
+  /** ``?hl=`` deep link into a PDF highlight. */
+  initialHlId?: number | null;
+  canCreateDoc?: boolean;
   /** KB slug for the EPUB 读完页's related books. */
   kbSlug?: string | null;
 }) {
@@ -61,8 +87,29 @@ export default function PublicAttachmentPreview({
   };
 
   if (kind === 'pdf') {
-    // Flow into the reading page so the whole page scrolls like a note.
-    return <PdfCanvas url={url} scroll="page" />;
+    // Flow into the reading page so the whole page scrolls like a note. A
+    // scanned PDF renders its OCR copy (text layer) once one exists.
+    const pdfUrl = readerPdfUrl ? attachmentAbsoluteUrl(readerPdfUrl) : url;
+    return (
+      <>
+        <PdfScanHint status={ocrStatus} />
+        <PdfCanvas
+          url={pdfUrl}
+          scroll="page"
+          initialPage={initialPage}
+          syncUrl
+          onOutline={onPdfOutline}
+          onPageChange={onPdfPage}
+          jumpRef={pdfJumpRef}
+          documentId={documentId}
+          onReaderApi={onPdfReader}
+          onTabRequest={onPdfTabRequest}
+          initialHlId={initialHlId}
+          docTitle={att.original_filename.replace(/\.pdf$/i, '')}
+          canCreateDoc={canCreateDoc}
+        />
+      </>
+    );
   }
   if (kind === 'epub') {
     // A book: viewport-sized paginated/scrolled reader (foliate-js).
@@ -216,3 +263,22 @@ function TextInline({ url, dl }: { url: string; dl: React.ReactNode }) {
     </>
   );
 }
+
+const SCAN_HINTS: Record<string, string> = {
+  scanned: '图片型 PDF：没有文字层，暂不能选字、搜索或划线。',
+  queued: '图片型 PDF：文字识别（OCR）排队中，完成后即可选字与搜索。',
+  running: '图片型 PDF：正在识别文字（OCR），大书需要较长时间。',
+  failed: '图片型 PDF：文字识别失败，可由管理员重试（backfill_ocr）。',
+};
+
+/** One-line notice above a scanned PDF (nothing for text PDFs / OCR'd ones). */
+export function PdfScanHint({ status }: { status?: OcrStatus }) {
+  const text = status ? SCAN_HINTS[status] : '';
+  if (!text) return null;
+  return (
+    <div className="jz-pdf-scan-hint" role="status" data-ocr={status}>
+      {text}
+    </div>
+  );
+}
+

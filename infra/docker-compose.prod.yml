@@ -137,8 +137,61 @@ services:
       - exports_data:/app/exports
     # -B 内嵌 beat：驱动每日 exporter.cleanup_exports 保留清理（settings
     # CELERY_BEAT_SCHEDULE）。单 worker 场景内嵌即可，无需独立 beat 容器。
-    command: celery -A jianzhai worker -B --loglevel=info --concurrency=2
+    # Default + export queues only; conversions run in celery-convert below so
+    # a LibreOffice/OCR job never competes with Chromium exports for this 3 GB.
+    command: celery -A jianzhai worker -B --loglevel=info --concurrency=2 -Q celery,export
     # OOM 护栏：Chromium/LibreOffice 任务失控时先杀本容器，不连坐 postgres
+    mem_limit: 3g
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # Conversion worker (2026-09-08): pptx → slides / deck PDF, text extraction,
+  # posters, OCR. Single process, one task at a time — LibreOffice + OCR are
+  # memory-hungry and serial by nature; the default worker keeps serving
+  # exports/search while a big deck converts.
+  celery-convert:
+    image: jianzhai-backend:latest
+    container_name: jianzhai-celery-convert
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-jianzhai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-jianzhai}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - media_data:/app/media
+      - exports_data:/app/exports
+    command: celery -A jianzhai worker --loglevel=info --concurrency=1 --prefetch-multiplier=1 -Q convert
+    mem_limit: 3g
+    depends_on:
+      backend:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  # OCR worker (2026-09-08 批 13): ocrmypdf jobs run for minutes to hours per
+  # book, so they get their own single-slot worker — a scan never blocks a
+  # PPT conversion. Drop this service (and set OCR_ENABLED=false) to opt out.
+  celery-ocr:
+    image: jianzhai-backend:latest
+    container_name: jianzhai-celery-ocr
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-jianzhai}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-jianzhai}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+    volumes:
+      - media_data:/app/media
+      - exports_data:/app/exports
+    command: celery -A jianzhai worker --loglevel=info --concurrency=1 --prefetch-multiplier=1 -Q ocr
     mem_limit: 3g
     depends_on:
       backend:

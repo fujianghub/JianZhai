@@ -142,7 +142,13 @@ def export(scope: ExportScope) -> tuple[Path, str, str]:
     # Deliberately NO fallback to raw_content: raw is the private working copy
     # (same fail-closed stance as blog's resolve_published_html_body). A KB
     # with nothing published yields a stub index, never draft text.
-    docs = [d for d in scope.documents if (d.published_content or "").strip()]
+    # Binary-format documents (PDF/PPT/EPUB/image) carry their content as a
+    # published attachment; they ship as a synthesized page + the original file.
+    docs = [
+        d
+        for d in scope.documents
+        if (d.published_content or "").strip() or common.doc_export_binary(d) is not None
+    ]
 
     from apps.exporter.anthology_tree import render_toc_list_html
 

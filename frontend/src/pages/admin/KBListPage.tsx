@@ -238,14 +238,14 @@ export default function KBListPage() {
         extra={
           <Space>
             <Tooltip title="编辑设置">
-              <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(kb)} />
+              <Button size="small" icon={<EditOutlined />} onClick={() => openEdit(kb)} aria-label="编辑知识库" />
             </Tooltip>
             <Tooltip title="导出">
-              <Button size="small" icon={<ExportOutlined />} onClick={() => setExportTarget(kb)} />
+              <Button size="small" icon={<ExportOutlined />} onClick={() => setExportTarget(kb)} aria-label="导出知识库" />
             </Tooltip>
             {isRoot && (
               <Popconfirm title="删除该知识库？" onConfirm={() => handleDelete(kb.id)}>
-                <Button size="small" danger icon={<DeleteOutlined />} />
+                <Button size="small" danger icon={<DeleteOutlined />} aria-label="删除知识库" />
               </Popconfirm>
             )}
           </Space>

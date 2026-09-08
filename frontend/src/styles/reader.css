@@ -346,6 +346,223 @@ body.jz-post-inline-edit .jz-reading-progress-pct {
   scroll-margin-top: 56px;
 }
 
+/* ── PDF page stack: canvas + pdf.js text layer + link overlays ───────────
+   Painted by components/common/pdf/renderPdfPageLayers.ts (shared by the
+   continuous reader and the PPT single-slide view). The inner box owns the
+   scale contract pdf.js's setLayerDimensions() expects — it sizes the text
+   layer as `round(down, var(--total-scale-factor) * <page px>, var(--scale-round-x))`,
+   so BOTH the derived total factor and the round steps must be defined here;
+   without --scale-round-* the width resolves to invalid and the layer
+   collapses to 0 (text unselectable, no error). --scale-factor / --user-unit
+   are written inline per page by the renderer. */
+.jz-pdf-page-inner {
+  position: relative;
+  margin: 0 auto;
+  background: #fff;
+  --user-unit: 1;
+  --total-scale-factor: calc(var(--scale-factor, 1) * var(--user-unit, 1));
+  --scale-round-x: 1px;
+  --scale-round-y: 1px;
+}
+.jz-pdf-page-inner .jz-pdf-canvas {
+  display: block;
+  background: #fff;
+}
+
+/* Text layer — verbatim port of pdfjs-dist/web/pdf_viewer.css `.textLayer`
+   rules (5.7.x) scoped under our class; we deliberately do NOT import that
+   stylesheet (1000+ lines of .pdfViewer chrome + image assets). Spans are
+   transparent glyph boxes laid over the raster so native selection / copy /
+   find work; `.endOfContent` + `.selecting` are toggled by
+   utils/pdfTextSelection.ts to let a drag flow past the last line and across
+   pages. */
+.jz-pdf-textlayer {
+  color-scheme: only light;
+  position: absolute;
+  text-align: initial;
+  inset: 0;
+  overflow: clip;
+  opacity: 1;
+  line-height: 1;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  text-size-adjust: none;
+  forced-color-adjust: none;
+  transform-origin: 0 0;
+  caret-color: CanvasText;
+  z-index: 1;
+  --min-font-size: 1;
+  --text-scale-factor: calc(var(--total-scale-factor) * var(--min-font-size));
+  --min-font-size-inv: calc(1 / var(--min-font-size));
+}
+.jz-pdf-textlayer :is(span, br) {
+  color: transparent;
+  position: absolute;
+  white-space: pre;
+  cursor: text;
+  transform-origin: 0% 0%;
+}
+.jz-pdf-textlayer > :not(.markedContent),
+.jz-pdf-textlayer .markedContent span:not(.markedContent) {
+  z-index: 1;
+  --font-height: 0;
+  font-size: calc(var(--text-scale-factor) * var(--font-height));
+  --scale-x: 1;
+  --rotate: 0deg;
+  transform: rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv));
+}
+.jz-pdf-textlayer .markedContent {
+  display: contents;
+}
+.jz-pdf-textlayer span[role='img'] {
+  user-select: none;
+  cursor: default;
+}
+.jz-pdf-textlayer ::selection {
+  background: color-mix(in srgb, var(--jz-accent) 28%, transparent);
+}
+.jz-pdf-textlayer br::selection {
+  background: transparent;
+}
+.jz-pdf-textlayer .endOfContent {
+  display: block;
+  position: absolute;
+  inset: 100% 0 0;
+  z-index: 0;
+  cursor: default;
+  user-select: none;
+}
+.jz-pdf-textlayer.selecting .endOfContent {
+  top: 0;
+}
+
+/* ── Reader paper (PDF / PPT, shared with the EPUB swatches) ────────────
+   Light papers are painted by pdf.js itself (render({background})); the dark
+   "夜墨" paper inverts the canvas only — text / link layers keep working and
+   selection stays readable. Images inside the PDF invert too (known). */
+.jz-pdf-page-inner[data-paper='night'] .jz-pdf-canvas {
+  filter: invert(0.92) hue-rotate(180deg);
+}
+.jz-pdf-page-inner[data-paper='night'] {
+  background: #111;
+}
+.jz-pdf-page-inner[data-paper='night'] .jz-pdf-textlayer ::selection {
+  background: color-mix(in srgb, var(--jz-accent) 40%, transparent);
+}
+
+/* Highlight marks (search hits now; annotations in batch 11). Painted between
+   the raster and the text layer; multiply keeps glyphs crisp on light paper. */
+.jz-pdf-hl-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+.jz-pdf-mark {
+  position: absolute;
+  background: color-mix(in srgb, var(--jz-accent) 32%, transparent);
+  mix-blend-mode: multiply;
+  border-radius: 2px;
+}
+.jz-pdf-mark.is-current {
+  background: color-mix(in srgb, #ff9f2e 55%, transparent);
+  outline: 2px solid color-mix(in srgb, #ff9f2e 80%, transparent);
+}
+.jz-pdf-page-inner[data-paper='night'] .jz-pdf-mark {
+  mix-blend-mode: screen;
+}
+
+/* Reader highlights (batch 11): quads → marks in the same layer as search
+   hits. Colour rides on --jz-ann; style variants mirror the MD/EPUB three. */
+.jz-pdf-mark.jz-pdf-ann {
+  --jz-ann: #ffd54f;
+  background: color-mix(in srgb, var(--jz-ann) 42%, transparent);
+  mix-blend-mode: multiply;
+  border-radius: 2px;
+}
+.jz-pdf-mark.jz-pdf-ann.is-underline {
+  background: transparent;
+  border-bottom: 2px solid var(--jz-ann);
+  border-radius: 0;
+}
+.jz-pdf-mark.jz-pdf-ann.is-squiggly {
+  background: transparent;
+  border-radius: 0;
+  background-image: linear-gradient(45deg, transparent 40%, var(--jz-ann) 40%, var(--jz-ann) 60%, transparent 60%),
+    linear-gradient(-45deg, transparent 40%, var(--jz-ann) 40%, var(--jz-ann) 60%, transparent 60%);
+  background-size: 6px 3px;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+}
+.jz-pdf-mark.jz-pdf-ann.is-flash {
+  outline: 2px solid color-mix(in srgb, var(--jz-accent) 80%, transparent);
+  animation: jz-pdf-ann-flash var(--jz-dur-epic) var(--jz-ease-standard) 2;
+}
+@keyframes jz-pdf-ann-flash {
+  50% { outline-color: transparent; }
+}
+.jz-pdf-page-inner[data-paper='night'] .jz-pdf-mark.jz-pdf-ann {
+  mix-blend-mode: screen;
+}
+[data-motion='min'] .jz-pdf-mark.jz-pdf-ann.is-flash {
+  animation: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pdf-mark.jz-pdf-ann.is-flash {
+    animation: none;
+  }
+}
+
+/* Fullscreen (Fullscreen API on the reader wrapper — same element, no portal,
+   so selection bars / AntD popups / SelectionAI keep working). */
+.jz-pdf-wrap:fullscreen,
+.jz-pptx-wrap:fullscreen {
+  background: var(--jz-bg-app, #0b0d11);
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.jz-pdf-wrap:fullscreen > .jz-pdf-stage,
+.jz-pptx-wrap:fullscreen > .jz-pptx-body {
+  flex: 1;
+  min-height: 0;
+}
+
+/* Link overlays (/Link annotations → <a>). The layer itself is click-through
+   so text selection underneath keeps working; only the link boxes take
+   pointer events. */
+.jz-pdf-linklayer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.jz-pdf-link {
+  position: absolute;
+  display: block;
+  pointer-events: auto;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  outline: 1px solid transparent;
+  transition:
+    background var(--jz-dur-fast) var(--jz-ease-standard),
+    outline-color var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-pdf-link:hover,
+.jz-pdf-link:focus-visible {
+  background: color-mix(in srgb, var(--jz-accent) 14%, transparent);
+  outline-color: color-mix(in srgb, var(--jz-accent) 40%, transparent);
+}
+[data-motion='min'] .jz-pdf-link {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pdf-link {
+    transition: none;
+  }
+}
+
 /* PDF reader outline rail — lives inside the canvas flex row (not a sticky page
    rail like the MD reader's), so it sizes to the canvas height and scrolls on
    its own. Reuses .jz-toc-link colors for parity with the Markdown TOC. */
@@ -1431,6 +1648,31 @@ html[data-jz-turn='flip'][data-jz-turn-dir='next']::view-transition-new(jz-epub-
 html[data-jz-turn='flip'][data-jz-turn-dir='prev']::view-transition-old(jz-epub-page) { animation-name: jz-flip-reveal-reverse; }
 html[data-jz-turn='flip'][data-jz-turn-dir='prev']::view-transition-new(jz-epub-page) { animation-name: jz-flip-in-left; transform-origin: left center; z-index: 2; }
 
+/* PPT: the same root opt-out, slide for ±1 and fade for jumps on the
+   jz-pptx-slide stage (utils/pageTurn.ts). */
+html[data-jz-turn]::view-transition-group(jz-pptx-slide) {
+  animation-duration: var(--jz-dur-slow, 320ms);
+}
+html[data-jz-turn]::view-transition-image-pair(jz-pptx-slide) {
+  isolation: isolate;
+  /* Snapshots are positioned against the viewport: without clipping the
+     outgoing slide glides across the page and over the site's TOC rail. */
+  overflow: clip;
+}
+html[data-jz-turn]::view-transition-old(jz-pptx-slide),
+html[data-jz-turn]::view-transition-new(jz-pptx-slide) {
+  animation-duration: var(--jz-dur-slow, 320ms);
+  animation-timing-function: var(--jz-ease-standard, cubic-bezier(0.2, 0, 0, 1));
+  animation-fill-mode: both;
+  mix-blend-mode: normal;
+}
+html[data-jz-turn='slide'][data-jz-turn-dir='next']::view-transition-old(jz-pptx-slide) { animation-name: jz-turn-out-left; }
+html[data-jz-turn='slide'][data-jz-turn-dir='next']::view-transition-new(jz-pptx-slide) { animation-name: jz-turn-in-right; }
+html[data-jz-turn='slide'][data-jz-turn-dir='prev']::view-transition-old(jz-pptx-slide) { animation-name: jz-turn-out-right; }
+html[data-jz-turn='slide'][data-jz-turn-dir='prev']::view-transition-new(jz-pptx-slide) { animation-name: jz-turn-in-left; }
+html[data-jz-turn='fade']::view-transition-old(jz-pptx-slide) { animation-name: jz-turn-fade-out; animation-duration: var(--jz-dur-base, 240ms); }
+html[data-jz-turn='fade']::view-transition-new(jz-pptx-slide) { animation-name: jz-turn-fade-in; animation-duration: var(--jz-dur-base, 240ms); }
+
 @keyframes jz-turn-still { from { opacity: 1; } to { opacity: 1; } }
 @keyframes jz-turn-out-left { from { transform: translateX(0); } to { transform: translateX(-100%); } }
 @keyframes jz-turn-in-right { from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -2075,3 +2317,304 @@ article.paper { position: relative; /* floating selection bar / note card anchor
 .jz-kb-nav-kbs[data-counts='off'] .jz-kb-nav-kb-item-count {
   display: none;
 }
+
+/* ── PPT reader (2026-09-08: moved out of inline styles so it can respond) ──
+   Youdao-style shell: sticky toolbar, thumbnail rail, main slide (pdf.js page
+   with the JPEG as placeholder), speaker-notes panel. */
+.jz-pptx-toolbar {
+  margin-bottom: 8px;
+  padding: 4px 12px;
+  background: var(--jz-surface-2);
+  border-radius: var(--jz-radius-sm);
+  width: 100%;
+  justify-content: space-between;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.jz-pptx-layout {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  min-height: 0;
+}
+.jz-pptx-column {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+}
+.jz-pptx-rail {
+  width: 160px;
+  flex-shrink: 0;
+  max-height: min(80vh, 900px);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-right: 6px;
+}
+.jz-pptx-rail[data-fullscreen='true'] {
+  max-height: calc(100vh - 80px);
+}
+.jz-pptx-thumb {
+  display: block;
+  width: 100%;
+  /* The rail is a bounded flex column: without this ~90 thumbs shrink to a
+     few px each and collapse into a stack of lines instead of scrolling. */
+  flex-shrink: 0;
+  padding: 0;
+  border: 1px solid var(--jz-border);
+  border-radius: var(--jz-radius-sm);
+  overflow: hidden;
+  cursor: pointer;
+  background: var(--jz-cell-surface);
+  position: relative;
+  line-height: 0;
+  transition: border-color var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-pptx-thumb-active {
+  border: 2px solid var(--jz-accent);
+}
+.jz-pptx-thumb img {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+}
+.jz-pptx-thumb-num {
+  position: absolute;
+  bottom: 2px;
+  right: 4px;
+  font-size: var(--jz-fs-2xs);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: var(--jz-radius-xs);
+  padding: 0 5px;
+  line-height: 16px;
+}
+.jz-pptx-main {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  background: var(--jz-surface-2);
+  border-radius: var(--jz-radius-md);
+  padding: 16px;
+  touch-action: pan-x pan-y;
+}
+.jz-pptx-main[data-fullscreen='true'] {
+  max-height: calc(100vh - 80px);
+}
+.jz-pptx-main-page {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  border-radius: var(--jz-radius-xs);
+}
+.jz-pptx-slide-img {
+  object-fit: contain;
+  background: var(--jz-cell-surface);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+  border-radius: var(--jz-radius-xs);
+  display: block;
+}
+/* PPT page = server-rendered image + pdf.js text/link layers on top
+   (PdfPageView visual="image"). The image multiplies over the paper colour
+   so light papers tint the slide's white; night keeps the invert filter. */
+.jz-pdf-pageview.is-image .jz-pdf-page-inner {
+  background: transparent;
+  margin: 0; /* anchored top-left over the image (the default centres it) */
+}
+.jz-pdf-pageview.is-image .jz-pdf-pageview-visual {
+  line-height: 0;
+  border-radius: var(--jz-radius-xs);
+}
+.jz-pdf-pageview.is-image .jz-pptx-slide-img {
+  mix-blend-mode: multiply;
+}
+.jz-pdf-pageview.is-image[data-paper='night'] .jz-pptx-slide-img {
+  mix-blend-mode: normal;
+}
+.jz-pptx-main[data-paper='night'] .jz-pptx-slide-img {
+  filter: invert(0.92) hue-rotate(180deg);
+}
+.jz-pptx-notes {
+  background: var(--jz-surface-2);
+  border: 1px solid var(--jz-border);
+  border-radius: var(--jz-radius-md);
+  padding: 10px 14px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.jz-pptx-notes[data-fullscreen='true'] {
+  max-height: 28vh;
+}
+.jz-pptx-notes-head {
+  font-size: var(--jz-fs-xs);
+  font-weight: 600;
+  color: var(--jz-text-muted);
+  margin-bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.jz-pptx-notes-body {
+  white-space: pre-wrap;
+  margin: 0;
+  line-height: var(--jz-lh-ui);
+}
+/* Presenter mode: toolbar + rail gone, the slide fills the left, a narrow
+   column carries timer / counter / next-slide / notes. Only reachable in
+   fullscreen (the wrapper itself is the fullscreen element). */
+.jz-pptx-wrap {
+  position: relative;
+}
+.jz-pptx-wrap[data-presenting='true'] > .jz-pptx-toolbar {
+  display: none;
+}
+.jz-pptx-wrap[data-presenting='true'] .jz-pptx-layout {
+  height: 100%;
+  align-items: stretch;
+}
+.jz-pptx-wrap[data-presenting='true'] .jz-pptx-main {
+  max-height: none;
+  height: 100%;
+  align-items: center;
+  background: transparent;
+  padding: 0;
+}
+.jz-pptx-present-side {
+  width: min(320px, 28vw);
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+  color: var(--jz-text);
+  font-family: var(--jz-font-ui);
+}
+.jz-pptx-present-top {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+.jz-pptx-present-timer {
+  font-size: 32px; /* 一次性展示字号 */
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: var(--jz-ls-sm);
+}
+.jz-pptx-present-counter {
+  flex: 1;
+  color: var(--jz-text-muted);
+  font-size: var(--jz-fs-sm);
+  font-variant-numeric: tabular-nums;
+}
+.jz-pptx-present-next-thumb {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--jz-border);
+  border-radius: var(--jz-radius-sm);
+  overflow: hidden;
+  background: var(--jz-cell-surface);
+  line-height: 0;
+  cursor: pointer;
+}
+.jz-pptx-present-next-thumb img {
+  width: 100%;
+  display: block;
+}
+.jz-pptx-present-notes {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--jz-surface-2);
+  border: 1px solid var(--jz-border);
+  border-radius: var(--jz-radius-md);
+  padding: 10px 14px;
+  font-size: var(--jz-fs-md);
+}
+.jz-pptx-present-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  align-items: center;
+  font-size: var(--jz-fs-xs);
+  color: var(--jz-text-muted);
+}
+.jz-pptx-blackout {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 40;
+  cursor: pointer;
+}
+@media (max-width: 720px) {
+  .jz-pptx-wrap[data-presenting='true'] .jz-pptx-layout {
+    flex-direction: column;
+  }
+  .jz-pptx-present-side {
+    width: 100%;
+    height: auto;
+    flex: 1;
+  }
+}
+/* Phone: the rail becomes a horizontal strip above the slide instead of a
+   160px column eating half the screen. */
+@media (max-width: 720px) {
+  .jz-pptx-layout {
+    flex-direction: column;
+  }
+  .jz-pptx-rail {
+    width: 100%;
+    max-height: none;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    gap: 6px;
+    padding: 0 0 4px;
+    order: 2;
+  }
+  .jz-pptx-thumb {
+    width: 96px;
+  }
+  .jz-pptx-column {
+    order: 1;
+    width: 100%;
+  }
+  .jz-pptx-main {
+    padding: 8px;
+  }
+}
+[data-motion='min'] .jz-pptx-thumb {
+  transition: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .jz-pptx-thumb {
+    transition: none;
+  }
+}
+
+/* Scanned-PDF notice above the reader (OCR pending / failed / absent). */
+.jz-pdf-scan-hint {
+  margin: 0 0 8px;
+  padding: 6px 12px;
+  border-radius: var(--jz-radius-sm);
+  background: var(--jz-surface-2);
+  border: 1px solid var(--jz-border);
+  color: var(--jz-text-muted);
+  font-size: var(--jz-fs-xs);
+  font-family: var(--jz-font-ui);
+}
+.jz-pdf-scan-hint[data-ocr='failed'] {
+  color: var(--jz-danger, #c0392b);
+}
+

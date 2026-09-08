@@ -34,7 +34,7 @@ import * as docsApi from '@/api/docs';
 import DocPinFavoriteButtons from '@/components/common/DocPinFavoriteButtons';
 import { burstAtPointer } from '@/utils/inkBurst';
 import {
-  loadReadingPosition,
+  loadReadingPositionRecord,
   saveReadingPosition,
   shouldOfferResume,
 } from '@/utils/readingPosition';
@@ -50,6 +50,8 @@ import type { EditorSaveHandle } from '@/components/editor/editorSaveLifecycle';
 import { readingMinutes, renderMarkdownWithToc, wordCount } from '@/utils/markdown';
 import { previewKind } from '@/api/attachments';
 import { useAuthStore } from '@/stores/auth';
+import { useServerPosition } from '@/hooks/useServerPosition';
+import { pickNewer } from '@/utils/positionSync';
 import PaperPicker from '@/components/common/PaperPicker';
 import ReaderFontPicker from '@/components/common/ReaderFontPicker';
 import ReaderLayoutPicker from '@/components/common/ReaderLayoutPicker';
@@ -91,6 +93,8 @@ import RelatedPostsSection from '@/components/blog/RelatedPostsSection';
 import { applyPageMeta, resetPageMeta } from '@/utils/pageMeta';
 import ColumnResizer from '@/components/common/ColumnResizer';
 import PostSidePanel from '@/components/blog/PostSidePanel';
+import type { PdfTocEntry } from '@/utils/pdfOutline';
+import type { PdfReaderApi, PdfSideTab } from '@/utils/pdfReaderApi';
 import type { MdAnnotationsApi } from '@/components/blog/MdAnnotator';
 import type { SelectionAIRequest } from '@/components/common/SelectionAI';
 import { AI_OPS, type AIOpDef } from '@/components/editor/ai/aiOps';
@@ -211,8 +215,26 @@ export default function PostDetail() {
   const initialCfi = searchParams.get('cfi');
   /** Markdown highlight deep link (``/d/:id?hl=`` forwards here). */
   const initialHlId = Number(searchParams.get('hl')) || null;
+  /** PDF page / PPT slide deep links (1-based in the URL). */
+  const initialPage = Number(searchParams.get('page')) || null;
+  const initialSlideParam = Number(searchParams.get('slide')) || null;
   /** Highlights/notes state surfaced by MdAnnotator for the side panel. */
   const [mdNotes, setMdNotes] = useState<MdAnnotationsApi | null>(null);
+  /** PDF outline lifted from PdfCanvas so the site TOC rail / mobile drawer /
+   * FAB serve PDFs too (the reader renders no rail of its own on this page). */
+  const [pdfToc, setPdfToc] = useState<PdfTocEntry[]>([]);
+  const [pdfPage, setPdfPage] = useState(1);
+  const pdfJumpRef = useRef<((entry: PdfTocEntry) => void) | null>(null);
+  const [pdfReader, setPdfReader] = useState<PdfReaderApi | null>(null);
+  const [pdfTabReq, setPdfTabReq] = useState<{ tab: PdfSideTab; seq: number } | null>(null);
+  const useTocDrawerRef = useRef(false);
+  const requestPdfTab = useCallback((tab: PdfSideTab) => {
+    setPdfTabReq({ tab, seq: Date.now() });
+    // Make sure the panel is visible wherever it lives on this layout: the
+    // rail on wide screens, the drawer on narrow ones (never both).
+    if (useTocDrawerRef.current) setTocDrawerOpen(true);
+    else setTocOpen(true);
+  }, []);
   /** AI request forwarded from the annotation bar into SelectionAI's panel. */
   const [aiReq, setAiReq] = useState<SelectionAIRequest | null>(null);
   const [post, setPost] = useState<PublicPostDetail | null>(null);
@@ -326,15 +348,22 @@ export default function PostDetail() {
   const [resumeAt, setResumeAt] = useState<number | null>(null);
   const postSlug = post?.slug ?? null;
 
+  // Binary readers (PDF / PPT / EPUB) keep their own page-level memory; the
+  // percent pill would be meaningless (and wrong after a zoom) for them.
+  const binaryDoc = !!post && ['pdf', 'pptx', 'epub', 'image'].includes(post.doc_format);
+  // Signed-in readers also get the position from the server (other devices),
+  // merged with the local memory by time.
+  const { remote: serverPos, loaded: serverPosLoaded, push: pushServerPos } = useServerPosition(post?.id ?? null, !!authUser && pageMode === 'read' && !binaryDoc);
   useEffect(() => {
     setResumeAt(null);
-    if (!postSlug || pageMode !== 'read') return;
-    const saved = loadReadingPosition(postSlug);
+    if (!postSlug || pageMode !== 'read' || binaryDoc || !serverPosLoaded) return;
+    const pick = pickNewer(loadReadingPositionRecord(postSlug), serverPos && serverPos.fraction != null ? serverPos : null);
+    const saved = pick ? (pick.source === 'local' ? pick.value.p : pick.value.fraction) : null;
     if (!shouldOfferResume(saved)) return;
-    setResumeAt(saved);
+    setResumeAt(saved as number);
     const timer = window.setTimeout(() => setResumeAt(null), 12000);
     return () => window.clearTimeout(timer);
-  }, [postSlug, pageMode]);
+  }, [postSlug, pageMode, binaryDoc, serverPosLoaded, serverPos]);
 
   useEffect(() => {
     if (!postSlug || pageMode !== 'read') return;
@@ -346,7 +375,11 @@ export default function PostDetail() {
         const el = document.documentElement;
         const range = el.scrollHeight - el.clientHeight;
         // Very short pages aren't worth remembering (also avoids 0/0).
-        if (range > 200) saveReadingPosition(postSlug, el.scrollTop / range);
+        if (range > 200) {
+          const fraction = el.scrollTop / range;
+          saveReadingPosition(postSlug, fraction);
+          if (serverPosLoaded) pushServerPos({ fraction: Math.min(1, Math.max(0, fraction)) });
+        }
       });
     };
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -354,7 +387,7 @@ export default function PostDetail() {
       window.removeEventListener('scroll', onScroll);
       if (raf) window.cancelAnimationFrame(raf);
     };
-  }, [postSlug, pageMode]);
+  }, [postSlug, pageMode, serverPosLoaded, pushServerPos]);
 
   const resumeReading = useCallback(() => {
     setResumeAt((at) => {
@@ -586,7 +619,12 @@ export default function PostDetail() {
   const htmlHasBuiltInNav = isHtmlDoc && !!htmlMeta?.hasBuiltInNav;
   const canShowToc = isHtmlDoc
     ? false
-    : !hasInlineFile && rendered.toc.length > 0;
+    : hasInlineFile
+      ? post.doc_format === 'pdf' && (pdfToc.length > 0 || !!pdfReader)
+      : rendered.toc.length > 0;
+  const pdfTocProps = post.doc_format === 'pdf' && (pdfToc.length > 0 || pdfReader)
+    ? { entries: pdfToc, currentPage: pdfPage, onJump: (e: PdfTocEntry) => pdfJumpRef.current?.(e), reader: pdfReader, tabRequest: pdfTabReq }
+    : null;
   const showToc = canShowToc && tocOpen && pageMode === 'read';
   // Word-count / reading-time: MD reads from the persisted markdown source;
   // HTML reads the plain-text body the iframe reader extracts (same-origin
@@ -611,6 +649,7 @@ export default function PostDetail() {
   // hidden) the FABs open overlay drawers instead — previously 961–1280px had
   // a FAB that toggled state nothing consumed, and ≤960px had no TOC at all.
   const useTocDrawer = focusMode || !tocRailWide;
+  useTocDrawerRef.current = useTocDrawer;
   const useKbDrawer = !layoutWide;
   // The reader-layout controls (font scale / line-height / measure) only apply
   // to the Markdown body; HTML lives in a sandboxed iframe and binary previews
@@ -1052,11 +1091,29 @@ export default function PostDetail() {
                 downloadUrl={post.primary_attachment?.url}
                 status={post.slide_status}
                 error={post.slide_error}
+                pdfUrl={post.slide_pdf_url}
+                initialSlide={initialSlideParam ? initialSlideParam - 1 : null}
+                syncUrl
               />
             </div>
           ) : hasInlineFile && post.primary_attachment ? (
             <div className="paper-breakout">
-              <PublicAttachmentPreview att={post.primary_attachment} documentId={post.id} initialCfi={initialCfi} kbSlug={post.knowledge_base.slug} />
+              <PublicAttachmentPreview
+                att={post.primary_attachment}
+                documentId={post.id}
+                initialCfi={initialCfi}
+                initialPage={initialPage}
+                kbSlug={post.knowledge_base.slug}
+                onPdfOutline={setPdfToc}
+                onPdfPage={setPdfPage}
+                pdfJumpRef={pdfJumpRef}
+                onPdfReader={setPdfReader}
+                onPdfTabRequest={requestPdfTab}
+                initialHlId={initialHlId}
+                canCreateDoc={!!authUser?.is_staff}
+                readerPdfUrl={post.reader_pdf_url}
+                ocrStatus={post.ocr_status}
+              />
             </div>
           ) : (
             <div
@@ -1157,7 +1214,7 @@ export default function PostDetail() {
 
       {showTocRail && (
         <aside className="jz-post-aside jz-post-aside-right">
-          <PostSidePanel toc={rendered.toc} notes={isMarkdownReadPath ? mdNotes : null} onClose={() => setTocOpen(false)} />
+          <PostSidePanel toc={rendered.toc} notes={isMarkdownReadPath ? mdNotes : null} pdfToc={pdfTocProps} onClose={() => setTocOpen(false)} />
         </aside>
       )}
 
@@ -1220,7 +1277,7 @@ export default function PostDetail() {
             if ((e.target as HTMLElement).closest('.jz-toc-link')) setTocDrawerOpen(false);
           }}
         >
-          <PostSidePanel toc={rendered.toc} notes={isMarkdownReadPath ? mdNotes : null} />
+          <PostSidePanel toc={rendered.toc} notes={isMarkdownReadPath ? mdNotes : null} pdfToc={pdfTocProps} />
         </div>
       </Drawer>
 
@@ -1266,7 +1323,9 @@ export default function PostDetail() {
             contextProvider={() =>
               pageMode === 'edit' && editDoc
                 ? editDoc.raw_content
-                : post?.published_content || ''
+                : post?.doc_format === 'pdf' && pdfReader
+                  ? pdfReader.contextText()
+                  : post?.published_content || ''
             }
           />
           <DocAIPanel

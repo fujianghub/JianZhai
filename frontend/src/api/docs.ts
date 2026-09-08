@@ -1,5 +1,5 @@
 import { apiClient, ensureCsrf } from './client';
-import type { DocumentDetail } from '@/types';
+import type { DocFormat, DocumentDetail } from '@/types';
 
 export interface DocumentPreview {
   id: number;
@@ -11,6 +11,12 @@ export interface DocumentPreview {
   knowledge_base: { id: number; name: string; slug: string; accent_color: string };
   updated_at: string;
   published_at: string | null;
+  /** Binary docs (2026-09-08): format, page count, poster/cover, size. */
+  doc_format?: DocFormat;
+  page_count?: number | null;
+  poster_url?: string;
+  size?: number | null;
+  encrypted?: boolean;
 }
 
 export interface DocumentContributor {
@@ -221,3 +227,13 @@ export async function unpublishDocument(
   );
   return data;
 }
+
+/** Author action: clear rendered slides + deck PDF and queue a fresh
+ * PPT → slides conversion (after a failure or a LibreOffice upgrade). */
+export async function reconvertSlides(docId: number): Promise<{ id: number; slide_status: string }> {
+  const { data } = await apiClient.post<{ id: number; slide_status: string }>(
+    `/documents/${docId}/reconvert-slides/`,
+  );
+  return data;
+}
+

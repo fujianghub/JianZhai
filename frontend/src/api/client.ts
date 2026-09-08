@@ -12,7 +12,7 @@ export const apiClient = axios.create({
 
 const UNSAFE = /^(post|put|patch|delete)$/i;
 
-function readCookie(name: string): string | null {
+export function readCookie(name: string): string | null {
   if (typeof document === 'undefined') return null;
   const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]+)'));
   return m ? decodeURIComponent(m[1]) : null;

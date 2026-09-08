@@ -50,6 +50,29 @@ def _primary_attachment(doc: Document) -> dict | None:
     }
 
 
+def _slide_pdf_url(doc: Document) -> str:
+    """URL of the deck PDF the slides were rendered from ('' when not kept)."""
+    from apps.editor.services.derived import derived_url
+
+    return derived_url(doc, "deck_pdf")
+
+
+def _poster(doc: Document) -> dict:
+    """Card visuals for binary docs: first-page poster (PDF) / cover (EPUB)
+    / first slide thumbnail (PPT) + page count, all from prefetched rows."""
+    from apps.editor.services.derived import derived_visual
+
+    row = derived_visual(doc)
+    if row:
+        return {"poster_url": row.url, "page_count": row.page_count or None}
+    slides = getattr(doc, "prefetched_slides", None)
+    if slides is None:
+        slides = list(doc.slides.all()[:1])
+    if slides:
+        return {"poster_url": slides[0].thumb_url, "page_count": None}
+    return {"poster_url": "", "page_count": None}
+
+
 def _slides_summary(doc: Document) -> list[dict]:
     """Ordered rendered-slide images for a PPT/PPTX document (empty otherwise).
 
@@ -64,6 +87,8 @@ def _slides_summary(doc: Document) -> list[dict]:
 
 class PublicPostListSerializer(serializers.ModelSerializer):
     excerpt = serializers.SerializerMethodField()
+    poster_url = serializers.SerializerMethodField()
+    page_count = serializers.SerializerMethodField()
     knowledge_base = serializers.SerializerMethodField()
     tags = serializers.SerializerMethodField()
     doc_format = serializers.SerializerMethodField()
@@ -81,6 +106,8 @@ class PublicPostListSerializer(serializers.ModelSerializer):
             "knowledge_base",
             "tags",
             "doc_format",
+            "poster_url",
+            "page_count",
             "is_pinned",
             "is_favorited",
         ]
@@ -106,6 +133,12 @@ class PublicPostListSerializer(serializers.ModelSerializer):
     def get_tags(self, obj: Document) -> list[dict]:
         return _tags_summary(obj)
 
+    def get_poster_url(self, obj: Document) -> str:
+        return _poster(obj)["poster_url"]
+
+    def get_page_count(self, obj: Document) -> int | None:
+        return _poster(obj)["page_count"]
+
     def get_doc_format(self, obj: Document) -> str:
         return detect_doc_format(obj)
 
@@ -117,6 +150,11 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
     doc_format = serializers.SerializerMethodField()
     published_content = serializers.SerializerMethodField()
     slides = serializers.SerializerMethodField()
+    slide_pdf_url = serializers.SerializerMethodField()
+    reader_pdf_url = serializers.SerializerMethodField()
+    ocr_status = serializers.SerializerMethodField()
+    poster_url = serializers.SerializerMethodField()
+    page_count = serializers.SerializerMethodField()
     # Same two flags as the list shape so the reading page can offer the
     # pin / favorite toggles itself (2026-09-03).
     is_pinned = serializers.SerializerMethodField()
@@ -142,7 +180,18 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
             "slides",
             "slide_status",
             "slide_error",
+            "slide_pdf_url",
+            "reader_pdf_url",
+            "ocr_status",
+            "poster_url",
+            "page_count",
         ]
+
+    def get_poster_url(self, obj: Document) -> str:
+        return _poster(obj)["poster_url"]
+
+    def get_page_count(self, obj: Document) -> int | None:
+        return _poster(obj)["page_count"]
 
     def get_is_pinned(self, obj: Document) -> bool:
         return bool(obj.is_pinned)
@@ -153,6 +202,22 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
         if not user or not getattr(user, "is_authenticated", False):
             return False
         return DocumentFavorite.objects.filter(user=user, document_id=obj.id).exists()
+
+    def get_slide_pdf_url(self, obj: Document) -> str:
+        return _slide_pdf_url(obj)
+
+    def get_reader_pdf_url(self, obj: Document) -> str:
+        """OCR copy of a scanned PDF (text layer) — the reader renders it in
+        place of the original; '' when there is none."""
+        from apps.editor.services.derived import derived_url
+
+        return derived_url(obj, "ocr_pdf")
+
+    def get_ocr_status(self, obj: Document) -> str:
+        from apps.editor.services.derived import ocr_status
+        from apps.knowledge.serializers import detect_doc_format
+
+        return ocr_status(obj) if detect_doc_format(obj) == "pdf" else ""
 
     def get_knowledge_base(self, obj: Document) -> dict:
         kb = obj.knowledge_base

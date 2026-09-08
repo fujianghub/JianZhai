@@ -5,6 +5,7 @@ from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
 
 from apps.comments.models import Comment
+from apps.editor.models import DocumentExtract, SlideImage
 from apps.knowledge.models import Document
 from apps.tags.models import DocumentTag
 
@@ -40,3 +41,17 @@ def refresh_search_vector_on_comment_save(sender, instance: Comment, **kwargs) -
 @receiver(post_delete, sender=Comment)
 def refresh_search_vector_on_comment_delete(sender, instance: Comment, **kwargs) -> None:
     _schedule_document_reindex(instance.document_id)
+
+
+@receiver(post_save, sender=DocumentExtract)
+def refresh_search_vector_on_extract(sender, instance: DocumentExtract, **kwargs) -> None:
+    _schedule_document_reindex(instance.document_id)
+
+
+@receiver(post_save, sender=SlideImage)
+def refresh_search_vector_on_slide_notes(sender, instance: SlideImage, **kwargs) -> None:
+    # Speaker notes ride into the index; bulk_create bypasses this signal, so
+    # the conversion task re-indexes explicitly via extract_document_text.
+    if instance.notes:
+        _schedule_document_reindex(instance.document_id)
+

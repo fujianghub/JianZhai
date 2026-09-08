@@ -229,3 +229,107 @@ def test_selector_context_is_capped():
     assert r.status_code == 201
     assert len(r.data["selector"]["prefix"]) == 500
     assert "extra" not in r.data["selector"]
+
+
+@pytest.mark.django_db
+def test_pdf_page_bookmarks_xor_and_idempotent(api_client=None):
+    from django.contrib.auth import get_user_model
+    from django.urls import reverse
+    from rest_framework.test import APIClient
+
+    from apps.knowledge.models import Document, KnowledgeBase
+    from apps.reading.models import Bookmark
+
+    User = get_user_model()
+    author = User.objects.create_user("bmauthor", "bm@e.com", "pass", is_staff=True)
+    reader = User.objects.create_user("bmreader", "bmr@e.com", "pass")
+    kb = KnowledgeBase.objects.create(owner=author, name="BM", slug="bm-kb", visibility="public")
+    doc = Document.objects.create(knowledge_base=kb, title="pdf", status="published", visibility="public")
+    c = APIClient()
+    c.force_authenticate(reader)
+    url = reverse("api_v1:document-bookmarks", args=[doc.id])
+    # Neither / both → 400
+    assert c.post(url, {}, format="json").status_code == 400
+    assert c.post(url, {"cfi": "epubcfi(/6/2)", "page": 3}, format="json").status_code == 400
+    assert c.post(url, {"page": 0}, format="json").status_code == 400
+    # Page bookmark: created then idempotent
+    r = c.post(url, {"page": 3, "excerpt": "third"}, format="json")
+    assert r.status_code == 201 and r.data["page"] == 3 and r.data["cfi"] == ""
+    r2 = c.post(url, {"page": 3}, format="json")
+    assert r2.status_code == 200 and r2.data["id"] == r.data["id"]
+    # A CFI bookmark on the same doc coexists (different anchor kind)
+    r3 = c.post(url, {"cfi": "epubcfi(/6/4)"}, format="json")
+    assert r3.status_code == 201 and r3.data["page"] is None
+    assert Bookmark.objects.filter(user=reader, document=doc).count() == 2
+    assert [b["page"] for b in c.get(url).data] == [3, None]
+    # Delete by id
+    assert c.delete(reverse("api_v1:bookmark-detail", args=[r.data["id"]])).status_code == 204
+    assert Bookmark.objects.filter(user=reader, document=doc).count() == 1
+
+
+@pytest.mark.django_db
+def test_pdf_quads_selector_validation():
+    from django.contrib.auth import get_user_model
+    from django.urls import reverse
+    from rest_framework.test import APIClient
+
+    from apps.knowledge.models import Document, KnowledgeBase
+
+    User = get_user_model()
+    author = User.objects.create_user("qauthor", "q@e.com", "pass", is_staff=True)
+    reader = User.objects.create_user("qreader", "qr@e.com", "pass")
+    kb = KnowledgeBase.objects.create(owner=author, name="Q", slug="q-kb", visibility="public")
+    doc = Document.objects.create(knowledge_base=kb, title="pdf", status="published", visibility="public")
+    c = APIClient()
+    c.force_authenticate(reader)
+    url = reverse("api_v1:document-highlights", args=[doc.id])
+    good = {"selector": {"kind": "pdf", "page": 3, "quads": [[1, 2, 3, 2, 1, 1, 3, 1]]}, "text": "hi", "color": "yellow"}
+    r = c.post(url, good, format="json")
+    assert r.status_code == 201, r.content
+    assert r.data["selector"] == {"kind": "pdf", "page": 3, "quads": [[1.0, 2.0, 3.0, 2.0, 1.0, 1.0, 3.0, 1.0]]}
+    for bad in (
+        {"kind": "pdf", "page": 0, "quads": [[1, 2, 3, 2, 1, 1, 3, 1]]},
+        {"kind": "pdf", "page": 1, "quads": []},
+        {"kind": "pdf", "page": 1, "quads": [[1, 2, 3]]},
+        {"kind": "pdf", "page": 1, "quads": [["a"] * 8]},
+    ):
+        assert c.post(url, {"selector": bad, "text": "x"}, format="json").status_code == 400
+    # Note-only PATCH keeps the pdf anchor.
+    p = c.patch(reverse("api_v1:highlight-detail", args=[r.data["id"]]), {"note": "n"}, format="json")
+    assert p.status_code == 200 and p.data["selector"]["kind"] == "pdf"
+
+
+@pytest.mark.django_db
+def test_reading_position_upsert_and_private():
+    from django.contrib.auth import get_user_model
+    from django.urls import reverse
+    from rest_framework.test import APIClient
+
+    from apps.knowledge.models import Document, KnowledgeBase
+
+    User = get_user_model()
+    author = User.objects.create_user("rpauthor", "rp@e.com", "pass", is_staff=True)
+    a = User.objects.create_user("rpa", "a@e.com", "pass")
+    b = User.objects.create_user("rpb", "b@e.com", "pass")
+    kb = KnowledgeBase.objects.create(owner=author, name="RP", slug="rp-kb", visibility="public")
+    doc = Document.objects.create(knowledge_base=kb, title="pdf", status="published", visibility="public")
+    url = reverse("api_v1:document-position", args=[doc.id])
+    c = APIClient()
+    c.force_authenticate(a)
+    assert c.get(url).data is None
+    assert c.put(url, {}, format="json").status_code == 400
+    r = c.put(url, {"page": 12, "offset": 0.4}, format="json")
+    assert r.status_code == 200 and r.data["page"] == 12 and r.data["offset"] == 0.4
+    r2 = c.put(url, {"page": 13, "offset": 0.0}, format="json")
+    assert r2.data["page"] == 13
+    assert c.get(url).data["page"] == 13
+    from apps.reading.models import ReadingPosition
+
+    assert ReadingPosition.objects.filter(document=doc).count() == 1
+    c.force_authenticate(b)
+    assert c.get(url).data is None  # private per user
+    assert c.put(url, {"cfi": "epubcfi(/6/2)", "fraction": 0.25}, format="json").status_code == 200
+    assert c.put(url, {"fraction": 1.5}, format="json").status_code == 400
+    draft = Document.objects.create(knowledge_base=kb, title="draft")
+    assert c.get(reverse("api_v1:document-position", args=[draft.id])).status_code == 404
+

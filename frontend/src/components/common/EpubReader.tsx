@@ -92,6 +92,8 @@ import EpubHighlightCard from './EpubHighlightCard';
 import EpubNotesExportModal from './EpubNotesExportModal';
 import { isLightTheme, useThemeStore } from '@/stores/theme';
 import { useAuthStore } from '@/stores/auth';
+import { useServerPosition } from '@/hooks/useServerPosition';
+import { pickNewer } from '@/utils/positionSync';
 import {
   createBookmark,
   createHighlight,
@@ -611,6 +613,9 @@ export default function EpubReader({
   }, []);
 
   const positionKey = useMemo(() => epubPositionKey(url), [url]);
+  // Cross-device position (signed-in readers): merged with the local memory
+  // by time before the book opens; every relocate mirrors to the server.
+  const { push: pushServerPos, waitRemote: waitServerPos } = useServerPosition(documentId, !!authUser);
   const fetchUrl = useMemo(() => url + (url.includes('?') ? '&' : '?') + '_=' + Date.now(), [url]);
 
   const effectiveFlow: EpubFlow = prefs.flow === 'auto' ? defaultFlowFor(wide ? 1200 : 600) : prefs.flow;
@@ -945,6 +950,7 @@ export default function EpubReader({
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
       saveTimerRef.current = window.setTimeout(() => {
         saveEpubPosition(positionKey, { cfi: detail.cfi, fraction: detail.fraction ?? 0 });
+        pushServerPos({ cfi: detail.cfi, fraction: detail.fraction ?? 0 });
       }, 400);
     };
 
@@ -1301,7 +1307,10 @@ export default function EpubReader({
         applyLayout();
         applyStyles();
 
-        const saved = loadEpubPosition(positionKey);
+        const serverPos = await waitServerPos();
+        if (cancelled) return;
+        const pick = pickNewer(loadEpubPosition(positionKey), serverPos && serverPos.cfi ? serverPos : null);
+        const saved = pick ? { cfi: pick.value.cfi, fraction: pick.value.fraction ?? 0 } : null;
         const deepLink = initialCfi && /^epubcfi\(/.test(initialCfi) ? initialCfi : null;
         await view.init({ lastLocation: deepLink ?? saved?.cfi ?? null });
         if (cancelled) return;

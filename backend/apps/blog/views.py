@@ -73,6 +73,7 @@ def _published_qs(defer_body: bool = False, *, user=None):
         )
         .select_related("knowledge_base")
         .prefetch_related(
+            _derived_prefetch_lazy(),
             "tags",
             Prefetch(
                 "attachments",
@@ -118,6 +119,24 @@ def resolve_public_post_by_slug(
     return post
 
 
+def _derived_prefetch_lazy():
+    from apps.editor.services.derived import derived_prefetch
+
+    return derived_prefetch()
+
+
+def _detail_prefetches():
+    """Slides + derived files for the detail shape (list never emits them).
+    Both serializers read the ``prefetched_*`` caches first."""
+    from django.db.models import Prefetch
+
+    from apps.editor.models import SlideImage
+    from apps.editor.services.derived import derived_prefetch
+
+    # derived_files are already prefetched by _published_qs (cards need posters).
+    return (Prefetch("slides", queryset=SlideImage.objects.order_by("index"), to_attr="prefetched_slides"),)
+
+
 class PublicPostViewSet(
     mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet
 ):
@@ -127,6 +146,8 @@ class PublicPostViewSet(
     def get_queryset(self):
         # retrieve needs the full body; list only needs excerpt + metadata.
         qs = _published_qs(defer_body=self.action != "retrieve", user=self.request.user)
+        if self.action == "retrieve":
+            qs = qs.prefetch_related(*_detail_prefetches())
         kb_slug = self.request.query_params.get("kb")
         if kb_slug:
             qs = qs.filter(knowledge_base__slug=kb_slug)
@@ -388,14 +409,17 @@ class PublicPostSlidesView(APIView):
     permission_classes = [PublicOrLoginGated]
 
     def get(self, request, doc_id: int):
-        from .serializers import _slides_summary
+        from .serializers import _slide_pdf_url, _slides_summary
 
-        doc = get_object_or_404(_published_qs(user=request.user), pk=doc_id)
+        doc = get_object_or_404(
+            _published_qs(user=request.user).prefetch_related(*_detail_prefetches()), pk=doc_id
+        )
         return Response(
             {
                 "slides": _slides_summary(doc),
                 "slide_status": doc.slide_status,
                 "slide_error": doc.slide_error,
+                "slide_pdf_url": _slide_pdf_url(doc),
             }
         )
 
@@ -621,6 +645,10 @@ class PublicPostAdjacentView(APIView):
         post = resolve_public_post_by_slug(_published_qs(user=request.user), slug, kb_slug)
         qs = _published_qs(user=request.user)
         # "上一篇" = older (published before this one); qs ordered by -published_at so .first() = most recent older
+        if post.published_at is None:
+            # Published rows created without a timestamp (legacy / scripted):
+            # no meaningful neighbours rather than a 500 on the None lookup.
+            return Response({"older": None, "newer": None})
         older = qs.filter(published_at__lt=post.published_at).first()
         # "下一篇" = newer (published after); need ascending order to get the immediately-next one
         newer = qs.filter(published_at__gt=post.published_at).order_by('published_at').first()

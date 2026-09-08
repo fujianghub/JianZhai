@@ -23,8 +23,8 @@ from apps.accounts.scoping import scope_queryset
 from apps.knowledge.audience import visible_documents
 from apps.knowledge.models import Document
 
-from .models import Bookmark, Highlight
-from .serializers import BookmarkSerializer, HighlightSerializer
+from .models import Bookmark, Highlight, ReadingPosition
+from .serializers import BookmarkSerializer, HighlightSerializer, ReadingPositionSerializer
 
 
 def _readable_doc(user, doc_id: int) -> Document:
@@ -80,10 +80,12 @@ def document_bookmarks(request, doc_id: int):
     serializer.is_valid(raise_exception=True)
     data = serializer.validated_data
     # Same page bookmarked twice → the existing row (idempotent toggle-on).
+    # Keyed on cfi (EPUB) or page (PDF / PPT), whichever the client sent.
+    key = {"page": data["page"], "cfi": ""} if data.get("page") is not None else {"cfi": data["cfi"], "page": None}
     bm, created = Bookmark.objects.get_or_create(
         user=request.user,
         document=doc,
-        cfi=data["cfi"],
+        **key,
         defaults={"chapter": data.get("chapter", ""), "excerpt": data.get("excerpt", "")},
     )
     return Response(
@@ -98,3 +100,20 @@ def bookmark_detail(request, pk: int):
     bm = get_object_or_404(Bookmark.objects.filter(user=request.user), pk=pk)
     bm.delete()
     return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@api_view(["GET", "PUT"])
+@permission_classes([IsAuthenticated])
+def document_position(request, doc_id: int):
+    """Per-user reading position (cross-device resume). PUT upserts; the
+    client merges with its local memory by ``updated_at``."""
+    doc = _readable_doc(request.user, doc_id)
+    if request.method == "GET":
+        row = ReadingPosition.objects.filter(document=doc, user=request.user).first()
+        return Response(ReadingPositionSerializer(row).data if row else None)
+    serializer = ReadingPositionSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    row, _ = ReadingPosition.objects.update_or_create(user=request.user, document=doc, defaults=data)
+    return Response(ReadingPositionSerializer(row).data)
+

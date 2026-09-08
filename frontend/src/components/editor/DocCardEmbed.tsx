@@ -172,6 +172,7 @@ function DocCardView({ node, editor, getPos }: NodeViewProps) {
               </span>
             </div>
             <div className="jz-doc-card-title">{data.title}</div>
+          {data.poster_url && <img src={data.poster_url} alt="" className="jz-doc-poster" loading="lazy" decoding="async" />}
             <div className="jz-doc-card-excerpt">{data.excerpt || '（暂无摘要）'}</div>
           </a>
         )}

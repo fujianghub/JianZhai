@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 import dj_database_url
 from dotenv import load_dotenv
+from kombu import Queue
 import os
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -186,12 +187,53 @@ CELERY_ACCEPT_CONTENT = ["json"]
 # 标记 failed），hard 再强杀。eager/同步回退路径不受影响。
 CELERY_TASK_SOFT_TIME_LIMIT = int(os.environ.get("CELERY_TASK_SOFT_TIME_LIMIT", "540"))
 CELERY_TASK_TIME_LIMIT = int(os.environ.get("CELERY_TASK_TIME_LIMIT", "600"))
+# Queue split (2026-09-08): LibreOffice/OCR conversions and Chromium exports
+# each get their own queue so one runaway job can't starve the other (and so
+# prod can size them separately: convert/ocr concurrency=1). A worker started
+# without ``-Q`` consumes every queue below (dev's single systemd worker).
+CELERY_TASK_DEFAULT_QUEUE = "celery"
+CELERY_TASK_QUEUES = (Queue("celery"), Queue("convert"), Queue("export"), Queue("ocr"))
+CELERY_TASK_ROUTES = {
+    "editor.convert_pptx": {"queue": "convert"},
+    "editor.extract_document_text": {"queue": "convert"},
+    "editor.process_pdf": {"queue": "convert"},
+    "editor.ocr_pdf": {"queue": "ocr"},
+    "exporter.run_export": {"queue": "export"},
+}
 # 导出产物保留天数（0 = 永不过期）；由 exporter.cleanup_exports 定期执行
 EXPORT_TTL_DAYS = int(os.environ.get("EXPORT_TTL_DAYS", "7"))
+# zip 类导出（多篇 md / 静态站）单个附件进包上限；超过只留站点链接。
+# 2026-09-08 起 PDF/PPT/EPUB 原件也走这条上限进包。
+EXPORT_MAX_ASSET_BYTES = int(os.environ.get("EXPORT_MAX_ASSET_BYTES", str(200 * 1024 * 1024)))
+
+# OCR for scanned PDFs (2026-09-08 批 13, apps/editor/services/ocr.py):
+# ocrmypdf + tesseract on the ``ocr`` queue. OCR_AUTO queues every PDF the
+# text extract classified as scanned; OCR_MAX_PAGES caps the work per book
+# (first N pages, recorded as partial); the soft time limit is sized per
+# document (OCR_SECONDS_PER_PAGE × pages, capped by OCR_MAX_SECONDS).
+OCR_ENABLED = _env_bool("OCR_ENABLED", default=True)
+OCR_AUTO = _env_bool("OCR_AUTO", default=True)
+OCR_BIN = os.environ.get("OCR_BIN", "ocrmypdf")
+OCR_LANGS = os.environ.get("OCR_LANGS", "chi_sim+eng")
+OCR_JOBS = int(os.environ.get("OCR_JOBS", "2"))
+OCR_MAX_PAGES = int(os.environ.get("OCR_MAX_PAGES", "1000"))
+OCR_SECONDS_PER_PAGE = int(os.environ.get("OCR_SECONDS_PER_PAGE", "20"))
+OCR_MAX_SECONDS = int(os.environ.get("OCR_MAX_SECONDS", str(4 * 3600)))
 CELERY_BEAT_SCHEDULE = {
     "exporter-cleanup-daily": {
         "task": "exporter.cleanup_exports",
         "schedule": 60 * 60 * 24,
+    },
+    # Report-only orphan scan of media/uploads|slides|derived; deletion stays a
+    # manual `manage.py cleanup_media --apply`.
+    "editor-cleanup-media-weekly": {
+        "task": "editor.cleanup_media_report",
+        "schedule": 60 * 60 * 24 * 7,
+    },
+    # Decks left `pending` by a killed/lost worker → failed with a retry hint.
+    "editor-sweep-stuck-conversions": {
+        "task": "editor.sweep_stuck_conversions",
+        "schedule": 60 * 15,
     },
 }
 
@@ -295,10 +337,13 @@ if not DEBUG and _site_uses_https:
     SECURE_HSTS_SECONDS = 31536000
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 
-# Upload limits. Single-file cap is 2 GiB (enforced app-side via
-# apps.editor.views.MAX_UPLOAD_SIZE). DATA_UPLOAD_MAX_MEMORY_SIZE bounds the
-# request body Django will parse, so it must clear the cap too.
-DATA_UPLOAD_MAX_MEMORY_SIZE = 2 * 1024 * 1024 * 1024  # 2 GiB
+# Upload limits. Per-type single-file caps live in apps.editor.views
+# (MAX_UPLOAD_SIZE_BY_EXT, env-tunable). DATA_UPLOAD_MAX_MEMORY_SIZE only
+# bounds the NON-file part of a request body (Django excludes file uploads
+# from it) — the old 2 GiB value was a misreading that turned the form-field
+# budget into a DoS surface. 10 MB clears the largest legit form (a 1000-file
+# folder import sends ~1000 short `paths` fields).
+DATA_UPLOAD_MAX_MEMORY_SIZE = 10 * 1024 * 1024
 # Django's default of 100 files per request breaks folder imports: planUploadChunks
 # (frontend uploadBatch.ts) must send a doc+image folder as ONE request so the
 # server can rewrite ./images/x.png references, and such folders routinely exceed

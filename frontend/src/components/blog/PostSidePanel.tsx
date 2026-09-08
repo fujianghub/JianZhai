@@ -7,20 +7,34 @@ import { useMemo, useState } from 'react';
 import { Input, Segmented, Spin, Tag, Tooltip } from 'antd';
 import { CloseOutlined, ExportOutlined, SearchOutlined } from '@ant-design/icons';
 import TocPanel from '@/components/common/TocPanel';
+import PdfTocPanel from '@/components/common/PdfTocPanel';
+import type { PdfTocEntry } from '@/utils/pdfOutline';
+import type { PdfReaderApi, PdfSideTab } from '@/utils/pdfReaderApi';
 import { groupByChapter, swatchHex } from '@/utils/epubNotes';
 import type { MdAnnotationsApi } from '@/components/blog/MdAnnotator';
 import type { TocEntry } from '@/utils/markdown';
 import IconButton from '@/components/common/IconButton';
 import JzEmpty from '@/components/common/JzEmpty';
 
+export interface PdfTocProps {
+  entries: PdfTocEntry[];
+  currentPage: number;
+  onJump: (entry: PdfTocEntry) => void;
+  reader?: PdfReaderApi | null;
+  tabRequest?: { tab: PdfSideTab; seq: number } | null;
+}
+
 interface Props {
   toc: TocEntry[];
   /** Null hides the 笔记 tab entirely (anonymous / non-markdown docs). */
   notes: MdAnnotationsApi | null;
+  /** PDF documents: the embedded outline (rendered with the same TOC prefs);
+   * replaces the Markdown TOC entirely. */
+  pdfToc?: PdfTocProps | null;
   onClose?: () => void;
 }
 
-export default function PostSidePanel({ toc, notes, onClose }: Props) {
+export default function PostSidePanel({ toc, notes, pdfToc, onClose }: Props) {
   const [tab, setTab] = useState<'toc' | 'notes'>('toc');
   const [query, setQuery] = useState('');
 
@@ -34,6 +48,19 @@ export default function PostSidePanel({ toc, notes, onClose }: Props) {
     return groupByChapter(list);
   }, [notes, query]);
 
+  if (pdfToc) {
+    return (
+      <PdfTocPanel
+        entries={pdfToc.entries}
+        currentPage={pdfToc.currentPage}
+        onJump={pdfToc.onJump}
+        onClose={onClose}
+        sticky
+        reader={pdfToc.reader}
+        tabRequest={pdfToc.tabRequest}
+      />
+    );
+  }
   if (!notes) return <TocPanel toc={toc} onClose={onClose} />;
 
   const count = notes.highlights.length;
