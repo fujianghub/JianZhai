@@ -93,6 +93,10 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
     volumes:
       - media_data:/app/media
+      # Metric-compatible font pack + operator fonts (2026-09-09): read-only,
+      # populated by `manage.py build_font_pack` locally + rsync (docs/deployment.md
+      # §3). Missing dir is fine — office_fonts falls back to the image fonts.
+      - ./fonts/pack:/usr/share/fonts/jianzhai:ro
       # Export artifacts live at /app/exports (beside MEDIA_ROOT, NOT under it
       # — keeping them out of /media keeps Caddy's public /media/* route from
       # serving them unauthenticated). MUST be a shared named volume: the
@@ -135,6 +139,7 @@ services:
       - media_data:/app/media
       # Shared with backend so exports this worker writes are downloadable.
       - exports_data:/app/exports
+      - ./fonts/pack:/usr/share/fonts/jianzhai:ro
     # -B 内嵌 beat：驱动每日 exporter.cleanup_exports 保留清理（settings
     # CELERY_BEAT_SCHEDULE）。单 worker 场景内嵌即可，无需独立 beat 容器。
     # Default + export queues only; conversions run in celery-convert below so
@@ -166,6 +171,8 @@ services:
     volumes:
       - media_data:/app/media
       - exports_data:/app/exports
+      # Font pack for LibreOffice (see backend service comment).
+      - ./fonts/pack:/usr/share/fonts/jianzhai:ro
     command: celery -A jianzhai worker --loglevel=info --concurrency=1 --prefetch-multiplier=1 -Q convert
     mem_limit: 3g
     depends_on:

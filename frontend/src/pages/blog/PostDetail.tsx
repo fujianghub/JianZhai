@@ -1092,6 +1092,7 @@ export default function PostDetail() {
                 status={post.slide_status}
                 error={post.slide_error}
                 pdfUrl={post.slide_pdf_url}
+        fontReport={post.slide_font_report}
                 initialSlide={initialSlideParam ? initialSlideParam - 1 : null}
                 syncUrl
               />

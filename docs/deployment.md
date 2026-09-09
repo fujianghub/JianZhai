@@ -85,6 +85,7 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 - 生产 compose：`celery` 服务改 `-Q celery,export`（仍带 `-B` beat），新增 `celery-convert`（`-Q convert --concurrency=1 --prefetch-multiplier=1`，`mem_limit 3g`）与 **`celery-ocr`（2026-09-08 批 13，`-Q ocr --concurrency=1`，ocrmypdf 一本书可跑数小时故独占）**。部署命令追加这两个服务：`up -d --no-deps backend celery celery-convert celery-ocr caddy`。
 - **OCR（批 13）需重建 backend 镜像**：`infra/backend.Dockerfile` 新增 `ocrmypdf tesseract-ocr tesseract-ocr-chi-sim tesseract-ocr-eng ghostscript` 层（≈300 MB）；环境变量 `OCR_ENABLED / OCR_AUTO / OCR_LANGS / OCR_JOBS / OCR_MAX_PAGES / OCR_SECONDS_PER_PAGE / OCR_MAX_SECONDS`（默认开 / 自动 / `chi_sim+eng` / 2 / 1000 / 20 / 4h）。部署后 `manage.py backfill_ocr --all --dry-run` 看清单，再 `--all`（排队到 `ocr` worker）或挑 `--ids … --max-pages 300`；线上 883 页那本建议 `--max-pages` 分段并在夜间跑。
 - Beat 新增 `editor.sweep_stuck_conversions`（15 分钟）与 `editor.cleanup_media_report`（每周）。`ConversionJob` 在 django-admin 可查（kind/status 筛选、耗时）。
+- **字体卷（2026-09-09）**：`infra/fonts/pack/`（`manage.py build_font_pack` 本地生成，~190 MB，gitignore）由 compose 只读挂到 backend / celery / celery-convert 的 `/usr/share/fonts/jianzhai`；部署前 `rsync -av infra/fonts/pack/ root@server:/root/jianzhai/infra/fonts/pack/`，缺目录不致崩（`office_fonts` 退回镜像内 Noto，只失去行距兼容）。镜像字体层新增开源替代包 + `infra/fonts/60-jianzhai-office.conf`（COPY 进 `/etc/fonts/conf.d/`），**需重建 backend 镜像**；上线后 `manage.py reconvert_pptx --all` 让存量 deck 用新字体重渲染（单 worker 串行，40 份约 20–30 min）。`OFFICE_FONT_DIRS` / `OFFICE_FONT_CACHE_DIR` 可在 `.env.prod` 覆盖。
 - **2026-09-08 系列上线后回填顺序**（均在 backend 容器内）：`manage.py migrate`（editor 0005–0007 / knowledge 0010 / reading 0004–0006 / accounts 0009–0010）→ `backfill_pptx_pdf --all`（存量 deck 补中间 PDF，PPT 文字层依赖）→ `backfill_document_text --all --missing-posters`（附件文本入 `DocumentExtract` + 海报/封面）→ `reindex_search` → `backfill_ocr --all --dry-run` 看清单再排队。
 
 ### 媒体清理（2026-09-08 批 3）
@@ -119,3 +120,4 @@ cp .env.example.prod .env       # SECRET_KEY / 数据库 / 域名 / AI Key / SIT
 - `SITE_REQUIRE_LOGIN` — `True` = 友邻可见
 - `ANTHROPIC_API_KEY` / `DASHSCOPE_API_KEY` — AI 多供应商，任配其一即可
 - `JIANZHAI_PUBLIC_ORIGIN` — LAN/HTTPS 时与浏览器 origin 一致
+- `OFFICE_FONT_DIRS` / `OFFICE_FONT_CACHE_DIR` — PPT 字体适配的额外字体目录（默认 `/usr/share/fonts/jianzhai` + `infra/fonts/pack`，生产由 compose 挂字体卷）与 fontconfig 持久缓存目录

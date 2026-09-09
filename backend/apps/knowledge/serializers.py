@@ -398,6 +398,7 @@ class DocumentSerializer(serializers.ModelSerializer):
     primary_attachment = serializers.SerializerMethodField()
     slides = serializers.SerializerMethodField()
     slide_pdf_url = serializers.SerializerMethodField()
+    slide_font_report = serializers.SerializerMethodField()
     reader_pdf_url = serializers.SerializerMethodField()
     ocr_status = serializers.SerializerMethodField()
     poster_url = serializers.SerializerMethodField()
@@ -426,6 +427,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "slide_status",
             "slide_error",
             "slide_pdf_url",
+            "slide_font_report",
             "reader_pdf_url",
             "ocr_status",
             "poster_url",
@@ -445,6 +447,7 @@ class DocumentSerializer(serializers.ModelSerializer):
             "slide_status",
             "slide_error",
             "slide_pdf_url",
+            "slide_font_report",
             "reader_pdf_url",
             "ocr_status",
             "poster_url",
@@ -464,6 +467,11 @@ class DocumentSerializer(serializers.ModelSerializer):
         from apps.editor.services.derived import derived_url
 
         return derived_url(obj, "deck_pdf")
+
+    def get_slide_font_report(self, obj: Document) -> dict | None:
+        from apps.blog.serializers import _slide_font_report
+
+        return _slide_font_report(obj)
 
     def get_reader_pdf_url(self, obj: Document) -> str:
         from apps.editor.services.derived import derived_url

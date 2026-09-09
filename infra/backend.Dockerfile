@@ -31,6 +31,25 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libreoffice-impress poppler-utils fonts-noto-cjk fonts-dejavu \
     && rm -rf /var/lib/apt/lists/*
 
+# Office font adaptation (2026-09-09, apps/editor/services/office_fonts.py):
+# open substitutes for the families decks actually reference — Noto CJK
+# extra weights, WenQuanYi (compact Hei), Arphic UKai/UMing (楷/明), LXGW
+# WenKai (楷体), Liberation (Arial/Times/Courier metrics), Carlito/Caladea
+# (Calibri/Cambria metrics), Noto core (Latin fallback), Korean/Japanese
+# fallbacks for theme script slots. ~150 MB. The metric-compatible *pack*
+# (build_font_pack → renamed Noto with Windows line metrics) is NOT in the
+# image: it is a volume mounted at /usr/share/fonts/jianzhai (see compose).
+# 60-jianzhai-office.conf declares that dir + prefer-aliases for LibreOffice
+# and the Playwright exporter alike.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        fonts-noto-cjk-extra fonts-wqy-microhei fonts-wqy-zenhei \
+        fonts-arphic-ukai fonts-arphic-uming fonts-lxgw-wenkai \
+        fonts-liberation2 fonts-crosextra-carlito fonts-crosextra-caladea \
+        fonts-noto-core fonts-unfonts-core fonts-ipafont-gothic fontconfig \
+    && rm -rf /var/lib/apt/lists/*
+COPY infra/fonts/60-jianzhai-office.conf /etc/fonts/conf.d/60-jianzhai-office.conf
+RUN mkdir -p /usr/share/fonts/jianzhai && fc-cache -f
+
 # OCR for scanned PDFs (2026-09-08 批 13, apps/editor/services/ocr.py):
 # ocrmypdf + tesseract (Simplified Chinese + English) + ghostscript, consumed
 # by the ``ocr`` queue worker (celery-ocr in docker-compose.prod.yml). Its

@@ -2414,6 +2414,44 @@ article.paper { position: relative; /* floating selection bar / note card anchor
   padding: 0 5px;
   line-height: 16px;
 }
+/* 「字体」适配报告弹层（PptxReader toolbar → PptxFontReport） */
+.jz-pptx-fonts-pop .ant-popover-inner {
+  max-width: min(520px, 92vw);
+}
+.jz-pptx-fonts-report {
+  display: flex;
+  flex-direction: column;
+  gap: var(--jz-space-2, 8px);
+  max-height: 60vh;
+  overflow: auto;
+  font-size: var(--jz-fs-sm);
+}
+.jz-pptx-fonts-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.jz-pptx-fonts-table th,
+.jz-pptx-fonts-table td {
+  padding: 2px 8px 2px 0;
+  text-align: left;
+  vertical-align: top;
+  font-weight: 400;
+  line-height: var(--jz-lh-tight);
+  white-space: nowrap;
+}
+.jz-pptx-fonts-table th {
+  color: var(--jz-text-muted);
+  font-size: var(--jz-fs-xs);
+}
+.jz-pptx-fonts-table tr[data-substituted='true'] td:first-child {
+  color: var(--jz-accent);
+}
+.jz-pptx-fonts-note {
+  display: block;
+  font-size: var(--jz-fs-xs);
+  line-height: var(--jz-lh-tight);
+}
+
 .jz-pptx-main {
   flex: 1;
   min-width: 0;

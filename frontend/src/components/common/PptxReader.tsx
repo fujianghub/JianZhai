@@ -19,6 +19,7 @@ import { Button, Popover, Space, Spin, Tooltip, Typography } from 'antd';
 import {
   DownloadOutlined,
   FileTextOutlined,
+  FontSizeOutlined,
   FullscreenExitOutlined,
   FullscreenOutlined,
   PlaySquareOutlined,
@@ -30,7 +31,7 @@ import { fetchPostSlides } from '@/api/blog';
 import { reconvertSlides } from '@/api/docs';
 import { useAuthStore } from '@/stores/auth';
 import { message } from '@/utils/notify';
-import type { Slide, SlideStatus } from '@/types';
+import type { Slide, SlideFontReport, SlideStatus } from '@/types';
 import { useActiveScopes, useShortcut, withShortcut } from '@/shortcuts';
 import { loadPptxPosition, savePptxPosition, syncUrlParam } from '@/utils/readerPosition';
 import { pickNewer } from '@/utils/positionSync';
@@ -60,6 +61,9 @@ interface Props {
   /** Derived slide PDF (same LibreOffice render the JPEGs came from); enables
    * the selectable text layer. Absent/empty → image-only reader. */
   pdfUrl?: string | null;
+  /** Font inventory / substitution report from the server render; drives the
+   * toolbar「字体」popover. Null/undefined for decks converted before it existed. */
+  fontReport?: SlideFontReport | null;
   /** 0-based slide to open on (from ``?slide=``); wins over the memory. */
   initialSlide?: number | null;
   /** Mirror the active slide into ``?slide=`` (reading page only). */
@@ -80,12 +84,14 @@ export default function PptxReader({
   error,
   pollInterval = POLL_MS,
   pdfUrl: initialPdfUrl,
+  fontReport: initialFontReport = null,
   initialSlide = null,
   syncUrl = false,
 }: Props) {
   useActiveScopes(['reader.pptx']);
   const [slides, setSlides] = useState<Slide[]>(initial);
   const [pdfUrl, setPdfUrl] = useState<string>(initialPdfUrl || '');
+  const [fontReport, setFontReport] = useState<SlideFontReport | null>(initialFontReport ?? null);
   const posKey = `post:${postId}`;
   const [active, setActive] = useState(() => {
     if (initialSlide != null && initialSlide >= 0) return initialSlide;
@@ -120,6 +126,7 @@ export default function PptxReader({
       setFailed(null);
       setPollsExhausted(false);
       setSlides([]);
+      setFontReport(null);
       message.success('已重新开始转换，请稍候');
     } catch (e) {
       message.error((e as Error)?.message || '重新转换失败');
@@ -198,6 +205,7 @@ export default function PptxReader({
         if (next.slides.length > 0) {
           setSlides(next.slides);
           if (next.pdfUrl) setPdfUrl(next.pdfUrl);
+          if (next.fontReport) setFontReport(next.fontReport);
           return;
         }
         if (next.status === 'failed') {
@@ -378,6 +386,23 @@ export default function PptxReader({
     );
   }
 
+  // 「字体」button copy: how many text-scope families were substituted. Hidden
+  // for legacy decks (no report) and for decks whose every font was found.
+  const fontSummary = useMemo(() => {
+    if (!fontReport || !Array.isArray(fontReport.referenced)) return null;
+    const textRefs = fontReport.referenced.filter((r) => r.scope !== 'script');
+    if (textRefs.length === 0) return null;
+    const substituted = fontReport.substituted?.length ?? 0;
+    const embedded = fontReport.embedded?.filter((e) => e.status === 'extracted').length ?? 0;
+    if (substituted === 0) {
+      return { badge: '', tip: embedded ? `全部字体已就位（含 ${embedded} 个内嵌字体）` : '全部字体已就位，与原稿一致' };
+    }
+    return {
+      badge: `${substituted}`,
+      tip: `${substituted} 种字体服务器未安装，已用同类字体替代${fontReport.missing?.length ? `（${fontReport.missing.length} 种为按名称推断）` : ''}`,
+    };
+  }, [fontReport]);
+
   const toolbar = (
     <Space className="jz-pptx-toolbar">
       <Space>
@@ -454,6 +479,22 @@ export default function PptxReader({
               图片模式
             </Typography.Text>
           </Tooltip>
+        )}
+        {fontSummary && (
+          <Popover
+            trigger="click"
+            placement="bottomRight"
+            getPopupContainer={() => wrapRef.current || document.body}
+            overlayClassName="jz-pptx-fonts-pop"
+            title="字体适配"
+            content={<PptxFontReport report={fontReport!} />}
+          >
+            <Tooltip title={fontSummary.tip}>
+              <Button size="small" icon={<FontSizeOutlined />} aria-label="字体适配报告" data-testid="pptx-fonts">
+                字体{fontSummary.badge ? ` ${fontSummary.badge}` : ''}
+              </Button>
+            </Tooltip>
+          </Popover>
         )}
         <Tooltip title={fullscreen ? '退出全屏 (Esc)' : '全屏阅读'}>
           <Button
@@ -640,6 +681,65 @@ export default function PptxReader({
         // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-static-element-interactions
         <div className="jz-pptx-blackout" data-testid="pptx-blackout" onClick={() => setBlackout(false)} aria-hidden="true" />
       )}
+    </div>
+  );
+}
+
+const FONT_METHOD_LABEL: Record<string, string> = {
+  exact: '已安装',
+  embedded: '内嵌字体',
+  pack: '度量兼容包',
+  rule: '同类替代',
+  classified: '按名称推断',
+  system: '系统处理',
+};
+
+/** Popover body for the toolbar「字体」button: text-scope families first
+ * (substitutions on top), theme per-script fallbacks folded into one line. */
+function PptxFontReport({ report }: { report: SlideFontReport }) {
+  const refs = Array.isArray(report.referenced) ? report.referenced : [];
+  const text = refs.filter((r) => r.scope !== 'script');
+  const script = refs.filter((r) => r.scope === 'script');
+  const order: Record<string, number> = { pack: 0, rule: 0, classified: 0, embedded: 1, exact: 2, system: 3 };
+  const rows = [...text].sort((a, b) => (order[a.method] ?? 9) - (order[b.method] ?? 9) || b.refs - a.refs);
+  const embedded = report.embedded ?? [];
+  return (
+    <div className="jz-pptx-fonts-report">
+      <table className="jz-pptx-fonts-table">
+        <thead>
+          <tr>
+            <th>原稿字体</th>
+            <th>渲染字体</th>
+            <th>方式</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => {
+            const substituted = r.method === 'pack' || r.method === 'rule' || r.method === 'classified';
+            return (
+              <tr key={r.name} data-substituted={substituted ? 'true' : undefined}>
+                <td>{r.name}</td>
+                <td>{r.target || (r.method === 'system' ? '—' : r.name)}</td>
+                <td>{FONT_METHOD_LABEL[r.method] ?? r.method}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+      {embedded.length > 0 && (
+        <Typography.Text type="secondary" className="jz-pptx-fonts-note">
+          内嵌字体：{embedded.map((e) => `${e.name}${e.status === 'extracted' ? '' : `（${e.status === 'compressed' ? '压缩格式，未启用' : '无法读取'}）`}`).join('、')}
+        </Typography.Text>
+      )}
+      {script.length > 0 && (
+        <Typography.Text type="secondary" className="jz-pptx-fonts-note">
+          另有 {script.length} 种主题多语言兜底字体（{script.slice(0, 4).map((r) => r.name).join('、')}
+          {script.length > 4 ? ' 等' : ''}），通常不参与渲染。
+        </Typography.Text>
+      )}
+      <Typography.Text type="secondary" className="jz-pptx-fonts-note">
+        商用字体（宋体、微软雅黑、方正等）无法随服务器分发，替代字体保留字形类别与行距，字形细节与原稿有差异。
+      </Typography.Text>
     </div>
   );
 }

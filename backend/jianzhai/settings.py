@@ -219,6 +219,20 @@ OCR_JOBS = int(os.environ.get("OCR_JOBS", "2"))
 OCR_MAX_PAGES = int(os.environ.get("OCR_MAX_PAGES", "1000"))
 OCR_SECONDS_PER_PAGE = int(os.environ.get("OCR_SECONDS_PER_PAGE", "20"))
 OCR_MAX_SECONDS = int(os.environ.get("OCR_MAX_SECONDS", str(4 * 3600)))
+# Office font adaptation (2026-09-09, apps/editor/services/office_fonts.py):
+# extra font directories LibreOffice (and the Playwright exporter) may use —
+# the metric-compatible pack from ``manage.py build_font_pack`` plus any
+# operator-provided fonts. Non-existent entries are skipped. Prod mounts the
+# font volume at /usr/share/fonts/jianzhai; dev falls back to infra/fonts/pack.
+OFFICE_FONT_DIRS = [
+    p for p in os.environ.get(
+        "OFFICE_FONT_DIRS",
+        os.pathsep.join(["/usr/share/fonts/jianzhai", str(BASE_DIR.parent / "infra" / "fonts" / "pack")]),
+    ).split(os.pathsep) if p
+]
+# Persistent fontconfig cache for the conversion worker (a fresh HOME per
+# conversion used to rebuild it from scratch every run).
+OFFICE_FONT_CACHE_DIR = os.environ.get("OFFICE_FONT_CACHE_DIR", "")
 CELERY_BEAT_SCHEDULE = {
     "exporter-cleanup-daily": {
         "task": "exporter.cleanup_exports",

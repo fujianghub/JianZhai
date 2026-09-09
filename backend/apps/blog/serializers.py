@@ -57,6 +57,18 @@ def _slide_pdf_url(doc: Document) -> str:
     return derived_url(doc, "deck_pdf")
 
 
+def _slide_font_report(doc: Document) -> dict | None:
+    """Font inventory/substitution report recorded when the deck PDF was
+    rendered (``DerivedFile(deck_pdf).meta["fonts"]``); None for legacy decks."""
+    from apps.editor.services.derived import derived_of
+
+    deck = derived_of(doc, "deck_pdf")
+    if deck is None:
+        return None
+    fonts = (deck.meta or {}).get("fonts")
+    return fonts if isinstance(fonts, dict) else None
+
+
 def _poster(doc: Document) -> dict:
     """Card visuals for binary docs: first-page poster (PDF) / cover (EPUB)
     / first slide thumbnail (PPT) + page count, all from prefetched rows."""
@@ -151,6 +163,7 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
     published_content = serializers.SerializerMethodField()
     slides = serializers.SerializerMethodField()
     slide_pdf_url = serializers.SerializerMethodField()
+    slide_font_report = serializers.SerializerMethodField()
     reader_pdf_url = serializers.SerializerMethodField()
     ocr_status = serializers.SerializerMethodField()
     poster_url = serializers.SerializerMethodField()
@@ -181,6 +194,7 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
             "slide_status",
             "slide_error",
             "slide_pdf_url",
+            "slide_font_report",
             "reader_pdf_url",
             "ocr_status",
             "poster_url",
@@ -205,6 +219,9 @@ class PublicPostDetailSerializer(serializers.ModelSerializer):
 
     def get_slide_pdf_url(self, obj: Document) -> str:
         return _slide_pdf_url(obj)
+
+    def get_slide_font_report(self, obj: Document) -> dict | None:
+        return _slide_font_report(obj)
 
     def get_reader_pdf_url(self, obj: Document) -> str:
         """OCR copy of a scanned PDF (text layer) — the reader renders it in

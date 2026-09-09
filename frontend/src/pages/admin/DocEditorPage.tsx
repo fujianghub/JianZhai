@@ -1134,6 +1134,7 @@ function EditorSurface({
         status={doc.slide_status}
         error={doc.slide_error}
         pdfUrl={doc.slide_pdf_url}
+        fontReport={doc.slide_font_report}
       />
     );
   }

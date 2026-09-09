@@ -409,7 +409,7 @@ class PublicPostSlidesView(APIView):
     permission_classes = [PublicOrLoginGated]
 
     def get(self, request, doc_id: int):
-        from .serializers import _slide_pdf_url, _slides_summary
+        from .serializers import _slide_font_report, _slide_pdf_url, _slides_summary
 
         doc = get_object_or_404(
             _published_qs(user=request.user).prefetch_related(*_detail_prefetches()), pk=doc_id
@@ -420,6 +420,7 @@ class PublicPostSlidesView(APIView):
                 "slide_status": doc.slide_status,
                 "slide_error": doc.slide_error,
                 "slide_pdf_url": _slide_pdf_url(doc),
+                "slide_font_report": _slide_font_report(doc),
             }
         )
 

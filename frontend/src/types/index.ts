@@ -55,6 +55,31 @@ export interface Slide {
 export type OcrStatus = '' | 'scanned' | 'queued' | 'running' | 'done' | 'failed';
 
 export type SlideStatus = '' | 'pending' | 'done' | 'failed';
+
+/** One family the deck references and how the server-side render resolved it
+ * (apps/editor/services/office_fonts.py). `method`: exact (installed as-is) ·
+ * embedded (unpacked from the deck) · pack (metric-compatible clone) · rule
+ * (curated substitute) · classified (keyword guess) · system (left to
+ * fontconfig / LibreOffice, e.g. Wingdings → OpenSymbol). `scope: 'script'`
+ * marks theme per-script fallbacks that seldom render a glyph. */
+export interface SlideFontRef {
+  name: string;
+  refs: number;
+  category: string;
+  target: string;
+  method: 'exact' | 'embedded' | 'pack' | 'rule' | 'classified' | 'system';
+  scope?: 'text' | 'script';
+}
+export interface SlideFontReport {
+  referenced: SlideFontRef[];
+  embedded: { name: string; style: string; status: string }[];
+  /** Text-scope families rendered with a substitute (pack / rule / classified). */
+  substituted: string[];
+  /** Subset of `substituted` that hit no curated rule (keyword guess only). */
+  missing: string[];
+  pack?: boolean;
+  engine?: string;
+}
 export type DocSortMode = 'custom' | 'title' | 'created_at' | 'updated_at' | 'doc_format';
 
 export interface KBCategory extends Partial<AudienceFields> {
@@ -185,6 +210,8 @@ export interface DocumentDetail extends DocumentListItem {
    * lets the reader lay a selectable text layer over each slide. Empty for
    * decks converted before this existed until ``backfill_pptx_pdf`` runs. */
   slide_pdf_url?: string | null;
+  /** Font inventory / substitution report recorded with the deck PDF (PPT only). */
+  slide_font_report?: SlideFontReport | null;
   /** OCR copy of a scanned PDF (text layer); the reader renders it instead of
    * the original when present. */
   reader_pdf_url?: string | null;
@@ -347,6 +374,7 @@ export interface PublicPostDetail {
   slide_status?: SlideStatus;
   slide_error?: string;
   slide_pdf_url?: string | null;
+  slide_font_report?: SlideFontReport | null;
   reader_pdf_url?: string | null;
   ocr_status?: OcrStatus;
 }

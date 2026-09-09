@@ -39,7 +39,7 @@ _THUMB_LONG_EDGE = 320
 _THUMB_QUALITY = 75
 
 
-def _run(cmd: list[str], *, timeout: int, cwd: str | None = None) -> str:
+def _run(cmd: list[str], *, timeout: int, cwd: str | None = None, env_extra: dict[str, str] | None = None) -> str:
     """Run a subprocess, raising on non-zero exit. Returns captured stdout.
 
     Note: LibreOffice frequently exits 0 while silently refusing to convert a
@@ -50,6 +50,10 @@ def _run(cmd: list[str], *, timeout: int, cwd: str | None = None) -> str:
     # LibreOffice needs a writable profile dir; point HOME at the temp workspace
     # so it never touches the service user's real home (read-only in Docker).
     env = {"HOME": cwd or tempfile.gettempdir(), "PATH": _path_env()}
+    # Font adaptation (services/office_fonts): FONTCONFIG_FILE + cache dir +
+    # locale for the LibreOffice run. Empty when preparation failed.
+    if env_extra:
+        env.update(env_extra)
     proc = subprocess.run(
         cmd,
         cwd=cwd,
@@ -75,7 +79,16 @@ def render_deck_pdf(pptx_path: Path, workdir: Path) -> Path:
 
     Shared by the full slide conversion and the PDF-only backfill for decks
     converted before the intermediate PDF was kept.
+
+    Fonts: ``prepare_fonts`` inventories the deck's families, unpacks embedded
+    fonts and writes a per-deck fontconfig (substitution rules for everything
+    not installed) that LibreOffice picks up through ``FONTCONFIG_FILE``; the
+    resulting report lands in ``workdir/fonts-report.json`` for
+    ``_store_deck_pdf`` (→ ``DerivedFile.meta["fonts"]``).
     """
+    from .services.office_fonts import prepare_fonts
+
+    plan = prepare_fonts(pptx_path, workdir)
     out = _run(
         [
             "soffice",
@@ -88,6 +101,7 @@ def render_deck_pdf(pptx_path: Path, workdir: Path) -> Path:
         ],
         timeout=_SOFFICE_TIMEOUT,
         cwd=str(workdir),
+        env_extra=plan.env,
     )
     pdfs = list(workdir.glob("*.pdf"))
     if not pdfs:
@@ -148,6 +162,15 @@ def _store_deck_pdf(document_id: int, att, pdf_path: Path, page_count: int) -> N
         deck.source = att
         deck.page_count = page_count
         deck.size = pdf_path.stat().st_size
+        # Font report written by prepare_fonts() next to the PDF (absent when
+        # the render was monkeypatched / fonts preparation failed).
+        from .services.office_fonts import load_report
+
+        report = load_report(pdf_path.parent)
+        meta = dict(deck.meta or {})
+        if report is not None:
+            meta["fonts"] = report
+        deck.meta = meta
         with pdf_path.open("rb") as fh:
             deck.file.save("deck.pdf", File(fh), save=False)
         deck.save()

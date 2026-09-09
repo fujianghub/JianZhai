@@ -1,5 +1,5 @@
 import { apiClient } from './client';
-import type { Paginated, PublicPost, PublicPostDetail, Slide, SlideStatus } from '@/types';
+import type { Paginated, PublicPost, PublicPostDetail, Slide, SlideFontReport, SlideStatus } from '@/types';
 
 export interface PostSlidesResult {
   slides: Slide[];
@@ -9,6 +9,8 @@ export interface PostSlidesResult {
   error: string;
   /** Derived slide PDF (text layer source); '' until converted / backfilled. */
   pdfUrl: string;
+  /** Font substitution report recorded with the deck PDF; null for legacy decks. */
+  fontReport: SlideFontReport | null;
 }
 
 /** Poll a PPT/PPTX post's rendered slide images (empty while still converting). */
@@ -18,12 +20,14 @@ export async function fetchPostSlides(postId: number): Promise<PostSlidesResult>
     slide_status?: SlideStatus;
     slide_error?: string;
     slide_pdf_url?: string | null;
+    slide_font_report?: SlideFontReport | null;
   }>(`/public/posts/by-id/${postId}/slides/`);
   return {
     slides: data.slides,
     status: data.slide_status ?? '',
     error: data.slide_error ?? '',
     pdfUrl: data.slide_pdf_url ?? '',
+    fontReport: data.slide_font_report ?? null,
   };
 }
 

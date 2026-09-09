@@ -4,7 +4,7 @@
  */
 import { Suspense, lazy } from 'react';
 import { Spin } from 'antd';
-import type { Slide, SlideStatus } from '@/types';
+import type { Slide, SlideFontReport, SlideStatus } from '@/types';
 
 const PptxReader = lazy(() => import('./PptxReader'));
 
@@ -16,6 +16,8 @@ interface Props {
   error?: string;
   pollInterval?: number;
   pdfUrl?: string | null;
+  /** Font substitution report recorded with the deck PDF (toolbar「字体」). */
+  fontReport?: SlideFontReport | null;
   /** 0-based slide to open on (``?slide=`` deep link is 1-based). */
   initialSlide?: number | null;
   /** Mirror the active slide into ``?slide=`` (reading page only). */
