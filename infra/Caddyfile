@@ -59,6 +59,10 @@ fujiang.jianzhai.cn {
         # repeat views from hitting the backend at all.
         forward_auth backend:8002 {
             uri /api/v1/media-auth/
+            # handle_path already stripped /media, and forward_auth's default
+            # X-Forwarded-Uri is the *rewritten* URI — send the original one so
+            # the backend sees /media/<relpath> (else it 404s everything).
+            header_up X-Forwarded-Uri {http.request.orig_uri}
         }
         @svg path *.svg
         header @svg Content-Security-Policy "sandbox"
