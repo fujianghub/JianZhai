@@ -158,8 +158,12 @@ def login_view(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
+    from apps.editor import media_ticket
+
     logout(request)
-    return Response({"authenticated": False})
+    response = Response({"authenticated": False})
+    media_ticket.delete_cookie(response)
+    return response
 
 
 @api_view(["GET"])

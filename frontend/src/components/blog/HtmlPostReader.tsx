@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type MutableRefObject } from 'react';
 import { Alert, Skeleton } from 'antd';
 import { injectHtmlReaderBootstrap } from './htmlReaderBootstrap';
+import SandboxedHtmlFrame from '@/components/common/SandboxedHtmlFrame';
 
 /** A heading collected from inside the iframe, with its absolute Y offset
  *  measured against the iframe document (not the parent page). */
@@ -38,8 +39,8 @@ interface Props {
   /** Real ``/media/...`` URL of the original .html attachment. When present
    *  we FETCH the file, inject the postMessage bootstrap + a ``<base>`` set
    *  to the attachment URL (so relative ``./assets/style.css`` etc. resolve
-   *  exactly like an ``<iframe src>`` would), and render via ``srcDoc``
-   *  inside an opaque-origin sandbox. The bootstrap reports height/headings
+   *  exactly like an ``<iframe src>`` would), and render via the sandbox
+   *  host frame (``SandboxedHtmlFrame``) inside an opaque-origin sandbox. The bootstrap reports height/headings
    *  from inside, restoring auto-sizing WITHOUT ``allow-same-origin`` —
    *  author JS must never share our origin (in production /media/ sits on
    *  the SPA/API domain; a same-origin frame could read the CSRF cookie and
@@ -183,7 +184,7 @@ function HtmlPostReader({
   const [hasMeta, setHasMeta] = useState(false);
   const [cspFallback, setCspFallback] = useState(false);
 
-  // ── Attachment fetch (srcDoc-with-bootstrap is the primary path) ────────
+  // ── Attachment fetch (host-frame-with-bootstrap is the primary path) ─────
   const [fetchedHtml, setFetchedHtml] = useState<string | null>(null);
   const [fetchFailed, setFetchFailed] = useState(false);
 
@@ -210,7 +211,7 @@ function HtmlPostReader({
   const useDirectSrc = !!attachmentUrl && fetchFailed;
   const attachmentLoading = !!attachmentUrl && !fetchFailed && fetchedHtml === null;
 
-  const srcDoc = useMemo(() => {
+  const frameDoc = useMemo(() => {
     if (useDirectSrc || attachmentLoading) return '';
     if (attachmentUrl && fetchedHtml !== null) {
       return injectHtmlReaderBootstrap(fetchedHtml, absoluteHref(attachmentUrl));
@@ -244,7 +245,7 @@ function HtmlPostReader({
     onMetaRef.current?.(meta);
   };
 
-  // ── Receive meta via postMessage from the injected bootstrap (all srcDoc
+  // ── Receive meta via postMessage from the injected bootstrap (all host-frame
   //    documents: raw_content HTML and fetched attachments alike).
   useEffect(() => {
     if (useDirectSrc) return;
@@ -273,7 +274,7 @@ function HtmlPostReader({
 
   // Reset sizing state whenever the iframe document changes. Three cases:
   //
-  //   1. srcDoc with bootstrap (primary): expect meta via postMessage. If
+  //   1. host frame with bootstrap (primary): expect meta via postMessage. If
   //      nothing arrives within FALLBACK_DELAY_MS the likely cause is the
   //      author page aborting our script — fall back to a fixed window +
   //      a brief explainer.
@@ -303,7 +304,7 @@ function HtmlPostReader({
       }
     }, FALLBACK_DELAY_MS);
     return () => window.clearTimeout(timer);
-  }, [srcDoc, attachmentUrl, useDirectSrc, attachmentLoading]);
+  }, [frameDoc, attachmentUrl, useDirectSrc, attachmentLoading]);
 
   const iframeStyle: CSSProperties = {
     width: '100%',
@@ -357,15 +358,16 @@ function HtmlPostReader({
           style={iframeStyle}
         />
       ) : (
-        <iframe
-          ref={setRef}
+        // NOT loading="lazy": this iframe IS the article body, always at
+        // the top of the viewport — lazy would only postpone parsing and
+        // delay the first height report. Not ``srcdoc``: that would inherit
+        // the parent page's CSP and get the bootstrap blocked in production —
+        // see SandboxedHtmlFrame.
+        <SandboxedHtmlFrame
+          iframeRef={setRef}
           title={title || 'HTML 文档'}
-          srcDoc={srcDoc}
-          sandbox="allow-scripts allow-popups allow-forms"
+          html={frameDoc}
           scrolling="no"
-          // NOT loading="lazy": this iframe IS the article body, always at
-          // the top of the viewport — lazy would only postpone parsing and
-          // delay the first height report.
           style={iframeStyle}
         />
       )}

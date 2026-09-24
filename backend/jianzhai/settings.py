@@ -113,6 +113,9 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
+    # Issues / refreshes the ``jz_media`` ticket cookie for authenticated
+    # browsers (apps/editor/media_ticket.py) — must run after auth.
+    "apps.accounts.middleware.MediaTicketMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
@@ -318,6 +321,10 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 
 MEDIA_URL = "media/"
 MEDIA_ROOT = Path(os.environ.get("MEDIA_ROOT", BASE_DIR / "media")).resolve()
+# Self-hosted draw.io bundle (infra/drawio/build.py output). Production serves
+# it from caddy (/drawio/*); in DEBUG Django serves the same directory so the
+# vite dev proxy (/drawio → backend) gets it too. See docs/drawio.md.
+DRAWIO_DIST_DIR = Path(os.environ.get("DRAWIO_DIST_DIR", BASE_DIR.parent / "infra" / "drawio" / "dist")).resolve()
 
 # Public blog URL for static-site export RSS (and similar absolute links).
 SITE_PUBLIC_URL = os.environ.get("SITE_PUBLIC_URL", "http://localhost:3001")

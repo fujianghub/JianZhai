@@ -1,16 +1,16 @@
 /**
- * HTML source used as iframe srcDoc for live preview (matches HtmlEditor behaviour).
+ * HTML source prepared for the sandboxed host frame (``SandboxedHtmlFrame`` /
+ * ``/embed/html-frame.html``) — shared by HtmlEditor / LivePreviewPane previews
+ * and HtmlPostReader.
  */
 
-/** A `srcdoc` iframe resolves relative URLs and `#anchor` links against the
- *  *embedding page's* URL (here `http://localhost:3001/`), not the iframe.
- *  When the frame is sandboxed without `allow-same-origin` its origin is
- *  opaque, so the browser blocks that resolution with:
- *    "Unsafe attempt to load URL http://localhost:3001/ from frame with URL
- *     chrome-error://chromewebdata/. Domains, protocols and ports must match."
- *  Setting `<base href="about:srcdoc">` makes relative URLs resolve inside the
- *  frame instead. See https://developer.mozilla.org/en-US/docs/Web/HTML/Reference/Elements/iframe#srcdoc */
-const SRCDOC_BASE = '<base href="about:srcdoc">';
+/** Author HTML is written into ``/embed/html-frame.html`` (a real same-origin
+ *  URL, unlike the old srcdoc frame whose document URL was opaque). A leading
+ *  ``<base href="/">`` makes relative *and* root-relative URLs resolve against
+ *  the site root instead of ``/embed/``, and — because the first ``<base>``
+ *  wins — overrides author ``<base href="/app/">`` tags. ``/`` needs no
+ *  ``window`` (resolves against the document URL), so this stays pure. */
+const SITE_ROOT_BASE = '<base href="/">';
 
 /** Insert an arbitrary `<base href>` as the first child of `<head>` (or the
  *  document start). The FIRST `<base>` in a document wins per the HTML spec,
@@ -34,21 +34,20 @@ export function withBaseHref(html: string, href: string): string {
   return baseTag + html;
 }
 
-/** Insert `<base href="about:srcdoc">` as the first child of `<head>` (or the
- *  document start). Always prepended so it wins over author `<base href="/">`
- *  tags that would otherwise resolve to the embedding page origin. */
-export function withSrcdocBase(html: string): string {
-  if (!html) return SRCDOC_BASE;
-  if (/<base\s[^>]*href\s*=\s*["']about:srcdoc["']/i.test(html)) return html;
-  return withBaseHref(html, 'about:srcdoc');
+/** Insert `<base href="/">` as the first child of `<head>` (or the document
+ *  start). Always prepended so it wins over author `<base>` tags. */
+export function withSiteRootBase(html: string): string {
+  if (!html) return SITE_ROOT_BASE;
+  if (/<base\s[^>]*href\s*=\s*["']\/["']/i.test(html)) return html;
+  return withBaseHref(html, '/');
 }
 
-/** With `<base href="about:srcdoc">`, root-relative URLs like `/media/uploads/…`
- *  would otherwise resolve to `about:srcdoc/media/uploads/…` and 404 in the
- *  preview iframe. Rewrite those to absolute backend URLs so user-embedded
- *  images / stylesheets / scripts load. The iframe sandbox lacks
- *  `allow-same-origin` so its origin is opaque — cross-origin image loads are
- *  permitted (img/script src don't need CORS for rendering). */
+/** Rewrite root-relative `/media/…` / `/static/…` URLs to absolute backend URLs
+ *  so user-embedded images / stylesheets / scripts load even when the media
+ *  host differs from the SPA origin (``VITE_MEDIA_BASE_URL``). With the site-root
+ *  base above this is a no-op for same-origin deployments; kept for split
+ *  hosts. The iframe sandbox lacks `allow-same-origin` so its origin is opaque —
+ *  cross-origin image loads are permitted (img/script src don't need CORS). */
 function MEDIA_HOST_ROOT(): string {
   const env = (import.meta.env.VITE_MEDIA_BASE_URL as string | undefined) ?? '';
   if (env) return env.replace(/\/media\/?$/, '');
@@ -69,6 +68,6 @@ export function rewriteRootRelativeAssets(html: string): string {
   );
 }
 
-export function buildHtmlPreviewSrcdoc(html: string): string {
-  return withSrcdocBase(rewriteRootRelativeAssets(html ?? ''));
+export function buildHtmlPreviewDoc(html: string): string {
+  return withSiteRootBase(rewriteRootRelativeAssets(html ?? ''));
 }

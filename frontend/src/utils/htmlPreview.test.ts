@@ -1,39 +1,39 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { buildHtmlPreviewSrcdoc, rewriteRootRelativeAssets, withBaseHref, withSrcdocBase } from './htmlPreview';
+import { buildHtmlPreviewDoc, rewriteRootRelativeAssets, withBaseHref, withSiteRootBase } from './htmlPreview';
 
-describe('withSrcdocBase', () => {
-  it('inserts <base href="about:srcdoc"> as the first head child', () => {
-    const out = withSrcdocBase('<html><head><title>x</title></head><body>hi</body></html>');
-    expect(out).toContain('<head><base href="about:srcdoc"><title>x</title>');
+describe('withSiteRootBase', () => {
+  it('inserts <base href="/"> as the first head child', () => {
+    const out = withSiteRootBase('<html><head><title>x</title></head><body>hi</body></html>');
+    expect(out).toContain('<head><base href="/"><title>x</title>');
   });
 
   it('falls back to inserting after <html> when there is no head', () => {
-    const out = withSrcdocBase('<html><body>hi</body></html>');
-    expect(out).toBe('<html><base href="about:srcdoc"><body>hi</body></html>');
+    const out = withSiteRootBase('<html><body>hi</body></html>');
+    expect(out).toBe('<html><base href="/"><body>hi</body></html>');
   });
 
   it('prepends base for a bare fragment', () => {
-    expect(withSrcdocBase('<p>hi</p>')).toBe('<base href="about:srcdoc"><p>hi</p>');
+    expect(withSiteRootBase('<p>hi</p>')).toBe('<base href="/"><p>hi</p>');
   });
 
-  it('prepends srcdoc base before an author base so anchors stay in-frame', () => {
+  it('prepends site-root base before an author base so anchors stay in-frame', () => {
     const html = '<html><head><base href="/app/"></head><body>hi</body></html>';
-    expect(withSrcdocBase(html)).toBe(
-      '<html><head><base href="about:srcdoc"><base href="/app/"></head><body>hi</body></html>',
+    expect(withSiteRootBase(html)).toBe(
+      '<html><head><base href="/"><base href="/app/"></head><body>hi</body></html>',
     );
   });
 
-  it('does not double-inject when about:srcdoc base is already present', () => {
-    const html = '<html><head><base href="about:srcdoc"></head><body>hi</body></html>';
-    expect(withSrcdocBase(html)).toBe(html);
+  it('does not double-inject when a site-root base is already present', () => {
+    const html = '<html><head><base href="/"></head><body>hi</body></html>';
+    expect(withSiteRootBase(html)).toBe(html);
   });
 
   it('returns just the base for empty input', () => {
-    expect(withSrcdocBase('')).toBe('<base href="about:srcdoc">');
+    expect(withSiteRootBase('')).toBe('<base href="/">');
   });
 
-  it('buildHtmlPreviewSrcdoc applies the base', () => {
-    expect(buildHtmlPreviewSrcdoc('<p>x</p>')).toContain('<base href="about:srcdoc">');
+  it('buildHtmlPreviewDoc applies the base', () => {
+    expect(buildHtmlPreviewDoc('<p>x</p>')).toContain('<base href="/">');
   });
 });
 

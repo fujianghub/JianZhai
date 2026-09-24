@@ -77,3 +77,7 @@ node_modules
 
 # Claude Code 第三方 skills（superpowers-zh 等，不入版本库）
 .claude/skills/
+
+# draw.io 自托管底座（infra/drawio/build.py 从上游 tag 拉取+裁剪+覆盖生成；~50 MB，rsync 到服务器 infra/drawio/dist 卷；勿入库）
+/infra/drawio/dist/
+/infra/drawio/src/

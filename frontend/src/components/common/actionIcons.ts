@@ -34,6 +34,7 @@ export {
   BgColorsOutlined as HighlightColorIcon,
   CommentOutlined as CommentIcon,
   DeleteOutlined as DeleteIcon,
+  EditOutlined as EditIcon,
   DownloadOutlined as DownloadIcon,
   SearchOutlined as SearchIcon,
   SettingOutlined as SettingsIcon,

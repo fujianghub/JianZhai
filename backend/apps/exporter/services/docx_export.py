@@ -451,6 +451,9 @@ class _HtmlTableExtractor(HTMLParser):
 
 
 _HTML_IMG_SRC = re.compile(r"<img\b[^>]*?src=[\"'](?P<url>/media/[^\"']+)[\"']", re.I)
+# drawio画板 figure：正文 <img> 是 SVG（python-docx 不吃），PNG 副本在 data-png。
+_DRAWIO_CAPTION = re.compile(r"<figcaption[^>]*>([\s\S]*?)</figcaption>", re.I)
+_DRAWIO_PNG = re.compile(r"<figure\b[^>]*\bdata-jz-drawio\b[^>]*\bdata-png=[\"'](?P<url>/media/[^\"']+)[\"']", re.I)
 _BLOCK_BREAK = re.compile(r"(?i)<(?:/p|/div|/h[1-6]|/li|/tr|/table|br\s*/?)\s*>")
 
 
@@ -466,6 +469,21 @@ def _emit_html_block(docx: DocxDocument, content: str, ctx: dict | None = None) 
         if parser.rows:
             _emit_table(docx, parser.rows)
             return
+    drawio = list(_DRAWIO_PNG.finditer(content))
+    if drawio:
+        for m in drawio:
+            para = docx.add_paragraph()
+            para.alignment = 1  # WD_ALIGN_PARAGRAPH.CENTER
+            _add_picture(para, m.group("url"), alt="drawio画板")
+        cap = _DRAWIO_CAPTION.search(content)
+        if cap:
+            text = html_lib.unescape(re.sub(r"<[^>]+>", "", cap.group(1))).strip()
+            if text:
+                cp = docx.add_paragraph()
+                cp.alignment = 1
+                run = cp.add_run(text)
+                run.italic = True
+        return
     imgs = list(_HTML_IMG_SRC.finditer(content))
     if imgs:
         for m in imgs:

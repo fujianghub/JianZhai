@@ -64,8 +64,18 @@ fujiang.jianzhai.cn {
             # the backend sees /media/<relpath> (else it 404s everything).
             header_up X-Forwarded-Uri {http.request.orig_uri}
         }
+        # Standalone SVG / HTML attachments navigated directly (new tab,
+        # ``<iframe src>`` fallback) run in an opaque origin: scripts may run
+        # but cannot touch cookies / the SPA. NOTE: path-level headers only win
+        # because the site-level block below uses ``?`` (set-if-absent) — an
+        # unconditional site-level set is deferred (``-Server`` in the same
+        # block) and would overwrite these at write time (verified with a
+        # local caddy, 2026-09-23; that is what silently disabled the SVG
+        # sandbox before).
         @svg path *.svg
         header @svg Content-Security-Policy "sandbox"
+        @html path *.html *.htm
+        header @html Content-Security-Policy "sandbox allow-scripts allow-popups allow-forms"
         # Office/archive uploads download instead of rendering same-origin;
         # PDF stays inline (the "在新标签打开" native viewer relies on it).
         @office path *.docx *.pptx *.ppt *.doc *.zip
@@ -77,6 +87,32 @@ fujiang.jianzhai.cn {
         @avatars path /avatars/*
         header @avatars Cache-Control "public, max-age=300"
         root * /srv-media
+        file_server
+    }
+
+    # Self-hosted draw.io (简斋 画板 — infra/drawio/build.py output, mounted
+    # read-only at /srv-drawio). Same origin, so the SPA embeds it as a plain
+    # <iframe src="/drawio/index.html?embed=1&proto=json…"> and talks to it via
+    # postMessage. Runs under the site-level CSP unchanged (index.html has no
+    # inline script; mxGraph's eval paths are behind allowEval=false — verified
+    # with Playwright, zero violations). Files are not content-hashed, so cache
+    # for an hour with ETag revalidation rather than immutable.
+    handle_path /drawio/* {
+        root * /srv-drawio
+        header Cache-Control "public, max-age=3600"
+        file_server
+    }
+
+    # HTML sandbox host page (frontend/public/embed/): HtmlPostReader and the
+    # HTML editor previews load it via <iframe src> (never srcdoc — a srcdoc
+    # document inherits the parent's CSP and the site-level ``script-src
+    # 'self'`` would block the injected height-report bootstrap and every
+    # author inline script). The page gets its own relaxed policy: sandboxed
+    # (opaque origin, no cookies / parent DOM) but scripts allowed. The iframe
+    # element's ``sandbox`` attribute applies on top of this.
+    handle /embed/* {
+        header Content-Security-Policy "sandbox allow-scripts allow-popups allow-forms; frame-ancestors 'self'"
+        root * /srv
         file_server
     }
 
@@ -102,7 +138,10 @@ fujiang.jianzhai.cn {
         # (WebKit bug 218086) — the backend strips them at upload, CSP is
         # the backstop. Verified against the built bundle with Playwright
         # (EPUB / PDF / mermaid+KaTeX posts / home / admin, 2026-09-01).
-        Content-Security-Policy "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; worker-src 'self' blob:"
+        # ``?`` = set only if absent, so the path-level policies above
+        # (/media/*.svg, /media/*.html, /embed/*) win. Without ``?`` this whole
+        # block is deferred (because of ``-Server``) and overwrites them.
+        ?Content-Security-Policy "script-src 'self' 'wasm-unsafe-eval'; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; worker-src 'self' blob:"
         X-Content-Type-Options "nosniff"
         Referrer-Policy "strict-origin-when-cross-origin"
         # Permissions-Policy explicitly disables features we don't use.

@@ -28,7 +28,7 @@ def _primary_attachment(doc: Document) -> dict | None:
     present, so list endpoints don't issue a per-doc query.
     """
     cached = getattr(doc, "ordered_attachments", None)
-    atts = list(cached) if cached is not None else list(doc.attachments.order_by("created_at"))
+    atts = list(cached) if cached is not None else list(doc.attachments.order_by("created_at", "id"))
     if not atts:
         return None
     att = atts[0]
@@ -38,8 +38,12 @@ def _primary_attachment(doc: Document) -> dict | None:
     if head and head.strip():
         att = next(
             (a for a in atts if a.kind != "image" and not (a.mime_type or "").startswith("image/")),
-            att,
+            None,
         )
+        # Text body + only image attachments (editor pastes, drawio画板 SVG/PNG):
+        # no source file — never echo an asset image as「原文件」(2026-09-24).
+        if att is None:
+            return None
     return {
         "id": att.id,
         "url": att.file.url if att.file else "",

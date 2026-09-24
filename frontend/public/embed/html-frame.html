@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="robots" content="noindex, nofollow">
+<title>HTML 文档</title>
+<!--
+  简斋 HTML 沙箱宿主页（HtmlPostReader / HtmlEditor 预览 / LivePreviewPane）。
+
+  为什么不用 <iframe srcdoc>：srcdoc / about:blank / blob: 文档一律继承父页的
+  CSP，生产站点级 `script-src 'self'` 会把注入的高度上报脚本与作者自己的内联
+  脚本全部拦下（2026-09-23 Playwright 实测）。改为 <iframe src="/embed/html-frame.html">
+  后，本页由 Caddy 单独下发宽松 CSP（infra/Caddyfile `handle /embed/*`），父页
+  经 postMessage 送入 HTML，本页 document.write 覆写自身——document.open 不会
+  更换 Document / Window 对象，故本页响应头里的 CSP 与 iframe 的 sandbox 属性
+  仍然生效，作者脚本继续跑在不透明源里，碰不到父页 cookie / 会话。
+
+  本页不能有任何内联 <script>（生产 CSP 在本页响应头放开前，SPA 侧仍是
+  `script-src 'self'`；且 cspHostPage.test 锁定）。
+-->
+</head>
+<body>
+<script src="/embed/html-frame.js"></script>
+</body>
+</html>

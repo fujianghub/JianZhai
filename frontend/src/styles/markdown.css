@@ -2186,3 +2186,83 @@
   font-variant-numeric: tabular-nums;
   margin-right: 0.4em;
 }
+
+/* ── drawio画板（2026-09-24）：正文里是 <figure class="jz-drawio"><img src=svg>[<figcaption>]。
+   SVG 透明底、颜色全是 light-dark()：跟随 <img> 所在处的 color-scheme（站点主题写在
+   documentElement），暗色主题下线条/文字自动反色、直接落在主题底色上。
+   data-jz-scheme="light" = 始终浅色（img 钉 color-scheme:light + 白纸底）。
+   Safari 不把宿主 color-scheme 传进 SVG 图片，恒为浅色（上游已知限制）。 */
+/* figure 收缩到图片宽度（悬浮操作条贴图片右上角），对齐靠外边距；
+   「小 / 满栏」直接定 figure 宽度，图片随之 100%。 */
+.markdown-preview figure.jz-drawio,
+figure.jz-drawio {
+  position: relative;
+  width: fit-content;
+  max-width: 100%;
+  margin: 1em auto;
+  text-align: center;
+}
+.markdown-preview figure.jz-drawio img,
+figure.jz-drawio img {
+  display: inline-block;
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--jz-radius-md);
+  border: 1px solid var(--jz-border);
+  background: transparent;
+}
+/* 解除正文图片的 70vh 限高（其选择器特异性 0,4,1）：画板按尺寸设置等比缩放，限高会压扁「满栏」。 */
+.markdown-preview figure.jz-drawio[data-jz-drawio] img:not([width]):not([height]) { max-height: none; }
+figure.jz-drawio[data-jz-scheme='light'] img {
+  color-scheme: light;
+  background: #fff;
+}
+.markdown-preview figure.jz-drawio[data-jz-size='s'],
+figure.jz-drawio[data-jz-size='s'] { width: 50%; }
+.markdown-preview figure.jz-drawio[data-jz-size='full'],
+figure.jz-drawio[data-jz-size='full'] { width: 100%; }
+figure.jz-drawio[data-jz-size] img { width: 100%; }
+.markdown-preview figure.jz-drawio[data-jz-align='left'],
+figure.jz-drawio[data-jz-align='left'] { margin-left: 0; }
+.markdown-preview figure.jz-drawio[data-jz-align='right'],
+figure.jz-drawio[data-jz-align='right'] { margin-right: 0; }
+figure.jz-drawio figcaption {
+  margin-top: 6px;
+  font-size: var(--jz-fs-sm);
+  color: var(--jz-text-muted);
+  text-align: center;
+}
+/* 阅读端悬浮操作条（DrawioBoardEnhancer 注入）：全屏查看 / 下载 SVG */
+.jz-drawio-rtools {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--jz-radius-sm);
+  background: var(--jz-overlay-surface, var(--jz-surface-2));
+  border: 1px solid var(--jz-border);
+  opacity: 0;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-standard);
+}
+figure.jz-drawio:hover .jz-drawio-rtools,
+.jz-drawio-rtools:focus-within { opacity: 1; }
+@media (hover: none) { .jz-drawio-rtools { opacity: 1; } }
+[data-motion='min'] .jz-drawio-rtools { transition: none; }
+@media (prefers-reduced-motion: reduce) { .jz-drawio-rtools { transition: none; } }
+.jz-drawio-rtools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: var(--jz-radius-xs);
+  background: transparent;
+  color: var(--jz-text-muted);
+  cursor: pointer;
+}
+.jz-drawio-rtools button:hover { background: var(--jz-hover-bg); color: var(--jz-text); }
+/* 灯箱 / 全屏：透明 SVG 需要一张随配色方案变化的底（Canvas 系统色：浅=白、暗=深）。 */
+.jz-image-lightbox-img[src$='.svg'] { background: Canvas; }

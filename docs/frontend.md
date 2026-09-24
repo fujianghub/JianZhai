@@ -163,6 +163,7 @@ class HeroSettings(models.Model):
 
 - **排版三件套**（`utils/readerLayout.ts`）：字号 5 档 `FONT_SCALE_STEPS` 步进、行距 3 档（紧凑/标准/宽松）、版心 3 档（窄 720 / 适中 860 / 满栏 100%，默认满栏）。落 `localStorage`、以 CSS 变量写在 `<article>` 上 scope 到当前读者视图，**绝不触碰持久化文档**。
 - **仅 Markdown 阅读路径消费**：HTML 阅读器在 sandbox iframe 内，父页无法 restyle；二进制预览无正文可缩放。
+- **HTML 文档沙箱 = 宿主页而非 srcdoc（2026-09-24）**：`HtmlPostReader` / `HtmlEditor` 预览 / `LivePreviewPane` 的 HTML 分支统一经 `components/common/SandboxedHtmlFrame`——`<iframe src="/embed/html-frame.html" sandbox="allow-scripts allow-popups allow-forms">`（`frontend/public/embed/`，无内联脚本），宿主脚本就绪后发 `jz-html-frame-ready`（收到 HTML 前每 150ms 重发），父页回 `{type:'jz-html-frame', html}`，宿主页 `document.open/write/close` 覆写自身（Document/Window 对象不变，响应头 CSP 与 sandbox 属性持续生效）；`html` 变化 = 按 key 重建 iframe。父页监听必须 `useLayoutEffect`（缓存命中时宿主页几毫秒就绪，被动 effect 会漏掉 ready）。**为什么不用 srcdoc**：srcdoc/about:blank/blob: 文档继承父页 CSP，生产 `script-src 'self'` 拦掉 `htmlReaderBootstrap` 与作者内联脚本（Playwright 实测复现；线上 HTML 文档此前落「页面脚本被阻止」固定窗口）。`<base>` 由 `utils/htmlPreview.withSiteRootBase`（`/`）或附件 URL 注入，`about:srcdoc` 基址已废。已知限制：不透明源发出的 `/media/*` 子资源请求不带 `SameSite=Lax` 会话 cookie → 生产 forward_auth 401（srcdoc 时代同样，待单独处理）。`cspHostPage.test` 锁宿主页/组件/Caddyfile 契约。
 - **专注模式**：`focusMode` 给 `<body>` 挂 `.jz-reader-focus` 类（样式表据此隐藏导航栏与侧栏），`Esc` 退出，右下角退出 FAB `.jz-focus-exit-fab`。
 - 阅读进度条 `ReadingProgressBar` 带百分比读数。
 

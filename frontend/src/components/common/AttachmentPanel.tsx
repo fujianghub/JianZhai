@@ -5,6 +5,8 @@ import { DeleteOutlined, EyeOutlined, FileOutlined, FilePdfOutlined, FileTextOut
 import dayjs from 'dayjs';
 import * as attApi from '@/api/attachments';
 import { previewKind, type Attachment } from '@/api/attachments';
+import { DRAWIO_BOARD_NAME, groupAttachmentsForPanel } from '@/utils/drawioEmbed';
+import { JzDrawioIcon } from '@/components/common/JzIcon';
 import FilePreview from './FilePreview';
 import { UPLOAD_ACCEPT } from '@/utils/uploadBatch';
 import { formatApiError } from '@/api/client';
@@ -79,9 +81,37 @@ export default function AttachmentPanel({ documentId, compact = false }: Props) 
         <JzEmpty description="还没有附件" size="sm" />
       ) : (
         <List
-          dataSource={items}
-          renderItem={(a) => (
+          dataSource={groupAttachmentsForPanel(items)}
+          renderItem={(row) =>
+            row.type === 'drawio' ? (
+              <DrawioRow
+                key={row.key}
+                svg={row.svg}
+                png={row.png}
+                onPreview={(a) => setPreviewing(a)}
+                onDelete={async (ids) => {
+                  for (const id of ids) await handleDelete(id);
+                }}
+              />
+            ) : (
+              renderFileRow(row.att)
+            )
+          }
+        />
+      )}
+
+      <FilePreview
+        open={previewing !== null}
+        attachment={previewing}
+        onClose={() => setPreviewing(null)}
+      />
+    </div>
+  );
+
+  function renderFileRow(a: Attachment) {
+    return (
             <List.Item
+              key={a.id}
               actions={[
                 <Button
                   key="preview"
@@ -112,16 +142,52 @@ export default function AttachmentPanel({ documentId, compact = false }: Props) 
                 <Tag>{labelFor(a)}</Tag>
               </Space>
             </List.Item>
-          )}
-        />
-      )}
+    );
+  }
+}
 
-      <FilePreview
-        open={previewing !== null}
-        attachment={previewing}
-        onClose={() => setPreviewing(null)}
-      />
-    </div>
+/** 同一次保存的画板 SVG + PNG 合并为一行（PNG 仅供 Word 导出，不单独展示）。 */
+function DrawioRow({
+  svg,
+  png,
+  onPreview,
+  onDelete,
+}: {
+  svg: Attachment | null;
+  png: Attachment | null;
+  onPreview: (a: Attachment) => void;
+  onDelete: (ids: number[]) => Promise<void>;
+}) {
+  const main = svg ?? png;
+  if (!main) return null;
+  const size = (svg?.size ?? 0) + (png?.size ?? 0);
+  const formats = [svg && 'SVG', png && 'PNG'].filter(Boolean).join(' + ');
+  return (
+    <List.Item
+      actions={[
+        <Button key="preview" size="small" type="link" icon={<EyeOutlined />} onClick={() => onPreview(main)}>
+          预览
+        </Button>,
+        <Popconfirm
+          key="del"
+          title="删除该画板文件？正文里引用它的画板将无法显示"
+          onConfirm={() => onDelete([svg?.id, png?.id].filter((x): x is number => typeof x === 'number'))}
+        >
+          <IconButton icon={<DeleteOutlined />} aria-label="删除画板文件" title="删除画板文件" />
+        </Popconfirm>,
+      ]}
+    >
+      <Space>
+        <JzDrawioIcon size={22} />
+        <div>
+          <div style={{ fontWeight: 500 }}>{DRAWIO_BOARD_NAME}</div>
+          <Text type="secondary" style={{ fontSize: 12 }}>
+            {formats} · {(size / 1024).toFixed(1)} KB · {dayjs(main.created_at).format('YYYY-MM-DD HH:mm')}
+          </Text>
+        </div>
+        <Tag>画板</Tag>
+      </Space>
+    </List.Item>
   );
 }
 

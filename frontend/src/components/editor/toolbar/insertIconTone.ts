@@ -8,6 +8,7 @@ const TONE_BY_ID: Record<string, string> = {
   hr: 'slate',
   'code-block': 'indigo',
   'mermaid-picker': 'teal',
+  drawio: 'sky',
   'plantuml-sequence': 'orange',
   mention: 'rose',
   'emoji-trigger': 'amber',

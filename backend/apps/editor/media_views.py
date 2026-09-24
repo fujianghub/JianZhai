@@ -21,7 +21,7 @@ from pathlib import Path
 from django.conf import settings
 from django.http import FileResponse, Http404, HttpResponse, StreamingHttpResponse
 
-from .media_auth import media_access_status
+from .media_auth import media_access_status, resolve_media_user
 
 _RANGE_RE = re.compile(r"^bytes=(\d*)-(\d*)$")
 _CHUNK = 1024 * 1024
@@ -45,7 +45,7 @@ def serve_media(request, path: str):
     if not full.is_relative_to(root) or not full.is_file():
         raise Http404
     rel = full.relative_to(root).as_posix()
-    decision = media_access_status(request.user, rel)
+    decision = media_access_status(resolve_media_user(request), rel)
     if decision == 404:
         raise Http404
     if decision != 200:

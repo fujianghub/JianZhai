@@ -35,7 +35,7 @@ from .serializers import (
 # issuing a per-doc ORDER BY query.
 _PRIMARY_ATTACHMENT_PREFETCH = Prefetch(
     "attachments",
-    queryset=Attachment.objects.order_by("created_at"),
+    queryset=Attachment.objects.order_by("created_at", "id"),
     to_attr="ordered_attachments",
 )
 

@@ -381,6 +381,8 @@ const PURIFY_CONFIG: Parameters<typeof DOMPurify.sanitize>[1] = {
     'open', 'data-doc-id', 'data-annotation', 'data-label',
     // 阅读端卡片壳（CardEnhancer 水合锚点）：外链卡 data-url + 两种卡片标记
     'data-url', 'data-jz-link-card', 'data-jz-doc-card',
+    // drawio画板 figure（utils/drawioEmbed.ts）：标记 + PNG 副本（DOCX 导出用）
+    'data-jz-drawio', 'data-png', 'data-jz-scheme', 'data-jz-size', 'data-jz-align',
     // iframe (video embed) presentation attrs — src itself is gated by the hook
     'allowfullscreen', 'frameborder', 'allow', 'referrerpolicy',
     // SVG specifics

@@ -104,6 +104,7 @@ import { useFootnoteHover } from '@/hooks/useFootnoteHover';
 import ImageLightboxEnhancer from '@/hooks/useImageLightbox';
 import CardEnhancer from '@/components/common/CardEnhancer';
 import LongImageEnhancer from '@/components/common/LongImageEnhancer';
+import DrawioBoardEnhancer from '@/components/common/DrawioBoardEnhancer';
 import { useMediaQuery } from '@/hooks/useMediaQuery';
 import { ICON_SIZE } from '@/components/common/iconSize';
 import { CloseIcon } from '@/components/common/actionIcons';
@@ -1126,6 +1127,7 @@ export default function PostDetail() {
           <TableEnhancer selector=".jz-post-article" bindKey={rendered.html} />
           <ImageLightboxEnhancer selector=".jz-post-article" bindKey={rendered.html} />
           <CardEnhancer selector=".jz-post-article" bindKey={rendered.html} />
+          <DrawioBoardEnhancer selector=".jz-post-article" bindKey={rendered.html} title={post.title} />
           <LongImageEnhancer
             selector=".jz-post-article"
             bindKey={rendered.html}

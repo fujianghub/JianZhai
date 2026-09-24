@@ -44,6 +44,10 @@ if settings.DEBUG:
 
     from apps.editor.media_views import serve_media
 
+    from jianzhai.drawio_dev import serve_drawio
+
     urlpatterns += [
         re_path(r"^media/(?P<path>.+)$", serve_media, name="dev-media"),
+        # self-hosted draw.io bundle (infra/drawio/dist); caddy serves it in prod
+        re_path(r"^drawio/(?P<path>.*)$", serve_drawio, name="dev-drawio"),
     ]

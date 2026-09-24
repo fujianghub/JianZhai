@@ -3198,3 +3198,134 @@ html:not([data-theme='dark']):not([data-theme='starry']):not([data-theme='deepse
   .ant-tooltip-arrow::before {
   background: rgba(255, 255, 255, 0.98) !important;
 }
+
+/* ── drawio画板 节点（编辑器）+ 全屏编辑层 ─────────────────────────────── */
+.jz-drawio-node {
+  position: relative;
+  margin: 8px 0;
+}
+.jz-drawio-node figure.jz-drawio {
+  margin-block: 0;
+  cursor: pointer;
+}
+.jz-drawio-node.is-selected figure.jz-drawio img,
+.jz-drawio-node.is-selected .jz-drawio-empty {
+  outline: 2px solid var(--jz-accent);
+  outline-offset: 2px;
+}
+.jz-drawio-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 140px;
+  border: 1px dashed var(--jz-border);
+  border-radius: var(--jz-radius-md);
+  color: var(--jz-text-muted);
+  font-size: var(--jz-fs-sm);
+}
+.jz-drawio-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: var(--jz-radius-sm);
+  background: var(--jz-overlay-surface, var(--jz-surface-2));
+  border: 1px solid var(--jz-border);
+  opacity: 0;
+  transition: opacity var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-drawio-node:hover .jz-drawio-toolbar,
+.jz-drawio-node.is-selected .jz-drawio-toolbar,
+.jz-drawio-toolbar:focus-within {
+  opacity: 1;
+}
+[data-motion='min'] .jz-drawio-toolbar { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .jz-drawio-toolbar { transition: none; }
+}
+
+/* 全屏编辑层：portal 到 body；13000 > 图表全屏 1300 / 编辑器浮层 12000。 */
+.jz-drawio-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 13000;
+  background: #fff;
+}
+.jz-drawio-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.jz-drawio-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+/* 父页操作条：min 主题上游把 draw.io 自带的嵌入按钮容器隐藏了（0×0），
+   「保存并退出 / 退出」改由 DrawioEditorModal 渲染在右上角（min 主题该处留空）。 */
+.jz-drawio-actions {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  z-index: 1;
+  display: flex;
+  gap: 8px;
+}
+
+/* drawio画板 起手模板面板 + 设置弹层 */
+.jz-drawio-chooser { background: color-mix(in srgb, var(--jz-bg-app) 88%, transparent); }
+.jz-drawio-chooser-card {
+  width: min(560px, calc(100vw - 32px));
+  padding: 20px;
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-overlay-surface, var(--jz-surface-2));
+  border: 1px solid var(--jz-border);
+  box-shadow: 0 12px 40px rgb(0 0 0 / 18%);
+}
+.jz-drawio-chooser-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  font-size: var(--jz-fs-lg);
+  color: var(--jz-text);
+}
+.jz-drawio-chooser-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.jz-drawio-template {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 14px;
+  border-radius: var(--jz-radius-md);
+  border: 1px solid var(--jz-border);
+  background: transparent;
+  color: var(--jz-text);
+  text-align: left;
+  cursor: pointer;
+}
+.jz-drawio-template:hover,
+.jz-drawio-template:focus-visible {
+  border-color: var(--jz-accent);
+  background: var(--jz-hover-bg);
+  outline: none;
+}
+.jz-drawio-template-title { font-size: var(--jz-fs-md); font-weight: 600; }
+.jz-drawio-template-desc { font-size: var(--jz-fs-xs); color: var(--jz-text-muted); }
+.jz-drawio-chooser-foot { display: flex; justify-content: flex-end; margin-top: 14px; }
+.jz-drawio-settings { display: flex; flex-direction: column; gap: 10px; min-width: 260px; }
+.jz-drawio-settings-row { display: flex; align-items: center; gap: 10px; }
+.jz-drawio-settings-row > span { flex: none; width: 32px; color: var(--jz-text-muted); font-size: var(--jz-fs-sm); }
+.jz-drawio-settings-row .ant-input-affix-wrapper { flex: 1; }

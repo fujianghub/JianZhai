@@ -78,6 +78,42 @@ def test_image_embedded_from_media(owner, kb, settings, tmp_path):
 
 
 @pytest.mark.django_db
+def test_drawio_board_uses_png_copy(owner, kb, settings, tmp_path):
+    """drawio画板 figure：<img> 是 SVG（python-docx 不吃），导出改用 data-png。"""
+    from PIL import Image
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    (tmp_path / "uploads").mkdir()
+    (tmp_path / "uploads" / "b.svg").write_text('<svg xmlns="http://www.w3.org/2000/svg"/>')
+    Image.new("RGB", (60, 30), "#ffffff").save(tmp_path / "uploads" / "b.png")
+    fig = (
+        '<figure class="jz-drawio" data-jz-drawio="1" data-png="/media/uploads/b.png">'
+        '<img src="/media/uploads/b.svg" alt="drawio画板" /></figure>'
+    )
+    make_doc(kb, "d", published=f"前文\n\n{fig}\n\n后文")
+    document, _ = _export_docx(owner, kb)
+    assert len(document.inline_shapes) == 1
+    assert "图片无法嵌入" not in _all_text(document)
+
+
+@pytest.mark.django_db
+def test_drawio_board_caption_exported(owner, kb, settings, tmp_path):
+    from PIL import Image
+
+    settings.MEDIA_ROOT = str(tmp_path)
+    (tmp_path / "uploads").mkdir()
+    Image.new("RGB", (60, 30), "#ffffff").save(tmp_path / "uploads" / "c.png")
+    fig = (
+        '<figure class="jz-drawio" data-jz-drawio="1" data-png="/media/uploads/c.png" data-jz-size="full">'
+        '<img src="/media/uploads/c.svg" alt="drawio画板" /><figcaption>图 1 · 园区网拓扑 &amp; 分区</figcaption></figure>'
+    )
+    make_doc(kb, "d", published=fig)
+    document, _ = _export_docx(owner, kb)
+    assert len(document.inline_shapes) == 1
+    assert "图 1 · 园区网拓扑 & 分区" in _all_text(document)
+
+
+@pytest.mark.django_db
 def test_callout_and_strike_and_tasklist_degrade(owner, kb):
     src = ":::info 温馨提示\n盒内内容\n:::\n\n~~划掉~~\n\n- [x] 已办\n- [ ] 待办"
     make_doc(kb, "d", published=src)

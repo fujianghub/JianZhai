@@ -2,7 +2,7 @@
 
 > 四角色 RBAC 权威依据。后端是唯一安全边界，前端按 `role` 收口仅为体验。
 > 图例：✅允许 / ❌禁止 / —不适用。
-> 最后更新：2026-09-08（第八节两道闸延伸到 `/media/*` 附件字节层 forward_auth；`apps.reading` 划线锚增 PDF quads）
+> 最后更新：2026-09-24（第八节附件字节层增 `jz_media` 媒体票据：不透明源沙箱帧的第二凭据）
 
 ---
 
@@ -143,6 +143,8 @@
 
 1. **后端是唯一安全边界**：每条限制都靠权限类 / 行级校验返回 403，普通用户直接打 API 也越不过。
    **附件字节层同样受控（2026-09-08）**：`/media/*` 此前由 Caddy `file_server` / Django `static()` 无鉴权直发（能力型 uuid URL 是唯一防线，泄露即永久有效），受众/ReadGrant 只管 API。现在生产 Caddy 对每个媒体请求先 `forward_auth` 到 `GET /api/v1/media-auth/`（转发 Cookie，读 `X-Forwarded-Uri`），dev 由 `apps/editor/media_views.serve_media` 内联判定，两者共用 `apps/editor/media_auth.media_access_status`：staff 全放行；文件按 `Attachment/SlideImage/DerivedFile` 反查所属文档，走与 `apps.reading` 相同的 `visible_documents(public+published+KB public+未删)`；无所属文档的附件（编辑器图片）任何登录用户可读；`avatars/` 公开；匿名仅在 `SITE_REQUIRE_LOGIN=false` 时按同一规则判定，否则 401；未知路径 404。判定按 (user, path) 在 Redis 缓存 60 s（可见性变更最长 60 s 到达文件层）。`Cache-Control` 改为 `private, immutable`（响应因人而异，禁共享缓存）。
+
+   **媒体票据（2026-09-24）**：作者 HTML 在无 `allow-same-origin` 的沙箱 iframe（`SandboxedHtmlFrame`）与带 `CSP: sandbox` 的顶层 `/media/*.html` 里渲染，这类**不透明源**发出的子资源请求只带 `SameSite=None` cookie（Chrome 实测 `Sec-Fetch-Site: cross-site`、无 Referer），`Lax` 的 `sessionid` 到不了 forward_auth → 文内 `/media/` 图片 401。修 = 第二凭据 **`jz_media` 票据 cookie**（`apps/editor/media_ticket.py`）：`Path=/media; SameSite=None; Secure; HttpOnly`，`TimestampSigner` 签名 `"<uid>:<session_auth_hash 前 16 位>"`、2 h 有效（改密码即失效），`apps/accounts/middleware.MediaTicketMiddleware` 在任何带会话的认证响应上签发/超 1 h 刷新（不逐登录路径改，SSO/2FA 接入自动覆盖；老会话下一次 API 调用即拿到），登出删除。`media_auth.resolve_media_user(request)` = 会话用户 → 否则票据持有者 → 否则匿名；**判定规则与 60 s 缓存完全不变**（票据只解决「你是谁」，受众/ReadGrant 照常约束）。信任边界：票据路径限定碰不到 `/api`；第三方页面嵌 `<img src="https://站点/media/<uuid>">` 时受害者浏览器会带票据显示该图（跨源无 CORS 读不到像素、uuid 不可猜），**不能用 `Cross-Origin-Resource-Policy: same-site` 收紧**——它同样会拦掉我们自己的不透明源沙箱。会话与 CSRF cookie 属性不变。已知边界：票据只在认证 API 响应上签发，冷开 `/media/*.html` 书签且距上次访问站点超 2 h 时页内图片 401，访问任一 SPA 页面即恢复。
 2. **前端按 `role` 收口**（仅体验）：`me` 接口加 `role` 字段；`AdminLayout` 普通用户**只渲染「收藏」「个人资料」**两项；作者专属路由加 `RequireAuthor` 守卫；删除按钮（KB / 大类 / 清空回收站）对非根隐藏。
 
 ## 七、迁移 / 运维

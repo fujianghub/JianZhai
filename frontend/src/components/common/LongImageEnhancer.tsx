@@ -76,6 +76,7 @@ export function useLongImageEnhancer(
       if (!root.contains(img)) return; // lazy load 回调时正文可能已整体重渲
       if (img.closest('.jz-longimg')) return; // 幂等：已包裹
       if (img.closest('a')) return; // 链接图不折叠（与 lightbox 同规则）
+      if (img.closest('figure.jz-drawio')) return; // drawio画板有自己的尺寸设置，不折叠
       const mode = classifyLongImage({
         naturalWidth: img.naturalWidth,
         naturalHeight: img.naturalHeight,

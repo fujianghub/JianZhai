@@ -54,6 +54,8 @@ import {
 import CodeBlockMoreMenu from './CodeBlockMoreMenu';
 import CodeBlockThemeSelect from './CodeBlockThemeSelect';
 import { openDiagramFullscreenFromHtml } from '@/utils/diagramFullscreen';
+import { JzDrawioIcon } from '@/components/common/JzIcon';
+import { ICON_SIZE } from '@/components/common/iconSize';
 import { FullscreenIcon } from '@/components/common/actionIcons';
 import { getChord, matchesChord } from '@/shortcuts';
 import IconButton from '@/components/common/IconButton';
@@ -409,6 +411,28 @@ export default function CodeBlockView({ node, updateAttributes, editor, getPos }
                 }
               />
             </Tooltip>
+            {isMermaid && editor.isEditable && (
+              <Tooltip title="转为 drawio画板（可拖拽编辑的图形；保存后替换本代码块，取消则保持不变）">
+                <IconButton
+                  className="jz-diagram-icon-btn jz-mermaid-to-drawio"
+                  aria-label="转为 drawio画板"
+                  disabled={!node.textContent.trim()}
+                  icon={<JzDrawioIcon size={ICON_SIZE.sm} />}
+                  onClick={() => {
+                    const pos = getPos();
+                    if (typeof pos !== 'number') return;
+                    editor
+                      .chain()
+                      .focus()
+                      .insertContentAt(pos + node.nodeSize, {
+                        type: 'drawioBoard',
+                        attrs: { autoOpen: true, mermaid: node.textContent },
+                      })
+                      .run();
+                  }}
+                />
+              </Tooltip>
+            )}
             <span className="jz-code-toolbar-divider" aria-hidden />
           </>
         )}

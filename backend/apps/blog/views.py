@@ -77,7 +77,7 @@ def _published_qs(defer_body: bool = False, *, user=None):
             "tags",
             Prefetch(
                 "attachments",
-                queryset=Attachment.objects.order_by("created_at"),
+                queryset=Attachment.objects.order_by("created_at", "id"),
                 to_attr="ordered_attachments",
             ),
         )

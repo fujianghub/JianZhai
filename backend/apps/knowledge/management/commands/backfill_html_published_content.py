@@ -55,7 +55,7 @@ class Command(BaseCommand):
         qs = Document.objects.all().prefetch_related(
             Prefetch(
                 "attachments",
-                queryset=Attachment.objects.order_by("created_at"),
+                queryset=Attachment.objects.order_by("created_at", "id"),
                 to_attr="ordered_attachments",
             )
         )

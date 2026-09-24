@@ -86,7 +86,7 @@ def _primary_attachment(doc: Document):
     if not doc.pk:
         return None
     cached = getattr(doc, "ordered_attachments", None)
-    atts = list(cached) if cached is not None else list(doc.attachments.order_by("created_at"))
+    atts = list(cached) if cached is not None else list(doc.attachments.order_by("created_at", "id"))
     if not atts:
         return None
 
@@ -99,6 +99,10 @@ def _primary_attachment(doc: Document):
         for a in atts:
             if a.kind != "image" and not (a.mime_type or "").startswith("image/"):
                 return a
+        # A text body whose attachments are all images (editor pastes, drawio画板
+        # SVG/PNG) has no "source file": returning an asset image here made the
+        # reader echo it again as「原文件」below the body (2026-09-24).
+        return None
     return atts[0]
 
 
@@ -702,7 +706,7 @@ def build_tree(kb: KnowledgeBase, user=None) -> dict:
         .prefetch_related(
             Prefetch(
                 "attachments",
-                queryset=Attachment.objects.order_by("created_at"),
+                queryset=Attachment.objects.order_by("created_at", "id"),
                 to_attr="ordered_attachments",
             )
         )

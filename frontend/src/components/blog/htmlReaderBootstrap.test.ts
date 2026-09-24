@@ -2,9 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { HTML_READER_BOOTSTRAP, injectHtmlReaderBootstrap } from './htmlReaderBootstrap';
 
 describe('injectHtmlReaderBootstrap', () => {
-  it('defaults to the about:srcdoc base (raw_content mode)', () => {
+  it('defaults to the site-root base (raw_content mode)', () => {
     const out = injectHtmlReaderBootstrap('<html><head></head><body>hi</body></html>');
-    expect(out).toContain('<base href="about:srcdoc">');
+    expect(out).toContain('<base href="/">');
     expect(out).toContain('jz-html-meta');
   });
 
@@ -14,7 +14,7 @@ describe('injectHtmlReaderBootstrap', () => {
       'https://h/media/uploads/2026/06/x.html',
     );
     expect(out).toContain('<base href="https://h/media/uploads/2026/06/x.html">');
-    expect(out).not.toContain('about:srcdoc');
+    expect(out).not.toContain('<base href="/">');
   });
 
   it('inserts bootstrap before </body>', () => {

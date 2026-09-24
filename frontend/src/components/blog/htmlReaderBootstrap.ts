@@ -1,6 +1,6 @@
-import { withBaseHref, withSrcdocBase } from '@/utils/htmlPreview';
+import { withBaseHref, withSiteRootBase } from '@/utils/htmlPreview';
 
-/** ES5 bootstrap injected into srcDoc HTML (raw_content-only fallback).
+/** ES5 bootstrap injected into the HTML written into the sandbox host frame.
  *  Kept in a plain ``.ts`` file so ``</script>`` never appears inside ``.tsx``
  *  — some Vite/esbuild dev transforms treat that sequence as a tag terminator
  *  and break the parent module's default export. */
@@ -115,13 +115,14 @@ export const HTML_READER_BOOTSTRAP = [
 
 /** Insert bootstrap right before ``</body>``; if absent, append at end.
  *
- *  Also injects a `<base>`: ``about:srcdoc`` for raw_content HTML (default),
- *  or the attachment's own URL when ``baseHref`` is given — fetched-attachment
- *  mode renders via srcDoc inside an opaque-origin sandbox, and the http(s)
- *  base makes ``./assets/x.css`` and ``/media/...`` resolve exactly like the
- *  old ``<iframe src>`` did. */
+ *  Also injects a `<base>`: the site root (``/``) for raw_content HTML
+ *  (default), or the attachment's own URL when ``baseHref`` is given —
+ *  fetched-attachment mode renders inside the opaque-origin sandbox host
+ *  frame (``SandboxedHtmlFrame``), and the http(s) base makes
+ *  ``./assets/x.css`` and ``/media/...`` resolve exactly like the old
+ *  ``<iframe src>`` did. */
 export function injectHtmlReaderBootstrap(html: string, baseHref?: string): string {
-  const withBase = (s: string) => (baseHref ? withBaseHref(s, baseHref) : withSrcdocBase(s));
+  const withBase = (s: string) => (baseHref ? withBaseHref(s, baseHref) : withSiteRootBase(s));
   if (!html) return withBase('') + HTML_READER_BOOTSTRAP;
   const based = withBase(html);
   const m = /<\/body\s*>/i.exec(based);

@@ -2,7 +2,7 @@
 
 [![tests](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/fujianghub/JianZhai/actions/workflows/tests.yml)
 
-个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10+**，最近批次 2026-09-08，见下方「阶段」表与 `docs/CHANGELOG.md`；编辑器已追平语雀 · 含**四角色权限体系 RBAC** / PDF·PPT·EPUB 阅读器 / 划线笔记 / 安全复审 / 性能优化 / Mermaid·KaTeX 离线导出）。
+个人知识库 + 个人博客一体化系统（Monorepo · **v0.9.10+**，最近批次 2026-09-24，见下方「阶段」表与 `docs/CHANGELOG.md`；编辑器已追平语雀 · 含**四角色权限体系 RBAC** / PDF·PPT·EPUB 阅读器 / 划线笔记 / 安全复审 / 性能优化 / Mermaid·KaTeX 离线导出 / **drawio画板**）。
 
 一份内容**既是私人笔记**（`raw_content`），**也是公开博客**（`published_content`）—— 通过手动发布在两种形态间切换。采用**四角色权限体系（RBAC）**：根 root / 管理员 admin（作者）/ 普通用户 user（读者）/ 匿名 anon —— **作者共享单一内容池**，读者只读博客 + 收藏 + 评论 + 改资料（无创作权），根独占不可逆销毁与全量用户管理。博客可切「全开放 / 友邻可见（需登录）」两种形态。附带**腾讯云生产部署套件**（见 [`infra/`](infra/)）。
 
@@ -13,6 +13,7 @@
 | **AI 助手 / 贡献者操作手册**（不变量 + 怎么干活 + 指针） | [CLAUDE.md](./CLAUDE.md) |
 | 架构 / 数据模型 / URL / 时序 / 扩展索引 | [docs/architecture.md](docs/architecture.md) |
 | 编辑器（Tiptap / CM6 / 表格 / KaTeX / Mermaid） | [docs/editor.md](docs/editor.md) |
+| **drawio画板**（自托管 draw.io：构建 / 定制 / 协议 / 样式与设置） | [docs/drawio.md](docs/drawio.md) · [infra/drawio/VENDOR.md](infra/drawio/VENDOR.md) |
 | AI 多供应商（模型 / 降级 / 预算 / 用量 / 价格） | [docs/ai.md](docs/ai.md) |
 | 全文搜索 + 导出（5 格式 + anthology + 离线 SVG） | [docs/export-search.md](docs/export-search.md) |
 | 视觉系统 / 主题 / 题记 / 图标 / 布局 | [docs/frontend.md](docs/frontend.md) |
@@ -28,14 +29,14 @@
 | 模块 | 说明 |
 |------|------|
 | **知识库** | KB / 文件夹嵌套、树拖拽排序、软删除回收站、封面与主题色 |
-| **编辑器** | Tiptap 3 + **CodeMirror 6**（MD 源码，语雀级）：**富文本 / Markdown / HTML** 三模式；MD 源码模式浮动格式条 / 智能续列表 / 表格辅助 / **Live Preview 就地渲染** / 行级双向滚动同步；富文本表格**单元格染色 + 悬浮行列 + 冻结首行列**；数学、分栏、Mermaid、PlantUML、DocCard、`@` 提及、块菜单、图片工具栏等；完整编辑两栏铺满（正文限宽 + 大纲右栏 sticky） |
+| **编辑器** | Tiptap 3 + **CodeMirror 6**（MD 源码，语雀级）：**富文本 / Markdown / HTML** 三模式；MD 源码模式浮动格式条 / 智能续列表 / 表格辅助 / **Live Preview 就地渲染** / 行级双向滚动同步；富文本表格**单元格染色 + 悬浮行列 + 冻结首行列**；数学、分栏、Mermaid、PlantUML、DocCard、`@` 提及、块菜单、图片工具栏等；**drawio画板**（`/hb`，自托管 draw.io 全屏编辑，起手模板四种，每板配色跟随主题/尺寸/对齐/图注，Mermaid 代码块一键转画板）；完整编辑两栏铺满（正文限宽 + 大纲右栏 sticky） |
 | **章节编号 + 目录（语雀式）** | 标题**自动分级编号**（`1/1.1/1.1.1`，按嵌套深度压缩；显示层不改源码，每篇开关）——编辑器/阅读/导出四端一致；**可插入目录**（`[TOC]` 全文 / `[TOC:section]` 本节）自动汇总标题并跳转；导入时可选自动编号 + 文首插目录；博客内联「编辑」双写发布版+私人版即时上博客 |
 | **HTML 博客阅读** | 发布版为完整 HTML 时，前台用 `HtmlPostReader` 原位 iframe 阅读（附件 `src` + 样式保留） |
 | **版本与协作辅助** | DocumentVersion 快照、行级/字符级 diff、回滚（每文档保留 100 个）；乐观并发 `expected_version` 防覆盖 |
 | **链接与图谱** | `@[title](doc:id)` 双向链接、反链面板、`react-force-graph-2d` 知识图谱 |
 | **搜索与标签** | PostgreSQL `tsvector` + jieba；索引 **标题 + 正文 + 标签名 + 评论**；全局 `⌘K` |
 | **评论** | 文档级 + 段落级（`block_id`） |
-| **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG** 与 **KaTeX 公式离线预渲染**（HTML/PDF/静态站，headless Chromium + vendored mermaid/katex，字体内嵌离线可显，缺失时降级源码）；PlantUML 仍为代码块 |
+| **导出** | Markdown / HTML / PDF（Playwright）/ Word / 整站 zip；KB **HTML 合订本**为单文件「目录 + 一次一篇」面板（Markdown 渲染扩展语法、HTML 文档 `iframe` 原样保留样式）；PDF 展开全部篇章并扁平化 HTML 篇；**Mermaid 离线渲染为内联 SVG** 与 **KaTeX 公式离线预渲染**（HTML/PDF/静态站，headless Chromium + vendored mermaid/katex，字体内嵌离线可显，缺失时降级源码）；PlantUML 仍为代码块；drawio画板在 HTML/PDF/静态站按 SVG 图片输出、Word 用 PNG 副本（含图注） |
 | **公开博客** | 匿名 / 友邻可见两形态（`SITE_REQUIRE_LOGIN`）；**6 套主题**（含 4 个环境氛围层：星空/深海暗色 Canvas 粒子 + 春水 WebGL 水面 / 冬雪飘雪亮色）+ 纸张样式，切换器为**单按钮下拉**（调色全交 CSS token，无用户自选 accent）；首页**题记**名句轮播（朝代/作者/篇名 + 4 种动画 + **随机播放**/悬停暂停/点击切换）；归档 / 标签云 / RSS；**同 slug 多 KB 时** API 与 `?kb=` 消歧 |
 | **阅读器定制** | 读者侧分组工具条（字体/纸张/排版/专注，等高 28px）；**排版三件套**字号缩放 / 行距 / 版心宽度 + 一键重置（落 localStorage、CSS 变量 scope 到 `<article>`、不触碰文档；默认宋体 + 860px 版心）；**专注/沉浸模式**隐藏导航与侧栏、Esc 退出（保留目录抽屉入口）；**移动端 TOC/KB 抽屉** + **阅读位置记忆**（回访「继续上次阅读」）；阅读进度条带百分比；**PDF 阅读**内嵌书签解析为目录侧栏 + 整页连续滚动（IntersectionObserver 懒渲染）+ 在新标签用浏览器原生阅读器打开 |
 | **AI 助手** | 后端代理（`/admin/ai`），**多供应商**：Anthropic Claude（Opus 4.7 / Sonnet 4.6 / Haiku 4.5）+ 阿里**通义千问**（Max/Plus/Turbo/VL）；9 内置操作 + **自定义模板** + **多轮对话**；SSE 流式、选区 AI + 全文抽屉、视觉图片输入、扩展思考、按用户**日预算**、失败自动降级、用量热图；未配置 Key 时优雅降级 |
@@ -233,6 +234,8 @@ cd backend && python manage.py seed_architecture_kb
 | **PDF/PPT 文字层 + P0–P3 全系列 13 批** | 文字层：pdf.js 三层栈（canvas + TextLayer + 链接层）可选字/复制/跨页拖选、目录与内链精确到页内位置，PPT 主区叠 LibreOffice 派生 PDF（`DerivedFile(deck_pdf)`，迁移 `editor 0005`）；批 1 URL + Range 流式加载（dev `serve_media` 支持 206）；批 2 二进制文档导出补附件；批 3 永久删除经 `media_gc` 清盘 + `cleanup_media`；批 4 `ConversionJob`（迁移 `editor 0006`/`knowledge 0010`）+ Celery 队列拆分 `celery-convert`；批 5 `/media/*` forward_auth 鉴权（受众/ReadGrant 对附件字节生效）；批 6 `DocumentExtract` 附件文本进搜索（迁移 `editor 0007`）；批 7 阅读器快捷键收编/续读/`?page=`·`?slide=` 深链/a11y；批 8 五档纸色/PPT 样式搬迁/移动端捏合缩放/PDF 目录接入站点右栏；批 9 客户端全文查找 + PDF 页级书签（迁移 `reading 0005`）；批 10 首页海报/EPUB 封面/加密提示/按类型上传上限；批 11 PDF 划线笔记（quads 锚）+ Fullscreen API；批 12 服务端阅读位置（迁移 `reading 0006`）+ PPT 演示模式/翻页动画；批 13 扫描件 OCR（`ocrmypdf` 队列 `celery-ocr`，`DerivedFile(ocr_pdf)`）。2026-09-08，待部署（需重建镜像 + caddy + 6 迁移 + 回填命令） |
 | **目录设置三类集中管理 + 出厂默认** | `TocSettings.prefs` 拆 `{kblist, kb, article}` 三份（大类知识库目录 / 知识库文档目录 / 文档内容目录，迁移 `accounts 0010` 扁平摊三份），`/admin/toc` 三类卡切换 + 实时预览 + 多类保存 + 恢复出厂 + 套用到其余两类；出厂默认 紧凑/中/细/宋体/淡显。冒烟 43/43。2026-09-08，待部署 |
 | **PPT 字体识别与自动适配** | 根因实测：服务端 LibreOffice 渲染时 fontconfig 把未知字体族落 DejaVu Sans（西文字宽错→换行漂移→文本框溢出）、宋体丢衬线、Noto CJK 1.448 倍行高膨胀。`apps/editor/services/office_fonts.py`：扫 pptx 主题/母版/版式/页面/项目符号字体 + 内嵌字体（EOT 解包），四级解析（精确→度量包→精选表→关键词分类，符号字体与 Calibri/Arial 度量孪生交给系统），每 deck 生成 `fonts.conf` 经 `FONTCONFIG_FILE`（assign 强替换）传 soffice；`manage.py build_font_pack` 从 Noto CJK 派生宋体/黑体/微软雅黑/等线/Huawei Sans 同名同度量五族（`infra/fonts/pack` 卷，不入库）；报告 `slide_font_report` → PPT 阅读器「字体 N」弹层；镜像加开源替代字体包 + `60-jianzhai-office.conf`。40 份 deck 实测：DejaVu 22→0 份、超页文本行 0.68%→0、宋体行距 1.45×→1.20×。40 单测 + 冒烟。2026-09-09，待部署（重建镜像 + rsync 字体包 + `reconvert_pptx --all`） |
+| **CSP 继承修复 + 媒体票据** | 实测 srcdoc 继承父页 CSP、Caddy 站点级 header 块覆盖路径级头：HTML 文档/预览改走同源宿主页 `/embed/html-frame.html`（`SandboxedHtmlFrame`，独立 sandbox CSP），站点级 CSP 改 `?`（顺带修好 `*.svg` sandbox）；不透明源沙箱帧读 `/media` 靠 `jz_media` 媒体票据 cookie（`Path=/media; SameSite=None`，2 h，绑会话哈希）。2026-09-24 |
+| **drawio画板** | 拉取 draw.io v31.4.6 源码自托管（`infra/drawio/build.py` 裁剪 156→50 MB + PreConfig/PostConfig 定制，同源 `/drawio/`，生产 CSP 零违规零外联）；`/hb` 插入画板（起手模板：空白/流程图/网络拓扑/分层架构）→ 全屏编辑 → SVG（透明底、`light-dark()` 跟随主题）+ PNG 双存为附件；每板配色/尺寸/对齐/图注；阅读端悬浮全屏/下载 SVG；Mermaid 代码块一键转画板；旧画板文件自动回收；顺带修复富文本自动保存自首版从未触发。2026-09-24 |
 | v1.0 候选 | 增量保存、Tiptap lazy rendering、超大 KB 树分页、Yjs 协作 |
 
 ## 生产部署（腾讯云）

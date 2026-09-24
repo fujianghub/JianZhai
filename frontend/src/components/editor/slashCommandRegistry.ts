@@ -17,6 +17,7 @@ import {
   JzEmojiIcon,
   JzHrIcon,
   JzImageIcon,
+  JzDrawioIcon,
   JzLinkCardIcon,
   JzMathIcon,
   JzMermaidIcon,
@@ -460,6 +461,20 @@ export function buildSlashCommands(): SlashCommandItem[] {
           .deleteRange(range)
           .insertTable({ rows: 3, cols: 3, withHeaderRow: true })
           .run(),
+    },
+    {
+      id: 'drawio',
+      category: '图表',
+      icon: createElement(JzDrawioIcon, { size: ICON_SIZE.lg }),
+      title: 'drawio画板',
+      description: aliasDesc('hb', 'drawio') || '自由绘制流程图 / 架构图',
+      aliases: ['hb', 'drawio', 'huaban'],
+      keywords: ['drawio', 'draw.io', 'diagram', '画板', '画图', '白板', '架构图', '拓扑'],
+      menuSection: '画板类',
+      menuOrder: 0,
+      menuTitle: 'drawio画板',
+      command: ({ editor, range }) =>
+        editor.chain().focus().deleteRange(range).insertDrawioBoard().run(),
     },
     {
       id: 'mermaid-picker',

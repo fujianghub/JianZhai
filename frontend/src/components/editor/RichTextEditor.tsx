@@ -34,6 +34,7 @@ import CodeBlockView from './CodeBlockView';
 import CalloutExtension from './CalloutExtension';
 import { AnnotationMark } from './AnnotationMark';
 import { VideoEmbed } from './VideoEmbed';
+import { DrawioBoard } from './drawio/DrawioBoard';
 import { InlineToc } from './InlineToc';
 import { DetailsBlock } from './DetailsBlock';
 import { Columns, Column } from './Columns';
@@ -384,6 +385,7 @@ export default function RichTextEditor({
       CalloutExtension,
       AnnotationMark,
       VideoEmbed,
+      DrawioBoard.configure({ documentId }),
       InlineToc,
       DetailsBlock,
       Columns,
@@ -533,9 +535,18 @@ export default function RichTextEditor({
     if (!editor || editor.isDestroyed) return;
     const current = editor.storage.markdown?.getMarkdown?.() ?? '';
     if (value === current) {
-      // Server echo: refresh save bookkeeping so the status indicator clears.
-      lastSavedRef.current = value;
-      lastEmittedRef.current = value;
+      // Server echo (an *external* value that happens to equal the editor):
+      // refresh save bookkeeping so the status indicator clears. Our OWN
+      // onChange coming back through the parent (value === lastEmitted) must
+      // NOT be treated as saved — this effect runs before the autosave effect
+      // below in the same commit, and marking it saved here made autosave see
+      // value === lastSaved and skip, so rich-text edits only ever reached the
+      // server via unmount flush / Ctrl+S (bug since the 2026-05 initial
+      // commit, found by the drawio画板 smoke 2026-09-24).
+      if (value !== lastEmittedRef.current) {
+        lastSavedRef.current = value;
+        lastEmittedRef.current = value;
+      }
       return;
     }
     if (forceSyncRevision === 0) {

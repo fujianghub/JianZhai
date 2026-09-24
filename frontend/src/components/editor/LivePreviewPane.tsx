@@ -7,7 +7,8 @@ import CardEnhancer from '@/components/common/CardEnhancer';
 import LongImageEnhancer from '@/components/common/LongImageEnhancer';
 import { renderMarkdownForEditor, renderMarkdownWithToc } from '@/utils/markdown';
 import { paperClassName } from '@/utils/paper';
-import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
+import { buildHtmlPreviewDoc } from '@/utils/htmlPreview';
+import SandboxedHtmlFrame from '@/components/common/SandboxedHtmlFrame';
 
 export type LivePreviewKind = 'markdown' | 'html';
 
@@ -66,10 +67,7 @@ export default function LivePreviewPane({
     return () => onScrollContainerReady?.(null);
   }, [kind, onScrollContainerReady]);
 
-  const htmlSrcdoc = useMemo(
-    () => buildHtmlPreviewSrcdoc(debouncedSource),
-    [debouncedSource],
-  );
+  const htmlDoc = useMemo(() => buildHtmlPreviewDoc(debouncedSource), [debouncedSource]);
 
   const { html, toc } = useMemo(() => {
     if (kind !== 'markdown') return { html: '', toc: [] };
@@ -81,12 +79,7 @@ export default function LivePreviewPane({
   if (kind === 'html') {
     return (
       <div className={`jz-doc-preview-col jz-doc-preview-html ${className ?? ''}`}>
-        <iframe
-          title="HTML 阅读预览"
-          srcDoc={htmlSrcdoc}
-          sandbox="allow-scripts allow-popups allow-forms"
-          className="jz-doc-preview-iframe"
-        />
+        <SandboxedHtmlFrame title="HTML 阅读预览" html={htmlDoc} className="jz-doc-preview-iframe" />
       </div>
     );
   }

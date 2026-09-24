@@ -52,6 +52,7 @@
 | Mermaid / PlantUML | ```` ```mermaid ```` / ```` ```plantuml ```` | `CodeBlockView.tsx` |
 | 图片 | `![](url)` + 悬浮工具栏（旋转/缩放/对齐/裁剪/说明） | `ResizableImage.tsx` |
 | 视频嵌入 | B 站 / YouTube URL | `VideoEmbed.tsx` |
+| **drawio画板** | 斜杠 `/hb`（先选起手模板）/ Mermaid 代码块「转为 drawio画板」；正文 `<figure class="jz-drawio" data-jz-drawio data-png [data-jz-scheme/size/align]><img src=svg>[<figcaption>]` | `drawio/DrawioBoard.ts` + `DrawioBoardView.tsx`（设置弹层）+ `DrawioEditorModal.tsx`（自托管 draw.io，详见 docs/drawio.md §5） |
 | 块 hover 菜单 | 左侧 `+ / ⋯`（删除/复制/选中） | `BlockHoverMenu.tsx` |
 | 块拖拽 | 抓 handle 拖动 | `tiptap-extension-global-drag-handle` |
 | `@` 提及 | `@文档名` 跨库引用 | `MentionPicker.tsx` |

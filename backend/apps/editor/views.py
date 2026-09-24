@@ -778,18 +778,20 @@ def media_auth(request):
 
     Caddy sends the original request's method/URI in ``X-Forwarded-Uri`` and
     forwards the browser's cookies, so the session user is resolved the normal
-    way. 200 lets ``file_server`` answer; 401/403/404 are relayed to the
+    way (or the media ticket, for opaque-origin sandbox frames). 200 lets ``file_server`` answer; 401/403/404 are relayed to the
     client. The decision itself (and its 60 s cache) lives in
     :mod:`apps.editor.media_auth`, shared with the dev media server.
     """
     from urllib.parse import unquote, urlsplit
 
-    from .media_auth import media_access_status
+    from .media_auth import media_access_status, resolve_media_user
 
     forwarded = request.headers.get("X-Forwarded-Uri", "")
     path = unquote(urlsplit(forwarded).path)
     if not path.startswith("/media/"):
         return Response(status=status.HTTP_404_NOT_FOUND)
-    code = media_access_status(request.user, path[len("/media/") :])
+    # Session user, else the ``jz_media`` ticket (sandboxed frames send no Lax
+    # session cookie — see media_ticket.py).
+    code = media_access_status(resolve_media_user(request), path[len("/media/") :])
     return Response(status=code)
 

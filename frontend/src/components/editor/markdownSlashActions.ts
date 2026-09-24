@@ -23,7 +23,7 @@ const MD_OVERRIDE_INSERTS: Record<string, string> = {
 };
 
 /** 在 MD 模式经特殊交互（弹选择器/Modal）完成、而非纯文本插入的命令。 */
-const MD_INTERACTIVE_IDS = new Set(['mention', 'doc-card', 'math-block', 'math-inline']);
+const MD_INTERACTIVE_IDS = new Set(['mention', 'doc-card', 'math-block', 'math-inline', 'drawio']);
 
 /** MD 模式可用（直接插入或有专属交互），用于菜单置灰与回车选择判定。 */
 export function isMarkdownCapable(item: SlashCommandItem): boolean {
@@ -32,13 +32,13 @@ export function isMarkdownCapable(item: SlashCommandItem): boolean {
   return !item.richTextOnly && getMarkdownInsertForCommand(item) !== null;
 }
 
+export type MarkdownInteractiveKind = 'mention' | 'doc-card' | 'math-block' | 'math-inline' | 'drawio';
+
 /** 命令是否走 MD 专属交互（返回交互类型，否则 null）。 */
 export function markdownInteractiveKind(
   item: SlashCommandItem,
-): 'mention' | 'doc-card' | 'math-block' | 'math-inline' | null {
-  return MD_INTERACTIVE_IDS.has(item.id)
-    ? (item.id as 'mention' | 'doc-card' | 'math-block' | 'math-inline')
-    : null;
+): MarkdownInteractiveKind | null {
+  return MD_INTERACTIVE_IDS.has(item.id) ? (item.id as MarkdownInteractiveKind) : null;
 }
 
 /** Markdown snippet inserted when a slash command is chosen (replaces `/query`). */

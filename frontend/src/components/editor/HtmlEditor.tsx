@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, Button, Input, Segmented, Tag, Tooltip, Typography } from 'antd';
 import { EditOutlined, EyeOutlined, ReloadOutlined, SaveOutlined, SplitCellsOutlined } from '@ant-design/icons';
 import { message } from '@/utils/notify';
-import { buildHtmlPreviewSrcdoc } from '@/utils/htmlPreview';
+import { buildHtmlPreviewDoc } from '@/utils/htmlPreview';
+import SandboxedHtmlFrame from '@/components/common/SandboxedHtmlFrame';
 import { uploadFile } from '@/api/attachments';
 import { flushOnUnmount, type EditorSaveHandle } from './editorSaveLifecycle';
 import { draftBackupKey } from '@/utils/localDraftBackup';
@@ -344,17 +345,18 @@ export default function HtmlEditor({
     if (items.some((i) => i.kind === 'file')) e.preventDefault();
   }
 
-  // ``srcdoc`` is rebuilt on every value change; the iframe ditches its old
-  // document and reparses. For long HTML this could cost a few ms, fine for
-  // human typing speed. Sandboxed so scripts in the user's HTML can't read our
-  // cookies or top-level DOM.
+  // The preview document is rebuilt on every value change; the sandbox host
+  // frame is remounted and reparses. For long HTML this could cost a few ms,
+  // fine for human typing speed. Sandboxed (no allow-same-origin) so scripts in
+  // the user's HTML can't read our cookies or top-level DOM; see
+  // SandboxedHtmlFrame for why this is not ``srcdoc`` (parent CSP inheritance).
   const [debouncedValue, setDebouncedValue] = useState(value);
   useEffect(() => {
     const t = window.setTimeout(() => setDebouncedValue(value), 200);
     return () => window.clearTimeout(t);
   }, [value]);
 
-  const previewSrcdoc = useMemo(() => buildHtmlPreviewSrcdoc(debouncedValue), [debouncedValue]);
+  const previewDoc = useMemo(() => buildHtmlPreviewDoc(debouncedValue), [debouncedValue]);
 
   return (
     <div className="jz-editor-surface jz-html-editor">
@@ -485,11 +487,7 @@ export default function HtmlEditor({
         )}
         {showPreviewPane && (layoutMode === 'preview' || layoutMode === 'split') && (
           <div className="jz-html-editor-preview">
-            <iframe
-              title="HTML 预览"
-              srcDoc={previewSrcdoc}
-              sandbox="allow-scripts allow-popups allow-forms"
-            />
+            <SandboxedHtmlFrame title="HTML 预览" html={previewDoc} />
           </div>
         )}
       </div>

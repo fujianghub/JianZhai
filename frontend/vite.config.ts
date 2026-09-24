@@ -90,6 +90,8 @@ export default defineConfig(({ mode }) => {
       proxy: {
         '/api': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
         '/media': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
+        // self-hosted draw.io (infra/drawio/dist) — Django serves it in DEBUG
+        '/drawio': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
         '/feed.xml': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
         '/sitemap.xml': { target: apiOrigin, changeOrigin: true, agent: freshSocketAgent },
       },

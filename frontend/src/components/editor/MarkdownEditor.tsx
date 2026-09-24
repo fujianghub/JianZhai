@@ -24,6 +24,8 @@ import LivePreviewPane from './LivePreviewPane';
 import CodeMirrorMarkdown from './codemirror/CodeMirrorMarkdown';
 import FloatingFormatToolbar, { type FloatCommand } from './codemirror/FloatingFormatToolbar';
 import MathEditorModal from './MathEditorModal';
+import DrawioEditorModal from './drawio/DrawioEditorModal';
+import { buildDrawioFigureHtml } from '@/utils/drawioEmbed';
 import { listKeymap } from './codemirror/extensions/listKeymap';
 import { inlineFormatKeymap } from './codemirror/extensions/inlineFormatKeymap';
 import { tableAssistKeymap } from './codemirror/extensions/tableAssist';
@@ -65,6 +67,7 @@ import {
   getMarkdownInsertForCommand,
   isMarkdownCapable,
   markdownInteractiveKind,
+  type MarkdownInteractiveKind,
 } from './markdownSlashActions';
 import { trackRecentSlashCommand } from './slashCommandRegistry';
 import type { SlashCommandItem } from './slashCommandRegistry';
@@ -151,6 +154,8 @@ export default function MarkdownEditor({
     displayMode: boolean;
     range: { from: number; to: number };
   }>({ open: false, displayMode: true, range: { from: 0, to: 0 } });
+  /** drawio画板：打开时记录插入位置，保存后在该处写入 figure HTML。 */
+  const [drawioRange, setDrawioRange] = useState<{ from: number; to: number } | null>(null);
   /** Live Preview（就地渲染）开关 + 实例级 Compartment（挂载时装配进 CM）。 */
   const [lpOn, setLpOn] = useState<boolean>(loadLivePreviewOn);
   const lpCompartmentRef = useRef(new Compartment());
@@ -403,10 +408,11 @@ export default function MarkdownEditor({
   );
 
   /** MD 专属交互命令（@提及 / 文档卡 / 数学 Modal），range = 待替换区间。 */
-  function runInteractive(
-    kind: 'mention' | 'doc-card' | 'math-block' | 'math-inline',
-    range: { from: number; to: number },
-  ) {
+  function runInteractive(kind: MarkdownInteractiveKind, range: { from: number; to: number }) {
+    if (kind === 'drawio') {
+      setDrawioRange(range);
+      return;
+    }
     if (kind === 'mention' || kind === 'doc-card') {
       mentionKindRef.current = kind;
       triggerRangeRef.current = range;
@@ -465,6 +471,17 @@ export default function MarkdownEditor({
     if (!surface || !latex.trim()) return;
     const insert = displayMode ? `$$\n${latex.trim()}\n$$\n` : `$${latex.trim()}$`;
     surface.insertAt(range.from, range.to, insert);
+  }
+
+  /** 画板保存：在记录位置写入独占一段的 figure HTML（前后空行保证是 html_block）。 */
+  function handleDrawioSaved(attrs: { src: string; png: string }) {
+    const surface = surfaceRef.current;
+    const range = drawioRange;
+    if (!surface || !range) return;
+    const doc = surface.getValue();
+    const before = doc.slice(0, range.from);
+    const lead = before === '' || before.endsWith('\n\n') ? '' : before.endsWith('\n') ? '\n' : '\n\n';
+    surface.insertAt(range.from, range.to, `${lead}${buildDrawioFigureHtml(attrs)}\n\n`);
   }
 
   /* --------------------------- 键盘路由（CM keydown） --------------------------- */
@@ -1170,6 +1187,12 @@ export default function MarkdownEditor({
         displayMode={mathModal.displayMode}
         onCancel={() => setMathModal((m) => ({ ...m, open: false }))}
         onSubmit={handleMathSubmit}
+      />
+      <DrawioEditorModal
+        open={drawioRange !== null}
+        documentId={documentId}
+        onSaved={handleDrawioSaved}
+        onClose={() => setDrawioRange(null)}
       />
     </div>
   );

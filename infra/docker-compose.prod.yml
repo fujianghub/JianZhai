@@ -39,6 +39,10 @@ services:
       # User uploads — caddy serves /media/* straight from the volume
       # (see Caddyfile); Django only *writes* here.
       - media_data:/srv-media:ro
+      # Self-hosted draw.io bundle (2026-09-24): built locally by
+      # infra/drawio/build.py (~60 MB, gitignored) and rsynced to the server;
+      # served by caddy at /drawio/* (see Caddyfile). Missing dir → 404s only.
+      - ./drawio/dist:/srv-drawio:ro
     depends_on:
       - backend
     healthcheck:

@@ -242,6 +242,20 @@ export function JzMermaidIcon(p: IconProps) {
   );
 }
 
+/** drawio画板：画布 + 两个连线节点 + 笔尖（线稿，与 Mermaid/UML 同族）。 */
+export function JzDrawioIcon(p: IconProps) {
+  return (
+    <Wrap {...p}>
+      <rect x="4.5" y="5" width="15" height="14" rx="2" fill={ICON_FILL} />
+      <rect x="4.5" y="5" width="15" height="14" rx="2" />
+      <rect x="7" y="8" width="4" height="3" rx="0.8" />
+      <rect x="13" y="13" width="4" height="3" rx="0.8" fill={ICON_FILL_STRONG} />
+      <path d="M9 11v3.5h4" />
+      <circle cx="16.5" cy="8.5" r="0.9" fill={ICON_SPOT} stroke="none" />
+    </Wrap>
+  );
+}
+
 export function JzUmlIcon(p: IconProps) {
   return (
     <Wrap {...p}>

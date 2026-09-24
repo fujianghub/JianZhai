@@ -22,6 +22,10 @@ Rules (mirrors ``apps.reading.views._readable_doc``):
 - anonymous requests only pass when ``SITE_REQUIRE_LOGIN`` is off;
 - unknown paths → 404.
 
+The requester is ``resolve_media_user(request)``: the session user, or — for
+opaque-origin sandbox frames that cannot send the ``Lax`` session cookie — the
+holder of the ``jz_media`` ticket cookie (``media_ticket.py``, 2026-09-24).
+
 Decisions are cached in Redis for a minute per (user, path): a visibility
 change takes at most 60 s to reach the file layer, which is acceptable for
 the read side and keeps a 90-thumbnail rail from costing 90 DB round trips.
@@ -124,3 +128,22 @@ def media_access_status(user, relpath: str) -> int:
 
 def media_access_allowed(user, relpath: str) -> bool:
     return media_access_status(user, relpath) == STATUS_OK
+
+
+def resolve_media_user(request):
+    """The user a media request is made on behalf of.
+
+    Session user when there is one; otherwise the holder of a valid ``jz_media``
+    ticket cookie (see :mod:`apps.editor.media_ticket` — opaque-origin sandbox
+    frames send no ``SameSite=Lax`` session cookie); otherwise anonymous."""
+    from django.contrib.auth.models import AnonymousUser
+
+    from . import media_ticket
+
+    user = getattr(request, "user", None)
+    if user is not None and getattr(user, "is_authenticated", False):
+        return user
+    ticket_user = media_ticket.resolve(request.COOKIES.get(media_ticket.COOKIE_NAME))
+    if ticket_user is not None:
+        return ticket_user
+    return user if user is not None else AnonymousUser()
