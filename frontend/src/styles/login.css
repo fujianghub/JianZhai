@@ -1,0 +1,942 @@
+/* ════════════════════════════════════════════════════════════
+   登录页 — 玻璃 + 古风（翡翠光晕 / 朱砂印章 / 宣纸底）
+   ════════════════════════════════════════════════════════════ */
+.jz-login {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  /* minmax(0,1fr)：轨道不随内容撑开，否则卡片 max-width:100% 失效、窄屏溢出被 overflow 藏起来 */
+  grid-template-columns: minmax(0, 1fr);
+  place-items: center;
+  padding: 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 12% 8%,
+      color-mix(in srgb, var(--jz-accent) 16%, transparent) 0%, transparent 46%),
+    radial-gradient(110% 80% at 92% 96%,
+      color-mix(in srgb, var(--jz-gold) 14%, transparent) 0%, transparent 50%),
+    var(--glass-bg-deep);
+}
+/* 登录页按主题自带调性：星空紫罗兰星云 / 深海青碧荧光
+   （.jz-glass 在 starry/deepsea 下共用暗玻璃且强制翡翠重音；这里就近把重音/底色覆盖回各主题本色，
+    与 [data-theme='x'] .jz-glass 同特异性、靠源码靠后取胜） */
+[data-theme='starry'] .jz-login {
+  --jz-accent: #d9a6ff;
+  --jz-accent-soft: #c5adff;
+  --jz-accent-glow: rgba(217, 166, 255, 0.40);
+  --jz-gold: #d6c2ff;
+  --glass-bg-deep: #060914;
+}
+[data-theme='deepsea'] .jz-login {
+  --jz-accent: #6ff8e4;
+  --jz-accent-soft: #2dd4bf;
+  --jz-accent-glow: rgba(111, 248, 228, 0.40);
+  --jz-gold: #6ff8e4;
+  --glass-bg-deep: #02152a;
+}
+/* 漂浮的柔光团 */
+.jz-login-glow {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  top: -160px;
+  left: -120px;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--jz-accent) 30%, transparent) 0%, transparent 70%);
+  filter: blur(40px);
+  pointer-events: none;
+  animation: jz-login-float 14s ease-in-out infinite alternate;
+}
+@keyframes jz-login-float {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(80px, 60px) scale(1.12); }
+}
+
+.jz-login-theme {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 5;
+}
+
+.jz-login-card {
+  position: relative;
+  z-index: 2;
+  width: 464px;
+  max-width: 100%;
+  padding: 34px 36px 26px;
+  text-align: center;
+  border-radius: var(--glass-radius-lg);
+  background: var(--glass-surface-strong);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow-hero);
+  backdrop-filter: blur(22px) saturate(186%);
+  -webkit-backdrop-filter: blur(22px) saturate(186%);
+}
+
+.jz-login-seal {
+  margin: 0 auto 12px;
+}
+
+.jz-login-title {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
+  letter-spacing: var(--jz-ls-md);
+  font-family: var(--jz-font-display);
+  background: linear-gradient(120deg, var(--glass-text) 0%,
+    color-mix(in srgb, var(--jz-accent) 70%, var(--glass-text)) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.jz-login-sub {
+  margin: 8px 0 18px;
+  font-size: var(--jz-fs-md);
+  letter-spacing: var(--jz-ls-md);
+  color: var(--glass-text-muted);
+}
+
+.jz-login-form {
+  text-align: left;
+}
+.jz-login-form .ant-form-item-label > label {
+  color: var(--glass-text-muted);
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-sm);
+}
+/* 去 label 一屏化：收紧每个字段间距 */
+.jz-login-form .ant-form-item {
+  margin-bottom: 18px;
+}
+/* 整体放大约 120%：抬高输入框/按钮到 ~48px、字号到 16 */
+.jz-login-form .ant-input-affix-wrapper-lg,
+.jz-login-form .ant-btn-lg {
+  min-height: 48px;
+  font-size: var(--jz-fs-lg);
+}
+/* 前缀线条图标：默认淡灰，聚焦随边框变翡翠 */
+.jz-login-form .ant-input-prefix {
+  color: var(--glass-text-muted);
+  transition: color 0.2s ease;
+  margin-inline-end: 8px;
+  font-size: var(--jz-fs-2xl);
+}
+.jz-login-form .ant-input-affix-wrapper-focused .ant-input-prefix {
+  color: var(--jz-accent);
+}
+.jz-login-form .ant-btn-primary {
+  margin-top: 6px;
+  letter-spacing: var(--jz-ls-xl);
+  font-weight: 600;
+}
+
+/* 输入框玻璃化（.jz-glass 不带 admin/blog 外壳，需自带一套，暗主题才不会白底） */
+.jz-login-form .ant-input,
+.jz-login-form .ant-input-affix-wrapper,
+.jz-login-form .ant-input-password {
+  background: var(--glass-surface) !important;
+  border-color: var(--glass-border) !important;
+  color: var(--glass-text) !important;
+}
+.jz-login-form .ant-input-affix-wrapper .ant-input {
+  background: transparent !important;
+  border: none !important;
+}
+.jz-login-form .ant-input::placeholder {
+  color: var(--glass-text-muted);
+  opacity: 0.7;
+}
+.jz-login-form .ant-input:focus,
+.jz-login-form .ant-input-affix-wrapper-focused,
+.jz-login-form .ant-input-affix-wrapper:hover,
+.jz-login-form .ant-input:hover {
+  border-color: color-mix(in srgb, var(--jz-accent) 55%, transparent) !important;
+  box-shadow: 0 0 0 3px var(--jz-accent-glow) !important;
+}
+.jz-login-form .ant-input-password .anticon {
+  color: var(--glass-text-muted);
+}
+
+.jz-login-foot {
+  margin-top: 14px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-lg);
+  color: var(--glass-text-muted);
+  opacity: 0.7;
+}
+
+/* 压住浏览器自动填充的黄/蓝底，保持玻璃风格 */
+.jz-login-form input:-webkit-autofill,
+.jz-login-form input:-webkit-autofill:hover,
+.jz-login-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--glass-text);
+  -webkit-box-shadow: 0 0 0 1000px var(--glass-surface) inset;
+  caret-color: var(--glass-text);
+  transition: background-color 9999s ease-in-out 0s;
+}
+
+/* ════════════════════════════════════════════════════════════
+   登录页二期（2026-09-24）：双栏意境 + 水墨猫 + 场景透出 + 拼图等比缩放
+   参考 animatedlogin（角色状态机）/ login-demos（遮眼、错误抖动），造型与动效全部重写。
+   ════════════════════════════════════════════════════════════ */
+
+/* 四个 canvas 场景主题：去掉实底，让 AmbientStage 的星空/深海/春水/冬雪透出来
+   （场景一直挂着，旧版被 --glass-bg-deep 实底整块盖住）。光晕保留。 */
+[data-theme='starry'] .jz-login,
+[data-theme='deepsea'] .jz-login,
+[data-theme='springwater'] .jz-login,
+[data-theme='wintersnow'] .jz-login {
+  background:
+    radial-gradient(120% 90% at 12% 8%,
+      color-mix(in srgb, var(--jz-accent) 12%, transparent) 0%, transparent 46%),
+    radial-gradient(110% 80% at 92% 96%,
+      color-mix(in srgb, var(--jz-gold) 10%, transparent) 0%, transparent 50%);
+}
+
+.jz-login-shell {
+  position: relative;
+  z-index: 2;
+  width: 464px;
+  max-width: 100%;
+}
+.jz-login-art {
+  display: none;
+}
+
+/* ≥900：一张宽卡，左意境右表单（窄屏只留表单卡，与旧版一致） */
+@media (min-width: 900px) {
+  .jz-login-shell {
+    width: min(940px, 100%);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 464px;
+    border-radius: var(--glass-radius-lg);
+    background: var(--glass-surface-strong);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--glass-shadow-hero);
+    backdrop-filter: blur(22px) saturate(186%);
+    -webkit-backdrop-filter: blur(22px) saturate(186%);
+    overflow: hidden;
+  }
+  .jz-login-shell .jz-login-card {
+    width: auto;
+    border: none;
+    border-left: 1px solid var(--glass-divider);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .jz-login-shell .jz-login-foot {
+    display: none;
+  }
+  .jz-login-art {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 32px 26px;
+    background:
+      radial-gradient(70% 55% at 50% 40%,
+        color-mix(in srgb, var(--jz-gold) 12%, transparent) 0%, transparent 72%),
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--jz-accent) 7%, transparent) 0%, transparent 60%);
+  }
+}
+
+.jz-login-art-cat {
+  position: relative;
+  width: min(300px, 100%);
+  margin-top: auto;
+}
+/* 猫身后一轮淡月 */
+.jz-login-art-cat::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: -2%;
+  width: 66%;
+  aspect-ratio: 1;
+  translate: -50% 0;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--jz-gold) 24%, transparent) 0%,
+    color-mix(in srgb, var(--jz-gold) 8%, transparent) 52%, transparent 70%);
+  pointer-events: none;
+}
+.jz-login-art-caption {
+  margin: 18px 0 0;
+  min-height: 1.6em;
+  font-family: var(--jz-font-display);
+  font-weight: 400;
+  font-size: var(--jz-fs-2xl);
+  letter-spacing: var(--jz-ls-lg);
+  color: var(--glass-text);
+  animation: jz-login-caption-in var(--jz-dur-slow) var(--jz-ease-decel) both;
+}
+.jz-login-art-caption::before,
+.jz-login-art-caption::after {
+  color: color-mix(in srgb, var(--jz-accent) 70%, var(--glass-text));
+}
+.jz-login-art-caption::before { content: '「'; }
+.jz-login-art-caption::after { content: '」'; }
+@keyframes jz-login-caption-in {
+  from { opacity: 0; translate: 0 4px; }
+  to   { opacity: 1; translate: 0 0; }
+}
+.jz-login-art-foot {
+  margin-top: auto;
+  padding-top: 20px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-lg);
+  color: var(--glass-text-muted);
+  opacity: 0.7;
+}
+
+/* 登录失败：表单卡轻抖（独立 translate 属性，不与 .jz-fade-in 的 transform 冲突） */
+.jz-login-shell.is-error .jz-login-card {
+  animation: jz-login-shake 420ms var(--jz-ease-standard) both;
+}
+@keyframes jz-login-shake {
+  0%, 100% { translate: 0 0; }
+  20% { translate: -8px 0; }
+  40% { translate: 6px 0; }
+  60% { translate: -4px 0; }
+  80% { translate: 2px 0; }
+}
+
+.jz-login-caps {
+  font-size: var(--jz-fs-sm);
+  color: var(--jz-gold);
+}
+
+/* 手机：收窄边距（拼图已等比缩放，不再撑破卡片） */
+@media (max-width: 480px) {
+  .jz-login {
+    padding: 64px 12px 16px;
+  }
+  .jz-login-card {
+    padding: 26px 18px 20px;
+  }
+  .jz-login-theme {
+    top: 12px;
+    right: 12px;
+  }
+}
+
+/* ── 拼图验证码（components/auth/SliderCaptcha + captchaGeometry） ──
+   画布与滑轨宽度 = 容器宽度；描边一律 inset box-shadow / 伪元素，
+   **勿加 border**——会让显示宽度与 captchaGeometry 测得的容器宽度差 2px。 */
+.jz-captcha {
+  width: 100%;
+  margin-bottom: 4px;
+}
+.jz-captcha--loading {
+  height: 196px;
+  display: grid;
+  place-items: center;
+}
+.jz-captcha-canvas {
+  position: relative;
+  width: 100%;
+  border-radius: var(--glass-radius-md);
+  overflow: hidden;
+}
+.jz-captcha-canvas::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+  pointer-events: none;
+}
+.jz-captcha-bg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+.jz-captcha-piece {
+  position: absolute;
+  pointer-events: none;
+  user-select: none;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.35));
+}
+.jz-login-form .ant-btn.jz-icon-btn.jz-captcha-reload {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.32) !important;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+.jz-login-form .ant-btn.jz-icon-btn.jz-captcha-reload:not(:disabled):hover {
+  color: #fff !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+.jz-captcha-track {
+  position: relative;
+  margin-top: 10px;
+  border-radius: var(--glass-radius-pill);
+  background: var(--glass-surface);
+  box-shadow: inset 0 0 0 1px var(--glass-border);
+  user-select: none;
+}
+.jz-captcha-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--jz-accent-glow),
+    color-mix(in srgb, var(--jz-accent) 42%, transparent));
+  pointer-events: none;
+}
+.jz-captcha-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding-left: 44px;
+  font-size: var(--jz-fs-sm);
+  letter-spacing: var(--jz-ls-sm);
+  color: var(--glass-text-muted);
+  pointer-events: none;
+}
+.jz-captcha.is-solved .jz-captcha-hint {
+  color: var(--glass-text);
+}
+.jz-captcha-handle {
+  position: absolute;
+  top: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--jz-accent);
+  color: var(--jz-on-accent);
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 2px 10px var(--jz-accent-glow);
+  transition:
+    transform var(--jz-dur-fast) var(--jz-ease-standard),
+    background-color var(--jz-dur-base) var(--jz-ease-standard);
+}
+.jz-captcha-handle:hover {
+  transform: scale(1.05);
+}
+.jz-captcha-handle:focus-visible {
+  outline: none;
+  box-shadow: var(--jz-focus-ring), 0 2px 10px var(--jz-accent-glow);
+}
+.jz-captcha.is-dragging .jz-captcha-handle {
+  cursor: grabbing;
+  transform: scale(1.08);
+}
+.jz-captcha.is-solved .jz-captcha-handle {
+  background: var(--jz-accent-soft);
+}
+/* 非拖动（键盘微调 / 换题归零）时平滑跟随；拖动中必须零延迟 */
+.jz-captcha:not(.is-dragging) .jz-captcha-handle,
+.jz-captcha:not(.is-dragging) .jz-captcha-piece,
+.jz-captcha:not(.is-dragging) .jz-captcha-fill {
+  transition-property: left, width, transform, background-color;
+  transition-duration: var(--jz-dur-base);
+  transition-timing-function: var(--jz-ease-decel);
+}
+
+/* ── 水墨猫（components/auth/InkCat + inkcat/useCatEngine，2026-09-24 二期）──
+   花色令牌：浅色主题「乌云盖雪」，暗色主题「雪里拖枪」+ 鸳鸯眼。
+   JS 写：--jz-cat-px/py（瞳孔，SVG 单位）、--jz-cat-tilt/hx（头）、--jz-cat-lean（身）。
+   CSS 管：data-mood × data-behavior → 眼睑 --jz-cat-lid、瞳孔宽 --jz-cat-pw、委屈 --jz-cat-sad、
+   耳/尾/爪/嘴/特效。个别属性动画一律用独立 rotate/translate/scale 属性，
+   与 transform（姿态）叠加而不互相覆盖。 */
+@property --jz-cat-lid { syntax: '<number>'; inherits: true; initial-value: 0; }
+@property --jz-cat-pw { syntax: '<number>'; inherits: true; initial-value: 1; }
+@property --jz-cat-sad { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
+
+.jz-inkcat {
+  --jz-cat-main-a: #1d1b1a;
+  --jz-cat-main-b: #45403c;
+  --jz-cat-patch-a: #fdfaf4;
+  --jz-cat-patch-b: #e2dace;
+  --jz-cat-tail-a: #1d1b1a;
+  --jz-cat-tail-b: #3a3632;
+  --jz-cat-tail-rim: transparent;
+  --jz-cat-line: #2e2925;
+  --jz-cat-socket: #15120f;
+  --jz-cat-iris-l-a: #fde68f;
+  --jz-cat-iris-l-b: #e3a122;
+  --jz-cat-iris-l-c: #9a5f0c;
+  --jz-cat-iris-r-a: #fde68f;
+  --jz-cat-iris-r-b: #e3a122;
+  --jz-cat-iris-r-c: #9a5f0c;
+  --jz-cat-pink: #e3918a;
+  --jz-cat-nose: #d4675a;
+  --jz-cat-cinnabar: #c63b2e;
+  --jz-cat-lid: 0.06;
+  --jz-cat-pw: 1;
+  --jz-cat-sad: 0deg;
+  --jz-cat-breath: 1.014;
+  --jz-cat-closed: color-mix(in srgb, var(--jz-cat-patch-a) 62%, var(--jz-cat-main-a));
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+  transition:
+    --jz-cat-lid var(--jz-dur-fast) var(--jz-ease-standard),
+    --jz-cat-pw var(--jz-dur-slow) var(--jz-ease-decel),
+    --jz-cat-sad var(--jz-dur-slow) var(--jz-ease-standard);
+}
+[data-theme='dark'] .jz-inkcat,
+[data-theme='starry'] .jz-inkcat,
+[data-theme='deepsea'] .jz-inkcat {
+  --jz-cat-main-a: #f7f5fa;
+  --jz-cat-main-b: #cdc9d8;
+  --jz-cat-patch-a: #ffffff;
+  --jz-cat-patch-b: #e6e2ee;
+  --jz-cat-tail-a: #1b1920;
+  --jz-cat-tail-b: #37343f;
+  --jz-cat-tail-rim: rgba(255, 255, 255, 0.3);
+  --jz-cat-socket: #2a2632;
+  --jz-cat-iris-r-a: #d4f0ff;
+  --jz-cat-iris-r-b: #5aa8e0;
+  --jz-cat-iris-r-c: #245f8f;
+  --jz-cat-closed: color-mix(in srgb, var(--jz-cat-line) 70%, var(--jz-cat-main-a));
+}
+
+/* 渐变色标 */
+.jz-cat-s-main-a { stop-color: var(--jz-cat-main-a); }
+.jz-cat-s-main-b { stop-color: var(--jz-cat-main-b); }
+.jz-cat-s-patch-a { stop-color: var(--jz-cat-patch-a); }
+.jz-cat-s-patch-b { stop-color: var(--jz-cat-patch-b); }
+.jz-cat-s-tail-a { stop-color: var(--jz-cat-tail-a); }
+.jz-cat-s-tail-b { stop-color: var(--jz-cat-tail-b); }
+.jz-cat-s-iris-l-a { stop-color: var(--jz-cat-iris-l-a); }
+.jz-cat-s-iris-l-b { stop-color: var(--jz-cat-iris-l-b); }
+.jz-cat-s-iris-l-c { stop-color: var(--jz-cat-iris-l-c); }
+.jz-cat-s-iris-r-a { stop-color: var(--jz-cat-iris-r-a); }
+.jz-cat-s-iris-r-b { stop-color: var(--jz-cat-iris-r-b); }
+.jz-cat-s-iris-r-c { stop-color: var(--jz-cat-iris-r-c); }
+.jz-cat-s-leg-shade { stop-color: color-mix(in srgb, var(--jz-cat-patch-b) 70%, var(--jz-cat-line)); }
+.jz-cat-s-blush { stop-color: var(--jz-cat-pink); stop-opacity: 0.55; }
+.jz-cat-s-ground { stop-color: var(--glass-text); stop-opacity: 0.2; }
+
+/* 静态造型 */
+.jz-cat-mover { cursor: pointer; }
+.jz-cat-ear-in { fill: var(--jz-cat-pink); opacity: 0.55; }
+.jz-cat-socket { fill: var(--jz-cat-socket); }
+.jz-cat-pupil-core { fill: #120f0c; }
+.jz-cat-glint { fill: #fff; opacity: 0.95; }
+.jz-cat-glint--sm { opacity: 0.7; }
+.jz-cat-lash {
+  fill: none;
+  stroke: var(--jz-cat-line);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  opacity: 0.55;
+}
+.jz-cat-nose { fill: var(--jz-cat-nose); }
+.jz-cat-mouth,
+.jz-cat-mouth-sad,
+.jz-cat-eyes-happy path {
+  fill: none;
+  stroke: var(--jz-cat-line);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.jz-cat-eyes-happy path { stroke: var(--jz-cat-socket); stroke-width: 4; }
+.jz-cat-eyes-closed path {
+  fill: none;
+  stroke: var(--jz-cat-closed);
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+.jz-cat-whisker path { fill: var(--glass-text-muted); opacity: 0.75; }
+.jz-cat-yawn-in { fill: #5b2420; }
+.jz-cat-tongue { fill: #e58a80; }
+.jz-cat-leg {
+  stroke: color-mix(in srgb, var(--jz-cat-line) 42%, transparent);
+  stroke-width: 1.2;
+}
+.jz-cat-paw-pad {
+  stroke: color-mix(in srgb, var(--jz-cat-line) 28%, transparent);
+  stroke-width: 1.2;
+}
+.jz-cat-toe {
+  fill: none;
+  stroke: color-mix(in srgb, var(--jz-cat-line) 55%, transparent);
+  stroke-width: 1.6;
+  stroke-linecap: round;
+}
+.jz-cat-beans { fill: var(--jz-cat-pink); opacity: 0; transition: opacity var(--jz-dur-base) var(--jz-ease-standard); }
+.jz-cat-tail-rim,
+.jz-cat-tail-stroke {
+  fill: none;
+  stroke-linecap: round;
+  transition: stroke-width var(--jz-dur-slow) var(--jz-ease-spring);
+}
+.jz-cat-tail-rim { stroke: var(--jz-cat-tail-rim); stroke-width: 16.5; }
+.jz-cat-tail-stroke { stroke-width: 13; }
+
+/* 线装书：靛青 + 赭石封皮，米黄书口；书根墨题 */
+.jz-cat-cover--top { fill: color-mix(in srgb, var(--jz-accent) 38%, #2d3e55); }
+.jz-cat-cover--low { fill: color-mix(in srgb, var(--jz-gold) 36%, #5a4431); }
+.jz-cat-paper { fill: #f0e7d4; }
+.jz-cat-paper-line { stroke: #d6c8ad; stroke-width: 0.8; }
+.jz-cat-thread { stroke: #efe6d2; stroke-width: 1.4; opacity: 0.85; }
+.jz-cat-shugen {
+  font-family: var(--jz-font-display);
+  fill: #3a3129;
+  letter-spacing: 2px;
+}
+.jz-cat-seal rect { fill: var(--jz-cat-cinnabar); }
+.jz-cat-seal text { font-family: var(--jz-font-serif); font-weight: 700; fill: #fdf1e3; }
+.jz-cat-seal {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  scale: 1.8;
+  rotate: -12deg;
+}
+
+.jz-cat-blush { opacity: 0.6; transition: opacity var(--jz-dur-slow) var(--jz-ease-standard); }
+.jz-cat-ripple {
+  fill: none;
+  stroke: color-mix(in srgb, var(--jz-accent) 55%, transparent);
+  stroke-width: 1.4;
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.jz-cat-heart { fill: var(--jz-cat-cinnabar); opacity: 0; transform-box: fill-box; transform-origin: center; }
+.jz-cat-zzz text {
+  font-family: var(--jz-font-display);
+  fill: var(--glass-text-muted);
+  opacity: 0;
+}
+
+/* ── 目光 / 头 / 身（JS 变量，无 CSS 过渡：弹簧已平滑） ── */
+.jz-cat-mover {
+  transform-origin: 150px 296px;
+  transform: rotate(var(--jz-cat-lean, 0deg));
+  transition: rotate var(--jz-dur-slow) var(--jz-ease-spring);
+}
+.jz-cat-head {
+  transform-origin: 150px 208px;
+  transform: translateX(calc(var(--jz-cat-hx, 0) * 1px)) rotate(var(--jz-cat-tilt, 0deg));
+}
+.jz-cat-pupil {
+  transform: translate(calc(var(--jz-cat-px, 0) * 1px), calc(var(--jz-cat-py, 0) * 1px));
+}
+.jz-cat-pupil-core {
+  transform-box: fill-box;
+  transform-origin: center;
+  transform: scaleX(var(--jz-cat-pw));
+}
+.jz-cat-lid { transform: translateY(calc(var(--jz-cat-lid) * 32px)) rotate(var(--jz-cat-sad)); }
+.jz-cat-lid--l { transform-origin: 124px 150px; transform: translateY(calc(var(--jz-cat-lid) * 32px)) rotate(calc(var(--jz-cat-sad) * -1)); }
+.jz-cat-lid--r { transform-origin: 176px 150px; }
+.jz-cat-headpose {
+  transform-origin: 150px 208px;
+  transition: transform var(--jz-dur-epic) var(--jz-ease-standard);
+}
+
+/* 呼吸：胸腹极轻起伏（打盹更深更慢） */
+.jz-cat-body {
+  transform-origin: 150px 284px;
+  animation: jz-cat-breath 3.8s ease-in-out infinite alternate;
+}
+@keyframes jz-cat-breath {
+  from { scale: 1 1; }
+  to   { scale: 1 var(--jz-cat-breath); }
+}
+
+/* ── 眼：眼睑 / 瞳孔宽 / 委屈 ── */
+.jz-inkcat[data-mood='typing'] { --jz-cat-lid: 0.12; --jz-cat-pw: 1.25; }
+.jz-inkcat[data-mood='captcha'] { --jz-cat-lid: 0; --jz-cat-pw: 1.95; }
+.jz-inkcat[data-mood='peek'] { --jz-cat-lid: 0.2; --jz-cat-pw: 1.5; }
+.jz-inkcat[data-mood='error'] { --jz-cat-lid: 0.3; --jz-cat-pw: 1.75; --jz-cat-sad: 14deg; }
+.jz-inkcat[data-mood='idle'].is-hover { --jz-cat-lid: 0.22; --jz-cat-pw: 1.15; }
+.jz-inkcat[data-mood='idle'][data-behavior='yawn'] { --jz-cat-lid: 0.8; }
+.jz-inkcat[data-mood='idle'][data-behavior='lick'] { --jz-cat-lid: 0.62; }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] {
+  --jz-cat-lid: 1;
+  --jz-cat-breath: 1.03;
+  transition-duration: var(--jz-dur-epic);
+}
+.jz-inkcat[data-mood='idle'][data-behavior='wake'] { animation: jz-cat-wake-lid 1.3s var(--jz-ease-standard) both; }
+@keyframes jz-cat-wake-lid {
+  0% { --jz-cat-lid: 1; }
+  35% { --jz-cat-lid: 0.55; }
+  55% { --jz-cat-lid: 0.8; }
+  100% { --jz-cat-lid: 0.06; }
+}
+.jz-inkcat.jz-inkcat.is-blink { --jz-cat-lid: 1; }
+
+/* 开心眯眼：成功 / 呼噜 / 翻肚 */
+.jz-cat-eyes,
+.jz-cat-eyes-happy,
+.jz-cat-eyes-closed,
+.jz-cat-mouth,
+.jz-cat-mouth-sad {
+  transition: opacity var(--jz-dur-base) var(--jz-ease-standard);
+}
+.jz-cat-eyes-happy,
+.jz-cat-eyes-closed,
+.jz-cat-mouth-sad { opacity: 0; }
+/* 久闭（打盹/哈欠/舔爪）改画闭眼弧线：眼睑与眼窝同一裁剪，边缘抗锯齿会透出一圈眼眶 */
+.jz-inkcat[data-mood='idle']:is([data-behavior='sleep'], [data-behavior='yawn'], [data-behavior='lick']) .jz-cat-eyes {
+  opacity: 0;
+  transition-delay: var(--jz-dur-fast);
+}
+.jz-inkcat[data-mood='idle']:is([data-behavior='sleep'], [data-behavior='yawn'], [data-behavior='lick']) .jz-cat-eyes-closed {
+  opacity: 1;
+  transition-delay: var(--jz-dur-fast);
+}
+.jz-inkcat[data-mood='success'] .jz-cat-eyes,
+.jz-inkcat[data-mood='idle'][data-behavior='purr'] .jz-cat-eyes,
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-eyes { opacity: 0; }
+.jz-inkcat[data-mood='success'] .jz-cat-eyes-happy,
+.jz-inkcat[data-mood='idle'][data-behavior='purr'] .jz-cat-eyes-happy,
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-eyes-happy { opacity: 1; }
+.jz-inkcat[data-mood='error'] .jz-cat-mouth { opacity: 0; }
+.jz-inkcat[data-mood='error'] .jz-cat-mouth-sad { opacity: 1; }
+.jz-inkcat.is-hover .jz-cat-blush,
+.jz-inkcat[data-behavior='purr'] .jz-cat-blush,
+.jz-inkcat[data-behavior='belly'] .jz-cat-blush,
+.jz-inkcat[data-mood='success'] .jz-cat-blush { opacity: 1; }
+
+/* 嘴：哈欠张口 / 舔爪吐舌 */
+.jz-cat-yawn {
+  transform-origin: 150px 179px;
+  scale: 1 0;
+}
+.jz-inkcat[data-behavior='yawn'] .jz-cat-yawn,
+.jz-inkcat[data-behavior='wake'] .jz-cat-yawn { animation: jz-cat-yawn 1.3s var(--jz-ease-standard) both; }
+.jz-inkcat[data-behavior='yawn'] .jz-cat-mouth,
+.jz-inkcat[data-behavior='wake'] .jz-cat-mouth { opacity: 0; }
+@keyframes jz-cat-yawn {
+  0%, 100% { scale: 1 0; }
+  30%, 70% { scale: 1 1; }
+}
+.jz-cat-tongue--lick { opacity: 0; transition: opacity var(--jz-dur-fast) var(--jz-ease-standard); }
+.jz-inkcat[data-behavior='lick'] .jz-cat-tongue--lick { opacity: 1; }
+
+/* ── 头部姿态（CSS 层）── */
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-headpose { transform: translateY(6px) rotate(-7deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-headpose { transform: rotate(10deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='lick'] .jz-cat-headpose { transform: translate(2px, 3px) rotate(7deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='yawn'] .jz-cat-headpose,
+.jz-inkcat[data-mood='idle'][data-behavior='wake'] .jz-cat-headpose { animation: jz-cat-yawn-head 1.3s var(--jz-ease-standard) both; }
+@keyframes jz-cat-yawn-head {
+  0%, 100% { rotate: 0deg; translate: 0 0; }
+  35%, 65% { rotate: -5deg; translate: 0 -3px; }
+}
+.jz-inkcat[data-mood='error'] .jz-cat-headpose {
+  animation: jz-cat-shake 800ms var(--jz-ease-standard) 120ms both;
+}
+@keyframes jz-cat-shake {
+  0%, 100% { translate: 0 0; }
+  12% { translate: -8px 0; }
+  26% { translate: 7px 0; }
+  40% { translate: -5px 0; }
+  54% { translate: 4px 0; }
+  68% { translate: -2px 0; }
+  82% { translate: 1px 0; }
+}
+
+/* ── 耳朵：姿态（transform）+ 抖动（独立 rotate 属性） ── */
+.jz-cat-ear { transition: transform var(--jz-dur-slow) var(--jz-ease-spring); }
+.jz-cat-ear--l { transform-origin: 122px 112px; }
+.jz-cat-ear--r { transform-origin: 178px 112px; }
+.jz-inkcat:is([data-mood='typing'], [data-mood='captcha'], [data-mood='success']) .jz-cat-ear--l { transform: rotate(5deg); }
+.jz-inkcat:is([data-mood='typing'], [data-mood='captcha'], [data-mood='success']) .jz-cat-ear--r { transform: rotate(-5deg); }
+.jz-inkcat[data-mood='cover'] .jz-cat-ear--l { transform: rotate(-11deg); }
+.jz-inkcat[data-mood='cover'] .jz-cat-ear--r { transform: rotate(11deg); }
+.jz-inkcat[data-mood='error'] .jz-cat-ear--l { transform: rotate(-22deg); }
+.jz-inkcat[data-mood='error'] .jz-cat-ear--r { transform: rotate(22deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-ear--l { transform: rotate(-9deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-ear--r { transform: rotate(9deg); }
+.jz-inkcat[data-behavior='ear-l'] .jz-cat-ear--l,
+.jz-inkcat.is-flick[data-flick='l'] .jz-cat-ear--l { animation: jz-cat-twitch-l 420ms var(--jz-ease-standard); }
+.jz-inkcat[data-behavior='ear-r'] .jz-cat-ear--r,
+.jz-inkcat.is-flick[data-flick='r'] .jz-cat-ear--r { animation: jz-cat-twitch-r 420ms var(--jz-ease-standard); }
+.jz-inkcat.is-flick .jz-cat-ear { animation-duration: 260ms; }
+@keyframes jz-cat-twitch-l {
+  0%, 100% { rotate: 0deg; }
+  20% { rotate: -14deg; }
+  45% { rotate: 3deg; }
+  65% { rotate: -8deg; }
+}
+@keyframes jz-cat-twitch-r {
+  0%, 100% { rotate: 0deg; }
+  20% { rotate: 14deg; }
+  45% { rotate: -3deg; }
+  65% { rotate: 8deg; }
+}
+
+/* ── 尾巴：常态轻摆（外层 rotate 属性）+ 心境姿态（内层 transform）+ 甩尾 ── */
+.jz-cat-tail {
+  transform-origin: 204px 270px;
+  animation: jz-cat-tail-sway 3.6s ease-in-out infinite alternate;
+}
+@keyframes jz-cat-tail-sway {
+  from { rotate: -4deg; }
+  to   { rotate: 5deg; }
+}
+.jz-cat-tail-pose {
+  transform-origin: 204px 270px;
+  transition: transform var(--jz-dur-slow) var(--jz-ease-spring);
+}
+.jz-inkcat[data-mood='typing'] .jz-cat-tail-pose { transform: rotate(-8deg); }
+.jz-inkcat[data-mood='success'] .jz-cat-tail-pose { transform: rotate(-26deg); }
+.jz-inkcat[data-mood='error'] .jz-cat-tail-pose { transform: rotate(10deg); }
+.jz-inkcat[data-mood='error'] .jz-cat-tail-stroke { stroke-width: 21; }
+.jz-inkcat[data-mood='error'] .jz-cat-tail-rim { stroke-width: 24.5; }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-tail-pose { transform: rotate(24deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-tail { animation-play-state: paused; }
+.jz-inkcat[data-mood='captcha'] .jz-cat-tail-pose { animation: jz-cat-tail-flick 600ms ease-in-out infinite alternate; }
+.jz-inkcat[data-behavior='tail-flick'] .jz-cat-tail-pose { animation: jz-cat-tail-flick 350ms ease-in-out 2 alternate; }
+@keyframes jz-cat-tail-flick {
+  from { rotate: -6deg; }
+  to   { rotate: 9deg; }
+}
+
+/* ── 前爪：以肩为轴；捂眼 = 翻 180° 到脸前（先微缩再抬，右爪慢 60ms） ── */
+.jz-cat-arm { transition: transform var(--jz-dur-slow) var(--jz-ease-anticipate); }
+.jz-cat-arm--r { transition-delay: 60ms; }
+.jz-inkcat[data-mood='cover'] .jz-cat-arm--l,
+.jz-inkcat[data-mood='peek'] .jz-cat-arm--l { transform: rotate(180deg); }
+.jz-inkcat[data-mood='cover'] .jz-cat-arm--r { transform: rotate(-180deg); }
+.jz-inkcat[data-mood='peek'] .jz-cat-arm--r { transform: rotate(-146deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-arm--l { transform: rotate(128deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-arm--r { transform: rotate(-128deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='lick'] .jz-cat-arm--r {
+  transform: rotate(150deg) scale(1, 0.62);
+  animation: jz-cat-lick 380ms ease-in-out 200ms 4 alternate;
+}
+@keyframes jz-cat-lick {
+  from { rotate: -4deg; }
+  to   { rotate: 5deg; }
+}
+.jz-inkcat:is([data-mood='cover'], [data-mood='peek']) .jz-cat-beans,
+.jz-inkcat[data-behavior='belly'] .jz-cat-beans { opacity: 1; }
+
+/* 探头猫的两只爪：搭在卡片沿上，捂眼时直接举到眼前 */
+.jz-cat-edgepaw { transition: transform var(--jz-dur-slow) var(--jz-ease-anticipate); }
+.jz-cat-edgepaw--r { transition-delay: 60ms; }
+.jz-inkcat[data-mood='cover'] .jz-cat-edgepaw--l,
+.jz-inkcat[data-mood='peek'] .jz-cat-edgepaw--l { transform: translate(4px, -66px); }
+.jz-inkcat[data-mood='cover'] .jz-cat-edgepaw--r { transform: translate(-4px, -66px); }
+.jz-inkcat[data-mood='peek'] .jz-cat-edgepaw--r { transform: translate(24px, -42px); }
+
+/* ── 整体：成功轻跳 / 翻肚后仰 / 呼噜轻颤 ── */
+.jz-inkcat[data-mood='success'] .jz-cat-mover { animation: jz-cat-hop 560ms var(--jz-ease-spring) both; }
+@keyframes jz-cat-hop {
+  0%, 100% { translate: 0 0; }
+  42% { translate: 0 -12px; }
+}
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-mover { rotate: -5deg; }
+.jz-inkcat[data-behavior='purr'] .jz-cat-body { animation: jz-cat-purr 90ms linear infinite alternate; }
+@keyframes jz-cat-purr {
+  from { translate: -0.4px 0; }
+  to   { translate: 0.4px 0; }
+}
+.jz-inkcat[data-behavior='wake'] .jz-cat-mover { animation: jz-cat-stretch 1.3s var(--jz-ease-standard) both; }
+@keyframes jz-cat-stretch {
+  0%, 100% { scale: 1 1; }
+  40% { scale: 1.02 1.04; }
+}
+
+/* ── 特效：呼噜波纹 / 墨心 / zZ / 朱砂印 ── */
+.jz-inkcat[data-behavior='purr'] .jz-cat-ripple { animation: jz-cat-ripple 1.2s var(--jz-ease-decel) both; }
+.jz-inkcat[data-behavior='purr'] .jz-cat-ripple--2 { animation-delay: 380ms; }
+@keyframes jz-cat-ripple {
+  from { opacity: 0.8; scale: 0.9; }
+  to   { opacity: 0; scale: 1.5; }
+}
+.jz-inkcat:is([data-behavior='purr'], [data-behavior='belly']) .jz-cat-heart {
+  animation: jz-cat-heart 1.2s var(--jz-ease-decel) both;
+}
+@keyframes jz-cat-heart {
+  0% { opacity: 0; translate: 0 6px; scale: 0.4; }
+  25% { opacity: 0.9; scale: 1; }
+  100% { opacity: 0; translate: 0 -26px; scale: 0.9; }
+}
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-zzz text { animation: jz-cat-zzz 2.7s ease-in-out infinite; }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-zzz text:nth-child(2) { animation-delay: 0.9s; }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-zzz text:nth-child(3) { animation-delay: 1.8s; }
+@keyframes jz-cat-zzz {
+  0% { opacity: 0; translate: -4px 6px; }
+  30% { opacity: 0.85; }
+  100% { opacity: 0; translate: 6px -10px; }
+}
+.jz-inkcat[data-mood='success'] .jz-cat-seal { animation: jz-cat-stamp 420ms var(--jz-ease-spring) 240ms both; }
+@keyframes jz-cat-stamp {
+  from { opacity: 0; scale: 1.8; rotate: -12deg; }
+  to   { opacity: 1; scale: 1; rotate: -5deg; }
+}
+
+/* 手机探头猫：<900 挂在表单卡顶沿（卡沿 = viewBox y 214） */
+.jz-login-peek {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  top: -123px;
+  width: 150px;
+  translate: -50% 0;
+}
+@media (max-width: 899px) {
+  .jz-login {
+    padding-top: 140px;
+  }
+}
+
+/* 意境栏宣纸颗粒（静态一层，multiply / 暗色 screen） */
+.jz-login-art::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.3  0 0 0 0 0.25  0 0 0 0 0.2  0 0 0 1.2 -0.2'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+[data-theme='dark'] .jz-login-art::after,
+[data-theme='starry'] .jz-login-art::after,
+[data-theme='deepsea'] .jz-login-art::after {
+  mix-blend-mode: screen;
+  opacity: 0.05;
+}
+
+/* 动效伴生：系统 reduce 与「精简」档——姿态瞬切；JS 侧同判（不起弹簧/调度/眨眼） */
+@media (prefers-reduced-motion: reduce) {
+  .jz-login-glow,
+  .jz-login-art-caption,
+  .jz-login-shell.is-error .jz-login-card,
+  .jz-inkcat,
+  .jz-inkcat *,
+  .jz-captcha * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+:root[data-motion='min'] .jz-login-glow,
+:root[data-motion='min'] .jz-login-art-caption,
+:root[data-motion='min'] .jz-login-shell.is-error .jz-login-card,
+:root[data-motion='min'] .jz-inkcat,
+:root[data-motion='min'] .jz-inkcat *,
+:root[data-motion='min'] .jz-captcha * {
+  animation: none !important;
+  transition: none !important;
+}
+/* 「适中」档：关纯装饰循环（呼吸 / 摆尾），保留姿态与目光 */
+:root[data-motion='medium'] .jz-cat-tail,
+:root[data-motion='medium'] .jz-cat-body {
+  animation: none;
+}

@@ -4203,183 +4203,6 @@ a.jz-meta-full-edit-btn:focus-visible {
   }
 }
 
-/* ════════════════════════════════════════════════════════════
-   登录页 — 玻璃 + 古风（翡翠光晕 / 朱砂印章 / 宣纸底）
-   ════════════════════════════════════════════════════════════ */
-.jz-login {
-  position: relative;
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  overflow: hidden;
-  background:
-    radial-gradient(120% 90% at 12% 8%,
-      color-mix(in srgb, var(--jz-accent) 16%, transparent) 0%, transparent 46%),
-    radial-gradient(110% 80% at 92% 96%,
-      color-mix(in srgb, var(--jz-gold) 14%, transparent) 0%, transparent 50%),
-    var(--glass-bg-deep);
-}
-/* 登录页按主题自带调性：星空紫罗兰星云 / 深海青碧荧光
-   （.jz-glass 在 starry/deepsea 下共用暗玻璃且强制翡翠重音；这里就近把重音/底色覆盖回各主题本色，
-    与 [data-theme='x'] .jz-glass 同特异性、靠源码靠后取胜） */
-[data-theme='starry'] .jz-login {
-  --jz-accent: #d9a6ff;
-  --jz-accent-soft: #c5adff;
-  --jz-accent-glow: rgba(217, 166, 255, 0.40);
-  --jz-gold: #d6c2ff;
-  --glass-bg-deep: #060914;
-}
-[data-theme='deepsea'] .jz-login {
-  --jz-accent: #6ff8e4;
-  --jz-accent-soft: #2dd4bf;
-  --jz-accent-glow: rgba(111, 248, 228, 0.40);
-  --jz-gold: #6ff8e4;
-  --glass-bg-deep: #02152a;
-}
-/* 漂浮的柔光团 */
-.jz-login-glow {
-  position: absolute;
-  width: 520px;
-  height: 520px;
-  border-radius: 50%;
-  top: -160px;
-  left: -120px;
-  background: radial-gradient(circle,
-    color-mix(in srgb, var(--jz-accent) 30%, transparent) 0%, transparent 70%);
-  filter: blur(40px);
-  pointer-events: none;
-  animation: jz-login-float 14s ease-in-out infinite alternate;
-}
-@keyframes jz-login-float {
-  from { transform: translate(0, 0) scale(1); }
-  to   { transform: translate(80px, 60px) scale(1.12); }
-}
-
-.jz-login-theme {
-  position: fixed;
-  top: 18px;
-  right: 18px;
-  z-index: 5;
-}
-
-.jz-login-card {
-  position: relative;
-  z-index: 2;
-  width: 464px;
-  max-width: 100%;
-  padding: 34px 36px 26px;
-  text-align: center;
-  border-radius: var(--glass-radius-lg);
-  background: var(--glass-surface-strong);
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow-hero);
-  backdrop-filter: blur(22px) saturate(186%);
-  -webkit-backdrop-filter: blur(22px) saturate(186%);
-}
-
-.jz-login-seal {
-  margin: 0 auto 12px;
-}
-
-.jz-login-title {
-  margin: 0;
-  font-size: 26px;
-  font-weight: 400; /* 文楷仅 400，见 .jz-hero-quote 注释 */
-  letter-spacing: var(--jz-ls-md);
-  font-family: var(--jz-font-display);
-  background: linear-gradient(120deg, var(--glass-text) 0%,
-    color-mix(in srgb, var(--jz-accent) 70%, var(--glass-text)) 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-.jz-login-sub {
-  margin: 8px 0 18px;
-  font-size: var(--jz-fs-md);
-  letter-spacing: var(--jz-ls-md);
-  color: var(--glass-text-muted);
-}
-
-.jz-login-form {
-  text-align: left;
-}
-.jz-login-form .ant-form-item-label > label {
-  color: var(--glass-text-muted);
-  font-size: var(--jz-fs-sm);
-  letter-spacing: var(--jz-ls-sm);
-}
-/* 去 label 一屏化：收紧每个字段间距 */
-.jz-login-form .ant-form-item {
-  margin-bottom: 18px;
-}
-/* 整体放大约 120%：抬高输入框/按钮到 ~48px、字号到 16 */
-.jz-login-form .ant-input-affix-wrapper-lg,
-.jz-login-form .ant-btn-lg {
-  min-height: 48px;
-  font-size: var(--jz-fs-lg);
-}
-/* 前缀线条图标：默认淡灰，聚焦随边框变翡翠 */
-.jz-login-form .ant-input-prefix {
-  color: var(--glass-text-muted);
-  transition: color 0.2s ease;
-  margin-inline-end: 8px;
-  font-size: var(--jz-fs-2xl);
-}
-.jz-login-form .ant-input-affix-wrapper-focused .ant-input-prefix {
-  color: var(--jz-accent);
-}
-.jz-login-form .ant-btn-primary {
-  margin-top: 6px;
-  letter-spacing: var(--jz-ls-xl);
-  font-weight: 600;
-}
-
-/* 输入框玻璃化（.jz-glass 不带 admin/blog 外壳，需自带一套，暗主题才不会白底） */
-.jz-login-form .ant-input,
-.jz-login-form .ant-input-affix-wrapper,
-.jz-login-form .ant-input-password {
-  background: var(--glass-surface) !important;
-  border-color: var(--glass-border) !important;
-  color: var(--glass-text) !important;
-}
-.jz-login-form .ant-input-affix-wrapper .ant-input {
-  background: transparent !important;
-  border: none !important;
-}
-.jz-login-form .ant-input::placeholder {
-  color: var(--glass-text-muted);
-  opacity: 0.7;
-}
-.jz-login-form .ant-input:focus,
-.jz-login-form .ant-input-affix-wrapper-focused,
-.jz-login-form .ant-input-affix-wrapper:hover,
-.jz-login-form .ant-input:hover {
-  border-color: color-mix(in srgb, var(--jz-accent) 55%, transparent) !important;
-  box-shadow: 0 0 0 3px var(--jz-accent-glow) !important;
-}
-.jz-login-form .ant-input-password .anticon {
-  color: var(--glass-text-muted);
-}
-
-.jz-login-foot {
-  margin-top: 14px;
-  font-size: var(--jz-fs-sm);
-  letter-spacing: var(--jz-ls-lg);
-  color: var(--glass-text-muted);
-  opacity: 0.7;
-}
-
-/* 压住浏览器自动填充的黄/蓝底，保持玻璃风格 */
-.jz-login-form input:-webkit-autofill,
-.jz-login-form input:-webkit-autofill:hover,
-.jz-login-form input:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--glass-text);
-  -webkit-box-shadow: 0 0 0 1000px var(--glass-surface) inset;
-  caret-color: var(--glass-text);
-  transition: background-color 9999s ease-in-out 0s;
-}
-
 /* ============ ColorPicker 弹层防截断（知识库/大类标题色等） ============ */
 /* AntD ColorPicker 弹层只会上下翻转，面板（取色区 + 滑条 + 预设）约 360px，
  * 低矮视口（如 1366×768 笔记本）上下两侧都放不下时会被屏幕截断且无法滚动。
@@ -4722,7 +4545,6 @@ a.jz-meta-full-edit-btn:focus-visible {
   .jz-brand,
   .jz-seal { transition: none; }
   .jz-seal-host:hover .jz-seal { transform: none; }
-  .jz-login-glow { animation: none; }
 }
 
 /* ── 路由级 View Transition（2026-08-03）──
@@ -5447,8 +5269,7 @@ a.jz-meta-full-edit-btn:focus-visible {
   transform: none !important;
   filter: none !important;
 }
-:root[data-motion='min'] .jz-fade-in,
-:root[data-motion='min'] .jz-login-glow { animation: none; }
+:root[data-motion='min'] .jz-fade-in { animation: none; }
 :root[data-motion='min'] .jz-reveal { opacity: 1; }
 :root[data-motion='min'] .jz-reveal.is-in { animation: none; }
 :root[data-motion='min'] .ant-card.jz-card,

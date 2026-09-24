@@ -68,6 +68,7 @@ import './styles/archive-tagcloud.css';
 import './styles/reader.css';
 import './styles/starry.css';
 import './styles/deepsea.css';
+import './styles/login.css';
 import './styles/responsive.css';
 import './styles/print.css';
 import GlobalShortcuts from '@/components/common/GlobalShortcuts';
