@@ -212,3 +212,134 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* ── 后台知识库管理（2026-09-25）：工具条 / 卡片网格 / 列表视图 ── */
+.jz-admin-kb-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.jz-admin-kb-toolbar.jz-kb-toolbar .ant-segmented + .ant-segmented,
+.jz-admin-kb-toolbar.jz-kb-toolbar .jz-icon-btn + .ant-segmented,
+.jz-admin-kb-toolbar.jz-kb-toolbar .jz-icon-btn { margin-left: 0; }
+.jz-admin-kb-search { width: 260px; max-width: 100%; }
+.jz-admin-kb-sort { min-width: 104px; }
+.jz-admin-kb-toolbar-spacer { flex: 1 1 0; }
+
+.jz-admin-kb-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr));
+  gap: 16px;
+}
+/* grid 项默认 min-width:auto，长名称 + 操作按钮的 min-content 会撑破 1fr 列 */
+.jz-admin-kb-grid > * { min-width: 0; }
+.jz-admin-kb-grid .ant-card-head-title { min-width: 0; }
+.jz-admin-kb-card-title { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.jz-admin-kb-card-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.jz-admin-kb-badge {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--jz-radius-md);
+  background: linear-gradient(135deg, var(--kb-accent), color-mix(in srgb, var(--kb-accent) 60%, white));
+  color: #fff;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  font-size: var(--jz-fs-md);
+}
+.jz-admin-kb-badge.is-sm {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--jz-radius-sm);
+  font-size: var(--jz-fs-xs);
+}
+.jz-admin-kb-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.jz-admin-kb-date { font-size: var(--jz-fs-xs); }
+.jz-admin-kb-audience { cursor: pointer; margin-inline-end: 0; }
+.jz-admin-kb-cat-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* 列表：一个表头 + 行，桌面六列网格 */
+.jz-admin-kb-list {
+  border: 1px solid var(--jz-border);
+  border-radius: var(--jz-radius-lg);
+  background: var(--jz-surface);
+  overflow: hidden;
+}
+.jz-admin-kb-row {
+  display: grid;
+  grid-template-columns: minmax(200px, 2.4fr) minmax(0, 1.4fr) 110px 64px 84px 96px;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid var(--jz-divider);
+  transition: background-color var(--jz-dur-fast) var(--jz-ease-standard);
+}
+.jz-admin-kb-row:first-child { border-top: 0; }
+.jz-admin-kb-row:not(.is-head):hover { background: var(--jz-hover-bg); }
+.jz-admin-kb-row.is-head {
+  padding-block: 8px;
+  font-size: var(--jz-fs-xs);
+  color: var(--jz-text-muted);
+  letter-spacing: var(--jz-ls-xs);
+}
+.jz-admin-kb-row-main { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.jz-admin-kb-row-text { display: flex; flex-direction: column; min-width: 0; }
+.jz-admin-kb-row-name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jz-admin-kb-row-desc.ant-typography { font-size: var(--jz-fs-xs); max-width: 100%; }
+.jz-admin-kb-row-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+}
+.jz-admin-kb-row-tags .ant-tag { margin-inline-end: 0; }
+.jz-admin-kb-row-vis { display: flex; gap: 4px; flex-wrap: wrap; }
+.jz-admin-kb-row-count,
+.jz-admin-kb-row-date { font-size: var(--jz-fs-sm); font-variant-numeric: tabular-nums; }
+.jz-admin-kb-row-actions { display: flex; justify-content: flex-end; gap: 2px; }
+
+:root[data-motion='min'] .jz-admin-kb-row { transition: none; }
+@media (prefers-reduced-motion: reduce) {
+  .jz-admin-kb-row { transition: none; }
+}
+
+@media (max-width: 900px) {
+  .jz-admin-kb-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      'main main actions'
+      'tags tags tags'
+      'vis count date';
+    row-gap: 6px;
+  }
+  .jz-admin-kb-row.is-head { display: none; }
+  .jz-admin-kb-row-main { grid-area: main; }
+  .jz-admin-kb-row-tags { grid-area: tags; }
+  .jz-admin-kb-row-tags:empty { display: none; }
+  .jz-admin-kb-row-vis { grid-area: vis; }
+  .jz-admin-kb-row-count { grid-area: count; }
+  .jz-admin-kb-row-date { grid-area: date; }
+  .jz-admin-kb-row-actions { grid-area: actions; }
+  .jz-admin-kb-toolbar-spacer { display: none; }
+}
+@media (max-width: 520px) {
+  .jz-admin-kb-search { width: 100%; }
+}
