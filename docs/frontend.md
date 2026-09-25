@@ -312,3 +312,13 @@ EPUB 划线的同款体验移植到 `/posts/:slug` 的 Markdown 读路径（HTML
 - **完整编辑两栏铺满**（≥1280）：editor `flex:1`、大纲改流内 sticky 右栏、正文限宽 860 居中
 - **坑**：`.jz-doc-body` 内联 `flexDirection` 会盖掉 CSS media query，必须删（见 memory `project_doc_editor_fill_layout`）
 - vite `manualChunks` 拆 codemirror / tiptap 独立 chunk；懒加载 pdfjs + mammoth（DocAIPanel chunk 2.25MB→660KB）
+
+### 后台知识库管理（`/admin/kbs`，2026-09-25）
+
+- `pages/admin/KBListPage.tsx` 只管渲染；筛选 / 排序 / 分组 / 偏好读写唯一源 `utils/adminKbList.ts`（`adminKbList.test.ts` 锁定）。工具条复用博客 KB 页的 `.jz-kb-toolbar-seg` Segmented + `JzGroupView/FlatView/CardView/RowsView` 图标 + `IconButton` 全展/全折；样式在 `styles/dashboard.css` `.jz-admin-kb-*`。
+- 视图：分组（大类 Collapse，顺序跟随大类列表，未分类殿后，引用未知大类归未分类）/ 平铺 × 卡片 / 列表；排序 `default` 保持接口顺序，其余稳定排序（名称用 `Intl.Collator('zh-Hans-CN')`）。
+- 偏好 `jz-admin-kb-view:v1` / `-group:v1` / `-sort:v1` / `-folds:v1`（存**折叠**的分组 key，新大类默认展开），**只在显式操作时写入**（冻结默认值陷阱）；搜索词与可见性筛选不持久化。
+- 筛选中：只显示有命中的分组且全部展开，此时折叠走临时 `searchFolds`、不写盘，清除筛选即恢复已存折叠；未筛选时显示空大类（`JzEmpty` +「在此新建」）。
+- 分组头 `extra` 的「+」须 `stopPropagation` 防触发折叠；新建弹窗非 `destroyOnHidden`，预填大类走 `afterOpenChange` → `setFieldsValue`（未挂载时写表单会告警）。
+- 卡片网格 `minmax(min(300px,100%),1fr)` + `> * { min-width:0 }`：grid 项默认 `min-width:auto`，长名称 + 操作按钮的 min-content 会撑破列。
+- 冒烟：`Test/scripts/admin_kb_list_smoke.py`（26 项；窄屏只量知识库内容区——`AdminLayout` 顶栏在手机宽度本身溢出，全后台既有问题）。
