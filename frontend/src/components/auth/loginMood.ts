@@ -4,12 +4,21 @@
  * 纯函数：输入表单瞬时状态，输出唯一心境；姿态（爪子/耳朵/嘴）由 CSS 按
  * `data-mood` 切换，目光（瞳孔偏移/歪头）由 `gazeFor` 给出。
  *
- * 优先级：success > error > cover > peek > captcha > typing > idle
+ * 优先级：success > error > cover > peek > captcha > scout / typing > idle
+ * - scout = 聚焦用户名：探身、手搭凉棚「偷看这是谁」（2026-09-25）；typing = 聚焦邮箱。
  * - error 对所有失败原因一致（登录三因子不泄露哪一项错）。
  * - cover = 密码框聚焦且密码隐藏（爪子捂眼）；peek = 密码明文显示且非空（爪缝偷看）。
  */
 
-export type LoginMood = 'idle' | 'typing' | 'cover' | 'peek' | 'captcha' | 'error' | 'success';
+export type LoginMood =
+  | 'idle'
+  | 'typing'
+  | 'scout'
+  | 'cover'
+  | 'peek'
+  | 'captcha'
+  | 'error'
+  | 'success';
 export type LoginField = 'username' | 'email' | 'password';
 
 export interface MoodInputs {
@@ -28,6 +37,7 @@ export function resolveMood(i: MoodInputs): LoginMood {
   if (i.focus === 'password' && !i.passwordVisible) return 'cover';
   if (i.passwordVisible && i.passwordFilled) return 'peek';
   if (i.captchaProgress !== null) return 'captcha';
+  if (i.focus === 'username') return 'scout';
   if (i.focus) return 'typing';
   return 'idle';
 }
@@ -67,6 +77,11 @@ export function gazeFor(
       // 目光随光标：字越长看得越靠右（表单在右栏，整体偏右）
       const t = Math.max(0, Math.min(1, typingProgress));
       return { px: round(-1 + t * (PUPIL_MAX_X + 1)), py: 1.5, tilt: round(1 + t * 4) };
+    }
+    case 'scout': {
+      // 探身张望：目光钉在右上方的用户名框，字越多歪头越狠
+      const t = Math.max(0, Math.min(1, typingProgress));
+      return { px: PUPIL_MAX_X, py: -1, tilt: round(7 + t * 4) };
     }
     case 'captcha': {
       const p = Math.max(0, Math.min(1, captchaProgress ?? 0));

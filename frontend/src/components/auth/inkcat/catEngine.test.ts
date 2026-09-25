@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BELLY_WINDOW_MS,
+  HUNT_SPEED,
+  PET_WINDOW_MS,
+  petBehavior,
+  pointerSpeed,
   idleDelay,
   lookAroundAt,
   pickIdleBehavior,
@@ -62,7 +65,9 @@ describe('idle scheduling', () => {
   it('full cat can pick every idle behaviour', () => {
     const seen = new Set<string>();
     for (let r = 0; r < 1; r += 0.005) seen.add(pickIdleBehavior(() => r, true));
-    expect([...seen].sort()).toEqual(['ear-l', 'ear-r', 'lick', 'look-around', 'tail-flick', 'yawn']);
+    expect([...seen].sort()).toEqual(
+      ['blep', 'ear-l', 'ear-r', 'lick', 'look-around', 'tail-flick', 'wink', 'yawn'],
+    );
   });
 
   it('idle delay stays between 3.2s and 8s', () => {
@@ -74,8 +79,22 @@ describe('idle scheduling', () => {
     let c = registerPet([], 0);
     c = registerPet(c, 500);
     expect(c).toHaveLength(2);
-    c = registerPet(c, 500 + BELLY_WINDOW_MS + 1);
-    expect(c).toEqual([500 + BELLY_WINDOW_MS + 1]);
+    c = registerPet(c, 500 + PET_WINDOW_MS + 1);
+    expect(c).toEqual([500 + PET_WINDOW_MS + 1]);
+  });
+
+  it('shy cat: first pet covers face, then purrs, then shows belly', () => {
+    expect(petBehavior(1)).toBe('shy');
+    expect(petBehavior(2)).toBe('purr');
+    expect(petBehavior(3)).toBe('belly');
+    expect(petBehavior(7)).toBe('belly');
+  });
+
+  it('pointer speed gates the hunt (wand-toy wiggle)', () => {
+    const a = { x: 0, y: 0, t: 0 };
+    expect(pointerSpeed(a, { x: 30, y: 40, t: 10 })).toBe(5);
+    expect(pointerSpeed(a, { x: 10, y: 0, t: 10 })).toBeLessThan(HUNT_SPEED);
+    expect(pointerSpeed(a, { x: 500, y: 0, t: 2 })).toBe(0); // dt 过小视为无效
   });
 
   it('look-around script: left, right, centre', () => {

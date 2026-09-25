@@ -249,6 +249,7 @@
 
 .jz-login-art-cat {
   position: relative;
+  isolation: isolate; /* 淡月光晕（::before 绝对定位）须沉到猫身后，否则会给白猫罩一层金色 */
   width: min(300px, 100%);
   margin-top: auto;
 }
@@ -262,6 +263,7 @@
   aspect-ratio: 1;
   translate: -50% 0;
   border-radius: 50%;
+  z-index: -1;
   background: radial-gradient(circle,
     color-mix(in srgb, var(--jz-gold) 24%, transparent) 0%,
     color-mix(in srgb, var(--jz-gold) 8%, transparent) 52%, transparent 70%);
@@ -448,40 +450,50 @@
   transition-timing-function: var(--jz-ease-decel);
 }
 
-/* ── 水墨猫（components/auth/InkCat + inkcat/useCatEngine，2026-09-24 二期）──
-   花色令牌：浅色主题「乌云盖雪」，暗色主题「雪里拖枪」+ 鸳鸯眼。
-   JS 写：--jz-cat-px/py（瞳孔，SVG 单位）、--jz-cat-tilt/hx（头）、--jz-cat-lean（身）。
-   CSS 管：data-mood × data-behavior → 眼睑 --jz-cat-lid、瞳孔宽 --jz-cat-pw、委屈 --jz-cat-sad、
-   耳/尾/爪/嘴/特效。个别属性动画一律用独立 rotate/translate/scale 属性，
+/* ── 小猫（components/auth/InkCat + inkcat/useCatEngine）──
+   2026-09-25 六期：可爱化（婴儿图式：大圆脸/低位大眼圆瞳/小口鼻/团子身/圆耳尖/柔和勾线）+ 毛色只黑白 + 铃铛项圈。
+   2026-09-24 二期：花色令牌（浅色「乌云盖雪」/ 暗色「雪里拖枪」+ 鸳鸯眼）、分层弹簧目光、行为调度。
+   2026-09-25 三期：漫画猫 · 古灵精怪 · 容易害羞——勾线、大眼、豆豆眉、小虎牙、漫符层。
+   2026-09-25 四期（去僵）：耳朵/尾巴/眉毛改由 JS 软体骨架驱动（inkcat/catRig + useCatEngine），
+   这里不再写它们的 transform/关键帧；眨眼 --jz-cat-blink 与呼吸 --jz-cat-breath-s 也由引擎写。
+   JS 写：瞳孔/头/身倾/呼吸直接写在各自元素的 inline transform，眨眼 --jz-cat-blink 写在眼睑上
+   （勿写根节点 CSS 变量——整只猫子树每帧重算样式，实测每帧 +1.4ms）；下方基于变量的规则只是首帧兜底。
+   CSS 管：data-mood × data-behavior（× .is-hover）→ 眼睑 --jz-cat-lid、瞳孔宽 --jz-cat-pw、
+   委屈 --jz-cat-sad、眉/耳/尾/爪/嘴/漫符。个别属性动画一律用独立 rotate/translate/scale 属性，
    与 transform（姿态）叠加而不互相覆盖。 */
 @property --jz-cat-lid { syntax: '<number>'; inherits: true; initial-value: 0; }
 @property --jz-cat-pw { syntax: '<number>'; inherits: true; initial-value: 1; }
 @property --jz-cat-sad { syntax: '<angle>'; inherits: true; initial-value: 0deg; }
 
 .jz-inkcat {
-  --jz-cat-main-a: #1d1b1a;
-  --jz-cat-main-b: #45403c;
-  --jz-cat-patch-a: #fdfaf4;
-  --jz-cat-patch-b: #e2dace;
-  --jz-cat-tail-a: #1d1b1a;
-  --jz-cat-tail-b: #3a3632;
-  --jz-cat-tail-rim: transparent;
-  --jz-cat-line: #2e2925;
-  --jz-cat-socket: #15120f;
-  --jz-cat-iris-l-a: #fde68f;
-  --jz-cat-iris-l-b: #e3a122;
-  --jz-cat-iris-l-c: #9a5f0c;
-  --jz-cat-iris-r-a: #fde68f;
-  --jz-cat-iris-r-b: #e3a122;
-  --jz-cat-iris-r-c: #9a5f0c;
-  --jz-cat-pink: #e3918a;
+  /* 黑猫（默认）：黑身 + 白口鼻 + 白爪；暖黑勾线（纯黑显凶） */
+  --jz-cat-main-a: #232020;
+  --jz-cat-main-b: #3b3634;
+  --jz-cat-patch-a: #fffdf8;
+  --jz-cat-patch-b: #efe8dc;
+  --jz-cat-tail-a: #232020;
+  --jz-cat-tail-b: #3b3634;
+  --jz-cat-outline: #2b2321;
+  --jz-cat-tail-rim: var(--jz-cat-outline);
+  --jz-cat-line: #3a2e2b;
+  --jz-cat-socket: #1a1414;
+  --jz-cat-brow: color-mix(in srgb, var(--jz-cat-patch-a) 86%, var(--jz-cat-main-a));
+  --jz-cat-iris-l-a: #fff2b5;
+  --jz-cat-iris-l-b: #f2b632;
+  --jz-cat-iris-l-c: #9a6206;
+  --jz-cat-iris-r-a: #fff2b5;
+  --jz-cat-iris-r-b: #f2b632;
+  --jz-cat-iris-r-c: #9a6206;
+  --jz-cat-pink: #f29aa0;
+  --jz-cat-hatch: #d9574f;
   --jz-cat-nose: #d4675a;
   --jz-cat-cinnabar: #c63b2e;
-  --jz-cat-lid: 0.06;
-  --jz-cat-pw: 1;
-  --jz-cat-sad: 0deg;
-  --jz-cat-breath: 1.014;
+  --jz-cat-sweat: #bfe4f7;
+  --jz-cat-sparkle: #ffd66b;
   --jz-cat-closed: color-mix(in srgb, var(--jz-cat-patch-a) 62%, var(--jz-cat-main-a));
+  --jz-cat-lid: 0.03;
+  --jz-cat-pw: 2; /* 默认圆而大的瞳孔（竖缝显狡黠，不可爱） */
+  --jz-cat-sad: 0deg;
   display: block;
   width: 100%;
   height: auto;
@@ -491,28 +503,44 @@
     --jz-cat-pw var(--jz-dur-slow) var(--jz-ease-decel),
     --jz-cat-sad var(--jz-dur-slow) var(--jz-ease-standard);
 }
-[data-theme='dark'] .jz-inkcat,
-[data-theme='starry'] .jz-inkcat,
-[data-theme='deepsea'] .jz-inkcat {
-  --jz-cat-main-a: #f7f5fa;
-  --jz-cat-main-b: #cdc9d8;
+/* ── 毛色只有黑白（inkcat/coats：浅色系主题黑猫、暗色系主题白猫）── */
+.jz-inkcat[data-coat='white'] {
+  --jz-cat-main-a: #ffffff;
+  --jz-cat-main-b: #ebe7f1;
   --jz-cat-patch-a: #ffffff;
-  --jz-cat-patch-b: #e6e2ee;
-  --jz-cat-tail-a: #1b1920;
-  --jz-cat-tail-b: #37343f;
-  --jz-cat-tail-rim: rgba(255, 255, 255, 0.3);
-  --jz-cat-socket: #2a2632;
-  --jz-cat-iris-r-a: #d4f0ff;
-  --jz-cat-iris-r-b: #5aa8e0;
-  --jz-cat-iris-r-c: #245f8f;
-  --jz-cat-closed: color-mix(in srgb, var(--jz-cat-line) 70%, var(--jz-cat-main-a));
+  --jz-cat-patch-b: #f1eef5;
+  --jz-cat-tail-a: #ffffff;
+  --jz-cat-tail-b: #e6e2ec;
+  --jz-cat-outline: #aaa3ba; /* 淡灰紫勾线：暗底上柔和不刺眼 */
+  --jz-cat-line: #5b5068;
+  --jz-cat-socket: #3b3446;
+  --jz-cat-brow: #c9c2d6;
+  --jz-cat-closed: #7d7390;
+  --jz-cat-pink: #f6a9b5;
+  --jz-cat-iris-l-a: #e3f6ff;
+  --jz-cat-iris-l-b: #62b3ea;
+  --jz-cat-iris-l-c: #27659e;
+  --jz-cat-iris-r-a: #e3f6ff;
+  --jz-cat-iris-r-b: #62b3ea;
+  --jz-cat-iris-r-c: #27659e;
 }
+/* 换毛色：色标与描边平滑过渡 */
+.jz-inkcat stop,
+.jz-cat-outline,
+.jz-cat-leg,
+.jz-cat-paw-pad {
+  transition:
+    stop-color var(--jz-dur-slow) var(--jz-ease-standard),
+    stroke var(--jz-dur-slow) var(--jz-ease-standard);
+}
+
 
 /* 渐变色标 */
 .jz-cat-s-main-a { stop-color: var(--jz-cat-main-a); }
 .jz-cat-s-main-b { stop-color: var(--jz-cat-main-b); }
 .jz-cat-s-patch-a { stop-color: var(--jz-cat-patch-a); }
 .jz-cat-s-patch-b { stop-color: var(--jz-cat-patch-b); }
+.jz-cat-s-paw-shade { stop-color: color-mix(in srgb, var(--jz-cat-patch-b) 70%, var(--jz-cat-line)); }
 .jz-cat-s-tail-a { stop-color: var(--jz-cat-tail-a); }
 .jz-cat-s-tail-b { stop-color: var(--jz-cat-tail-b); }
 .jz-cat-s-iris-l-a { stop-color: var(--jz-cat-iris-l-a); }
@@ -521,51 +549,65 @@
 .jz-cat-s-iris-r-a { stop-color: var(--jz-cat-iris-r-a); }
 .jz-cat-s-iris-r-b { stop-color: var(--jz-cat-iris-r-b); }
 .jz-cat-s-iris-r-c { stop-color: var(--jz-cat-iris-r-c); }
-.jz-cat-s-leg-shade { stop-color: color-mix(in srgb, var(--jz-cat-patch-b) 70%, var(--jz-cat-line)); }
-.jz-cat-s-blush { stop-color: var(--jz-cat-pink); stop-opacity: 0.55; }
+.jz-cat-s-blush { stop-color: var(--jz-cat-pink); stop-opacity: 0.6; }
 .jz-cat-s-ground { stop-color: var(--glass-text); stop-opacity: 0.2; }
 
-/* 静态造型 */
+/* ── 静态造型：漫画勾线（paint-order 让线压在填充下，只露外半圈） ── */
 .jz-cat-mover { cursor: pointer; }
-.jz-cat-ear-in { fill: var(--jz-cat-pink); opacity: 0.55; }
+.jz-cat-outline {
+  stroke: var(--jz-cat-outline);
+  stroke-width: 2.6;
+  stroke-linejoin: round;
+  paint-order: stroke;
+}
+.jz-cat-ear-in { fill: var(--jz-cat-pink); } /* 不透明度由引擎按压平程度写属性，勿在此写 opacity（会压过属性） */
 .jz-cat-socket { fill: var(--jz-cat-socket); }
 .jz-cat-pupil-core { fill: #120f0c; }
-.jz-cat-glint { fill: #fff; opacity: 0.95; }
-.jz-cat-glint--sm { opacity: 0.7; }
+.jz-cat-glint { fill: #fff; }
+.jz-cat-glint--sm { opacity: 0.85; }
+.jz-cat-glint--xs { opacity: 0.7; }
 .jz-cat-lash {
   fill: none;
-  stroke: var(--jz-cat-line);
-  stroke-width: 1.6;
+  stroke: var(--jz-cat-outline);
+  stroke-width: 2.4;
   stroke-linecap: round;
-  opacity: 0.55;
 }
-.jz-cat-nose { fill: var(--jz-cat-nose); }
-.jz-cat-mouth,
-.jz-cat-mouth-sad,
+.jz-cat-brow { fill: var(--jz-cat-brow); }
+.jz-cat-nose { fill: var(--jz-cat-nose); stroke: var(--jz-cat-line); stroke-width: 1; stroke-linejoin: round; }
+.jz-cat-line,
 .jz-cat-eyes-happy path {
   fill: none;
   stroke: var(--jz-cat-line);
-  stroke-width: 2.2;
+  stroke-width: 2.4;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
-.jz-cat-eyes-happy path { stroke: var(--jz-cat-socket); stroke-width: 4; }
+.jz-cat-eyes-happy path { stroke: var(--jz-cat-closed); stroke-width: 4; }
 .jz-cat-eyes-closed path {
   fill: none;
   stroke: var(--jz-cat-closed);
-  stroke-width: 2.6;
+  stroke-width: 3;
   stroke-linecap: round;
 }
-.jz-cat-whisker path { fill: var(--glass-text-muted); opacity: 0.75; }
+.jz-cat-fang { fill: #fff; stroke: var(--jz-cat-line); stroke-width: 1.1; stroke-linejoin: round; }
+.jz-cat-mouth-oh { fill: #5b2420; stroke: var(--jz-cat-line); stroke-width: 1.2; }
+.jz-cat-whisker path {
+  fill: none;
+  stroke: var(--glass-text-muted);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  opacity: 0.8;
+}
 .jz-cat-yawn-in { fill: #5b2420; }
 .jz-cat-tongue { fill: #e58a80; }
-.jz-cat-leg {
-  stroke: color-mix(in srgb, var(--jz-cat-line) 42%, transparent);
-  stroke-width: 1.2;
-}
+.jz-cat-chin-shade { fill: #000; opacity: 0.12; }
+.jz-cat-leg { fill: var(--jz-cat-main-a); }
+.jz-cat-leg,
 .jz-cat-paw-pad {
-  stroke: color-mix(in srgb, var(--jz-cat-line) 28%, transparent);
-  stroke-width: 1.2;
+  stroke: var(--jz-cat-outline);
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  paint-order: stroke;
 }
 .jz-cat-toe {
   fill: none;
@@ -578,10 +620,29 @@
 .jz-cat-tail-stroke {
   fill: none;
   stroke-linecap: round;
-  transition: stroke-width var(--jz-dur-slow) var(--jz-ease-spring);
+  stroke-linejoin: round;
 }
-.jz-cat-tail-rim { stroke: var(--jz-cat-tail-rim); stroke-width: 16.5; }
-.jz-cat-tail-stroke { stroke-width: 13; }
+.jz-cat-tail-rim { stroke: var(--jz-cat-tail-rim); }
+.jz-cat-hatch {
+  fill: none;
+  stroke: var(--jz-cat-hatch);
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  opacity: 0;
+  transition: opacity var(--jz-dur-base) var(--jz-ease-standard);
+}
+.jz-cat-blush ellipse { opacity: 0.8; transition: opacity var(--jz-dur-slow) var(--jz-ease-standard); }
+
+/* 铃铛项圈：毛色只黑白，项圈是唯一彩色，跟主题主色 */
+.jz-cat-collar-o,
+.jz-cat-collar { fill: none; stroke-linecap: round; }
+.jz-cat-collar-o { stroke: var(--jz-cat-outline); stroke-width: 4.6; }
+.jz-cat-collar { stroke: var(--jz-accent); stroke-width: 3; }
+.jz-cat-bell-ball { stroke: #8a6212; stroke-width: 1.05; }
+.jz-cat-bell-loop { fill: none; stroke: #8a6212; stroke-width: 1.2; }
+.jz-cat-bell-band { fill: none; stroke: #9a6f16; stroke-width: 1.1; stroke-linecap: round; }
+.jz-cat-bell-hole { fill: #5a3c08; }
+.jz-cat-bell-slit { stroke: #5a3c08; stroke-width: 1.2; stroke-linecap: round; }
 
 /* 线装书：靛青 + 赭石封皮，米黄书口；书根墨题 */
 .jz-cat-cover--top { fill: color-mix(in srgb, var(--jz-accent) 38%, #2d3e55); }
@@ -603,8 +664,6 @@
   scale: 1.8;
   rotate: -12deg;
 }
-
-.jz-cat-blush { opacity: 0.6; transition: opacity var(--jz-dur-slow) var(--jz-ease-standard); }
 .jz-cat-ripple {
   fill: none;
   stroke: color-mix(in srgb, var(--jz-accent) 55%, transparent);
@@ -620,6 +679,33 @@
   opacity: 0;
 }
 
+/* ── 漫符：默认隐藏，由心境/行为点亮 ── */
+.jz-cat-fx { opacity: 0; transform-box: fill-box; transform-origin: center; }
+.jz-cat-sweat path { fill: var(--jz-cat-sweat); stroke: var(--jz-cat-outline); stroke-width: 1.4; }
+.jz-cat-sweat-hi { fill: #fff; }
+.jz-cat-steam circle { fill: #fff; stroke: color-mix(in srgb, var(--jz-cat-outline) 55%, transparent); stroke-width: 1.2; }
+.jz-cat-puff { transform-box: fill-box; transform-origin: center; opacity: 0; }
+.jz-cat-sparkle path {
+  fill: var(--jz-cat-sparkle);
+  stroke: var(--jz-cat-outline);
+  stroke-width: 1.1;
+  stroke-linejoin: round;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.jz-cat-bang,
+.jz-cat-huh,
+.jz-cat-note {
+  font-family: var(--jz-font-display);
+  paint-order: stroke;
+  stroke: #fff;
+  stroke-width: 3.5px;
+  stroke-linejoin: round;
+}
+.jz-cat-bang { fill: var(--jz-cat-cinnabar); }
+.jz-cat-huh { fill: var(--jz-cat-outline); }
+.jz-cat-note { fill: var(--jz-accent); }
+
 /* ── 目光 / 头 / 身（JS 变量，无 CSS 过渡：弹簧已平滑） ── */
 .jz-cat-mover {
   transform-origin: 150px 296px;
@@ -627,7 +713,7 @@
   transition: rotate var(--jz-dur-slow) var(--jz-ease-spring);
 }
 .jz-cat-head {
-  transform-origin: 150px 208px;
+  transform-origin: 150px 226px;
   transform: translateX(calc(var(--jz-cat-hx, 0) * 1px)) rotate(var(--jz-cat-tilt, 0deg));
 }
 .jz-cat-pupil {
@@ -638,57 +724,61 @@
   transform-origin: center;
   transform: scaleX(var(--jz-cat-pw));
 }
-.jz-cat-lid { transform: translateY(calc(var(--jz-cat-lid) * 32px)) rotate(var(--jz-cat-sad)); }
-.jz-cat-lid--l { transform-origin: 124px 150px; transform: translateY(calc(var(--jz-cat-lid) * 32px)) rotate(calc(var(--jz-cat-sad) * -1)); }
-.jz-cat-lid--r { transform-origin: 176px 150px; }
+.jz-cat-lid--l { transform-origin: 118px 162px; transform: translateY(calc(max(var(--jz-cat-lid), var(--jz-cat-blink, 0)) * 42px)) rotate(calc(var(--jz-cat-sad) * -1)); }
+.jz-cat-lid--r { transform-origin: 182px 162px; transform: translateY(calc(max(var(--jz-cat-lid), var(--jz-cat-blink, 0)) * 42px)) rotate(var(--jz-cat-sad)); }
 .jz-cat-headpose {
-  transform-origin: 150px 208px;
-  transition: transform var(--jz-dur-epic) var(--jz-ease-standard);
+  transform-origin: 150px 226px;
+  transition: transform var(--jz-dur-slow) var(--jz-ease-spring);
 }
 
-/* 呼吸：胸腹极轻起伏（打盹更深更慢） */
+/* 呼吸：引擎按可变周期写 --jz-cat-breath-s（打盹更深）；reduce/适中档恒为 1 */
 .jz-cat-body {
-  transform-origin: 150px 284px;
-  animation: jz-cat-breath 3.8s ease-in-out infinite alternate;
-}
-@keyframes jz-cat-breath {
-  from { scale: 1 1; }
-  to   { scale: 1 var(--jz-cat-breath); }
+  transform-origin: 150px 286px;
+  transform: scale(1, var(--jz-cat-breath-s, 1));
 }
 
 /* ── 眼：眼睑 / 瞳孔宽 / 委屈 ── */
-.jz-inkcat[data-mood='typing'] { --jz-cat-lid: 0.12; --jz-cat-pw: 1.25; }
-.jz-inkcat[data-mood='captcha'] { --jz-cat-lid: 0; --jz-cat-pw: 1.95; }
-.jz-inkcat[data-mood='peek'] { --jz-cat-lid: 0.2; --jz-cat-pw: 1.5; }
-.jz-inkcat[data-mood='error'] { --jz-cat-lid: 0.3; --jz-cat-pw: 1.75; --jz-cat-sad: 14deg; }
-.jz-inkcat[data-mood='idle'].is-hover { --jz-cat-lid: 0.22; --jz-cat-pw: 1.15; }
-.jz-inkcat[data-mood='idle'][data-behavior='yawn'] { --jz-cat-lid: 0.8; }
-.jz-inkcat[data-mood='idle'][data-behavior='lick'] { --jz-cat-lid: 0.62; }
+.jz-inkcat[data-mood='typing'] { --jz-cat-lid: 0.06; --jz-cat-pw: 2.1; }
+.jz-inkcat[data-mood='scout'] { --jz-cat-lid: 0.3; --jz-cat-pw: 1.7; } /* 歪头偷瞄：半眯着往侧面瞟 */ /* 眯眼打量 */
+.jz-inkcat[data-mood='captcha'] { --jz-cat-lid: 0; --jz-cat-pw: 2.4; }
+.jz-inkcat[data-mood='peek'] { --jz-cat-lid: 0.1; --jz-cat-pw: 1.7; }
+.jz-inkcat[data-mood='error'] { --jz-cat-lid: 0.04; --jz-cat-pw: 2.4; } /* 泪汪汪：瞳孔放到最大、不压眼睑 */
+.jz-inkcat[data-mood='idle'].is-hover { --jz-cat-lid: 0.16; --jz-cat-pw: 2.1; }
+.jz-inkcat[data-mood='idle'][data-behavior='hunt'] { --jz-cat-lid: 0; --jz-cat-pw: 2.4; }
 .jz-inkcat[data-mood='idle'][data-behavior='sleep'] {
   --jz-cat-lid: 1;
-  --jz-cat-breath: 1.03;
   transition-duration: var(--jz-dur-epic);
 }
-.jz-inkcat[data-mood='idle'][data-behavior='wake'] { animation: jz-cat-wake-lid 1.3s var(--jz-ease-standard) both; }
-@keyframes jz-cat-wake-lid {
-  0% { --jz-cat-lid: 1; }
-  35% { --jz-cat-lid: 0.55; }
-  55% { --jz-cat-lid: 0.8; }
-  100% { --jz-cat-lid: 0.06; }
-}
-.jz-inkcat.jz-inkcat.is-blink { --jz-cat-lid: 1; }
 
-/* 开心眯眼：成功 / 呼噜 / 翻肚 */
 .jz-cat-eyes,
+.jz-cat-eye,
 .jz-cat-eyes-happy,
+.jz-cat-eyes-happy path,
 .jz-cat-eyes-closed,
 .jz-cat-mouth,
+.jz-cat-fang,
+.jz-cat-blep,
+.jz-cat-mouth-shy,
+.jz-cat-mouth-oh,
 .jz-cat-mouth-sad {
   transition: opacity var(--jz-dur-base) var(--jz-ease-standard);
 }
 .jz-cat-eyes-happy,
 .jz-cat-eyes-closed,
+.jz-cat-blep,
+.jz-cat-mouth-shy,
+.jz-cat-mouth-oh,
 .jz-cat-mouth-sad { opacity: 0; }
+.jz-cat-blep path:first-child { fill: #f08a96; stroke: var(--jz-cat-line); stroke-width: 1.1; stroke-linejoin: round; }
+.jz-cat-blep-crease { fill: none; stroke: #c9606d; stroke-width: 0.9; stroke-linecap: round; }
+
+/* 开心眯眼 ^ ^：成功 / 呼噜 / 翻肚 */
+.jz-inkcat:is([data-mood='success'], [data-behavior='purr'], [data-behavior='belly']) .jz-cat-eyes { opacity: 0; }
+.jz-inkcat:is([data-mood='success'], [data-behavior='purr'], [data-behavior='belly']) .jz-cat-eyes-happy { opacity: 1; }
+/* 眨一只眼（古灵精怪）：左眼换 ^，右眼照常 */
+.jz-inkcat[data-mood='idle'][data-behavior='wink'] .jz-cat-eye--l { opacity: 0; }
+.jz-inkcat[data-mood='idle'][data-behavior='wink'] .jz-cat-eyes-happy { opacity: 1; }
+.jz-inkcat[data-mood='idle'][data-behavior='wink'] .jz-cat-arc-r { opacity: 0; }
 /* 久闭（打盹/哈欠/舔爪）改画闭眼弧线：眼睑与眼窝同一裁剪，边缘抗锯齿会透出一圈眼眶 */
 .jz-inkcat[data-mood='idle']:is([data-behavior='sleep'], [data-behavior='yawn'], [data-behavior='lick']) .jz-cat-eyes {
   opacity: 0;
@@ -698,28 +788,29 @@
   opacity: 1;
   transition-delay: var(--jz-dur-fast);
 }
-.jz-inkcat[data-mood='success'] .jz-cat-eyes,
-.jz-inkcat[data-mood='idle'][data-behavior='purr'] .jz-cat-eyes,
-.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-eyes { opacity: 0; }
-.jz-inkcat[data-mood='success'] .jz-cat-eyes-happy,
-.jz-inkcat[data-mood='idle'][data-behavior='purr'] .jz-cat-eyes-happy,
-.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-eyes-happy { opacity: 1; }
-.jz-inkcat[data-mood='error'] .jz-cat-mouth { opacity: 0; }
-.jz-inkcat[data-mood='error'] .jz-cat-mouth-sad { opacity: 1; }
-.jz-inkcat.is-hover .jz-cat-blush,
-.jz-inkcat[data-behavior='purr'] .jz-cat-blush,
-.jz-inkcat[data-behavior='belly'] .jz-cat-blush,
-.jz-inkcat[data-mood='success'] .jz-cat-blush { opacity: 1; }
 
-/* 嘴：哈欠张口 / 舔爪吐舌 */
+/* ── 嘴：ω+虎牙（默认）/ 坏笑 / 害羞波浪 / 惊讶 o / 委屈 ── */
+.jz-inkcat:is([data-mood='peek'], [data-behavior='blep']) :is(.jz-cat-mouth, .jz-cat-blep) { opacity: 1; }
+.jz-inkcat:is([data-mood='peek'], [data-behavior='blep']) .jz-cat-fang { opacity: 0; } /* 吐舌：ω + 舌尖 */
+.jz-inkcat[data-mood='idle'].is-hover:not([data-behavior='purr']):not([data-behavior='belly']) .jz-cat-mouth,
+.jz-inkcat[data-mood='idle'].is-hover:not([data-behavior='purr']):not([data-behavior='belly']) .jz-cat-fang,
+.jz-inkcat:is([data-mood='cover'], [data-behavior='shy']) .jz-cat-mouth,
+.jz-inkcat:is([data-mood='cover'], [data-behavior='shy']) .jz-cat-fang { opacity: 0; }
+.jz-inkcat[data-mood='idle'].is-hover:not([data-behavior='purr']):not([data-behavior='belly']) .jz-cat-mouth-shy,
+.jz-inkcat:is([data-mood='cover'], [data-behavior='shy']) .jz-cat-mouth-shy { opacity: 1; }
+.jz-inkcat[data-mood='idle'][data-behavior='hunt'] .jz-cat-mouth,
+.jz-inkcat[data-mood='idle'][data-behavior='hunt'] .jz-cat-fang { opacity: 0; }
+.jz-inkcat[data-mood='idle'][data-behavior='hunt'] .jz-cat-mouth-oh { opacity: 1; }
+.jz-inkcat[data-mood='error'] .jz-cat-mouth,
+.jz-inkcat[data-mood='error'] .jz-cat-fang { opacity: 0; }
+.jz-inkcat[data-mood='error'] .jz-cat-mouth-sad { opacity: 1; }
+/* 哈欠张口 / 舔爪吐舌 */
 .jz-cat-yawn {
-  transform-origin: 150px 179px;
+  transform-origin: 150px 197px;
   scale: 1 0;
 }
-.jz-inkcat[data-behavior='yawn'] .jz-cat-yawn,
-.jz-inkcat[data-behavior='wake'] .jz-cat-yawn { animation: jz-cat-yawn 1.3s var(--jz-ease-standard) both; }
-.jz-inkcat[data-behavior='yawn'] .jz-cat-mouth,
-.jz-inkcat[data-behavior='wake'] .jz-cat-mouth { opacity: 0; }
+.jz-inkcat:is([data-behavior='yawn'], [data-behavior='wake']) .jz-cat-yawn { animation: jz-cat-yawn 1.3s var(--jz-ease-standard) both; }
+.jz-inkcat:is([data-behavior='yawn'], [data-behavior='wake']) :is(.jz-cat-mouth, .jz-cat-fang) { opacity: 0; }
 @keyframes jz-cat-yawn {
   0%, 100% { scale: 1 0; }
   30%, 70% { scale: 1 1; }
@@ -727,12 +818,22 @@
 .jz-cat-tongue--lick { opacity: 0; transition: opacity var(--jz-dur-fast) var(--jz-ease-standard); }
 .jz-inkcat[data-behavior='lick'] .jz-cat-tongue--lick { opacity: 1; }
 
+/* 害羞：腮红加深 + 斜线 */
+.jz-inkcat[data-mood='idle'].is-hover .jz-cat-hatch,
+.jz-inkcat:is([data-mood='cover'], [data-mood='success'], [data-behavior='shy'], [data-behavior='purr'], [data-behavior='belly']) .jz-cat-hatch { opacity: 1; }
+.jz-inkcat[data-mood='idle'].is-hover .jz-cat-blush ellipse,
+.jz-inkcat:is([data-mood='cover'], [data-mood='success'], [data-behavior='shy'], [data-behavior='purr'], [data-behavior='belly']) .jz-cat-blush ellipse { opacity: 1; }
+
+/* ── 豆豆眉：转角/高低由引擎按 catRig.poseFor 以弹簧驱动（错峰 60ms） ── */
+
 /* ── 头部姿态（CSS 层）── */
-.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-headpose { transform: translateY(6px) rotate(-7deg); }
+.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-headpose { transform: translateY(6px) rotate(-7deg); transition-duration: var(--jz-dur-epic); }
 .jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-headpose { transform: rotate(10deg); }
 .jz-inkcat[data-mood='idle'][data-behavior='lick'] .jz-cat-headpose { transform: translate(2px, 3px) rotate(7deg); }
-.jz-inkcat[data-mood='idle'][data-behavior='yawn'] .jz-cat-headpose,
-.jz-inkcat[data-mood='idle'][data-behavior='wake'] .jz-cat-headpose { animation: jz-cat-yawn-head 1.3s var(--jz-ease-standard) both; }
+/* 害羞捂脸不动头：爪子（在头外层）要始终对准眼睛 */
+.jz-inkcat[data-mood='idle'][data-behavior='hunt'] .jz-cat-headpose { transform: translateY(5px); }
+.jz-inkcat[data-mood='idle'].is-hover:not([data-behavior='purr']):not([data-behavior='belly']) .jz-cat-headpose { transform: translateY(3px); }
+.jz-inkcat[data-mood='idle']:is([data-behavior='yawn'], [data-behavior='wake']) .jz-cat-headpose { animation: jz-cat-yawn-head 1.3s var(--jz-ease-standard) both; }
 @keyframes jz-cat-yawn-head {
   0%, 100% { rotate: 0deg; translate: 0 0; }
   35%, 65% { rotate: -5deg; translate: 0 -3px; }
@@ -750,102 +851,73 @@
   82% { translate: 1px 0; }
 }
 
-/* ── 耳朵：姿态（transform）+ 抖动（独立 rotate 属性） ── */
-.jz-cat-ear { transition: transform var(--jz-dur-slow) var(--jz-ease-spring); }
-.jz-cat-ear--l { transform-origin: 122px 112px; }
-.jz-cat-ear--r { transform-origin: 178px 112px; }
-.jz-inkcat:is([data-mood='typing'], [data-mood='captcha'], [data-mood='success']) .jz-cat-ear--l { transform: rotate(5deg); }
-.jz-inkcat:is([data-mood='typing'], [data-mood='captcha'], [data-mood='success']) .jz-cat-ear--r { transform: rotate(-5deg); }
-.jz-inkcat[data-mood='cover'] .jz-cat-ear--l { transform: rotate(-11deg); }
-.jz-inkcat[data-mood='cover'] .jz-cat-ear--r { transform: rotate(11deg); }
-.jz-inkcat[data-mood='error'] .jz-cat-ear--l { transform: rotate(-22deg); }
-.jz-inkcat[data-mood='error'] .jz-cat-ear--r { transform: rotate(22deg); }
-.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-ear--l { transform: rotate(-9deg); }
-.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-ear--r { transform: rotate(9deg); }
-.jz-inkcat[data-behavior='ear-l'] .jz-cat-ear--l,
-.jz-inkcat.is-flick[data-flick='l'] .jz-cat-ear--l { animation: jz-cat-twitch-l 420ms var(--jz-ease-standard); }
-.jz-inkcat[data-behavior='ear-r'] .jz-cat-ear--r,
-.jz-inkcat.is-flick[data-flick='r'] .jz-cat-ear--r { animation: jz-cat-twitch-r 420ms var(--jz-ease-standard); }
-.jz-inkcat.is-flick .jz-cat-ear { animation-duration: 260ms; }
-@keyframes jz-cat-twitch-l {
-  0%, 100% { rotate: 0deg; }
-  20% { rotate: -14deg; }
-  45% { rotate: 3deg; }
-  65% { rotate: -8deg; }
-}
-@keyframes jz-cat-twitch-r {
-  0%, 100% { rotate: 0deg; }
-  20% { rotate: 14deg; }
-  45% { rotate: -3deg; }
-  65% { rotate: 8deg; }
-}
+/* ── 耳朵：软体（转向/立起/压平/耳尖弯折）由引擎驱动；抖耳是随机冲量，非固定关键帧 ── */
 
-/* ── 尾巴：常态轻摆（外层 rotate 属性）+ 心境姿态（内层 transform）+ 甩尾 ── */
-.jz-cat-tail {
-  transform-origin: 204px 270px;
-  animation: jz-cat-tail-sway 3.6s ease-in-out infinite alternate;
-}
-@keyframes jz-cat-tail-sway {
-  from { rotate: -4deg; }
-  to   { rotate: 5deg; }
-}
-.jz-cat-tail-pose {
-  transform-origin: 204px 270px;
-  transition: transform var(--jz-dur-slow) var(--jz-ease-spring);
-}
-.jz-inkcat[data-mood='typing'] .jz-cat-tail-pose { transform: rotate(-8deg); }
-.jz-inkcat[data-mood='success'] .jz-cat-tail-pose { transform: rotate(-26deg); }
-.jz-inkcat[data-mood='error'] .jz-cat-tail-pose { transform: rotate(10deg); }
-.jz-inkcat[data-mood='error'] .jz-cat-tail-stroke { stroke-width: 21; }
-.jz-inkcat[data-mood='error'] .jz-cat-tail-rim { stroke-width: 24.5; }
-.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-tail-pose { transform: rotate(24deg); }
-.jz-inkcat[data-mood='idle'][data-behavior='sleep'] .jz-cat-tail { animation-play-state: paused; }
-.jz-inkcat[data-mood='captcha'] .jz-cat-tail-pose { animation: jz-cat-tail-flick 600ms ease-in-out infinite alternate; }
-.jz-inkcat[data-behavior='tail-flick'] .jz-cat-tail-pose { animation: jz-cat-tail-flick 350ms ease-in-out 2 alternate; }
-@keyframes jz-cat-tail-flick {
-  from { rotate: -6deg; }
-  to   { rotate: 9deg; }
-}
+/* ── 尾巴：8 节传播波软体由引擎驱动（问号卷/竖直颤/急甩/低垂炸毛/绕身） ── */
 
-/* ── 前爪：以肩为轴；捂眼 = 翻 180° 到脸前（先微缩再抬，右爪慢 60ms） ── */
-.jz-cat-arm { transition: transform var(--jz-dur-slow) var(--jz-ease-anticipate); }
-.jz-cat-arm--r { transition-delay: 60ms; }
-.jz-inkcat[data-mood='cover'] .jz-cat-arm--l,
-.jz-inkcat[data-mood='peek'] .jz-cat-arm--l { transform: rotate(180deg); }
-.jz-inkcat[data-mood='cover'] .jz-cat-arm--r { transform: rotate(-180deg); }
-.jz-inkcat[data-mood='peek'] .jz-cat-arm--r { transform: rotate(-146deg); }
-.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-arm--l { transform: rotate(128deg); }
-.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-arm--r { transform: rotate(-128deg); }
+/* ── 前爪：以肩为轴；捂眼 = 翻 171° 并纵向伸长 1.37×（横向只 1.08×，免成木板）到脸前（先微缩再抬，右爪慢 60ms） ── */
+.jz-cat-arm {
+  transition:
+    transform var(--jz-dur-slow) var(--jz-ease-anticipate) 110ms,
+    opacity var(--jz-dur-fast) linear 110ms;
+}
+.jz-cat-arm--r { transition-delay: 170ms, 170ms; }
+.jz-cat-edgepaw { transition-property: transform, opacity; }
+
+.jz-inkcat:is([data-mood='cover'], [data-mood='peek'], [data-behavior='shy']) .jz-cat-arm--l { transform: rotate(166deg) scale(1.4, 1.75); }
+.jz-inkcat:is([data-mood='cover'], [data-behavior='shy']) .jz-cat-arm--r { transform: rotate(-166deg) scale(1.4, 1.75); }
+.jz-inkcat[data-mood='peek'] .jz-cat-arm--r { transform: rotate(-143deg) scale(1.2, 1.85); }
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-arm--l { transform: rotate(125deg) scale(1.1, 1.2); }
+.jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-arm--r { transform: rotate(-125deg) scale(1.1, 1.2); }
+/* 呼噜时踩奶：两只前爪交替一下一下往下按 */
+.jz-inkcat[data-mood='idle'][data-behavior='purr'] .jz-cat-arm { animation: jz-cat-knead 460ms ease-in-out infinite; }
+.jz-inkcat[data-mood='idle'][data-behavior='purr'] .jz-cat-arm--r { animation-delay: 230ms; }
+@keyframes jz-cat-knead {
+  0%, 100% { translate: 0 0; }
+  45% { translate: 0 -6px; }
+  70% { translate: 0 1.5px; }
+}
 .jz-inkcat[data-mood='idle'][data-behavior='lick'] .jz-cat-arm--r {
-  transform: rotate(150deg) scale(1, 0.62);
+  transform: rotate(150deg) scale(0.88);
   animation: jz-cat-lick 380ms ease-in-out 200ms 4 alternate;
 }
 @keyframes jz-cat-lick {
   from { rotate: -4deg; }
   to   { rotate: 5deg; }
 }
-.jz-inkcat:is([data-mood='cover'], [data-mood='peek']) .jz-cat-beans,
-.jz-inkcat[data-behavior='belly'] .jz-cat-beans { opacity: 1; }
+.jz-inkcat:is([data-mood='cover'], [data-mood='peek'], [data-behavior='shy'], [data-behavior='belly']) .jz-cat-beans { opacity: 1; }
 
-/* 探头猫的两只爪：搭在卡片沿上，捂眼时直接举到眼前 */
-.jz-cat-edgepaw { transition: transform var(--jz-dur-slow) var(--jz-ease-anticipate); }
+/* 探头猫的两只爪：搭在卡片沿上，捂眼时举到眼前 */
+.jz-cat-edgepaw {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: transform var(--jz-dur-slow) var(--jz-ease-anticipate);
+}
 .jz-cat-edgepaw--r { transition-delay: 60ms; }
-.jz-inkcat[data-mood='cover'] .jz-cat-edgepaw--l,
-.jz-inkcat[data-mood='peek'] .jz-cat-edgepaw--l { transform: translate(4px, -66px); }
-.jz-inkcat[data-mood='cover'] .jz-cat-edgepaw--r { transform: translate(-4px, -66px); }
-.jz-inkcat[data-mood='peek'] .jz-cat-edgepaw--r { transform: translate(24px, -42px); }
+.jz-inkcat:is([data-mood='cover'], [data-mood='peek'], [data-behavior='shy']) .jz-cat-edgepaw--l { transform: translate(-4px, -68px) scale(1.45, 1.3); }
+.jz-inkcat:is([data-mood='cover'], [data-behavior='shy']) .jz-cat-edgepaw--r { transform: translate(4px, -68px) scale(1.45, 1.3); }
+.jz-inkcat[data-mood='peek'] .jz-cat-edgepaw--r { transform: translate(30px, -60px) scale(1.2); }
 
-/* ── 整体：成功轻跳 / 翻肚后仰 / 呼噜轻颤 ── */
-.jz-inkcat[data-mood='success'] .jz-cat-mover { animation: jz-cat-hop 560ms var(--jz-ease-spring) both; }
+/* ── 整体：成功轻跳 / 翻肚后仰 / 呼噜轻颤 / 扑猎扭屁股 / 伸懒腰 ── */
+.jz-inkcat[data-mood='success'] .jz-cat-mover { animation: jz-cat-hop 640ms var(--jz-ease-standard) both; }
+/* 挤压拉伸：起跳前压扁 → 空中拉长 → 落地再压 → 回弹 */
 @keyframes jz-cat-hop {
-  0%, 100% { translate: 0 0; }
-  42% { translate: 0 -12px; }
+  0%, 100% { translate: 0 0; scale: 1 1; }
+  14% { translate: 0 0; scale: 1.06 0.92; }
+  42% { translate: 0 -13px; scale: 0.96 1.06; }
+  70% { translate: 0 0; scale: 1.05 0.95; }
+  86% { scale: 0.99 1.01; }
 }
 .jz-inkcat[data-mood='idle'][data-behavior='belly'] .jz-cat-mover { rotate: -5deg; }
 .jz-inkcat[data-behavior='purr'] .jz-cat-body { animation: jz-cat-purr 90ms linear infinite alternate; }
 @keyframes jz-cat-purr {
   from { translate: -0.4px 0; }
   to   { translate: 0.4px 0; }
+}
+.jz-inkcat[data-behavior='hunt'] .jz-cat-body { animation: jz-cat-wiggle 170ms ease-in-out infinite alternate; }
+@keyframes jz-cat-wiggle {
+  from { translate: -2.2px 1px; }
+  to   { translate: 2.2px 1px; }
 }
 .jz-inkcat[data-behavior='wake'] .jz-cat-mover { animation: jz-cat-stretch 1.3s var(--jz-ease-standard) both; }
 @keyframes jz-cat-stretch {
@@ -882,12 +954,85 @@
   to   { opacity: 1; scale: 1; rotate: -5deg; }
 }
 
-/* 手机探头猫：<900 挂在表单卡顶沿（卡沿 = viewBox y 214） */
+/* ── 漫符点亮 ── */
+/* 汗滴：委屈 / 被盯着 / 被摸 */
+.jz-inkcat[data-behavior='shy'] .jz-cat-sweat,
+.jz-inkcat[data-mood='idle'].is-hover:not([data-behavior='purr']):not([data-behavior='belly']) .jz-cat-sweat {
+  animation: jz-cat-sweat 900ms var(--jz-ease-decel) both;
+}
+@keyframes jz-cat-sweat {
+  0% { opacity: 0; translate: 0 -6px; }
+  40% { opacity: 1; translate: 0 0; }
+  100% { opacity: 1; translate: 0 3px; }
+}
+/* 泪汪汪（出错）：眼里一汪泪光轻轻晃、左眼角滚下一颗泪珠、嘴一抖一抖 */
+.jz-cat-tear { fill: #cdeeff; opacity: 0; transition: opacity var(--jz-dur-slow) var(--jz-ease-standard); }
+.jz-inkcat[data-mood='error'] .jz-cat-tear { opacity: 0.6; animation: jz-cat-tear-wobble 900ms ease-in-out infinite alternate; }
+@keyframes jz-cat-tear-wobble {
+  from { translate: -1.2px 0; }
+  to   { translate: 1.2px -0.6px; }
+}
+.jz-cat-teardrop { fill: #cdeeff; stroke: var(--jz-cat-outline); stroke-width: 1.1; }
+.jz-inkcat[data-mood='error'] .jz-cat-teardrop { animation: jz-cat-teardrop 1.6s var(--jz-ease-standard) 350ms infinite; }
+@keyframes jz-cat-teardrop {
+  0% { opacity: 0; translate: 0 -4px; }
+  20% { opacity: 1; translate: 0 0; }
+  80% { opacity: 1; translate: -1px 14px; }
+  100% { opacity: 0; translate: -1px 18px; }
+}
+.jz-inkcat[data-mood='error'] .jz-cat-mouth-sad { animation: jz-cat-wobble 180ms steps(2, jump-none) infinite; }
+@keyframes jz-cat-wobble {
+  from { translate: -0.5px 0; }
+  to   { translate: 0.5px 0.3px; }
+}
+
+/* 冒气：害羞到过热 */
+.jz-inkcat[data-behavior='shy'] .jz-cat-steam { opacity: 1; }
+.jz-inkcat[data-behavior='shy'] .jz-cat-puff { animation: jz-cat-puff 900ms var(--jz-ease-decel) infinite; }
+@keyframes jz-cat-puff {
+  0% { opacity: 0; translate: 0 8px; scale: 0.5; }
+  35% { opacity: 1; scale: 1; }
+  100% { opacity: 0; translate: 0 -14px; scale: 1.25; }
+}
+/* 闪光：成功 / 眨眼 / 偷看坏笑 */
+.jz-inkcat:is([data-mood='success'], [data-mood='peek'], [data-behavior='wink']) .jz-cat-sparkle { opacity: 1; }
+.jz-inkcat:is([data-mood='success'], [data-behavior='wink']) .jz-cat-sparkle path { animation: jz-cat-twinkle 700ms var(--jz-ease-spring) both; }
+.jz-inkcat[data-mood='peek'] .jz-cat-sparkle path { animation: jz-cat-twinkle-loop 1.4s ease-in-out infinite; }
+@keyframes jz-cat-twinkle {
+  0% { scale: 0; rotate: -45deg; }
+  60% { scale: 1.2; }
+  100% { scale: 1; rotate: 0deg; }
+}
+@keyframes jz-cat-twinkle-loop {
+  0%, 100% { scale: 0.6; opacity: 0.4; }
+  50% { scale: 1.1; opacity: 1; }
+}
+/* ！：刚开始输入（好奇）/ 惊醒 / 扑猎；？：出错 */
+.jz-inkcat:is([data-mood='typing'], [data-mood='scout'], [data-behavior='wake'], [data-behavior='hunt']) .jz-cat-bang,
+.jz-inkcat[data-mood='error'] .jz-cat-huh {
+  animation: jz-cat-pop 1.1s var(--jz-ease-spring) both;
+}
+@keyframes jz-cat-pop {
+  0% { opacity: 0; scale: 0.3; translate: 0 6px; }
+  22% { opacity: 1; scale: 1.2; translate: 0 0; }
+  38% { scale: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+/* ♪：呼噜 */
+.jz-inkcat[data-behavior='purr'] .jz-cat-note { animation: jz-cat-note 1.4s var(--jz-ease-decel) both; }
+@keyframes jz-cat-note {
+  0% { opacity: 0; translate: -4px 6px; }
+  30% { opacity: 1; }
+  100% { opacity: 0; translate: 8px -14px; }
+}
+
+/* 手机探头猫：<900 挂在表单卡顶沿（卡沿 = viewBox y 230；viewBox 36 30 228 216，宽 150 → (230-30)×150/228 ≈ 132） */
 .jz-login-peek {
   position: absolute;
   z-index: 3;
   left: 50%;
-  top: -123px;
+  top: -132px;
   width: 150px;
   translate: -50% 0;
 }
@@ -935,8 +1080,11 @@
   animation: none !important;
   transition: none !important;
 }
-/* 「适中」档：关纯装饰循环（呼吸 / 摆尾），保留姿态与目光 */
-:root[data-motion='medium'] .jz-cat-tail,
-:root[data-motion='medium'] .jz-cat-body {
-  animation: none;
+/* reduce / 精简：漫符出场动画被关，表情关键的汗滴与「？」静态显示 */
+@media (prefers-reduced-motion: reduce) {
+  .jz-inkcat[data-behavior='shy'] .jz-cat-sweat,
+  .jz-inkcat[data-mood='error'] :is(.jz-cat-huh, .jz-cat-teardrop) { opacity: 1; }
 }
+:root[data-motion='min'] .jz-inkcat[data-behavior='shy'] .jz-cat-sweat,
+:root[data-motion='min'] .jz-inkcat[data-mood='error'] :is(.jz-cat-huh, .jz-cat-teardrop) { opacity: 1; }
+/* 「适中」档：呼吸/摆尾/噪声微动由引擎按档位关闭（decorativeMotionEnabled），CSS 无需伴生 */

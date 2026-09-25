@@ -13,7 +13,7 @@ const base: MoodInputs = {
 describe('resolveMood', () => {
   it('idle by default, typing when a text field is focused', () => {
     expect(resolveMood(base)).toBe('idle');
-    expect(resolveMood({ ...base, focus: 'username' })).toBe('typing');
+    expect(resolveMood({ ...base, focus: 'username' })).toBe('scout');
     expect(resolveMood({ ...base, focus: 'email' })).toBe('typing');
   });
 
@@ -56,6 +56,13 @@ describe('gaze', () => {
     expect(gazeFor('idle', null)).toBeNull();
     expect(gazeFor('captcha', 0)!.px).toBe(-PUPIL_MAX_X);
     expect(gazeFor('captcha', 1)!.px).toBe(PUPIL_MAX_X);
+  });
+
+  it('scout stares at the username box and tilts more as the name grows', () => {
+    const a = gazeFor('scout', null, 0)!;
+    const b = gazeFor('scout', null, 1)!;
+    expect(a.px).toBe(PUPIL_MAX_X);
+    expect(b.tilt).toBeGreaterThan(a.tilt);
   });
 
   it('typing gaze drifts right as the text grows', () => {
